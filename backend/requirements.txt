@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+sqlalchemy  #用 Python 管理数据库连接、查询和数据表模型
+psycopg[binary]  #让 Python 真正与 PostgreSQL 通信的驱动。
+python-dotenv  #从 .env 文件中加载环境变量
