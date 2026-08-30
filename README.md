@@ -1,6 +1,6 @@
 # 霍尔木兹海峡船舶态势地图
 
-这是一个用于学习前后端与空间数据库协作方式的船舶态势地图项目。项目当前使用少量模拟船舶、模拟轨迹和模拟事件，完成了从 PostgreSQL 到 FastAPI，再到 Vue 与 Leaflet 地图的最小数据闭环。
+这是一个用于学习前后端与空间数据库协作方式的船舶态势地图项目。项目当前使用可重复生成的教学模拟船舶、轨迹和事件，完成了从 PostgreSQL 到 FastAPI，再到 Vue 与 Leaflet 地图的数据闭环。
 
 > 当前所有船舶、轨迹和事件均为教学用模拟数据，不代表真实 AIS 船舶活动或真实海上事件。
 
@@ -89,6 +89,7 @@ Hormuz/
 │   ├── sql/                  # 按编号执行的数据库结构变更脚本
 │   ├── create_tables.py      # 创建基础数据表
 │   ├── seed_data.py          # 插入少量模拟数据
+│   ├── generate_demo_data.py # 生成并验收完整教学模拟数据
 │   └── requirements.txt      # Python 依赖
 ├── frontend/
 │   ├── src/
@@ -170,21 +171,41 @@ Get-Content -Raw .\backend\sql\002_add_ship_positions_location.sql |
 
 Get-Content -Raw .\backend\sql\003_add_location_indexes.sql |
     docker exec -i mobilitydb psql -U aisdb -d aisdb -v ON_ERROR_STOP=1
+
+Get-Content -Raw .\backend\sql\004_add_ship_positions_latest_index.sql |
+    docker exec -i mobilitydb psql -U aisdb -d aisdb -v ON_ERROR_STOP=1
 ```
 
 这些脚本分别负责：
 
 1. 为 `events` 添加自动生成的空间位置；
 2. 为 `ship_positions` 添加自动生成的空间位置；
-3. 为两个空间位置字段建立 GiST 索引。
+3. 为两个空间位置字段建立 GiST 索引；
+4. 为按船舶和时间查询最新位置建立 B-tree 索引。
 
-### 6. 插入模拟数据
+### 6. 生成教学模拟数据
+
+先在内存中生成并检查，不修改数据库：
+
+```powershell
+python -m backend.generate_demo_data --validate-only
+```
+
+确认需要替换三张业务表中的现有模拟数据后，执行：
+
+```powershell
+python -m backend.generate_demo_data --confirm-reset
+```
+
+生成器使用固定随机种子，重建并验收 150 艘模拟船舶、14,400 条模拟位置和 80 条模拟事件。它只清空并重建 `ships`、`ship_positions` 和 `events`，任何验收错误都会回滚整个事务。
+
+如果只需要最小数据闭环，也可以在空表中执行：
 
 ```powershell
 python -m backend.seed_data
 ```
 
-脚本会插入 3 艘模拟船舶、10 条模拟位置和 2 条模拟事件。如果对应表中已经存在数据，脚本会跳过重复插入。
+该最小数据脚本会插入 3 艘模拟船舶、10 条模拟位置和 2 条模拟事件。如果对应表中已经存在数据，脚本会跳过重复插入。
 
 ### 7. 启动 FastAPI
 
@@ -224,6 +245,7 @@ npm run build
 | --- | --- | --- |
 | GET | `/health` | 检查 FastAPI 是否正常运行 |
 | GET | `/ships` | 获取船舶列表 |
+| GET | `/ships/map` | 批量获取每艘船及其最新位置 |
 | GET | `/ships/{ship_id}/positions` | 获取指定船舶的历史位置 |
 | GET | `/ships/{ship_id}/nearby-events` | 根据船舶最新位置查询指定半径内的模拟事件 |
 | GET | `/events` | 获取事件列表 |
@@ -241,7 +263,9 @@ backend/sql/002_add_ship_positions_location.sql
         ↓
 backend/sql/003_add_location_indexes.sql
         ↓
-backend/seed_data.py
+backend/sql/004_add_ship_positions_latest_index.sql
+        ↓
+backend/generate_demo_data.py --confirm-reset
 ```
 
 当前暂未引入 Alembic，数据库结构变化通过编号 SQL 文件记录。
@@ -255,7 +279,9 @@ backend/seed_data.py
 - 模拟事件 Marker 与 Popup；
 - PostgreSQL 三张业务表；
 - FastAPI 船舶、轨迹和事件查询接口；
+- FastAPI 地图船舶最新位置批量接口；
 - PostGIS 船舶附近事件查询接口；
+- 可重复生成并自动验收的大规模教学模拟数据；
 - 前端从 FastAPI 加载数据库数据；
 - PostGIS 空间字段、距离计算、范围查询和 GiST 索引。
 
