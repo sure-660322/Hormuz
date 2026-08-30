@@ -4,8 +4,7 @@ import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   fetchEvents,
-  fetchShips,
-  fetchShipPositions,
+  fetchMapShips,
 } from './api'
 
 let map: L.Map | undefined
@@ -32,80 +31,33 @@ onMounted(() => {
     iconAnchor: [12, 12],
   })
 
-   const shipsWithPositionsPromise = fetchShips()
-    .then(async (apiShips) => {
-      return Promise.all(
-        apiShips.map(async (ship) => {
-          const positions = await fetchShipPositions(ship.id)
+  fetchMapShips()
+    .then((ships) => {
+      if(!map) return
 
-          return {
-            ship,
-            positions,
-          }
-        }),
-      )
-    })
-
-  shipsWithPositionsPromise
-    .then((shipsWithPositions) => {
-      if (!map) return
-
-      for (const { ship, positions } of shipsWithPositions) {
-        const currentPosition = positions[positions.length - 1]
-
-        if (!currentPosition) continue
-
+      for(const ship of ships){
         const popupContent = `
-          <strong>船名：</strong>${ship.name}<br>
-          <strong>MMSI：</strong>${ship.mmsi}<br>
-          <strong>类型：</strong>${ship.ship_type}<br>
-          <strong>船旗：</strong>${ship.flag}<br>
-          <strong>速度：</strong>${currentPosition.speed} 节<br>
-          <strong>航向：</strong>${currentPosition.course}°<br>
-          <strong>位置：</strong>${currentPosition.latitude.toFixed(4)}, ${currentPosition.longitude.toFixed(4)}
+        <strong>船名：</strong>${ship.name}<br>
+        <strong>MMSI：</strong>${ship.mmsi}<br>
+        <strong>类型：</strong>${ship.ship_type}<br>
+        <strong>船旗：</strong>${ship.flag}<br>
+        <strong>速度：</strong>${ship.speed} 节<br>
+        <strong>航向：</strong>${ship.course}°<br>
+        <strong>位置：</strong>${ship.latitude.toFixed(4)}, ${ship.longitude.toFixed(4)}<br>
+        <strong>更新时间：</strong>${new Date(ship.recorded_at).toLocaleString('zh-CN')}
         `
 
-        L.marker(
-          [
-            currentPosition.latitude,
-            currentPosition.longitude,
-          ],
-          {
-            icon: shipIcon,
-          },
-        )
-          .bindPopup(popupContent)
-          .addTo(map)
+      L.marker([ship.latitude,ship.longitude],
+        {icon:shipIcon,},
+      )
+        .bindPopup(popupContent)
+        .addTo(map)
       }
     })
     .catch((error) => {
-      console.error('船舶数据加载失败：', error)
+      console.error(`地图船舶数据加载失败：`,error)
     })
 
-    shipsWithPositionsPromise
-    .then((shipsWithPositions) => {
-      if (!map) return
-
-      for (const { positions: trackPoints } of shipsWithPositions) {
-        if (trackPoints.length < 2) continue
-
-        const positions = trackPoints.map(
-          (point): L.LatLngTuple => [
-            point.latitude,
-            point.longitude,
-          ],
-        )
-
-        L.polyline(positions, {
-          color: '#2563eb',
-          weight: 3,
-          opacity: 0.8,
-        }).addTo(map)
-      }
-    })
-    .catch((error) => {
-      console.error('船舶轨迹加载失败：', error)
-    })
 
     const eventIcon = L.divIcon({
     className: 'event-marker',

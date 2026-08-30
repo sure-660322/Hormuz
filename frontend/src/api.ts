@@ -19,6 +19,22 @@ export interface ApiShipPosition {
   recorded_at: string
 }
 
+export interface ApiMapShip{
+    id: number
+    mmsi: string
+    name: string
+    ship_type: string
+    flag: string
+    imo: string | null
+    callsign: string | null
+    latitude: number
+    longitude: number
+    speed: number
+    course: number
+    heading: number | null
+    recorded_at: string
+}
+
 export interface ApiEvent {
   id: number
   title: string
@@ -44,7 +60,16 @@ export async function fetchShips():Promise<ApiShip[]>{
     return response.json()      //把后端json转换成JavaScript数据
 }
 
+export async function fetchMapShips():Promise<ApiMapShip[]>{
+    const response = await fetch(`${API_BASE_URL}/ships/map`)
 
+    if(!response.ok)
+    {
+        throw new Error(`获取船舶数据失败：${response.status}`)
+    }
+
+    return response.json()
+}
 
 export async function fetchShipPositions(
     shipId:number,
