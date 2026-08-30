@@ -41,3 +41,17 @@ class EventResponse(BaseModel):
     occurred_at:datetime
     source_name:str | None
     source_url:str | None
+
+class NearbyEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id:int
+    title:str
+    description:str
+    event_type:str
+    latitude:float
+    longitude:float
+    occurred_at:datetime
+    source_name:str | None
+    source_url: str | None
+    distance_km:float

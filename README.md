@@ -33,7 +33,7 @@
 - 已在数据库中验证 `ST_DWithin` 范围查询；
 - 已为事件和船舶位置建立 GiST 空间索引。
 
-目前 PostGIS 距离和范围查询只在数据库中完成了 SQL 验证，尚未封装为 FastAPI 接口。
+PostGIS 距离和范围查询已封装为 `GET /ships/{ship_id}/nearby-events` 接口，可基于船舶最新位置查询指定半径内的模拟事件。
 
 ## 技术栈
 
@@ -225,6 +225,7 @@ npm run build
 | GET | `/health` | 检查 FastAPI 是否正常运行 |
 | GET | `/ships` | 获取船舶列表 |
 | GET | `/ships/{ship_id}/positions` | 获取指定船舶的历史位置 |
+| GET | `/ships/{ship_id}/nearby-events` | 根据船舶最新位置查询指定半径内的模拟事件 |
 | GET | `/events` | 获取事件列表 |
 
 ## 数据库脚本执行顺序
@@ -254,6 +255,7 @@ backend/seed_data.py
 - 模拟事件 Marker 与 Popup；
 - PostgreSQL 三张业务表；
 - FastAPI 船舶、轨迹和事件查询接口；
+- PostGIS 船舶附近事件查询接口；
 - 前端从 FastAPI 加载数据库数据；
 - PostGIS 空间字段、距离计算、范围查询和 GiST 索引。
 
@@ -262,7 +264,6 @@ backend/seed_data.py
 - 真实 AIS 数据接入；
 - 用户登录与权限管理；
 - 船舶实时更新；
-- PostGIS 距离查询的 FastAPI 接口；
 - TimescaleDB 时序表；
 - MobilityDB 移动物体模型；
 - 自动化测试与正式部署。
