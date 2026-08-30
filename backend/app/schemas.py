@@ -55,3 +55,20 @@ class NearbyEventResponse(BaseModel):
     source_name:str | None
     source_url: str | None
     distance_km:float
+
+class ShipMapResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    mmsi: str
+    name: str
+    ship_type: str
+    flag: str
+    imo: str | None
+    callsign: str | None
+    latitude: float
+    longitude: float
+    speed: float
+    course: float
+    heading: float | None
+    recorded_at: datetime

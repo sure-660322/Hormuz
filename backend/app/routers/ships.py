@@ -4,7 +4,12 @@ from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
 from backend.app.models import Ship, ShipPosition
-from backend.app.schemas import ShipResponse, ShipPositionResponse, NearbyEventResponse
+from backend.app.schemas import (
+    NearbyEventResponse,
+    ShipMapResponse,
+    ShipPositionResponse,
+    ShipResponse,
+)
 
 
 router = APIRouter(
@@ -18,6 +23,39 @@ def get_ships(db:Session = Depends(get_db)):
     ships = db.scalars(statement).all()
 
     return ships
+
+@router.get("/map", response_model=list[ShipMapResponse])
+def get_map_ships(db: Session = Depends(get_db)):
+    rows = db.execute(
+        text(
+            """
+            SELECT DISTINCT ON (ships.id)
+                ships.id,
+                ships.mmsi,
+                ships.name,
+                ships.ship_type,
+                ships.flag,
+                ships.imo,
+                ships.callsign,
+                ship_positions.latitude,
+                ship_positions.longitude,
+                ship_positions.speed,
+                ship_positions.course,
+                ship_positions.heading,
+                ship_positions.recorded_at
+            FROM ships
+            JOIN ship_positions
+                ON ship_positions.ship_id = ships.id
+            ORDER BY
+                ships.id,
+                ship_positions.recorded_at DESC,
+                ship_positions.id DESC
+            """
+        )
+    ).mappings().all()
+
+    return rows
+
 @router.get(
     "/{ship_id}/positions",
     response_model=list[ShipPositionResponse],
