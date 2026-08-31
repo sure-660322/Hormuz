@@ -21,6 +21,9 @@ let map: L.Map | undefined
 let selectedTrackLayer: L.Polyline | undefined
 let eventLayer: L.LayerGroup | undefined
 
+const GLOBAL_CENTER: L.LatLngTuple = [26.5, 56.5]
+const GLOBAL_ZOOM = 8
+
 const eventMarkersById = new Map<number, L.Marker>()
 
 const eventIcon = L.divIcon({
@@ -29,6 +32,24 @@ const eventIcon = L.divIcon({
   iconSize: [26, 26],
   iconAnchor: [13, 13],
 })
+
+const selectedEventIcon = L.divIcon({
+  className: 'event-marker event-marker-selected',
+  html: '!',
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+})
+
+function updateEventMarkerHighlight(selectedEventId: number | null) {
+  for (const [eventId, marker] of eventMarkersById) {
+    marker.setIcon(
+      eventId === selectedEventId
+        ? selectedEventIcon
+        : eventIcon,
+    )
+  }
+}
+
 function renderEventMarkers(events: ApiEvent[]) {
   if (!eventLayer) return
 
@@ -59,6 +80,8 @@ function renderEventMarkers(events: ApiEvent[]) {
 
     eventMarkersById.set(maritimeEvent.id, marker)
   }
+
+  updateEventMarkerHighlight(props.selectedEvent?.id ?? null)
 }
 
 watch(
@@ -71,7 +94,15 @@ watch(
 watch(
   () => props.selectedEvent,
   (maritimeEvent) => {
-    if (!maritimeEvent || !map) return
+    updateEventMarkerHighlight(maritimeEvent?.id ?? null)
+
+    if (!map) return
+
+    if (!maritimeEvent) {
+      map.closePopup()
+      map.flyTo(GLOBAL_CENTER, GLOBAL_ZOOM)
+      return
+    }
 
     map.flyTo(
       [maritimeEvent.latitude, maritimeEvent.longitude],
@@ -84,7 +115,7 @@ watch(
   },
 )
 onMounted(() => {
-  map = L.map('map').setView([26.5, 56.5], 8)
+  map = L.map('map').setView(GLOBAL_CENTER, GLOBAL_ZOOM)
 
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -289,6 +320,14 @@ onBeforeUnmount(() => {
   font-weight: 700;
   line-height: 1;
   box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
+}
+
+.event-marker-selected {
+  background-color: #f59e0b;
+  border-width: 3px;
+  font-size: 21px;
+  box-shadow: 0 0 0 4px rgb(245 158 11 / 25%),
+    0 2px 8px rgb(0 0 0 / 45%);
 }
 
 </style>

@@ -69,6 +69,10 @@ function changeEventSortDirection(direction: EventSortDirection) {
   eventSortDirection.value = direction
   selectedEvent.value = null
 }
+
+function restoreGlobalView() {
+  selectedEvent.value = null
+}
 </script>
 
 <template>
@@ -92,10 +96,11 @@ function changeEventSortDirection(direction: EventSortDirection) {
       :sort-direction="eventSortDirection"
       :loading="eventsLoading"
       :error-message="eventsError"
-      :selected-event-id="selectedEvent?.id ?? null"
+      :selected-event="selectedEvent"
       @select-event="selectEvent"
       @change-event-type="changeEventType"
       @change-sort-direction="changeEventSortDirection"
+      @restore-global-view="restoreGlobalView"
     />
   </main>
 </template>

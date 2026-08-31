@@ -10,19 +10,20 @@ const props = defineProps<{
   sortDirection: 'asc' | 'desc'
   loading: boolean
   errorMessage: string
-  selectedEventId: number | null
+  selectedEvent: ApiEvent | null
 }>()
 
 const emit = defineEmits<{
   selectEvent: [maritimeEvent: ApiEvent]
   changeEventType: [eventType: string]
   changeSortDirection: [direction: 'asc' | 'desc']
+  restoreGlobalView: []
 }>()
 
 const eventList = ref<HTMLElement | null>(null)
 
 watch(
-  () => props.selectedEventId,
+  () => props.selectedEvent?.id ?? null,
   async (eventId) => {
     if (eventId === null) return
 
@@ -115,6 +116,50 @@ function handleSortDirectionChange(event: Event) {
         </label>
       </div>
 
+      <section
+        v-if="selectedEvent"
+        class="selected-event-detail"
+      >
+        <div class="detail-header">
+          <span>当前选中事件</span>
+
+          <button
+            type="button"
+            @click="emit('restoreGlobalView')"
+          >
+            恢复全局视野
+          </button>
+        </div>
+
+        <h2>{{ selectedEvent.title }}</h2>
+        <p>{{ selectedEvent.description }}</p>
+
+        <dl>
+          <div>
+            <dt>类型</dt>
+            <dd>{{ selectedEvent.event_type }}</dd>
+          </div>
+
+          <div>
+            <dt>发生时间</dt>
+            <dd>{{ formatEventTime(selectedEvent.occurred_at) }}</dd>
+          </div>
+
+          <div>
+            <dt>位置</dt>
+            <dd>
+              {{ selectedEvent.latitude.toFixed(4) }},
+              {{ selectedEvent.longitude.toFixed(4) }}
+            </dd>
+          </div>
+
+          <div>
+            <dt>来源</dt>
+            <dd>{{ selectedEvent.source_name ?? '教学模拟数据' }}</dd>
+          </div>
+        </dl>
+      </section>
+
       <div v-if="events.length === 0" class="status-message">
         没有符合筛选条件的事件
       </div>
@@ -133,7 +178,7 @@ function handleSortDirectionChange(event: Event) {
             class="event-card"
             :data-event-id="maritimeEvent.id"
             :class="{
-              selected: maritimeEvent.id === selectedEventId,
+              selected: maritimeEvent.id === selectedEvent?.id,
             }"
             @click="emit('selectEvent', maritimeEvent)"
           >
@@ -208,6 +253,70 @@ h1 {
   background-color: #ffffff;
   color: #0f172a;
   font: inherit;
+}
+
+.selected-event-detail {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  background-color: #fff7ed;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-header button {
+  padding: 5px 8px;
+  border: 1px solid #fca5a5;
+  border-radius: 5px;
+  background-color: #ffffff;
+  color: #b91c1c;
+  font: inherit;
+  cursor: pointer;
+}
+
+.selected-event-detail h2 {
+  margin: 12px 0 8px;
+  color: #0f172a;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.selected-event-detail > p {
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.selected-event-detail dl {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
+.selected-event-detail dl div {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.selected-event-detail dt {
+  color: #64748b;
+}
+
+.selected-event-detail dd {
+  margin: 0;
+  color: #0f172a;
+  overflow-wrap: anywhere;
 }
 
 .status-message {
