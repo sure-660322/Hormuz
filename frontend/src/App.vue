@@ -35,6 +35,7 @@ function selectEvent(maritimeEvent: ApiEvent) {
         <MapView
           :events="events"
           :selected-event="selectedEvent"
+          @select-event="selectEvent"
         />
       </section>
       <TimelineControls />
@@ -78,7 +79,7 @@ body,
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0 1fr) 96px;
+  grid-template-rows: minmax(0, 1fr) 96px;
 }
 
 .map-area {

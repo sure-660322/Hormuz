@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue'
 import type { ApiEvent } from '../api'
 
-defineProps<{
+const props = defineProps<{
   events: ApiEvent[]
   loading: boolean
   errorMessage: string
@@ -11,6 +12,26 @@ defineProps<{
 const emit = defineEmits<{
   selectEvent: [maritimeEvent: ApiEvent]
 }>()
+
+const eventList = ref<HTMLElement | null>(null)
+
+watch(
+  () => props.selectedEventId,
+  async (eventId) => {
+    if (eventId === null) return
+
+    await nextTick()
+
+    const eventCard = eventList.value?.querySelector<HTMLElement>(
+      `[data-event-id="${eventId}"]`,
+    )
+
+    eventCard?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+    })
+  },
+)
 
 function formatEventTime(value: string) {
   return new Date(value).toLocaleString('zh-CN')
@@ -39,7 +60,11 @@ function formatEventTime(value: string) {
       暂无事件
     </div>
 
-    <ul v-else class="event-list">
+    <ul
+      v-else
+      ref="eventList"
+      class="event-list"
+    >
       <li
         v-for="maritimeEvent in events"
         :key="maritimeEvent.id"
@@ -47,6 +72,7 @@ function formatEventTime(value: string) {
         <button
           type="button"
           class="event-card"
+          :data-event-id="maritimeEvent.id"
           :class="{
             selected: maritimeEvent.id === selectedEventId,
           }"

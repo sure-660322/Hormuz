@@ -13,6 +13,10 @@ const props = defineProps<{
     selectedEvent: ApiEvent | null
 }>()
 
+const emit = defineEmits<{
+    selectEvent: [maritimeEvent:ApiEvent]
+}>()
+
 let map: L.Map | undefined
 let selectedTrackLayer: L.Polyline | undefined
 let eventLayer: L.LayerGroup | undefined
@@ -48,6 +52,10 @@ function renderEventMarkers(events: ApiEvent[]) {
     )
       .bindPopup(popupContent)
       .addTo(eventLayer)
+
+    marker.on('click', () => {
+     emit('selectEvent', maritimeEvent)
+    })
 
     eventMarkersById.set(maritimeEvent.id, marker)
   }
