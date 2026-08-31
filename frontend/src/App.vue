@@ -5,6 +5,7 @@ import { fetchEvents } from './api'
 import type { ApiEvent } from './api'
 import EventPanel from './components/EventPanel.vue'
 import MapView from './components/MapView.vue'
+import TimelineControls from './components/TimelineControls.vue'
 
 const events = ref<ApiEvent[]>([])
 const selectedEvent = ref<ApiEvent | null>(null)
@@ -29,11 +30,14 @@ function selectEvent(maritimeEvent: ApiEvent) {
 
 <template>
   <main class="app-layout">
-    <section class="map-area">
-      <MapView
-        :events="events"
-        :selected-event="selectedEvent"
-      />
+    <section class="map-column">
+      <section class="map-area">
+        <MapView
+          :events="events"
+          :selected-event="selectedEvent"
+        />
+      </section>
+      <TimelineControls />
     </section>
 
     <EventPanel
@@ -68,6 +72,13 @@ body,
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
   overflow: hidden;
+}
+
+.map-column{
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0 1fr) 96px;
 }
 
 .map-area {
