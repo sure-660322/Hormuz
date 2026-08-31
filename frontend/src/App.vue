@@ -4,11 +4,12 @@ import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   fetchEvents,
+  fetchShipPositions,
   fetchMapShips,
 } from './api'
 
 let map: L.Map | undefined
-
+let selectedTrackLayer: L.Polyline | undefined
 onMounted(() => {
   map = L.map('map').setView([26.5, 56.5], 8)
 
@@ -47,11 +48,44 @@ onMounted(() => {
         <strong>更新时间：</strong>${new Date(ship.recorded_at).toLocaleString('zh-CN')}
         `
 
-      L.marker([ship.latitude,ship.longitude],
-        {icon:shipIcon,},
+      const marker = L.marker(
+        [ship.latitude, ship.longitude],
+        {
+          icon: shipIcon,
+        },
       )
         .bindPopup(popupContent)
         .addTo(map)
+
+      marker.on('click', async () => {
+        try {
+          const trackPoints = await fetchShipPositions(ship.id)
+
+          selectedTrackLayer?.remove()
+          selectedTrackLayer = undefined
+
+          if (trackPoints.length < 2 || !map) return
+
+          const trackLatLngs = trackPoints.map(
+            (point): L.LatLngTuple => [
+              point.latitude,
+              point.longitude,
+            ],
+          )
+
+          selectedTrackLayer = L.polyline(trackLatLngs, {
+            color: '#f59e0b',
+            weight: 4,
+            opacity: 0.9,
+          }).addTo(map)
+
+          map.fitBounds(selectedTrackLayer.getBounds(), {
+            padding: [30, 30],
+          })
+        } catch (error) {
+          console.error('船舶轨迹加载失败：', error)
+        }
+      })
       }
     })
     .catch((error) => {
