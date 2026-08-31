@@ -4,6 +4,10 @@ import type { ApiEvent } from '../api'
 
 const props = defineProps<{
   events: ApiEvent[]
+  totalEventCount: number
+  eventTypes: string[]
+  selectedEventType: string
+  sortDirection: 'asc' | 'desc'
   loading: boolean
   errorMessage: string
   selectedEventId: number | null
@@ -11,6 +15,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectEvent: [maritimeEvent: ApiEvent]
+  changeEventType: [eventType: string]
+  changeSortDirection: [direction: 'asc' | 'desc']
 }>()
 
 const eventList = ref<HTMLElement | null>(null)
@@ -36,6 +42,20 @@ watch(
 function formatEventTime(value: string) {
   return new Date(value).toLocaleString('zh-CN')
 }
+
+function handleEventTypeChange(event: Event) {
+  const select = event.target as HTMLSelectElement
+  emit('changeEventType', select.value)
+}
+
+function handleSortDirectionChange(event: Event) {
+  const select = event.target as HTMLSelectElement
+
+  emit(
+    'changeSortDirection',
+    select.value as 'asc' | 'desc',
+  )
+}
 </script>
 
 <template>
@@ -44,7 +64,8 @@ function formatEventTime(value: string) {
       <p class="data-label">教学模拟数据</p>
       <h1>事件目录</h1>
       <p class="description">
-        共 {{ events.length }} 条模拟事件
+        显示 {{ events.length }} / 共
+        {{ totalEventCount }} 条模拟事件
       </p>
     </header>
 
@@ -56,40 +77,79 @@ function formatEventTime(value: string) {
       {{ errorMessage }}
     </div>
 
-    <div v-else-if="events.length === 0" class="status-message">
+    <div v-else-if="totalEventCount === 0" class="status-message">
       暂无事件
     </div>
 
-    <ul
-      v-else
-      ref="eventList"
-      class="event-list"
-    >
-      <li
-        v-for="maritimeEvent in events"
-        :key="maritimeEvent.id"
+    <template v-else>
+      <div class="filter-controls">
+        <label>
+          事件类型
+
+          <select
+            :value="selectedEventType"
+            @change="handleEventTypeChange"
+          >
+            <option value="all">全部类型</option>
+
+            <option
+              v-for="eventType in eventTypes"
+              :key="eventType"
+              :value="eventType"
+            >
+              {{ eventType }}
+            </option>
+          </select>
+        </label>
+
+        <label>
+          时间顺序
+
+          <select
+            :value="sortDirection"
+            @change="handleSortDirectionChange"
+          >
+            <option value="asc">从早到晚</option>
+            <option value="desc">从晚到早</option>
+          </select>
+        </label>
+      </div>
+
+      <div v-if="events.length === 0" class="status-message">
+        没有符合筛选条件的事件
+      </div>
+
+      <ul
+        v-else
+        ref="eventList"
+        class="event-list"
       >
-        <button
-          type="button"
-          class="event-card"
-          :data-event-id="maritimeEvent.id"
-          :class="{
-            selected: maritimeEvent.id === selectedEventId,
-          }"
-          @click="emit('selectEvent', maritimeEvent)"
+        <li
+          v-for="maritimeEvent in events"
+          :key="maritimeEvent.id"
         >
-          <span class="event-type">
-            {{ maritimeEvent.event_type }}
-          </span>
+          <button
+            type="button"
+            class="event-card"
+            :data-event-id="maritimeEvent.id"
+            :class="{
+              selected: maritimeEvent.id === selectedEventId,
+            }"
+            @click="emit('selectEvent', maritimeEvent)"
+          >
+            <span class="event-type">
+              {{ maritimeEvent.event_type }}
+            </span>
 
-          <strong>{{ maritimeEvent.title }}</strong>
+            <strong>{{ maritimeEvent.title }}</strong>
 
-          <time>
-            {{ formatEventTime(maritimeEvent.occurred_at) }}
-          </time>
-        </button>
-      </li>
-    </ul>
+            <time>
+              {{ formatEventTime(maritimeEvent.occurred_at) }}
+            </time>
+          </button>
+        </li>
+      </ul>
+    </template>
   </aside>
 </template>
 
@@ -122,6 +182,32 @@ h1 {
   margin: 8px 0 0;
   color: #64748b;
   font-size: 14px;
+}
+
+.filter-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.filter-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filter-controls select {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #0f172a;
+  font: inherit;
 }
 
 .status-message {

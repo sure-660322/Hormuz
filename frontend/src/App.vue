@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import { fetchEvents } from './api'
 import type { ApiEvent } from './api'
@@ -11,6 +11,39 @@ const events = ref<ApiEvent[]>([])
 const selectedEvent = ref<ApiEvent | null>(null)
 const eventsLoading = ref(true)
 const eventsError = ref('')
+type EventSortDirection = 'asc' | 'desc'
+
+const selectedEventType = ref('all')
+const eventSortDirection = ref<EventSortDirection>('asc')
+
+const eventTypes = computed(() => {
+  return [
+    ...new Set(
+      events.value.map((maritimeEvent) => maritimeEvent.event_type),
+    ),
+  ].sort()
+})
+
+const visibleEvents = computed(() => {
+  const filteredEvents =
+    selectedEventType.value === 'all'
+      ? events.value
+      : events.value.filter(
+          (maritimeEvent) =>
+            maritimeEvent.event_type === selectedEventType.value,
+        )
+
+  return [...filteredEvents].sort((firstEvent, secondEvent) => {
+    const comparison =
+      Date.parse(firstEvent.occurred_at) -
+        Date.parse(secondEvent.occurred_at) ||
+      firstEvent.id - secondEvent.id
+
+    return eventSortDirection.value === 'asc'
+      ? comparison
+      : -comparison
+  })
+})
 
 onMounted(async () => {
   try {
@@ -26,6 +59,16 @@ onMounted(async () => {
 function selectEvent(maritimeEvent: ApiEvent) {
   selectedEvent.value = maritimeEvent
 }
+
+function changeEventType(eventType: string) {
+  selectedEventType.value = eventType
+  selectedEvent.value = null
+}
+
+function changeEventSortDirection(direction: EventSortDirection) {
+  eventSortDirection.value = direction
+  selectedEvent.value = null
+}
 </script>
 
 <template>
@@ -33,7 +76,7 @@ function selectEvent(maritimeEvent: ApiEvent) {
     <section class="map-column">
       <section class="map-area">
         <MapView
-          :events="events"
+          :events="visibleEvents"
           :selected-event="selectedEvent"
           @select-event="selectEvent"
         />
@@ -42,11 +85,17 @@ function selectEvent(maritimeEvent: ApiEvent) {
     </section>
 
     <EventPanel
-      :events="events"
+      :events="visibleEvents"
+      :total-event-count="events.length"
+      :event-types="eventTypes"
+      :selected-event-type="selectedEventType"
+      :sort-direction="eventSortDirection"
       :loading="eventsLoading"
       :error-message="eventsError"
       :selected-event-id="selectedEvent?.id ?? null"
       @select-event="selectEvent"
+      @change-event-type="changeEventType"
+      @change-sort-direction="changeEventSortDirection"
     />
   </main>
 </template>
