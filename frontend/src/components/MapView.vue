@@ -1,15 +1,80 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount, onMounted, watch} from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
-  fetchEvents,
   fetchShipPositions,
   fetchMapShips,
 } from '../api'
+import type { ApiEvent } from '../api'
+
+const props = defineProps<{
+    events: ApiEvent[]
+    selectedEvent: ApiEvent | null
+}>()
 
 let map: L.Map | undefined
 let selectedTrackLayer: L.Polyline | undefined
+let eventLayer: L.LayerGroup | undefined
+
+const eventMarkersById = new Map<number, L.Marker>()
+
+const eventIcon = L.divIcon({
+  className: 'event-marker',
+  html: '!',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+})
+function renderEventMarkers(events: ApiEvent[]) {
+  if (!eventLayer) return
+
+  eventLayer.clearLayers()
+  eventMarkersById.clear()
+
+  for (const maritimeEvent of events) {
+    const popupContent = `
+      <strong>${maritimeEvent.title}</strong><br>
+      ${maritimeEvent.description}<br>
+      <strong>类型：</strong>${maritimeEvent.event_type}<br>
+      <strong>时间：</strong>${new Date(maritimeEvent.occurred_at).toLocaleString('zh-CN')}<br>
+      <strong>位置：</strong>${maritimeEvent.latitude.toFixed(4)}, ${maritimeEvent.longitude.toFixed(4)}
+    `
+
+    const marker = L.marker(
+      [maritimeEvent.latitude, maritimeEvent.longitude],
+      {
+        icon: eventIcon,
+      },
+    )
+      .bindPopup(popupContent)
+      .addTo(eventLayer)
+
+    eventMarkersById.set(maritimeEvent.id, marker)
+  }
+}
+
+watch(
+  () => props.events,
+  (events) => {
+    renderEventMarkers(events)
+  },
+)
+
+watch(
+  () => props.selectedEvent,
+  (maritimeEvent) => {
+    if (!maritimeEvent || !map) return
+
+    map.flyTo(
+      [maritimeEvent.latitude, maritimeEvent.longitude],
+      11,
+    )
+
+    eventMarkersById
+      .get(maritimeEvent.id)
+      ?.openPopup()
+  },
+)
 onMounted(() => {
   map = L.map('map').setView([26.5, 56.5], 8)
 
@@ -24,6 +89,9 @@ onMounted(() => {
     attribution:
       'Seamark data &copy; <a href="https://www.openseamap.org">OpenSeaMap</a>',
   }).addTo(map)
+
+eventLayer = L.layerGroup().addTo(map)
+renderEventMarkers(props.events)
 
     const shipIcon = L.divIcon({
     className: 'ship-marker',
@@ -90,41 +158,6 @@ onMounted(() => {
     })
     .catch((error) => {
       console.error(`地图船舶数据加载失败：`,error)
-    })
-
-
-    const eventIcon = L.divIcon({
-    className: 'event-marker',
-    html: '!',
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-  })
-
-  fetchEvents()
-    .then((events) => {
-      if (!map) return
-
-      for (const maritimeEvent of events) {
-        const popupContent = `
-          <strong>${maritimeEvent.title}</strong><br>
-          ${maritimeEvent.description}<br>
-          <strong>类型：</strong>${maritimeEvent.event_type}<br>
-          <strong>时间：</strong>${new Date(maritimeEvent.occurred_at).toLocaleString('zh-CN')}<br>
-          <strong>位置：</strong>${maritimeEvent.latitude.toFixed(4)}, ${maritimeEvent.longitude.toFixed(4)}
-        `
-
-        L.marker(
-          [maritimeEvent.latitude, maritimeEvent.longitude],
-          {
-            icon: eventIcon,
-          },
-        )
-          .bindPopup(popupContent)
-          .addTo(map)
-      }
-    })
-    .catch((error) => {
-      console.error('事件数据加载失败：', error)
     })
 
   const harbourLayer = L.layerGroup().addTo(map)
@@ -199,7 +232,10 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  eventMarkersById.clear()
+  eventLayer = undefined
   map?.remove()
+  map = undefined
 })
 </script>
 
@@ -207,7 +243,7 @@ onBeforeUnmount(() => {
 
 
 <template>
-  <main id="map"></main>
+  <div id="map"></div>
 </template>
 
 <style>
