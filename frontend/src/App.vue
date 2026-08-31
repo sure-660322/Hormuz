@@ -15,6 +15,7 @@ type EventSortDirection = 'asc' | 'desc'
 
 const selectedEventType = ref('all')
 const eventSortDirection = ref<EventSortDirection>('asc')
+const shipIsolationMode = ref(false)
 
 const eventTypes = computed(() => {
   return [
@@ -73,22 +74,31 @@ function changeEventSortDirection(direction: EventSortDirection) {
 function restoreGlobalView() {
   selectedEvent.value = null
 }
+
+function changeShipIsolationMode(isIsolated: boolean) {
+  shipIsolationMode.value = isIsolated
+}
 </script>
 
 <template>
-  <main class="app-layout">
+  <main
+    class="app-layout"
+    :class="{ isolated: shipIsolationMode }"
+  >
     <section class="map-column">
       <section class="map-area">
         <MapView
           :events="visibleEvents"
           :selected-event="selectedEvent"
           @select-event="selectEvent"
+          @isolation-change="changeShipIsolationMode"
         />
       </section>
       <TimelineControls />
     </section>
 
     <EventPanel
+      v-if="!shipIsolationMode"
       :events="visibleEvents"
       :total-event-count="events.length"
       :event-types="eventTypes"
@@ -127,6 +137,10 @@ body,
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
   overflow: hidden;
+}
+
+.app-layout.isolated {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .map-column{
