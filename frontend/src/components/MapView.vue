@@ -8,33 +8,23 @@ import {
 } from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import {
-  fetchShipPositions,
-  fetchMapShips,
-} from '../api'
+import { fetchAisShipPositions } from '../api'
 import type {
-  ApiEvent,
-  ApiMapShip,
+  ApiAisMapShip,
   ApiShipPosition,
 } from '../api'
 
 const props = defineProps<{
-    events: ApiEvent[]
-    selectedEvent: ApiEvent | null
-    globalViewRequest: number
-    playbackPositions: ApiShipPosition[]
-    playbackTracksByShip: Record<number, ApiShipPosition[]>
+    mapShips: ApiAisMapShip[]
     currentPlaybackTime: string | null
 }>()
 
 const emit = defineEmits<{
-    selectEvent: [maritimeEvent: ApiEvent]
     isolationChange: [isIsolated: boolean]
 }>()
 
 let map: L.Map | undefined
 let selectedTrackLayer: L.Polyline | undefined
-let eventLayer: L.LayerGroup | undefined
 let shipLayer: L.LayerGroup | undefined
 let harbourLayer: L.LayerGroup | undefined
 let trackPointLayer: L.LayerGroup | undefined
@@ -42,12 +32,11 @@ let trackPointLayer: L.LayerGroup | undefined
 const GLOBAL_CENTER: L.LatLngTuple = [26.5, 56.5]
 const GLOBAL_ZOOM = 8
 
-const eventMarkersById = new Map<number, L.Marker>()
 const shipMarkersById = new Map<number, L.Marker>()
-const shipsById = new Map<number, ApiMapShip>()
+const shipsById = new Map<number, ApiAisMapShip>()
 const trackCache = new Map<number, ApiShipPosition[]>()
 
-const selectedShip = ref<ApiMapShip | null>(null)
+const selectedShip = ref<ApiAisMapShip | null>(null)
 const trackLoading = ref(false)
 const trackError = ref('')
 const trackVisible = ref(false)
@@ -69,66 +58,87 @@ const selectedShipIcon = L.divIcon({
   iconAnchor: [16, 16],
 })
 
-const eventIcon = L.divIcon({
-  className: 'event-marker',
-  html: '!',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-})
+function displayText(value: string | number | null | undefined) {
+  return value === null || value === undefined || value === ''
+    ? '无数据'
+    : String(value)
+}
 
-const selectedEventIcon = L.divIcon({
-  className: 'event-marker event-marker-selected',
-  html: '!',
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
-})
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
 
-function createShipPopupContent(ship: ApiMapShip) {
+function displayNumber(value: number | null | undefined, suffix = '') {
+  return value === null || value === undefined
+    ? '无数据'
+    : `${value.toFixed(1)}${suffix}`
+}
+
+function createShipPopupContent(ship: ApiAisMapShip) {
   return `
-    <strong>船名：</strong>${ship.name}<br>
-    <strong>MMSI：</strong>${ship.mmsi}<br>
-    <strong>类型：</strong>${ship.ship_type}<br>
-    <strong>船旗：</strong>${ship.flag}<br>
-    <strong>速度：</strong>${ship.speed.toFixed(1)} 节<br>
-    <strong>航向：</strong>${ship.course.toFixed(1)}°<br>
+    <strong>船名：</strong>${escapeHtml(displayText(ship.name))}<br>
+    <strong>MMSI：</strong>${escapeHtml(ship.mmsi)}<br>
+    <strong>船型代码：</strong>${escapeHtml(displayText(ship.ship_type))}<br>
+    <strong>船旗：</strong>${escapeHtml(displayText(ship.flag))}<br>
+    <strong>速度：</strong>${displayNumber(ship.speed, ' 节')}<br>
+    <strong>对地航向：</strong>${displayNumber(ship.course, '°')}<br>
+    <strong>船首向：</strong>${displayNumber(ship.heading, '°')}<br>
     <strong>位置：</strong>${ship.latitude.toFixed(4)}, ${ship.longitude.toFixed(4)}<br>
-    <strong>更新时间：</strong>${new Date(ship.recorded_at).toLocaleString('zh-CN')}
+    <strong>AIS 报位：</strong>${new Date(ship.recorded_at).toLocaleString('zh-CN')}<br>
+    <strong>来源：</strong>yasumorishima / aisstream.io 历史数据
   `
 }
 
-function updateShipPlaybackPositions(positions: ApiShipPosition[]) {
-  for (const position of positions) {
-    const ship = shipsById.get(position.ship_id)
-    const marker = shipMarkersById.get(position.ship_id)
-    if (!ship || !marker) continue
+function syncShipMarkers(ships: ApiAisMapShip[]) {
+  if (!shipLayer) return
 
-    const updatedShip: ApiMapShip = {
-      ...ship,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      speed: position.speed,
-      course: position.course,
-      heading: position.heading,
-      recorded_at: position.recorded_at,
-    }
-
-    shipsById.set(updatedShip.id, updatedShip)
-    marker.setLatLng([updatedShip.latitude, updatedShip.longitude])
-    marker.setPopupContent(createShipPopupContent(updatedShip))
-
-    if (selectedShip.value?.id === updatedShip.id) {
-      selectedShip.value = updatedShip
-    }
+  const visibleShipIds = new Set(ships.map((ship) => ship.id))
+  for (const [shipId, marker] of shipMarkersById) {
+    if (visibleShipIds.has(shipId)) continue
+    shipLayer.removeLayer(marker)
+    shipMarkersById.delete(shipId)
+    shipsById.delete(shipId)
   }
-}
 
-function updateEventMarkerHighlight(selectedEventId: number | null) {
-  for (const [eventId, marker] of eventMarkersById) {
-    marker.setIcon(
-      eventId === selectedEventId
-        ? selectedEventIcon
-        : eventIcon,
-    )
+  if (
+    selectedShip.value &&
+    !visibleShipIds.has(selectedShip.value.id)
+  ) {
+    trackRequestSequence += 1
+    selectedShip.value = null
+    trackError.value = ''
+    clearSelectedTrack()
+    map?.closePopup()
+  }
+
+  for (const ship of ships) {
+    shipsById.set(ship.id, ship)
+    const existingMarker = shipMarkersById.get(ship.id)
+    if (existingMarker) {
+      existingMarker.setLatLng([ship.latitude, ship.longitude])
+      existingMarker.setPopupContent(createShipPopupContent(ship))
+    } else {
+      const marker = L.marker([ship.latitude, ship.longitude], {
+        icon: selectedShip.value?.id === ship.id ? selectedShipIcon : shipIcon,
+      })
+        .bindPopup(createShipPopupContent(ship))
+        .addTo(shipLayer)
+
+      marker.on('click', () => {
+        const currentShip = shipsById.get(ship.id)
+        if (currentShip) selectShip(currentShip)
+      })
+      shipMarkersById.set(ship.id, marker)
+    }
+
+    if (selectedShip.value?.id === ship.id) {
+      selectedShip.value = ship
+    }
   }
 }
 
@@ -149,7 +159,7 @@ function clearSelectedTrack() {
   trackVisible.value = false
 }
 
-function selectShip(ship: ApiMapShip) {
+function selectShip(ship: ApiAisMapShip) {
   if (selectedShip.value?.id === ship.id) {
     updateShipMarkerHighlight(ship.id)
     return
@@ -207,8 +217,8 @@ function renderSelectedShipTrack(
         <strong>轨迹采样点</strong><br>
         <strong>时间：</strong>${new Date(point.recorded_at).toLocaleString('zh-CN')}<br>
         <strong>位置：</strong>${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}<br>
-        <strong>速度：</strong>${point.speed.toFixed(1)} 节<br>
-        <strong>航向：</strong>${point.course.toFixed(1)}°
+        <strong>速度：</strong>${displayNumber(point.speed, ' 节')}<br>
+        <strong>航向：</strong>${displayNumber(point.course, '°')}
       `)
       .addTo(trackPointLayer)
   }
@@ -246,9 +256,7 @@ async function showSelectedShipTrack() {
     let trackPoints = trackCache.get(ship.id)
 
     if (!trackPoints) {
-      trackPoints =
-        props.playbackTracksByShip[ship.id] ??
-        await fetchShipPositions(ship.id)
+      trackPoints = await fetchAisShipPositions(ship.id)
       trackPoints = [...trackPoints].sort(
         (firstPoint, secondPoint) =>
           Date.parse(firstPoint.recorded_at) -
@@ -319,10 +327,6 @@ async function enterShipIsolation() {
   activeShipLayer.clearLayers()
   shipMarkersById.get(ship.id)?.addTo(activeShipLayer)
 
-  if (eventLayer && activeMap.hasLayer(eventLayer)) {
-    activeMap.removeLayer(eventLayer)
-  }
-
   if (harbourLayer && activeMap.hasLayer(harbourLayer)) {
     activeMap.removeLayer(harbourLayer)
   }
@@ -355,10 +359,6 @@ async function restoreAllShips() {
     marker.addTo(activeShipLayer)
   }
 
-  if (eventLayer && !activeMap.hasLayer(eventLayer)) {
-    eventLayer.addTo(activeMap)
-  }
-
   if (harbourLayer && !activeMap.hasLayer(harbourLayer)) {
     harbourLayer.addTo(activeMap)
   }
@@ -369,82 +369,10 @@ async function restoreAllShips() {
   activeMap.flyTo(GLOBAL_CENTER, GLOBAL_ZOOM)
 }
 
-function renderEventMarkers(events: ApiEvent[]) {
-  if (!eventLayer) return
-
-  eventLayer.clearLayers()
-  eventMarkersById.clear()
-
-  for (const maritimeEvent of events) {
-    const popupContent = `
-      <strong>${maritimeEvent.title}</strong><br>
-      ${maritimeEvent.description}<br>
-      <strong>类型：</strong>${maritimeEvent.event_type}<br>
-      <strong>时间：</strong>${new Date(maritimeEvent.occurred_at).toLocaleString('zh-CN')}<br>
-      <strong>位置：</strong>${maritimeEvent.latitude.toFixed(4)}, ${maritimeEvent.longitude.toFixed(4)}
-    `
-
-    const marker = L.marker(
-      [maritimeEvent.latitude, maritimeEvent.longitude],
-      {
-        icon: eventIcon,
-      },
-    )
-      .bindPopup(popupContent)
-      .addTo(eventLayer)
-
-    marker.on('click', () => {
-     emit('selectEvent', maritimeEvent)
-    })
-
-    eventMarkersById.set(maritimeEvent.id, marker)
-  }
-
-  updateEventMarkerHighlight(props.selectedEvent?.id ?? null)
-}
-
 watch(
-  () => props.events,
-  (events) => {
-    renderEventMarkers(events)
-  },
-)
-
-watch(
-  () => props.selectedEvent,
-  (maritimeEvent) => {
-    updateEventMarkerHighlight(maritimeEvent?.id ?? null)
-
-    if (!map) return
-
-    if (!maritimeEvent) {
-      map.closePopup()
-      return
-    }
-
-    map.flyTo(
-      [maritimeEvent.latitude, maritimeEvent.longitude],
-      11,
-    )
-
-    eventMarkersById
-      .get(maritimeEvent.id)
-      ?.openPopup()
-  },
-)
-
-watch(
-  () => props.playbackPositions,
-  (positions) => {
-    updateShipPlaybackPositions(positions)
-  },
-)
-
-watch(
-  () => props.globalViewRequest,
-  () => {
-    map?.closePopup()
-    map?.flyTo(GLOBAL_CENTER, GLOBAL_ZOOM)
+  () => props.mapShips,
+  (ships) => {
+    syncShipMarkers(ships)
   },
 )
 
@@ -483,40 +411,9 @@ onMounted(() => {
       'Seamark data &copy; <a href="https://www.openseamap.org">OpenSeaMap</a>',
   }).addTo(map)
 
-  eventLayer = L.layerGroup().addTo(map)
   shipLayer = L.layerGroup().addTo(map)
   trackPointLayer = L.layerGroup().addTo(map)
-  renderEventMarkers(props.events)
-
-  fetchMapShips()
-    .then((ships) => {
-      if (!map || !shipLayer) return
-
-      for (const ship of ships) {
-        shipsById.set(ship.id, ship)
-
-        const marker = L.marker(
-          [ship.latitude, ship.longitude],
-          {
-            icon: shipIcon,
-          },
-        )
-          .bindPopup(createShipPopupContent(ship))
-          .addTo(shipLayer)
-
-        marker.on('click', () => {
-          const currentShip = shipsById.get(ship.id)
-          if (currentShip) selectShip(currentShip)
-        })
-
-        shipMarkersById.set(ship.id, marker)
-      }
-
-      updateShipPlaybackPositions(props.playbackPositions)
-    })
-    .catch((error) => {
-      console.error(`地图船舶数据加载失败：`,error)
-    })
+  syncShipMarkers(props.mapShips)
 
   harbourLayer = L.layerGroup().addTo(map)
 
@@ -598,10 +495,8 @@ onBeforeUnmount(() => {
   trackPointLayer?.clearLayers()
   shipMarkersById.clear()
   shipsById.clear()
-  eventMarkersById.clear()
   trackCache.clear()
   shipLayer = undefined
-  eventLayer = undefined
   harbourLayer = undefined
   trackPointLayer = undefined
   map?.remove()
@@ -622,7 +517,7 @@ onBeforeUnmount(() => {
       aria-label="当前选中船舶"
     >
       <p class="ship-detail-label">当前选中船舶</p>
-      <h2>{{ selectedShip.name }}</h2>
+      <h2>{{ displayText(selectedShip.name) }}</h2>
 
       <dl>
         <div>
@@ -631,13 +526,13 @@ onBeforeUnmount(() => {
         </div>
 
         <div>
-          <dt>类型</dt>
-          <dd>{{ selectedShip.ship_type }}</dd>
+          <dt>船型代码</dt>
+          <dd>{{ displayText(selectedShip.ship_type) }}</dd>
         </div>
 
         <div>
           <dt>船旗</dt>
-          <dd>{{ selectedShip.flag }}</dd>
+          <dd>{{ displayText(selectedShip.flag) }}</dd>
         </div>
 
         <div>
@@ -651,8 +546,8 @@ onBeforeUnmount(() => {
         <div>
           <dt>速度 / 航向</dt>
           <dd>
-            {{ selectedShip.speed.toFixed(1) }} 节 /
-            {{ selectedShip.course.toFixed(1) }}°
+            {{ displayNumber(selectedShip.speed, ' 节') }} /
+            {{ displayNumber(selectedShip.course, '°') }}
           </dd>
         </div>
 
@@ -661,6 +556,11 @@ onBeforeUnmount(() => {
           <dd>
             {{ new Date(selectedShip.recorded_at).toLocaleString('zh-CN') }}
           </dd>
+        </div>
+
+        <div>
+          <dt>数据来源</dt>
+          <dd>yasumorishima / aisstream.io 历史数据</dd>
         </div>
       </dl>
 
