@@ -1,8 +1,8 @@
 # 霍尔木兹海峡船舶态势地图
 
-这是一个用于学习前后端与空间数据库协作方式的船舶态势地图项目。当前功能分支已经把公开历史 AIS 位置导入独立数据表，并完成从 PostgreSQL、FastAPI 到 Vue 与 Leaflet 地图的展示闭环。
+这是一个用于学习前后端与空间数据库协作方式的船舶态势地图项目。项目当前使用可重复生成的教学模拟船舶、轨迹和事件，完成了从 PostgreSQL 到 FastAPI，再到 Vue 与 Leaflet 地图的数据闭环。
 
-> 当前页面只显示历史 AIS 数据，不显示教学模拟船舶和模拟事件。该数据主要覆盖迪拜/杰贝阿里，陆基接收存在盲区，不代表完整霍尔木兹海峡态势；数据集页面未声明 License，公开发布前还需确认授权。
+> 当前所有船舶、轨迹和事件均为教学用模拟数据，不代表真实 AIS 船舶活动或真实海上事件。
 
 ## 当前功能
 
@@ -14,23 +14,20 @@
 - 根据当前地图范围加载 OpenSeaMap 港口图标；
 - 支持鼠标拖动和滚轮缩放。
 
-### 历史 AIS 船舶
+### 船舶与事件
 
-- 显示 619 艘 AIS 船舶在所选时刻的最后已知位置；
-- 点击 Marker 查看 MMSI、报位时间、速度、航向、船首向和来源；
-- 点击“查看轨迹”加载该船在原始文件中的完整位置序列；
-- 按 UTC 日期加载不超过 24 小时的历史窗口；
-- 使用 5 分钟时间轴播放、暂停、回到起点和调整速度；
-- 原始速度和航向伪值暂不清洗，页面按原值展示。
+- 从 FastAPI 获取船舶基本信息；
+- 从 FastAPI 获取每艘船的历史位置；
+- 在地图上显示船舶当前位置和历史轨迹；
+- 点击船舶 Marker 查看船名、MMSI、类型、速度、航向和位置；
+- 从 FastAPI 获取模拟事件并显示事件 Marker；
+- 点击事件 Marker 查看事件标题、描述、类型、时间和位置。
 
 ### 数据库与空间查询
 
 - 使用 `ships` 保存船舶基本信息；
 - 使用 `ship_positions` 保存船舶历史位置；
 - 使用 `events` 保存地图事件；
-- 使用 `ais_datasets` 保存来源、版本、校验值和覆盖说明；
-- 使用 `ais_vessels` 保存按 MMSI 汇总的展示信息；
-- 使用 `ais_positions` 原样保存 Parquet 的 15 个业务字段；
 - 使用 PostGIS 的 `geography(Point, 4326)` 生成空间位置；
 - 已在数据库中验证 `ST_Distance` 距离计算；
 - 已在数据库中验证 `ST_DWithin` 范围查询；
@@ -177,9 +174,6 @@ Get-Content -Raw .\backend\sql\003_add_location_indexes.sql |
 
 Get-Content -Raw .\backend\sql\004_add_ship_positions_latest_index.sql |
     docker exec -i mobilitydb psql -U aisdb -d aisdb -v ON_ERROR_STOP=1
-
-Get-Content -Raw .\backend\sql\005_add_ais_history_tables.sql |
-    docker exec -i mobilitydb psql -U aisdb -d aisdb -v ON_ERROR_STOP=1
 ```
 
 这些脚本分别负责：
@@ -187,22 +181,9 @@ Get-Content -Raw .\backend\sql\005_add_ais_history_tables.sql |
 1. 为 `events` 添加自动生成的空间位置；
 2. 为 `ship_positions` 添加自动生成的空间位置；
 3. 为两个空间位置字段建立 GiST 索引；
-4. 为按船舶和时间查询最新位置建立 B-tree 索引；
-5. 新增独立 AIS 数据集、船舶、原始位置表及查询索引。
+4. 为按船舶和时间查询最新位置建立 B-tree 索引。
 
-### 6. 导入原始 AIS 位置
-
-以下命令直接读取 `positions.parquet`，不使用已有的清洗 CSV，也不会删除或修改模拟表：
-
-```powershell
-python -m backend.import_ais_data `
-  --source "C:\Users\18242\Desktop\web\Hormuz-AIS公开数据-2026-07-27\positions.parquet" `
-  --confirm-import
-```
-
-不加 `--confirm-import` 时只校验字段、SHA-256、记录数、船舶数和时间范围。相同 SHA-256 已导入时会跳过，避免重复写入。
-
-### 7. 生成教学模拟数据（当前 AIS 页面不读取）
+### 6. 生成教学模拟数据
 
 先在内存中生成并检查，不修改数据库：
 
@@ -226,7 +207,7 @@ python -m backend.seed_data
 
 该最小数据脚本会插入 3 艘模拟船舶、10 条模拟位置和 2 条模拟事件。如果对应表中已经存在数据，脚本会跳过重复插入。
 
-### 8. 启动 FastAPI
+### 7. 启动 FastAPI
 
 ```powershell
 python -m uvicorn backend.app.main:app --reload
@@ -270,11 +251,6 @@ npm run build
 | GET | `/ships/{ship_id}/nearby-events` | 根据船舶最新位置查询指定半径内的模拟事件 |
 | GET | `/events` | 获取事件列表 |
 | GET | `/simulation/meta` | 获取模拟数据起止时间、帧数和数据量 |
-| GET | `/ais/meta` | 获取当前 AIS 数据集的来源、范围和数量 |
-| GET | `/ais/vessels` | 获取 AIS 船舶展示信息 |
-| GET | `/ais/ships/map?at=` | 获取指定时刻每艘船的最后已知位置 |
-| GET | `/ais/ships/playback?start_at=&end_at=` | 获取不超过 24 小时的原始 AIS 回放位置 |
-| GET | `/ais/ships/{vessel_id}/positions` | 获取单船完整原始 AIS 轨迹 |
 
 ## 数据库脚本执行顺序
 
@@ -291,9 +267,7 @@ backend/sql/003_add_location_indexes.sql
         ↓
 backend/sql/004_add_ship_positions_latest_index.sql
         ↓
-backend/sql/005_add_ais_history_tables.sql
-        ↓
-backend/import_ais_data.py --source <positions.parquet> --confirm-import
+backend/generate_demo_data.py --confirm-reset
 ```
 
 当前暂未引入 Alembic，数据库结构变化通过编号 SQL 文件记录。
@@ -312,16 +286,13 @@ backend/import_ais_data.py --source <positions.parquet> --confirm-import
 - 底部时间轴、播放/暂停、回到起点和 `0.5× / 1× / 2× / 4×` 回放；
 - 船位、事件发生状态和选中船已航行轨迹随模拟时间联动；
 - 模拟时段元数据与批量回放接口；
-- 175,773 条原始 AIS 位置和 619 艘船的独立数据层；
-- AIS 最新位置、日期窗口回放和单船完整轨迹接口；
-- 当前前端只读取 AIS 接口，模拟船舶和事件已从页面数据流屏蔽；
 - 可重复生成并自动验收的大规模教学模拟数据；
 - 前端从 FastAPI 加载数据库数据；
 - PostGIS 空间字段、距离计算、范围查询和 GiST 索引。
 
 尚未实现：
 
-- AIS 数据清洗、实时接入和来源授权确认；
+- 真实 AIS 数据接入；
 - 用户登录与权限管理；
 - 船舶实时更新；
 - TimescaleDB 时序表；
@@ -330,8 +301,7 @@ backend/import_ais_data.py --source <positions.parquet> --confirm-import
 
 ## 数据与安全说明
 
-- 当前功能分支地图中的船舶来自历史 AIS 数据，模拟表仍保留但页面不读取；
-- `transit_events.parquet` 的 260 条记录全部属于迪拜/杰贝阿里闸线，本阶段未导入为霍尔木兹事件；
+- 当前地图中的船舶和事件均为模拟数据；
 - 新闻测试数据不在当前地图主流程中使用；
 - 不应把模拟结果描述为真实海上态势；
 - 不要提交 `.env`、数据库密码或其他密钥；

@@ -11,14 +11,10 @@ const props = defineProps<{
   modelValue: number
   loading: boolean
   errorMessage: string
-  selectedDate: string
-  minDate: string
-  maxDate: string
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [frameIndex: number]
-  changeDate: [dateText: string]
   retry: []
 }>()
 
@@ -109,18 +105,13 @@ function handleSpeedChange(event: Event) {
   playbackSpeed.value = Number(select.value) as PlaybackSpeed
 }
 
-function handleDateChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  isPlaying.value = false
-  emit('changeDate', input.value)
-}
-
 watch([isPlaying, playbackSpeed], restartTimer)
 
 watch(
   () => props.frameTimes.length,
   () => {
     isPlaying.value = false
+    emit('update:modelValue', 0)
   },
 )
 
@@ -133,7 +124,7 @@ onBeforeUnmount(clearTimer)
     aria-label="船舶轨迹回放时间轴"
   >
     <div v-if="loading" class="timeline-status" aria-live="polite">
-      正在加载历史 AIS 回放数据……
+      正在加载模拟回放数据……
     </div>
 
     <div v-else-if="errorMessage" class="timeline-status timeline-error">
@@ -143,17 +134,6 @@ onBeforeUnmount(clearTimer)
 
     <template v-else>
       <div class="timeline-toolbar">
-        <label class="date-control">
-          UTC 日期
-          <input
-            type="date"
-            :value="selectedDate"
-            :min="minDate"
-            :max="maxDate"
-            @change="handleDateChange"
-          >
-        </label>
-
         <button
           type="button"
           :disabled="!hasFrames"
@@ -215,7 +195,7 @@ onBeforeUnmount(clearTimer)
 <style scoped>
 .timeline-controls {
   box-sizing: border-box;
-  height: 128px;
+  height: 112px;
   padding: 13px 20px;
   border-top: 1px solid #cbd5e1;
   background-color: #f8fafc;
@@ -272,23 +252,6 @@ onBeforeUnmount(clearTimer)
   font-size: 13px;
 }
 
-.date-control {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #475569;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.date-control input {
-  padding: 5px 7px;
-  border: 1px solid #cbd5e1;
-  border-radius: 5px;
-  background: #ffffff;
-  color: #0f172a;
-}
-
 .speed-control select {
   padding: 5px 8px;
   border: 1px solid #cbd5e1;
@@ -333,7 +296,7 @@ onBeforeUnmount(clearTimer)
 
 @media (max-width: 820px) {
   .timeline-controls {
-    height: 172px;
+    height: 142px;
   }
 
   .timeline-toolbar {

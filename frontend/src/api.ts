@@ -13,11 +13,10 @@ export interface ApiShipPosition {
   ship_id: number
   latitude: number
   longitude: number
-  speed: number | null
-  course: number | null
+  speed: number
+  course: number
   heading: number | null
   recorded_at: string
-  received_at?: string | null
 }
 
 export interface ApiMapShip{
@@ -30,15 +29,10 @@ export interface ApiMapShip{
     callsign: string | null
     latitude: number
     longitude: number
-    speed: number | null
-    course: number | null
+    speed: number
+    course: number
     heading: number | null
     recorded_at: string
-    received_at?: string | null
-    destination?: string | null
-    draught?: number | null
-    length?: number | null
-    width?: number | null
 }
 
 export interface ApiEvent {
@@ -62,57 +56,6 @@ export interface ApiSimulationMeta {
   position_count: number
   event_count: number
   is_simulated: boolean
-}
-
-export interface ApiAisDatasetMeta {
-  dataset_id: number
-  name: string
-  source_url: string | null
-  source_version: string | null
-  source_sha256: string
-  start_at: string
-  end_at: string
-  vessel_count: number
-  position_count: number
-  frame_interval_seconds: number
-  is_simulated: boolean
-  coverage_note: string
-}
-
-export interface ApiAisVessel {
-  id: number
-  mmsi: string
-  name: string | null
-  ship_type: number | null
-  flag: string | null
-  destination: string | null
-  draught: number | null
-  length: number | null
-  width: number | null
-  first_seen: string
-  last_seen: string
-}
-
-export interface ApiAisMapShip {
-  id: number
-  mmsi: string
-  name: string | null
-  ship_type: number | null
-  flag: string | null
-  destination: string | null
-  draught: number | null
-  length: number | null
-  width: number | null
-  first_seen: string
-  last_seen: string
-  position_id: number
-  latitude: number
-  longitude: number
-  speed: number | null
-  course: number | null
-  heading: number | null
-  recorded_at: string
-  received_at: string | null
 }
 
 const API_BASE_URL = 'http://127.0.0.1:8000'    //当前的FastAPI地址
@@ -186,63 +129,4 @@ export async function fetchPlaybackPositions(
   }
 
   return response.json()
-}
-
-async function requireJson<T>(response: Response, action: string): Promise<T> {
-  if (!response.ok) {
-    let detail = ''
-    try {
-      const body = await response.json()
-      detail = typeof body.detail === 'string' ? `：${body.detail}` : ''
-    } catch {
-      // 后端未返回 JSON 时保留 HTTP 状态作为错误依据。
-    }
-    throw new Error(`${action}失败（${response.status}）${detail}`)
-  }
-  return response.json()
-}
-
-export async function fetchAisMeta(): Promise<ApiAisDatasetMeta> {
-  return requireJson(
-    await fetch(`${API_BASE_URL}/ais/meta`),
-    '获取 AIS 数据说明',
-  )
-}
-
-export async function fetchAisVessels(): Promise<ApiAisVessel[]> {
-  return requireJson(
-    await fetch(`${API_BASE_URL}/ais/vessels`),
-    '获取 AIS 船舶',
-  )
-}
-
-export async function fetchAisMapShips(at: string): Promise<ApiAisMapShip[]> {
-  const params = new URLSearchParams({ at })
-  return requireJson(
-    await fetch(`${API_BASE_URL}/ais/ships/map?${params}`),
-    '获取历史船位快照',
-  )
-}
-
-export async function fetchAisPlaybackPositions(
-  startAt: string,
-  endAt: string,
-): Promise<ApiShipPosition[]> {
-  const params = new URLSearchParams({
-    start_at: startAt,
-    end_at: endAt,
-  })
-  return requireJson(
-    await fetch(`${API_BASE_URL}/ais/ships/playback?${params}`),
-    '获取 AIS 回放数据',
-  )
-}
-
-export async function fetchAisShipPositions(
-  shipId: number,
-): Promise<ApiShipPosition[]> {
-  return requireJson(
-    await fetch(`${API_BASE_URL}/ais/ships/${shipId}/positions`),
-    '获取 AIS 原始轨迹',
-  )
 }

@@ -3,4 +3,3 @@ uvicorn
 sqlalchemy  #用 Python 管理数据库连接、查询和数据表模型
 psycopg[binary]  #让 Python 真正与 PostgreSQL 通信的驱动。
 python-dotenv  #从 .env 文件中加载环境变量
-pyarrow  #按原始字段读取 positions.parquet，不经过清洗 CSV
