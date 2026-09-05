@@ -1,5 +1,7 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
@@ -16,6 +18,9 @@ router = APIRouter(
     prefix="/ships",
     tags=["ships"],
 )
+
+MAX_PLAYBACK_RANGE = timedelta(hours=24)
+MAX_PLAYBACK_POINTS = 50_000
 
 @router.get("",response_model=list[ShipResponse])
 def get_ships(db:Session = Depends(get_db)):
@@ -133,3 +138,60 @@ def get_nearby_events(
     ).all()
 
     return rows
+
+
+@router.get("/playback", response_model=list[ShipPositionResponse])
+def get_playback_positions(
+    start_at: datetime = Query(
+        ...,
+        description="回放开始时间，必须是带时区的 ISO 8601 时间",
+    ),
+    end_at: datetime = Query(
+        ...,
+        description="回放结束时间，必须是带时区的 ISO 8601 时间",
+    ),
+    db: Session = Depends(get_db),
+):
+    if start_at.utcoffset() is None or end_at.utcoffset() is None:
+        raise HTTPException(
+            status_code=422,
+            detail="start_at 和 end_at 必须包含时区",
+        )
+
+    if end_at < start_at:
+        raise HTTPException(
+            status_code=422,
+            detail="end_at 不能早于 start_at",
+        )
+
+    if end_at - start_at > MAX_PLAYBACK_RANGE:
+        raise HTTPException(
+            status_code=422,
+            detail="单次回放时间范围不能超过 24 小时",
+        )
+
+    filters = (
+        ShipPosition.recorded_at >= start_at,
+        ShipPosition.recorded_at <= end_at,
+    )
+    point_count = db.scalar(
+        select(func.count(ShipPosition.id)).where(*filters)
+    ) or 0
+
+    if point_count > MAX_PLAYBACK_POINTS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"回放位置点不能超过 {MAX_PLAYBACK_POINTS} 条",
+        )
+
+    statement = (
+        select(ShipPosition)
+        .where(*filters)
+        .order_by(
+            ShipPosition.recorded_at,
+            ShipPosition.ship_id,
+            ShipPosition.id,
+        )
+    )
+
+    return db.scalars(statement).all()

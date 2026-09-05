@@ -246,9 +246,11 @@ npm run build
 | GET | `/health` | 检查 FastAPI 是否正常运行 |
 | GET | `/ships` | 获取船舶列表 |
 | GET | `/ships/map` | 批量获取每艘船及其最新位置 |
+| GET | `/ships/playback?start_at=&end_at=` | 一次获取指定模拟时段内的全部回放位置 |
 | GET | `/ships/{ship_id}/positions` | 获取指定船舶的历史位置 |
 | GET | `/ships/{ship_id}/nearby-events` | 根据船舶最新位置查询指定半径内的模拟事件 |
 | GET | `/events` | 获取事件列表 |
+| GET | `/simulation/meta` | 获取模拟数据起止时间、帧数和数据量 |
 
 ## 数据库脚本执行顺序
 
@@ -281,6 +283,9 @@ backend/generate_demo_data.py --confirm-reset
 - FastAPI 船舶、轨迹和事件查询接口；
 - FastAPI 地图船舶最新位置批量接口；
 - PostGIS 船舶附近事件查询接口；
+- 底部时间轴、播放/暂停、回到起点和 `0.5× / 1× / 2× / 4×` 回放；
+- 船位、事件发生状态和选中船已航行轨迹随模拟时间联动；
+- 模拟时段元数据与批量回放接口；
 - 可重复生成并自动验收的大规模教学模拟数据；
 - 前端从 FastAPI 加载数据库数据；
 - PostGIS 空间字段、距离计算、范围查询和 GiST 索引。

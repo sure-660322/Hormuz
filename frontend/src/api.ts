@@ -47,6 +47,17 @@ export interface ApiEvent {
   source_url: string | null
 }
 
+export interface ApiSimulationMeta {
+  start_at: string | null
+  end_at: string | null
+  frame_interval_seconds: number
+  frame_count: number
+  ship_count: number
+  position_count: number
+  event_count: number
+  is_simulated: boolean
+}
+
 const API_BASE_URL = 'http://127.0.0.1:8000'    //当前的FastAPI地址
 
 export async function fetchShips():Promise<ApiShip[]>{
@@ -88,6 +99,33 @@ export async function fetchEvents(): Promise<ApiEvent[]> {
 
   if (!response.ok) {
     throw new Error(`获取事件数据失败：${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function fetchSimulationMeta(): Promise<ApiSimulationMeta> {
+  const response = await fetch(`${API_BASE_URL}/simulation/meta`)
+
+  if (!response.ok) {
+    throw new Error(`获取模拟时段失败：${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function fetchPlaybackPositions(
+  startAt: string,
+  endAt: string,
+): Promise<ApiShipPosition[]> {
+  const params = new URLSearchParams({
+    start_at: startAt,
+    end_at: endAt,
+  })
+  const response = await fetch(`${API_BASE_URL}/ships/playback?${params}`)
+
+  if (!response.ok) {
+    throw new Error(`获取回放数据失败：${response.status}`)
   }
 
   return response.json()

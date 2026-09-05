@@ -16,6 +16,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+.playwright-cli/
 
 # Frontend dependencies and build output
 frontend/node_modules/

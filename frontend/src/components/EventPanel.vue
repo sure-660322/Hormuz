@@ -11,6 +11,7 @@ const props = defineProps<{
   loading: boolean
   errorMessage: string
   selectedEvent: ApiEvent | null
+  currentTime: string | null
 }>()
 
 const emit = defineEmits<{
@@ -42,6 +43,15 @@ watch(
 
 function formatEventTime(value: string) {
   return new Date(value).toLocaleString('zh-CN')
+}
+
+function hasEventOccurred(maritimeEvent: ApiEvent) {
+  if (!props.currentTime) return true
+
+  return (
+    Date.parse(maritimeEvent.occurred_at) <=
+    Date.parse(props.currentTime)
+  )
 }
 
 function handleEventTypeChange(event: Event) {
@@ -179,11 +189,19 @@ function handleSortDirectionChange(event: Event) {
             :data-event-id="maritimeEvent.id"
             :class="{
               selected: maritimeEvent.id === selectedEvent?.id,
+              future: !hasEventOccurred(maritimeEvent),
             }"
             @click="emit('selectEvent', maritimeEvent)"
           >
             <span class="event-type">
               {{ maritimeEvent.event_type }}
+            </span>
+
+            <span
+              class="event-state"
+              :class="{ occurred: hasEventOccurred(maritimeEvent) }"
+            >
+              {{ hasEventOccurred(maritimeEvent) ? '已发生' : '尚未发生' }}
             </span>
 
             <strong>{{ maritimeEvent.title }}</strong>
@@ -368,10 +386,34 @@ h1 {
   background-color: #fef2f2;
 }
 
+.event-card.future {
+  opacity: 0.52;
+}
+
+.event-card.future:hover,
+.event-card.future.selected {
+  opacity: 0.78;
+}
+
 .event-type {
   color: #dc2626;
   font-size: 12px;
   font-weight: 700;
+}
+
+.event-state {
+  align-self: flex-start;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background-color: #e2e8f0;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.event-state.occurred {
+  background-color: #dcfce7;
+  color: #166534;
 }
 
 .event-card time {

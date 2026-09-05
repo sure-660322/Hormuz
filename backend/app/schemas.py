@@ -72,3 +72,14 @@ class ShipMapResponse(BaseModel):
     course: float
     heading: float | None
     recorded_at: datetime
+
+
+class SimulationMetaResponse(BaseModel):
+    start_at: datetime | None
+    end_at: datetime | None
+    frame_interval_seconds: int
+    frame_count: int
+    ship_count: int
+    position_count: int
+    event_count: int
+    is_simulated: bool
