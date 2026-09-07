@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
+    "check:workbench": "node checks/workbench.cjs",
     "preview": "vite preview"
   },
   "dependencies": {

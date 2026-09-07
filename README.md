@@ -4,6 +4,8 @@
 
 > 当前所有船舶、轨迹和事件均为教学用模拟数据，不代表真实 AIS 船舶活动或真实海上事件。
 
+前端已升级为地图主导的海事分析工作台，包含船名/MMSI/IMO 搜索、右侧船舶与事件检查面板、分类事件时间轨、图层控制、本地模拟快照半径查询及航速曲线。完整改动、数据边界、验证记录与后端接口建议见 [前端工作台说明](FRONTEND_WORKBENCH.md)。
+
 ## 当前功能
 
 ### 地图
@@ -19,9 +21,9 @@
 - 从 FastAPI 获取船舶基本信息；
 - 从 FastAPI 获取每艘船的历史位置；
 - 在地图上显示船舶当前位置和历史轨迹；
-- 点击船舶 Marker 查看船名、MMSI、类型、速度、航向和位置；
+- 点击船舶 Marker 在右侧检查面板查看船名、MMSI、类型、速度、航向和位置；
 - 从 FastAPI 获取模拟事件并显示事件 Marker；
-- 点击事件 Marker 查看事件标题、描述、类型、时间和位置。
+- 点击事件 Marker 在右侧查看标题、描述、中文类型、时间和位置，并跳转至对应回放时刻。
 
 ### 数据库与空间查询
 
@@ -94,7 +96,11 @@ Hormuz/
 ├── frontend/
 │   ├── src/
 │   │   ├── api.ts            # 调用 FastAPI
-│   │   ├── App.vue           # 地图页面与 Leaflet 逻辑
+│   │   ├── App.vue           # 工作台状态与组件编排
+│   │   ├── components/       # 地图、检查面板、搜索与时间轴
+│   │   ├── composables/      # 回放数据与时间状态
+│   │   ├── domain/           # 展示规范与空间类型
+│   │   ├── services/         # 本地查询与未来接口契约
 │   │   └── main.ts           # Vue 应用入口
 │   └── package.json          # 前端依赖与命令
 ├── data/                     # 现有新闻测试数据，当前地图主流程未使用
@@ -277,8 +283,8 @@ backend/generate_demo_data.py --confirm-reset
 已完成：
 
 - Vue、Leaflet 与两类在线地图图层；
-- 模拟船舶 Marker、Popup 和历史轨迹；
-- 模拟事件 Marker 与 Popup；
+- 模拟船舶 Marker、右侧检查面板和历史轨迹；
+- 模拟事件 Marker、事件流与回放联动；
 - PostgreSQL 三张业务表；
 - FastAPI 船舶、轨迹和事件查询接口；
 - FastAPI 地图船舶最新位置批量接口；
@@ -297,7 +303,7 @@ backend/generate_demo_data.py --confirm-reset
 - 船舶实时更新；
 - TimescaleDB 时序表；
 - MobilityDB 移动物体模型；
-- 自动化测试与正式部署。
+- 完整端到端自动化测试体系与正式部署（已有 `npm run check:workbench` 轻量语义回归检查）。
 
 ## 数据与安全说明
 

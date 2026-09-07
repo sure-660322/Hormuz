@@ -61,7 +61,7 @@ export interface ApiSimulationMeta {
 const API_BASE_URL = 'http://127.0.0.1:8000'    //当前的FastAPI地址
 
 export async function fetchShips():Promise<ApiShip[]>{
-    const response =await fetch(`${API_BASE_URL}/ships`)    //fetch：浏览器原生HTTP请求功能
+    const response =await fetch(`${API_BASE_URL}/ships`, { signal: AbortSignal.timeout(20_000) })    //fetch：浏览器原生HTTP请求功能
 
     //检查HTTP状态是否为成功
     if(!response.ok){       
@@ -72,7 +72,7 @@ export async function fetchShips():Promise<ApiShip[]>{
 }
 
 export async function fetchMapShips():Promise<ApiMapShip[]>{
-    const response = await fetch(`${API_BASE_URL}/ships/map`)
+    const response = await fetch(`${API_BASE_URL}/ships/map`, { signal: AbortSignal.timeout(20_000) })
 
     if(!response.ok)
     {
@@ -87,6 +87,7 @@ export async function fetchShipPositions(
 ):Promise<ApiShipPosition[]>{
     const response = await fetch(
         `${API_BASE_URL}/ships/${shipId}/positions`,
+        { signal: AbortSignal.timeout(20_000) },
     )
     if(!response.ok){
         throw new Error(`获取船舶轨迹失败：${response.status}`)
@@ -95,7 +96,7 @@ export async function fetchShipPositions(
 }
 
 export async function fetchEvents(): Promise<ApiEvent[]> {
-  const response = await fetch(`${API_BASE_URL}/events`)
+  const response = await fetch(`${API_BASE_URL}/events`, { signal: AbortSignal.timeout(20_000) })
 
   if (!response.ok) {
     throw new Error(`获取事件数据失败：${response.status}`)
@@ -105,7 +106,7 @@ export async function fetchEvents(): Promise<ApiEvent[]> {
 }
 
 export async function fetchSimulationMeta(): Promise<ApiSimulationMeta> {
-  const response = await fetch(`${API_BASE_URL}/simulation/meta`)
+  const response = await fetch(`${API_BASE_URL}/simulation/meta`, { signal: AbortSignal.timeout(20_000) })
 
   if (!response.ok) {
     throw new Error(`获取模拟时段失败：${response.status}`)
@@ -122,11 +123,17 @@ export async function fetchPlaybackPositions(
     start_at: startAt,
     end_at: endAt,
   })
-  const response = await fetch(`${API_BASE_URL}/ships/playback?${params}`)
+  const response = await fetch(`${API_BASE_URL}/ships/playback?${params}`, { signal: AbortSignal.timeout(20_000) })
 
   if (!response.ok) {
     throw new Error(`获取回放数据失败：${response.status}`)
   }
 
   return response.json()
+}
+
+export function describeApiError(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.name === 'TimeoutError') return '数据请求超时，请重试。'
+  if (error instanceof TypeError && /fetch|network/i.test(error.message)) return '无法连接数据服务，请确认后端与访问地址后重试。'
+  return error instanceof Error ? error.message : fallback
 }

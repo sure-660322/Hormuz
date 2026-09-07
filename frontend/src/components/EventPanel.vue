@@ -1,423 +1,151 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
 import type { ApiEvent } from '../api'
-
+import { eventKind, eventKinds, formatTime } from '../domain/maritime'
 const props = defineProps<{
   events: ApiEvent[]
-  totalEventCount: number
-  eventTypes: string[]
-  selectedEventType: string
-  sortDirection: 'asc' | 'desc'
+  totalCount: number
+  occurredCount: number
+  eventType: string
+  sort: 'asc' | 'desc'
+  occurredOnly: boolean
+  selected: ApiEvent | null
+  time: string | null
   loading: boolean
-  errorMessage: string
-  selectedEvent: ApiEvent | null
-  currentTime: string | null
+  error: string
 }>()
-
 const emit = defineEmits<{
-  selectEvent: [maritimeEvent: ApiEvent]
-  changeEventType: [eventType: string]
-  changeSortDirection: [direction: 'asc' | 'desc']
-  restoreGlobalView: []
+  select: [event: ApiEvent]
+  typeChange: [type: string]
+  sortChange: [sort: 'asc' | 'desc']
+  occurredChange: [value: boolean]
+  clear: []
+  retry: []
 }>()
-
-const eventList = ref<HTMLElement | null>(null)
-
+const panel = ref<HTMLElement | null>(null)
+const occurred = (event: ApiEvent) =>
+  props.time !== null && Date.parse(event.occurred_at) <= Date.parse(props.time)
 watch(
-  () => props.selectedEvent?.id ?? null,
-  async (eventId) => {
-    if (eventId === null) return
-
+  () => props.selected?.id,
+  async (id) => {
     await nextTick()
-
-    const eventCard = eventList.value?.querySelector<HTMLElement>(
-      `[data-event-id="${eventId}"]`,
-    )
-
-    eventCard?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-    })
+    if (id && panel.value) panel.value.scrollTop = 0
   },
 )
-
-function formatEventTime(value: string) {
-  return new Date(value).toLocaleString('zh-CN')
-}
-
-function hasEventOccurred(maritimeEvent: ApiEvent) {
-  if (!props.currentTime) return true
-
-  return (
-    Date.parse(maritimeEvent.occurred_at) <=
-    Date.parse(props.currentTime)
-  )
-}
-
-function handleEventTypeChange(event: Event) {
-  const select = event.target as HTMLSelectElement
-  emit('changeEventType', select.value)
-}
-
-function handleSortDirectionChange(event: Event) {
-  const select = event.target as HTMLSelectElement
-
-  emit(
-    'changeSortDirection',
-    select.value as 'asc' | 'desc',
-  )
-}
 </script>
-
 <template>
-  <aside class="event-panel">
-    <header>
-      <p class="data-label">教学模拟数据</p>
-      <h1>事件目录</h1>
-      <p class="description">
-        显示 {{ events.length }} / 共
-        {{ totalEventCount }} 条模拟事件
+  <section ref="panel" class="panel-content event-panel">
+    <header class="panel-heading">
+      <h2>事件流</h2>
+      <p>
+        已发生 {{ occurredCount }} / {{ totalCount }} 条
+        <span>点击事件定位并回放</span>
       </p>
     </header>
-
-    <div v-if="loading" class="status-message">
-      正在加载事件……
-    </div>
-
-    <div v-else-if="errorMessage" class="status-message error-message">
-      {{ errorMessage }}
-    </div>
-
-    <div v-else-if="totalEventCount === 0" class="status-message">
-      暂无事件
-    </div>
-
-    <template v-else>
-      <div class="filter-controls">
-        <label>
-          事件类型
-
-          <select
-            :value="selectedEventType"
-            @change="handleEventTypeChange"
-          >
-            <option value="all">全部类型</option>
-
-            <option
-              v-for="eventType in eventTypes"
-              :key="eventType"
-              :value="eventType"
-            >
-              {{ eventType }}
-            </option>
-          </select>
-        </label>
-
-        <label>
-          时间顺序
-
-          <select
-            :value="sortDirection"
-            @change="handleSortDirectionChange"
-          >
-            <option value="asc">从早到晚</option>
-            <option value="desc">从晚到早</option>
-          </select>
-        </label>
-      </div>
-
-      <section
-        v-if="selectedEvent"
-        class="selected-event-detail"
+    <div class="event-filters">
+      <select
+        aria-label="事件类型"
+        :value="eventType"
+        @change="emit('typeChange', ($event.target as HTMLSelectElement).value)"
       >
-        <div class="detail-header">
-          <span>当前选中事件</span>
-
-          <button
-            type="button"
-            @click="emit('restoreGlobalView')"
-          >
-            恢复全局视野
-          </button>
+        <option value="all">全部类型</option>
+        <option v-for="(kind, key) in eventKinds" :key="key" :value="key">
+          {{ kind.label }}
+        </option></select
+      ><select
+        aria-label="时间顺序"
+        :value="sort"
+        @change="
+          emit(
+            'sortChange',
+            ($event.target as HTMLSelectElement).value as 'asc' | 'desc',
+          )
+        "
+      >
+        <option value="asc">时间正序</option>
+        <option value="desc">最新在前</option>
+      </select>
+    </div>
+    <label class="check-line occurred-filter"
+      ><input
+        type="checkbox"
+        :checked="occurredOnly"
+        @change="
+          emit('occurredChange', ($event.target as HTMLInputElement).checked)
+        "
+      />仅显示当前时刻已发生事件</label
+    >
+    <div v-if="loading" class="empty" role="status">正在加载事件…</div>
+    <div v-else-if="error" class="empty error" role="alert">
+      {{ error }}<button @click="emit('retry')">重新加载</button>
+    </div>
+    <template v-else>
+      <section
+        v-if="selected"
+        class="event-detail"
+        :style="{ '--event-color': eventKind(selected.event_type).color }"
+      >
+        <div class="section-title">
+          <span>{{ eventKind(selected.event_type).label }}</span
+          ><button aria-label="关闭事件详情" @click="emit('clear')">×</button>
         </div>
-
-        <h2>{{ selectedEvent.title }}</h2>
-        <p>{{ selectedEvent.description }}</p>
-
-        <dl>
-          <div>
-            <dt>类型</dt>
-            <dd>{{ selectedEvent.event_type }}</dd>
-          </div>
-
+        <h3>{{ selected.title }}</h3>
+        <p>{{ selected.description }}</p>
+        <dl class="facts">
           <div>
             <dt>发生时间</dt>
-            <dd>{{ formatEventTime(selectedEvent.occurred_at) }}</dd>
+            <dd>{{ formatTime(selected.occurred_at, true) }}</dd>
           </div>
-
           <div>
-            <dt>位置</dt>
+            <dt>经纬度</dt>
             <dd>
-              {{ selectedEvent.latitude.toFixed(4) }},
-              {{ selectedEvent.longitude.toFixed(4) }}
+              {{ selected.latitude.toFixed(4) }},
+              {{ selected.longitude.toFixed(4) }}
             </dd>
           </div>
-
           <div>
             <dt>来源</dt>
-            <dd>{{ selectedEvent.source_name ?? '教学模拟数据' }}</dd>
+            <dd>{{ selected.source_name || '教学模拟数据' }}</dd>
           </div>
         </dl>
+        <p class="caption">
+          蓝色船位为事件周边 10 NM 内的船舶，空间邻近不代表事件关联。
+        </p>
       </section>
-
-      <div v-if="events.length === 0" class="status-message">
-        没有符合筛选条件的事件
-      </div>
-
-      <ul
-        v-else
-        ref="eventList"
-        class="event-list"
-      >
-        <li
-          v-for="maritimeEvent in events"
-          :key="maritimeEvent.id"
-        >
+      <p v-if="!events.length" class="empty">
+        此筛选条件下暂无事件。可取消“仅显示已发生”或调整回放时间。
+      </p>
+      <ul v-else class="event-list">
+        <li v-for="event in events" :key="event.id">
           <button
-            type="button"
-            class="event-card"
-            :data-event-id="maritimeEvent.id"
+            class="event-row"
             :class="{
-              selected: maritimeEvent.id === selectedEvent?.id,
-              future: !hasEventOccurred(maritimeEvent),
+              selected: selected?.id === event.id,
+              future: !occurred(event),
             }"
-            @click="emit('selectEvent', maritimeEvent)"
+            :data-event-id="event.id"
+            @click="emit('select', event)"
           >
-            <span class="event-type">
-              {{ maritimeEvent.event_type }}
-            </span>
-
-            <span
-              class="event-state"
-              :class="{ occurred: hasEventOccurred(maritimeEvent) }"
+            <time>{{ formatTime(event.occurred_at) }}</time
+            ><span
+              class="event-dot"
+              :style="{ color: eventKind(event.event_type).color }"
+              >{{ eventKind(event.event_type).symbol }}</span
+            ><span class="event-row-body"
+              ><span class="event-row-title"
+                ><strong>{{ eventKind(event.event_type).label }}</strong
+                ><small>{{
+                  occurred(event) ? '已发生' : '待回放'
+                }}</small></span
+              ><span>{{ event.title }}</span
+              ><small
+                >{{ event.latitude.toFixed(2) }}° N /
+                {{ event.longitude.toFixed(2) }}° E</small
+              ></span
             >
-              {{ hasEventOccurred(maritimeEvent) ? '已发生' : '尚未发生' }}
-            </span>
-
-            <strong>{{ maritimeEvent.title }}</strong>
-
-            <time>
-              {{ formatEventTime(maritimeEvent.occurred_at) }}
-            </time>
           </button>
         </li>
       </ul>
     </template>
-  </aside>
+  </section>
 </template>
-
-<style scoped>
-.event-panel {
-  box-sizing: border-box;
-  height: 100vh;
-  padding: 24px;
-  overflow-y: auto;
-  border-left: 1px solid #cbd5e1;
-  background-color: #ffffff;
-  color: #0f172a;
-  text-align: left;
-}
-
-.data-label {
-  margin: 0 0 8px;
-  color: #dc2626;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-h1 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 24px;
-}
-
-.description {
-  margin: 8px 0 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.filter-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.filter-controls label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.filter-controls select {
-  width: 100%;
-  padding: 7px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background-color: #ffffff;
-  color: #0f172a;
-  font: inherit;
-}
-
-.selected-event-detail {
-  margin-top: 16px;
-  padding: 14px;
-  border: 1px solid #fca5a5;
-  border-radius: 8px;
-  background-color: #fff7ed;
-}
-
-.detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: #b91c1c;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.detail-header button {
-  padding: 5px 8px;
-  border: 1px solid #fca5a5;
-  border-radius: 5px;
-  background-color: #ffffff;
-  color: #b91c1c;
-  font: inherit;
-  cursor: pointer;
-}
-
-.selected-event-detail h2 {
-  margin: 12px 0 8px;
-  color: #0f172a;
-  font-size: 16px;
-  line-height: 1.4;
-}
-
-.selected-event-detail > p {
-  color: #475569;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.selected-event-detail dl {
-  display: grid;
-  gap: 6px;
-  margin: 12px 0 0;
-  font-size: 12px;
-}
-
-.selected-event-detail dl div {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: 8px;
-}
-
-.selected-event-detail dt {
-  color: #64748b;
-}
-
-.selected-event-detail dd {
-  margin: 0;
-  color: #0f172a;
-  overflow-wrap: anywhere;
-}
-
-.status-message {
-  margin-top: 24px;
-  padding: 24px 12px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 8px;
-  color: #64748b;
-  text-align: center;
-}
-
-.error-message {
-  border-color: #fecaca;
-  color: #b91c1c;
-  background-color: #fef2f2;
-}
-
-.event-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 24px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.event-card {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background-color: #f8fafc;
-  color: #0f172a;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.event-card:hover {
-  border-color: #94a3b8;
-  background-color: #f1f5f9;
-}
-
-.event-card.selected {
-  border-color: #dc2626;
-  background-color: #fef2f2;
-}
-
-.event-card.future {
-  opacity: 0.52;
-}
-
-.event-card.future:hover,
-.event-card.future.selected {
-  opacity: 0.78;
-}
-
-.event-type {
-  color: #dc2626;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.event-state {
-  align-self: flex-start;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background-color: #e2e8f0;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.event-state.occurred {
-  background-color: #dcfce7;
-  color: #166534;
-}
-
-.event-card time {
-  color: #64748b;
-  font-size: 12px;
-}
-</style>

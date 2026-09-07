@@ -1,311 +1,314 @@
 <script setup lang="ts">
-import {
-  computed,
-  onBeforeUnmount,
-  ref,
-  watch,
-} from 'vue'
-
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import type { ApiEvent } from '../api'
+import { eventKind, eventKinds, formatTime, zoneLabel } from '../domain/maritime'
 const props = defineProps<{
   frameTimes: string[]
   modelValue: number
   loading: boolean
   errorMessage: string
+  events: ApiEvent[]
+  selectedEventId: number | null
+  seekRequest: number
+  eventType: string
 }>()
-
 const emit = defineEmits<{
-  'update:modelValue': [frameIndex: number]
+  'update:modelValue': [index: number]
   retry: []
+  selectEvent: [event: ApiEvent]
+  typeChange: [type: string]
+  speedChange: [speed: number]
 }>()
-
-type PlaybackSpeed = 0.5 | 1 | 2 | 4
-
-const isPlaying = ref(false)
-const playbackSpeed = ref<PlaybackSpeed>(1)
-let timerId: number | undefined
-
+const playing = ref(false)
+const speed = ref(1)
+const zoomStart = ref(0)
+const zoomEnd = ref<number | null>(null)
+const dragStart = ref<number | null>(null)
+const dragEnd = ref<number | null>(null)
+const rangeEnd = computed(() => Math.min(last.value, zoomEnd.value ?? last.value))
+const visibleFrames = computed(() => props.frameTimes.slice(zoomStart.value, rangeEnd.value + 1))
+function resetZoom() { zoomStart.value = 0; zoomEnd.value = null }
+function pointerPercent(event: PointerEvent) {
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  return Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100))
+}
+function startBrush(event: PointerEvent) { if (!hasFrames.value || event.button !== 0) return; stop(); dragStart.value = pointerPercent(event); dragEnd.value = dragStart.value; (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId) }
+function finishBrush(event: PointerEvent) {
+  if (dragStart.value === null) return
+  const from = dragStart.value, to = pointerPercent(event), span = rangeEnd.value - zoomStart.value, base = zoomStart.value
+  dragStart.value = null; dragEnd.value = null
+  if (Math.abs(from - to) < 2) { move(base + Math.round(to / 100 * span)); return }
+  const low = base + Math.floor(Math.min(from, to) / 100 * span), high = base + Math.ceil(Math.max(from, to) / 100 * span)
+  zoomStart.value = low; zoomEnd.value = Math.max(low + 1, high); move(low)
+}
+const histogram = computed(() => {
+  const bins = Array.from({ length: 40 }, () => 0)
+  for (const e of props.events) {
+    const t = Date.parse(e.occurred_at)
+    if (t < start.value || t > end.value) continue
+    bins[Math.min(39, Math.floor(percent(e.occurred_at) / 100 * 40))]!++
+  }
+  const max = Math.max(1, ...bins)
+  return bins.map(count => ({ count, height: count / max * 100 }))
+})
+const nextEvent = computed(() => props.events.filter(e => Date.parse(e.occurred_at) > Date.parse(current.value ?? '')).sort((a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at))[0])
+function keyboard(event: KeyboardEvent) {
+  if (event.target instanceof HTMLElement && (event.target.closest('input, select, textarea, button, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey)) return
+  if (event.code === 'Space') { event.preventDefault(); play() }
+  if (event.key === 'ArrowRight') { event.preventDefault(); move(props.modelValue + 1) }
+  if (event.key === 'ArrowLeft') { event.preventDefault(); move(props.modelValue - 1) }
+}
+let timer: ReturnType<typeof setInterval> | undefined
+const body = ref<HTMLElement | null>(null)
+const laneWidth = ref(700)
+let observer: ResizeObserver | undefined
+const last = computed(() => Math.max(0, props.frameTimes.length - 1))
+const current = computed(() => props.frameTimes[props.modelValue])
 const hasFrames = computed(() => props.frameTimes.length > 0)
-const lastFrameIndex = computed(() =>
-  Math.max(0, props.frameTimes.length - 1),
-)
-const currentTime = computed(
-  () => props.frameTimes[props.modelValue] ?? null,
-)
-
-function formatTime(value: string | null, includeDate = true) {
-  if (!value) return '尚未加载'
-
-  return new Intl.DateTimeFormat('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    ...(includeDate
-      ? { month: '2-digit', day: '2-digit' }
-      : {}),
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(value))
-}
-
-function clearTimer() {
-  if (timerId === undefined) return
-  window.clearInterval(timerId)
-  timerId = undefined
-}
-
-function advanceFrame() {
-  const nextFrameIndex = props.modelValue + 1
-
-  if (nextFrameIndex >= lastFrameIndex.value) {
-    emit('update:modelValue', lastFrameIndex.value)
-    isPlaying.value = false
-    return
-  }
-
-  emit('update:modelValue', nextFrameIndex)
-}
-
-function restartTimer() {
-  clearTimer()
-  if (!isPlaying.value || !hasFrames.value) return
-
-  timerId = window.setInterval(
-    advanceFrame,
-    1000 / playbackSpeed.value,
+const start = computed(() => Date.parse(props.frameTimes[zoomStart.value] ?? ''))
+const end = computed(() => Date.parse(props.frameTimes[rangeEnd.value] ?? ''))
+const percent = (value: string) =>
+  Math.max(
+    0,
+    Math.min(
+      100,
+      ((Date.parse(value) - start.value) /
+        Math.max(1, end.value - start.value)) *
+        100,
+    ),
   )
+const progress = computed(() => (current.value ? percent(current.value) : 0))
+const ticks = computed(() => {
+  const indexes = [
+    ...new Set(
+      Array.from({ length: Math.min(7, visibleFrames.value.length) }, (_, i) =>
+        zoomStart.value + Math.round(
+          (i * (rangeEnd.value - zoomStart.value)) /
+            Math.max(1, Math.min(7, visibleFrames.value.length) - 1),
+        ),
+      ),
+    ),
+  ]
+  return indexes.map((i) => ({
+    time: props.frameTimes[i]!,
+    left: percent(props.frameTimes[i]!),
+  }))
+})
+const lanes = computed(() =>
+  Object.entries(eventKinds).filter(([type]) => type === props.eventType).map(([type, kind]) => {
+    const groups: { time: string; events: ApiEvent[] }[] = []
+    props.events
+      .filter(
+        (e) =>
+          e.event_type === type &&
+          Date.parse(e.occurred_at) >= start.value &&
+          Date.parse(e.occurred_at) <= end.value,
+      )
+      .sort(
+        (a, b) =>
+          Date.parse(a.occurred_at) - Date.parse(b.occurred_at) || a.id - b.id,
+      )
+      .forEach((e) => {
+        const previous = groups.at(-1)
+        if (
+          previous &&
+          ((percent(e.occurred_at) - percent(previous.time)) *
+            laneWidth.value) /
+            100 <
+            23
+        )
+          previous.events.push(e)
+        else groups.push({ time: e.occurred_at, events: [e] })
+      })
+    return { type, kind, groups }
+  }),
+)
+function stop() {
+  playing.value = false
+  clearInterval(timer)
+  timer = undefined
 }
-
-function togglePlayback() {
-  if (!hasFrames.value) return
-
-  if (isPlaying.value) {
-    isPlaying.value = false
+function move(index: number) {
+  stop()
+  emit('update:modelValue', Math.max(zoomStart.value, Math.min(rangeEnd.value, index)))
+}
+function play() {
+  if (playing.value) {
+    stop()
     return
   }
-
-  if (props.modelValue >= lastFrameIndex.value) {
-    emit('update:modelValue', 0)
-  }
-
-  isPlaying.value = true
+  if (!hasFrames.value) return
+  if (props.modelValue >= rangeEnd.value || props.modelValue < zoomStart.value) emit('update:modelValue', zoomStart.value)
+  playing.value = true
 }
-
-function resetPlayback() {
-  isPlaying.value = false
-  emit('update:modelValue', 0)
+function selectGroup(events: ApiEvent[]) {
+  stop()
+  const selected = events.findIndex(
+    (event) => event.id === props.selectedEventId,
+  )
+  emit('selectEvent', events[(selected + 1) % events.length]!)
 }
-
-function handleSliderInput(event: Event) {
-  isPlaying.value = false
-  const input = event.target as HTMLInputElement
-  emit('update:modelValue', Number(input.value))
-}
-
-function handleSpeedChange(event: Event) {
-  const select = event.target as HTMLSelectElement
-  playbackSpeed.value = Number(select.value) as PlaybackSpeed
-}
-
-watch([isPlaying, playbackSpeed], restartTimer)
-
+watch([playing, speed], () => {
+  clearInterval(timer)
+  if (!playing.value) return
+  timer = setInterval(() => {
+    const next = Math.min(rangeEnd.value, props.modelValue + 1)
+    emit('update:modelValue', next)
+    if (next === rangeEnd.value) stop()
+  }, 1000 / speed.value)
+})
+watch(speed, value => emit('speedChange', value))
+watch(() => props.seekRequest, () => { stop(); resetZoom() })
 watch(
-  () => props.frameTimes.length,
-  () => {
-    isPlaying.value = false
-    emit('update:modelValue', 0)
+  () => props.loading,
+  (loading) => {
+    if (loading) stop()
   },
 )
-
-onBeforeUnmount(clearTimer)
+watch(() => props.frameTimes, () => { stop(); resetZoom() })
+onMounted(() => {
+  window.addEventListener('keydown', keyboard)
+  observer = new ResizeObserver(() => {
+    if (body.value) laneWidth.value = Math.max(100, body.value.clientWidth - 88)
+  })
+  // The body mounts after async data; observe the stable parent section.
+  if (body.value) observer.observe(body.value)
+})
+watch(body, (el) => {
+  if (el) {
+    observer?.observe(el)
+    laneWidth.value = Math.max(100, el.clientWidth - 88)
+  }
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', keyboard)
+  stop()
+  observer?.disconnect()
+})
 </script>
-
 <template>
-  <section
-    class="timeline-controls"
-    aria-label="船舶轨迹回放时间轴"
-  >
-    <div v-if="loading" class="timeline-status" aria-live="polite">
-      正在加载模拟回放数据……
+  <section class="timeline" aria-label="船舶轨迹回放时间轴">
+    <div v-if="loading || errorMessage" class="timeline-status" role="status">
+      {{ errorMessage || '正在加载模拟回放数据…'
+      }}<button v-if="errorMessage" @click="emit('retry')">重试</button>
     </div>
-
-    <div v-else-if="errorMessage" class="timeline-status timeline-error">
-      <span>{{ errorMessage }}</span>
-      <button type="button" @click="emit('retry')">重试</button>
-    </div>
-
     <template v-else>
       <div class="timeline-toolbar">
-        <button
-          type="button"
-          :disabled="!hasFrames"
-          @click="resetPlayback"
-        >
-          ↺ 回到起点
-        </button>
-
-        <button
-          type="button"
-          class="play-button"
-          :disabled="!hasFrames"
-          @click="togglePlayback"
-        >
-          {{ isPlaying ? '❚❚ 暂停' : '▶ 播放' }}
-        </button>
-
-        <span class="current-time">
-          当前时间（北京时间）：{{ formatTime(currentTime) }}
-        </span>
-
-        <label class="speed-control">
-          播放速度
-
-          <select
-            :value="playbackSpeed"
-            :disabled="!hasFrames"
-            @change="handleSpeedChange"
+        <div class="replay-title">
+          <strong>历史回放</strong
+          ><span
+            >{{ formatTime(frameTimes[0], true).split(' ')[0] }} ·
+            模拟采样</span
           >
+        </div>
+        <div class="playback-buttons">
+          <button
+            aria-label="回到起点"
+            title="回到起点"
+            :disabled="!hasFrames"
+            @click="move(0)"
+          >
+            ↶</button
+          ><button
+            aria-label="上一帧"
+            title="上一帧"
+            :disabled="modelValue <= zoomStart"
+            @click="move(modelValue - 1)"
+          >
+            ‹</button
+          ><button
+            class="primary play-button"
+            :disabled="!hasFrames"
+            @click="play"
+          >
+            {{ playing ? 'Ⅱ 暂停' : '▶ 播放' }}</button
+          ><button
+            aria-label="下一帧"
+            title="下一帧"
+            :disabled="modelValue >= rangeEnd"
+            @click="move(modelValue + 1)"
+          >
+            ›</button
+          ><select v-model.number="speed" aria-label="播放速度">
             <option :value="0.5">0.5×</option>
             <option :value="1">1×</option>
             <option :value="2">2×</option>
             <option :value="4">4×</option>
           </select>
-        </label>
-      </div>
-
-      <div class="slider-row">
-        <span>{{ formatTime(frameTimes[0] ?? null, false) }}</span>
-
-        <input
-          type="range"
-          min="0"
-          :max="lastFrameIndex"
-          step="1"
-          :value="modelValue"
-          :disabled="!hasFrames"
-          aria-label="回放时间"
-          @input="handleSliderInput"
+        </div>
+        <output class="current-time"
+          >{{ formatTime(current, true) }}<small>{{ zoneLabel() }}</small></output
+        ><span class="frame-count"
+          >{{ modelValue + 1 }} / {{ frameTimes.length }} 帧</span
         >
-
-        <span>{{ formatTime(frameTimes[lastFrameIndex] ?? null, false) }}</span>
-        <output>{{ modelValue + 1 }} / {{ frameTimes.length }} 帧</output>
       </div>
+      <div class="timeline-options"><select aria-label="时间轴事件类别" :value="eventType" @change="emit('typeChange', ($event.target as HTMLSelectElement).value)"><option value="all">全部 · 密度概览</option><option v-for="(kind, type) in eventKinds" :key="type" :value="type">{{ kind.label }} · 展开节点</option></select><button :disabled="!nextEvent" @click="nextEvent && emit('selectEvent', nextEvent)">下一事件</button><button :disabled="zoomStart === 0 && zoomEnd === null" @click="resetZoom">恢复全时段</button><span>{{ zoneLabel() }} · 拖动柱图缩放</span></div>
+      <div ref="body" class="timeline-body">
+        <div class="timeline-scale">
+          <span>时间</span>
+          <div class="tick-track">
+            <time
+              v-for="(tick, i) in ticks"
+              :key="tick.time"
+              :style="{ left: tick.left + '%' }"
+              :class="{ first: i === 0, last: i === ticks.length - 1 }"
+              >{{ formatTime(tick.time) }}</time
+            >
+          </div>
+        </div>
+        <div class="time-slider-row">
+          <label for="replay-time">船位采样</label
+          ><input
+            id="replay-time"
+            type="range"
+            :min="zoomStart"
+            :max="rangeEnd"
+            step="1"
+            :value="modelValue"
+            :disabled="!hasFrames"
+            aria-label="回放时间"
+            :aria-valuetext="formatTime(current, true)"
+            @input="move(Number(($event.target as HTMLInputElement).value))"
+          />
+        </div>
+        <div class="density-row"><span>事件密度</span><div class="density-chart" aria-label="事件密度，拖动选择时间范围；下方也可使用键盘选择范围" @pointerdown="startBrush" @pointermove="dragStart !== null && (dragEnd = pointerPercent($event))" @pointerup="finishBrush" @pointercancel="dragStart = null; dragEnd = null"><div v-for="(bin, i) in histogram" :key="i" class="density-bin" :title="`${bin.count} 条事件`"><i :style="{ height: `${Math.max(bin.count ? 8 : 0, bin.height)}%` }"></i></div><span class="density-head" :style="{ left: progress + '%' }"></span><div v-if="dragStart !== null && dragEnd !== null" class="brush-selection" :style="{ left: Math.min(dragStart, dragEnd) + '%', width: Math.abs(dragStart - dragEnd) + '%' }"></div></div></div>
+        <div class="event-lanes">
+          <div
+            class="playhead"
+            :style="{ left: `calc(78px + (100% - 78px) * ${progress / 100})` }"
+          ></div>
+          <div v-for="lane in lanes" :key="lane.type" class="timeline-lane">
+            <span>{{ lane.kind.label }}</span>
+            <div class="lane-track">
+              <button
+                v-for="group in lane.groups"
+                :key="group.time"
+                class="timeline-event"
+                :class="{
+                  selected: group.events.some((e) => e.id === selectedEventId),
+                }"
+                :style="{
+                  left: percent(group.time) + '%',
+                  color: eventKind(lane.type).color,
+                }"
+                :aria-label="`${formatTime(group.time)} ${group.events.map((e) => e.title).join('、')}${group.events.length > 1 ? '，重复点击切换合并事件' : ''}`"
+                :title="`${formatTime(group.time)} ${group.events.map((e) => e.title).join(' / ')}${group.events.length > 1 ? '（重复点击切换）' : ''}`"
+                @click="selectGroup(group.events)"
+              >
+                {{ lane.kind.symbol
+                }}<sup v-if="group.events.length > 1">{{
+                  group.events.length
+                }}</sup>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="timeline-caption">
+        <span>空格播放 / 暂停 · ← → 逐帧 · 同类节点重复点击切换</span
+        ><span>1× 每秒推进一帧 · 仅显示载入时段</span>
+      </div>
+      <details class="time-range-accessible"><summary>精确选择时间范围</summary><label>开始 <select :value="zoomStart" @change="stop(); zoomStart = Math.min(rangeEnd, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label><label>结束 <select :value="rangeEnd" @change="stop(); zoomEnd = Math.max(zoomStart, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label></details>
     </template>
   </section>
 </template>
-
-<style scoped>
-.timeline-controls {
-  box-sizing: border-box;
-  height: 112px;
-  padding: 13px 20px;
-  border-top: 1px solid #cbd5e1;
-  background-color: #f8fafc;
-  color: #0f172a;
-}
-
-.timeline-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.timeline-toolbar button,
-.timeline-status button {
-  padding: 7px 12px;
-  border: 1px solid #94a3b8;
-  border-radius: 6px;
-  background-color: #ffffff;
-  color: #334155;
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.timeline-controls .timeline-toolbar button:not(:disabled),
-.timeline-controls .timeline-status button:not(:disabled) {
-  cursor: pointer;
-}
-
-.timeline-toolbar .play-button {
-  border-color: #2563eb;
-  background-color: #2563eb;
-  color: #ffffff;
-}
-
-.timeline-toolbar button:disabled,
-.speed-control select:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.current-time {
-  flex: 1;
-  min-width: 220px;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: center;
-}
-
-.speed-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.speed-control select {
-  padding: 5px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 5px;
-  background: #ffffff;
-  color: #0f172a;
-}
-
-.slider-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto 76px;
-  align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.slider-row input {
-  width: 100%;
-  accent-color: #2563eb;
-  cursor: pointer;
-}
-
-.slider-row output {
-  text-align: right;
-}
-
-.timeline-status {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.timeline-error {
-  color: #b91c1c;
-}
-
-@media (max-width: 820px) {
-  .timeline-controls {
-    height: 142px;
-  }
-
-  .timeline-toolbar {
-    flex-wrap: wrap;
-  }
-
-  .current-time {
-    order: -1;
-    flex-basis: 100%;
-  }
-}
-</style>
