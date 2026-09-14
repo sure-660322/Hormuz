@@ -32,6 +32,7 @@ frontend/dist-ssr/
 *.log
 
 # Local database recovery archives
+deploy/handoff.env
 data/db_backups/
 .workbuddy/
 sim_ais_demo/output/old_batch_backup/

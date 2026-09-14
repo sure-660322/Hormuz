@@ -1,50 +1,118 @@
 # 数据库与环境交接
 
-状态：2026-09-14。当前本机系统可运行；空库安装流程尚未完整整理和演练。本页用于避免新成员把历史迁移当作安装脚本。
+状态：2026-09-14。现在提供独立 Docker Compose、四张当前源表的 JSONL 交接数据、空库建表导入脚本和验证脚本。已在维护者机器的新容器、新数据卷上演练；不是直接连接维护者的数据库。Git 不会同步运行中的数据库，接手者必须执行导入。
 
-## 当前结构
+## 仓库提供哪些数据
 
-- ships：模拟船舶身份。
-- ship_positions：模拟报位及来源；location 为 PostGIS 生成列。
-- events：新闻聚合事件；使用 event_id 业务标识，坐标为 event_lat/event_lng，可空。
-- news：报道及加工字段；news.event_id 外键指向 events.id 整数主键。
-- mobility_demo_segments：独立的 MobilityDB 派生轨迹，不是原始船位表。
-
-当前 API /events/{event_id}/news 使用字符串业务标识，不直接使用上述整数外键。
-
-## 为什么不能按旧 README 初始化
-
-| 文件 | 使用限制 |
+| 路径 | 内容与用途 |
 | --- | --- |
-| backend/create_tables.py | 按当前 ORM 创建缺失表；不会迁移已有字段，也不会自动准备扩展、生成列及所有索引 |
-| 001 | 依赖旧 events 经纬度字段，不适配当前新闻事件表 |
-| 002 | 船位空间生成列，执行前核对字段与 PostGIS |
-| 003 | 同时索引旧 events.location 和船位 location；不能对当前事件表整份重放 |
-| 004 | 船位最新位置查询索引，需核对是否已有 |
-| 005 | 供应方字段预留，并将 unknown 来源更新为 simulation；不可无条件用于已有真实数据 |
-| 006 | DROP 并重建 events/news，是历史迁移，直接执行会丢失新闻 |
-| 007 | 创建 MobilityDB 派生表及索引；需已有扩展和 ships，不负责生成轨迹 |
+| data/handoff/current/ships.jsonl | 当前数据库的 30 艘模拟船，保留数据库 ID |
+| data/handoff/current/ship_positions.jsonl | 当前数据库的 9,354 条模拟船位，不导出 location 生成列 |
+| data/handoff/current/events.jsonl | 65 个新闻聚合事件及加工字段 |
+| data/handoff/current/news.jsonl | 290 条报道的来源、日期、摘要及加工字段；223 条关联事件，67 条无关联 |
+| data/handoff/current/manifest.json | 导出时间、数量、每个文件 SHA-256 |
+| sim_ais_demo/output_news_aligned/ | 已跟踪的最新模拟生成批次，包括 ships、清洗船位、原始观测、隔离记录、情景及验收文件 |
+| sim_ais_demo/config/news_aligned_config.json | 模拟配置与封锁情景假设 |
 
-backend/seed_data.py 和 backend/generate_demo_data.py 属于旧模拟事件阶段；不得用它们初始化或替换当前新闻数据库。
+交接文件是明确选取业务字段的可移植数据，不包含 .env、账户、数据库角色或 pg_dump 恢复备份。news 不含文章全文；来源链接与摘要不代表取得原始报道的再许可，使用时保留来源，不把新闻中的真实船名匹配成模拟船。已有 data/news_data 是历史采集资料，不是当前四表导入入口。
 
-## 成员接手顺序
+ships.id、ship_positions.ship_id、events.id、news.event_id 保留数据库关系；events.event_id 是业务字符串，和 news.event_id 的整数外键不同。生成文件 temp_ship_id 不等于数据库 ships.id。
 
-1. 克隆相同版本代码，安装前后端依赖。
-2. 各自配置数据库连接和后端密钥；不共享 .env。维护者本机使用 mobilitydb 容器及 25432 端口，其他机器可以不同。
-3. 由维护者提供经过检查的结构和数据交接包，或另行实现适配当前模型的空库初始化脚本；这两项均不是目前已完成的交付。
-4. 恢复或导入只在独立测试数据库进行，核对扩展、四张源表、空间列、约束和索引，再构建派生轨迹。
-5. 验证 /health、/docs、/ships、/events、关联新闻、/simulation/meta 和 /mobility-demo/analysis；浏览器检查地图、回放与新闻浏览。
+## 1. 获取代码和安装依赖
 
-不得为准备交接而清空维护者现有数据库。备份保留本地或通过明确授权的渠道交接，不提交到 Git。
+安装并启动 Docker Desktop（Linux containers），准备 Python 3.11+、Node.js/npm、Git、PowerShell 7。以下命令均在克隆目录根部执行；路径按自己的机器调整。
 
-## 当前数据与复现入口
+```powershell
+git clone --branch sure-660322/issue1 https://github.com/sure-660322/Hormuz.git
+cd Hormuz
+py -m venv .\backend\.venv
+.\backend\.venv\Scripts\python.exe -m pip install -r .\backend\requirements.txt
+```
 
-2026-09-14 只读核对：30 艘船、9,354 条船位、65 个事件、290 条新闻、114 段 MobilityDB 派生轨迹。具体环境可能不同，以实际查询为准。
+已有仓库的成员先提交或保存自己的修改，再切换并拉取上述分支。本交接版本当前位于该分支；合并到默认分支后可以直接克隆默认分支。
 
-- 当前模拟配置：../sim_ais_demo/config/news_aligned_config.json。
-- 当前批次与生成验证说明：[新闻对应模拟数据](../sim_ais_demo/output_news_aligned/README.md)。
-- 数据替换记录：[替换报告](../sim_ais_demo/output_news_aligned/database_replace_report.json)。
-- 新闻迁移历史：[006 记录](../backend/sql/006_migration_report.md)。
-- 派生轨迹构建：[停留试验](mobility_demo.md)。
+## 2. 配置独立数据库
 
-生成文件不等于已导入数据库，导入数据库不等于前端已刷新，导出新闻快照也不等于完整数据库备份。各阶段必须分别核验。
+```powershell
+if (-not (Test-Path -LiteralPath .\deploy\handoff.env)) {
+    Copy-Item .\deploy\handoff.env.example .\deploy\handoff.env
+}
+notepad .\deploy\handoff.env
+```
+
+将 DB_PASSWORD=CHANGE_ME 改成自己新设的本地密码，建议使用字母和数字组成的较长密码。其余默认值：用户 hormuz、数据库 hormuz_handoff、主机 127.0.0.1、端口 25433。文件已被 Git 忽略，不共享密码，不复制维护者的 .env。
+
+```powershell
+docker compose --env-file deploy/handoff.env -f compose.handoff.yaml up -d --wait
+docker compose --env-file deploy/handoff.env -f compose.handoff.yaml ps
+```
+
+看到 db 为 healthy 后继续。默认使用独立项目 hormuz-handoff 和独立命名数据卷，端口只绑定本机；不会连接维护者的 25432 数据库。端口冲突时修改 handoff.env 的 DB_PORT 后重新启动。
+
+使用官方 mobilitydb/mobilitydb:17-3.5-1.3 镜像，提供 PostgreSQL 17、PostGIS 3.5、MobilityDB 1.3。镜像来源见 [官方镜像仓库](https://github.com/MobilityDB/MobilityDB-docker)。本环境不包含 TimescaleDB；当前业务未使用其能力，四表查询、地图回放与 MobilityDB 试验不依赖它。官方版本标签可能更新构建，本次验证镜像 digest 为 sha256:e5b7428cc613cfa278c89107d14991466a7d8e5984aa131a4bec3d002ce50f40。
+
+## 3. 创建当前结构并导入
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m backend.handoff_run import --database hormuz_handoff
+if ($LASTEXITCODE -ne 0) { throw '导入未完成，请检查空库、配置与数据文件。' }
+.\backend\.venv\Scripts\python.exe -m backend.handoff_run verify
+```
+
+如更改 DB_NAME，--database 必须填写同样的名称。handoff_run 只使用 deploy/handoff.env，覆盖当前进程的数据库配置，不改根目录 .env。
+
+导入前验证数据文件 SHA-256 和字段，再检查目标库不存在五张应用表。已有任何应用表（即使为空）就拒绝导入；不会 DROP/TRUNCATE 或覆盖现有数据。建表、插入、序列设置与回查在同一事务中完成，遇错回滚。
+
+预期数量：ships=30、ship_positions=9354、events=65、news=290。verify 逐行对比所有导入字段，不只是核对数量。首次导入后 location 由 PostGIS 生成列重建，主键、唯一约束、外键、空间和最新船位索引由 008 建立。
+
+重复执行 import 失败是保护机制。已有导入结果只需 verify；需要另一份测试环境时使用新的 Compose 项目、空数据卷和端口，不清理已有数据库。本数据包是定时快照，以后数据库更新不会自动推送，需要重新导出、验证和提交。
+
+## 4. 重建 MobilityDB 派生轨迹
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m backend.handoff_run build-mobility
+```
+
+本次预期为 114 段。此命令先核对源表与数据包一致，仅替换独立派生表，验证源表未改变；不会写入旧批次的历史报告。主回放仍读取 ship_positions。源数据改变后需要另行核验并显式重建派生数据。
+
+## 5. 验证并启动应用
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m backend.verify_handoff
+.\backend\.venv\Scripts\python.exe -m backend.handoff_run serve
+```
+
+verify_handoff 在 18001 端口临时启动测试 API，完成后关闭；该端口需空闲。serve 在 8000 启动后端，若已有后端占用此端口，先停止旧进程。
+
+另开 PowerShell 终端，在仓库根部执行：
+
+```powershell
+cd frontend
+npm ci
+npm run dev -- --port 5174
+```
+
+打开 [地图](http://localhost:5174)、[健康检查](http://127.0.0.1:8000/health)、[接口文档](http://127.0.0.1:8000/docs)、[停留分析](http://127.0.0.1:8000/mobility-demo)。检查新闻列表、船位、回放及浏览器网络请求。本次交接已验证后端 HTTP，不宣称完成新机器的浏览器端验收。
+
+暂停独立数据库而保留数据：
+
+```powershell
+docker compose --env-file deploy/handoff.env -f compose.handoff.yaml stop
+```
+
+再次使用时执行第 2 步的 up 命令，无需重新导入。不要使用 down -v，它会删除该 Compose 环境的数据卷。
+
+## 当前验证记录
+
+2026-09-14：独立官方 Docker 镜像空库导入成功；四源表逐行一致；PostGIS 生成列、两项船位索引、源表外键和序列已核验；重复导入被拒绝；114 段派生轨迹重建成功。/health、/docs、/ships、/ships/map、/events、/events/evt_001/news、/simulation/meta、/mobility-demo/analysis、/mobility-demo/tracks 均返回 200。原数据库只读回查仍与导出数据一致。
+
+## 旧脚本边界
+
+- 008_fresh_handoff_schema.sql 是新空库入口，由 handoff 脚本在事务和空库保护下执行；不要对已有库直接重放。
+- 001–007 是历史演进，不能无条件顺序执行；006 会重建新闻表。
+- create_tables.py 只补 ORM 表，不准备全部扩展、空间结构和索引。
+- migrate_real_news.py 仍是维护者历史迁移工具，依赖仓库外源路径；新成员使用本页的导入入口。
+- seed_data.py、generate_demo_data.py 使用旧事件语义，不作为当前初始化入口。
+- 数据库恢复备份继续留在本地，不提交 Git。本数据包不替代完整灾备。
+
+智能体接入见 [agent_integration.md](agent_integration.md)。当前提供可查询数据与环境，智能体尚未实现。

@@ -1,0 +1,24 @@
+{
+  "format_version": 1,
+  "exported_at_utc": "2026-09-14T01:52:15.200732+00:00",
+  "source": "current database source tables; no credentials or full article content",
+  "simulation_batch": "sim_ais_demo/output_news_aligned",
+  "tables": {
+    "ships": {
+      "count": 30,
+      "sha256": "f1432bc5411ec6a4e960591ea578022c2189d5feb461cfa552ddd21dbe31f784"
+    },
+    "ship_positions": {
+      "count": 9354,
+      "sha256": "de75c05f9117a4d4c1fef9a37442818579c94f0280b85466df8d17a830f289fb"
+    },
+    "events": {
+      "count": 65,
+      "sha256": "a6cafe1db4c7fba7c219ecf373a5d22970507d2f5d12c112e0ebf9979ff60687"
+    },
+    "news": {
+      "count": 290,
+      "sha256": "17bd01ca870c88f62beca829a6b768711594c05b866d902e1ca70407ada63029"
+    }
+  }
+}
