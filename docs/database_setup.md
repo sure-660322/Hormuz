@@ -23,13 +23,13 @@ ships.id、ship_positions.ship_id、events.id、news.event_id 保留数据库关
 安装并启动 Docker Desktop（Linux containers），准备 Python 3.11+、Node.js/npm、Git、PowerShell 7。以下命令均在克隆目录根部执行；路径按自己的机器调整。
 
 ```powershell
-git clone --branch sure-660322/issue1 https://github.com/sure-660322/Hormuz.git
+git clone https://github.com/sure-660322/Hormuz.git
 cd Hormuz
 py -m venv .\backend\.venv
 .\backend\.venv\Scripts\python.exe -m pip install -r .\backend\requirements.txt
 ```
 
-已有仓库的成员先提交或保存自己的修改，再切换并拉取上述分支。本交接版本当前位于该分支；合并到默认分支后可以直接克隆默认分支。
+克隆默认分支 main 即可，交接内容已合并到 main，不需要指定其他分支。已有仓库的成员先提交或保存自己的修改，再执行 `git pull` 更新 main。仓库为私有仓库，需要先由维护者加为协作者才能克隆。
 
 ## 2. 配置独立数据库
 
