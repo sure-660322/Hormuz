@@ -1,0 +1,25 @@
+{
+  "source": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson",
+  "dataset": "Natural Earth Admin 0 Countries 1:50m",
+  "license": "Public domain",
+  "terms": "https://www.naturalearthdata.com/about/terms-of-use/",
+  "source_sha256": "3e458fc036ad0a66411f2c1e6cac49c5d7bfb81cb1123bc513b22511a2b7fdeb",
+  "output_sha256": "d780514a3e0e23f162b791da199f70fbfd301823ed2e1180703661c21356ba24",
+  "processing": "Requested countries selected from already generalized 50m geometry; original rings and islands preserved.",
+  "bytes": 52025,
+  "countries": {
+    "IRN": "伊朗",
+    "SAU": "沙特阿拉伯",
+    "ARE": "阿联酋",
+    "OMN": "阿曼",
+    "IRQ": "伊拉克",
+    "KWT": "科威特",
+    "QAT": "卡塔尔",
+    "BHR": "巴林",
+    "ISR": "以色列",
+    "SYR": "叙利亚",
+    "LBN": "黎巴嫩",
+    "JOR": "约旦",
+    "PSX": "巴勒斯坦"
+  }
+}

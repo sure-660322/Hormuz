@@ -1,0 +1,4726 @@
+{
+  "enabled": true,
+  "by_type": {
+    "dropout_random": {
+      "unit": "report",
+      "injected": 731,
+      "note_zh": "按固定概率逐一丢弃基础报位，不重新排布剩余时间。"
+    },
+    "blackout": {
+      "unit": "window",
+      "injected": 14,
+      "suppressed_reports": 147,
+      "note_zh": "受影响船在 1-4 小时内全部报位丢失。"
+    },
+    "duplicate": {
+      "unit": "report",
+      "injected": 162,
+      "note_zh": "字段与 recorded_at 完全相同的重复报文。"
+    },
+    "out_of_order": {
+      "unit": "report",
+      "injected": 309,
+      "note_zh": "接收时间被额外延迟，原始文件按到达顺序排列，记录时间非单调。"
+    },
+    "position_jump": {
+      "unit": "report",
+      "injected": 102,
+      "note_zh": "孤立位置跳点，瞬时偏移 30-120 km，不影响相邻真实船位。"
+    },
+    "position_noise": {
+      "unit": "report",
+      "sigma_deg": 0.0006,
+      "note_zh": "叠加到全部原始报位的高斯定位噪声。"
+    },
+    "speed_noise": {
+      "unit": "report",
+      "sigma_kn_half": 0.2
+    },
+    "course_noise": {
+      "unit": "report",
+      "sigma_deg_half": 1.5
+    },
+    "heading_missing": {
+      "unit": "report",
+      "injected": 4209,
+      "note_zh": "航首向字段偶发缺失，course 不受影响。"
+    },
+    "destination_stale": {
+      "unit": "report",
+      "injected": 2327,
+      "note_zh": "航次切换后目的地字段短暂滞后于上一航次。"
+    }
+  },
+  "blackout_windows": [
+    {
+      "temp_ship_id": 69,
+      "start_utc": "2026-02-27T13:46:53+00:00",
+      "end_utc": "2026-02-27T16:09:35+00:00",
+      "hours": 2.38,
+      "suppressed_reports": 11
+    },
+    {
+      "temp_ship_id": 111,
+      "start_utc": "2026-02-27T15:57:58+00:00",
+      "end_utc": "2026-02-27T17:15:55+00:00",
+      "hours": 1.3,
+      "suppressed_reports": 6
+    },
+    {
+      "temp_ship_id": 17,
+      "start_utc": "2026-03-01T20:14:26+00:00",
+      "end_utc": "2026-03-01T21:47:54+00:00",
+      "hours": 1.56,
+      "suppressed_reports": 6
+    },
+    {
+      "temp_ship_id": 143,
+      "start_utc": "2026-03-03T02:04:34+00:00",
+      "end_utc": "2026-03-03T05:17:04+00:00",
+      "hours": 3.21,
+      "suppressed_reports": 9
+    },
+    {
+      "temp_ship_id": 39,
+      "start_utc": "2026-02-28T10:08:27+00:00",
+      "end_utc": "2026-02-28T13:15:05+00:00",
+      "hours": 3.11,
+      "suppressed_reports": 6
+    },
+    {
+      "temp_ship_id": 142,
+      "start_utc": "2026-02-28T06:59:09+00:00",
+      "end_utc": "2026-02-28T09:35:09+00:00",
+      "hours": 2.6,
+      "suppressed_reports": 12
+    },
+    {
+      "temp_ship_id": 74,
+      "start_utc": "2026-03-02T17:31:41+00:00",
+      "end_utc": "2026-03-02T20:32:57+00:00",
+      "hours": 3.02,
+      "suppressed_reports": 12
+    },
+    {
+      "temp_ship_id": 114,
+      "start_utc": "2026-03-01T04:51:47+00:00",
+      "end_utc": "2026-03-01T08:45:42+00:00",
+      "hours": 3.9,
+      "suppressed_reports": 6
+    },
+    {
+      "temp_ship_id": 62,
+      "start_utc": "2026-03-01T02:01:27+00:00",
+      "end_utc": "2026-03-01T03:33:20+00:00",
+      "hours": 1.53,
+      "suppressed_reports": 5
+    },
+    {
+      "temp_ship_id": 22,
+      "start_utc": "2026-02-28T12:59:29+00:00",
+      "end_utc": "2026-02-28T16:51:37+00:00",
+      "hours": 3.87,
+      "suppressed_reports": 17
+    },
+    {
+      "temp_ship_id": 55,
+      "start_utc": "2026-03-01T09:54:26+00:00",
+      "end_utc": "2026-03-01T13:37:52+00:00",
+      "hours": 3.72,
+      "suppressed_reports": 18
+    },
+    {
+      "temp_ship_id": 33,
+      "start_utc": "2026-03-01T01:25:53+00:00",
+      "end_utc": "2026-03-01T04:05:42+00:00",
+      "hours": 2.66,
+      "suppressed_reports": 11
+    },
+    {
+      "temp_ship_id": 26,
+      "start_utc": "2026-02-28T10:03:01+00:00",
+      "end_utc": "2026-02-28T13:44:27+00:00",
+      "hours": 3.69,
+      "suppressed_reports": 19
+    },
+    {
+      "temp_ship_id": 64,
+      "start_utc": "2026-02-28T08:06:35+00:00",
+      "end_utc": "2026-02-28T10:38:07+00:00",
+      "hours": 2.53,
+      "suppressed_reports": 9
+    }
+  ],
+  "position_jump_records": [
+    {
+      "temp_ship_id": 1,
+      "recorded_at": "2026-03-01T20:18:51+00:00",
+      "offset_km": 113.9
+    },
+    {
+      "temp_ship_id": 6,
+      "recorded_at": "2026-03-04T09:36:33+00:00",
+      "offset_km": 92.51
+    },
+    {
+      "temp_ship_id": 7,
+      "recorded_at": "2026-02-28T13:44:07+00:00",
+      "offset_km": 70.79
+    },
+    {
+      "temp_ship_id": 7,
+      "recorded_at": "2026-03-03T11:34:07+00:00",
+      "offset_km": 108.14
+    },
+    {
+      "temp_ship_id": 8,
+      "recorded_at": "2026-03-03T04:26:35+00:00",
+      "offset_km": 71.48
+    },
+    {
+      "temp_ship_id": 9,
+      "recorded_at": "2026-02-26T17:16:32+00:00",
+      "offset_km": 31.45
+    },
+    {
+      "temp_ship_id": 9,
+      "recorded_at": "2026-03-01T23:46:22+00:00",
+      "offset_km": 76.5
+    },
+    {
+      "temp_ship_id": 9,
+      "recorded_at": "2026-03-03T04:25:27+00:00",
+      "offset_km": 75.07
+    },
+    {
+      "temp_ship_id": 11,
+      "recorded_at": "2026-02-27T18:20:09+00:00",
+      "offset_km": 65.3
+    },
+    {
+      "temp_ship_id": 12,
+      "recorded_at": "2026-02-28T05:27:27+00:00",
+      "offset_km": 105.53
+    },
+    {
+      "temp_ship_id": 13,
+      "recorded_at": "2026-02-26T08:52:54+00:00",
+      "offset_km": 110.05
+    },
+    {
+      "temp_ship_id": 14,
+      "recorded_at": "2026-02-28T20:43:14+00:00",
+      "offset_km": 51.23
+    },
+    {
+      "temp_ship_id": 14,
+      "recorded_at": "2026-03-04T13:30:34+00:00",
+      "offset_km": 40.17
+    },
+    {
+      "temp_ship_id": 14,
+      "recorded_at": "2026-03-04T14:56:10+00:00",
+      "offset_km": 74.18
+    },
+    {
+      "temp_ship_id": 16,
+      "recorded_at": "2026-02-27T02:08:41+00:00",
+      "offset_km": 54.7
+    },
+    {
+      "temp_ship_id": 17,
+      "recorded_at": "2026-02-27T01:06:34+00:00",
+      "offset_km": 83.45
+    },
+    {
+      "temp_ship_id": 18,
+      "recorded_at": "2026-03-04T10:15:04+00:00",
+      "offset_km": 92.65
+    },
+    {
+      "temp_ship_id": 22,
+      "recorded_at": "2026-03-02T08:21:56+00:00",
+      "offset_km": 117.32
+    },
+    {
+      "temp_ship_id": 24,
+      "recorded_at": "2026-02-28T17:24:25+00:00",
+      "offset_km": 97.22
+    },
+    {
+      "temp_ship_id": 25,
+      "recorded_at": "2026-02-26T12:01:51+00:00",
+      "offset_km": 87.59
+    },
+    {
+      "temp_ship_id": 25,
+      "recorded_at": "2026-03-02T14:23:33+00:00",
+      "offset_km": 72.75
+    },
+    {
+      "temp_ship_id": 25,
+      "recorded_at": "2026-03-02T15:04:50+00:00",
+      "offset_km": 81.75
+    },
+    {
+      "temp_ship_id": 26,
+      "recorded_at": "2026-03-03T20:00:01+00:00",
+      "offset_km": 80.95
+    },
+    {
+      "temp_ship_id": 27,
+      "recorded_at": "2026-02-27T18:27:11+00:00",
+      "offset_km": 40.77
+    },
+    {
+      "temp_ship_id": 29,
+      "recorded_at": "2026-02-28T00:52:43+00:00",
+      "offset_km": 38.45
+    },
+    {
+      "temp_ship_id": 30,
+      "recorded_at": "2026-02-27T07:43:39+00:00",
+      "offset_km": 94.76
+    },
+    {
+      "temp_ship_id": 32,
+      "recorded_at": "2026-02-27T22:30:57+00:00",
+      "offset_km": 38.95
+    },
+    {
+      "temp_ship_id": 32,
+      "recorded_at": "2026-03-02T07:37:36+00:00",
+      "offset_km": 74.05
+    },
+    {
+      "temp_ship_id": 32,
+      "recorded_at": "2026-03-04T04:07:36+00:00",
+      "offset_km": 110.74
+    },
+    {
+      "temp_ship_id": 33,
+      "recorded_at": "2026-03-04T20:27:21+00:00",
+      "offset_km": 83.42
+    },
+    {
+      "temp_ship_id": 35,
+      "recorded_at": "2026-03-04T20:34:43+00:00",
+      "offset_km": 59.01
+    },
+    {
+      "temp_ship_id": 35,
+      "recorded_at": "2026-03-04T22:27:52+00:00",
+      "offset_km": 60.97
+    },
+    {
+      "temp_ship_id": 38,
+      "recorded_at": "2026-02-27T08:13:41+00:00",
+      "offset_km": 73.43
+    },
+    {
+      "temp_ship_id": 43,
+      "recorded_at": "2026-02-28T05:56:50+00:00",
+      "offset_km": 109.69
+    },
+    {
+      "temp_ship_id": 44,
+      "recorded_at": "2026-02-26T23:14:18+00:00",
+      "offset_km": 119.13
+    },
+    {
+      "temp_ship_id": 46,
+      "recorded_at": "2026-03-03T15:40:49+00:00",
+      "offset_km": 44.08
+    },
+    {
+      "temp_ship_id": 50,
+      "recorded_at": "2026-03-03T18:04:01+00:00",
+      "offset_km": 44.88
+    },
+    {
+      "temp_ship_id": 51,
+      "recorded_at": "2026-03-01T00:25:29+00:00",
+      "offset_km": 57.68
+    },
+    {
+      "temp_ship_id": 51,
+      "recorded_at": "2026-03-03T21:01:33+00:00",
+      "offset_km": 69.13
+    },
+    {
+      "temp_ship_id": 54,
+      "recorded_at": "2026-03-02T10:49:32+00:00",
+      "offset_km": 31.51
+    },
+    {
+      "temp_ship_id": 55,
+      "recorded_at": "2026-02-28T18:36:48+00:00",
+      "offset_km": 67.98
+    },
+    {
+      "temp_ship_id": 55,
+      "recorded_at": "2026-03-03T17:52:52+00:00",
+      "offset_km": 43.83
+    },
+    {
+      "temp_ship_id": 60,
+      "recorded_at": "2026-02-27T08:56:08+00:00",
+      "offset_km": 107.07
+    },
+    {
+      "temp_ship_id": 66,
+      "recorded_at": "2026-02-27T05:40:03+00:00",
+      "offset_km": 62.23
+    },
+    {
+      "temp_ship_id": 70,
+      "recorded_at": "2026-03-04T02:15:57+00:00",
+      "offset_km": 50.34
+    },
+    {
+      "temp_ship_id": 71,
+      "recorded_at": "2026-02-27T03:08:48+00:00",
+      "offset_km": 49.54
+    },
+    {
+      "temp_ship_id": 71,
+      "recorded_at": "2026-03-02T06:20:35+00:00",
+      "offset_km": 109.38
+    },
+    {
+      "temp_ship_id": 73,
+      "recorded_at": "2026-03-02T19:51:22+00:00",
+      "offset_km": 33.89
+    },
+    {
+      "temp_ship_id": 74,
+      "recorded_at": "2026-03-04T11:44:16+00:00",
+      "offset_km": 89.08
+    },
+    {
+      "temp_ship_id": 75,
+      "recorded_at": "2026-02-27T05:51:18+00:00",
+      "offset_km": 110.76
+    },
+    {
+      "temp_ship_id": 75,
+      "recorded_at": "2026-03-03T01:41:59+00:00",
+      "offset_km": 91.69
+    },
+    {
+      "temp_ship_id": 76,
+      "recorded_at": "2026-02-28T15:19:41+00:00",
+      "offset_km": 62.22
+    },
+    {
+      "temp_ship_id": 76,
+      "recorded_at": "2026-03-02T04:31:05+00:00",
+      "offset_km": 101.44
+    },
+    {
+      "temp_ship_id": 79,
+      "recorded_at": "2026-03-04T15:49:22+00:00",
+      "offset_km": 51.19
+    },
+    {
+      "temp_ship_id": 80,
+      "recorded_at": "2026-03-02T04:59:45+00:00",
+      "offset_km": 47.29
+    },
+    {
+      "temp_ship_id": 82,
+      "recorded_at": "2026-02-26T12:12:32+00:00",
+      "offset_km": 77.33
+    },
+    {
+      "temp_ship_id": 83,
+      "recorded_at": "2026-03-04T06:22:36+00:00",
+      "offset_km": 69.33
+    },
+    {
+      "temp_ship_id": 85,
+      "recorded_at": "2026-03-04T23:23:48+00:00",
+      "offset_km": 66.62
+    },
+    {
+      "temp_ship_id": 86,
+      "recorded_at": "2026-02-27T10:38:29+00:00",
+      "offset_km": 30.02
+    },
+    {
+      "temp_ship_id": 87,
+      "recorded_at": "2026-02-27T01:27:52+00:00",
+      "offset_km": 51.82
+    },
+    {
+      "temp_ship_id": 91,
+      "recorded_at": "2026-02-27T20:59:37+00:00",
+      "offset_km": 98.47
+    },
+    {
+      "temp_ship_id": 92,
+      "recorded_at": "2026-02-28T16:07:56+00:00",
+      "offset_km": 79.04
+    },
+    {
+      "temp_ship_id": 92,
+      "recorded_at": "2026-03-01T20:38:59+00:00",
+      "offset_km": 79.44
+    },
+    {
+      "temp_ship_id": 92,
+      "recorded_at": "2026-03-02T12:20:47+00:00",
+      "offset_km": 38.21
+    },
+    {
+      "temp_ship_id": 93,
+      "recorded_at": "2026-03-02T07:57:17+00:00",
+      "offset_km": 64.55
+    },
+    {
+      "temp_ship_id": 95,
+      "recorded_at": "2026-02-28T15:25:48+00:00",
+      "offset_km": 74.65
+    },
+    {
+      "temp_ship_id": 95,
+      "recorded_at": "2026-02-28T23:31:40+00:00",
+      "offset_km": 80.86
+    },
+    {
+      "temp_ship_id": 96,
+      "recorded_at": "2026-02-27T06:36:43+00:00",
+      "offset_km": 93.59
+    },
+    {
+      "temp_ship_id": 96,
+      "recorded_at": "2026-02-28T20:55:23+00:00",
+      "offset_km": 116.29
+    },
+    {
+      "temp_ship_id": 97,
+      "recorded_at": "2026-03-01T15:34:35+00:00",
+      "offset_km": 101.74
+    },
+    {
+      "temp_ship_id": 97,
+      "recorded_at": "2026-03-03T11:15:36+00:00",
+      "offset_km": 103.09
+    },
+    {
+      "temp_ship_id": 98,
+      "recorded_at": "2026-03-01T03:17:34+00:00",
+      "offset_km": 43.8
+    },
+    {
+      "temp_ship_id": 101,
+      "recorded_at": "2026-02-27T13:56:46+00:00",
+      "offset_km": 41.58
+    },
+    {
+      "temp_ship_id": 103,
+      "recorded_at": "2026-03-04T02:26:42+00:00",
+      "offset_km": 63.71
+    },
+    {
+      "temp_ship_id": 106,
+      "recorded_at": "2026-03-02T01:57:37+00:00",
+      "offset_km": 107.69
+    },
+    {
+      "temp_ship_id": 106,
+      "recorded_at": "2026-03-03T01:07:22+00:00",
+      "offset_km": 30.06
+    },
+    {
+      "temp_ship_id": 108,
+      "recorded_at": "2026-02-28T19:31:58+00:00",
+      "offset_km": 50.74
+    },
+    {
+      "temp_ship_id": 112,
+      "recorded_at": "2026-02-26T01:15:22+00:00",
+      "offset_km": 37.22
+    },
+    {
+      "temp_ship_id": 114,
+      "recorded_at": "2026-02-27T01:29:29+00:00",
+      "offset_km": 64.63
+    },
+    {
+      "temp_ship_id": 115,
+      "recorded_at": "2026-03-04T01:07:26+00:00",
+      "offset_km": 101.5
+    },
+    {
+      "temp_ship_id": 117,
+      "recorded_at": "2026-03-02T13:28:10+00:00",
+      "offset_km": 82.17
+    },
+    {
+      "temp_ship_id": 118,
+      "recorded_at": "2026-02-26T22:05:08+00:00",
+      "offset_km": 106.12
+    },
+    {
+      "temp_ship_id": 119,
+      "recorded_at": "2026-03-04T15:56:00+00:00",
+      "offset_km": 103.16
+    },
+    {
+      "temp_ship_id": 121,
+      "recorded_at": "2026-02-27T11:11:26+00:00",
+      "offset_km": 112.0
+    },
+    {
+      "temp_ship_id": 122,
+      "recorded_at": "2026-02-27T00:13:41+00:00",
+      "offset_km": 83.35
+    },
+    {
+      "temp_ship_id": 128,
+      "recorded_at": "2026-02-27T10:28:27+00:00",
+      "offset_km": 58.41
+    },
+    {
+      "temp_ship_id": 128,
+      "recorded_at": "2026-03-03T21:10:16+00:00",
+      "offset_km": 65.16
+    },
+    {
+      "temp_ship_id": 129,
+      "recorded_at": "2026-02-27T19:14:36+00:00",
+      "offset_km": 37.85
+    },
+    {
+      "temp_ship_id": 129,
+      "recorded_at": "2026-03-01T15:33:50+00:00",
+      "offset_km": 55.91
+    },
+    {
+      "temp_ship_id": 130,
+      "recorded_at": "2026-02-28T19:44:43+00:00",
+      "offset_km": 47.99
+    },
+    {
+      "temp_ship_id": 131,
+      "recorded_at": "2026-03-01T20:37:58+00:00",
+      "offset_km": 114.68
+    },
+    {
+      "temp_ship_id": 133,
+      "recorded_at": "2026-02-28T23:52:19+00:00",
+      "offset_km": 38.75
+    },
+    {
+      "temp_ship_id": 134,
+      "recorded_at": "2026-03-03T22:03:48+00:00",
+      "offset_km": 99.08
+    },
+    {
+      "temp_ship_id": 136,
+      "recorded_at": "2026-02-27T02:16:53+00:00",
+      "offset_km": 104.94
+    },
+    {
+      "temp_ship_id": 137,
+      "recorded_at": "2026-02-27T04:09:06+00:00",
+      "offset_km": 69.77
+    },
+    {
+      "temp_ship_id": 138,
+      "recorded_at": "2026-03-04T00:38:36+00:00",
+      "offset_km": 67.47
+    },
+    {
+      "temp_ship_id": 143,
+      "recorded_at": "2026-03-04T13:18:56+00:00",
+      "offset_km": 77.51
+    },
+    {
+      "temp_ship_id": 147,
+      "recorded_at": "2026-03-03T06:36:19+00:00",
+      "offset_km": 75.25
+    },
+    {
+      "temp_ship_id": 147,
+      "recorded_at": "2026-03-04T20:48:49+00:00",
+      "offset_km": 72.87
+    },
+    {
+      "temp_ship_id": 148,
+      "recorded_at": "2026-02-26T22:27:42+00:00",
+      "offset_km": 110.18
+    },
+    {
+      "temp_ship_id": 148,
+      "recorded_at": "2026-03-02T16:40:13+00:00",
+      "offset_km": 109.09
+    },
+    {
+      "temp_ship_id": 149,
+      "recorded_at": "2026-03-01T04:28:47+00:00",
+      "offset_km": 115.69
+    }
+  ],
+  "duplicate_records": [
+    {
+      "temp_ship_id": 2,
+      "recorded_at": "2026-03-02T21:13:22+00:00"
+    },
+    {
+      "temp_ship_id": 2,
+      "recorded_at": "2026-03-04T06:05:19+00:00"
+    },
+    {
+      "temp_ship_id": 3,
+      "recorded_at": "2026-02-26T21:20:44+00:00"
+    },
+    {
+      "temp_ship_id": 4,
+      "recorded_at": "2026-03-03T12:57:33+00:00"
+    },
+    {
+      "temp_ship_id": 6,
+      "recorded_at": "2026-03-01T22:30:04+00:00"
+    },
+    {
+      "temp_ship_id": 6,
+      "recorded_at": "2026-03-02T17:22:49+00:00"
+    },
+    {
+      "temp_ship_id": 6,
+      "recorded_at": "2026-03-04T08:29:34+00:00"
+    },
+    {
+      "temp_ship_id": 7,
+      "recorded_at": "2026-02-27T03:50:09+00:00"
+    },
+    {
+      "temp_ship_id": 7,
+      "recorded_at": "2026-03-02T16:56:39+00:00"
+    },
+    {
+      "temp_ship_id": 7,
+      "recorded_at": "2026-03-04T07:46:17+00:00"
+    },
+    {
+      "temp_ship_id": 9,
+      "recorded_at": "2026-03-04T15:31:58+00:00"
+    },
+    {
+      "temp_ship_id": 11,
+      "recorded_at": "2026-02-26T19:49:53+00:00"
+    },
+    {
+      "temp_ship_id": 11,
+      "recorded_at": "2026-02-28T17:19:45+00:00"
+    },
+    {
+      "temp_ship_id": 11,
+      "recorded_at": "2026-03-02T03:18:39+00:00"
+    },
+    {
+      "temp_ship_id": 12,
+      "recorded_at": "2026-03-03T22:55:49+00:00"
+    },
+    {
+      "temp_ship_id": 14,
+      "recorded_at": "2026-02-28T15:44:26+00:00"
+    },
+    {
+      "temp_ship_id": 17,
+      "recorded_at": "2026-02-28T10:05:51+00:00"
+    },
+    {
+      "temp_ship_id": 17,
+      "recorded_at": "2026-03-01T18:45:39+00:00"
+    },
+    {
+      "temp_ship_id": 21,
+      "recorded_at": "2026-02-27T05:09:59+00:00"
+    },
+    {
+      "temp_ship_id": 21,
+      "recorded_at": "2026-02-28T18:15:54+00:00"
+    },
+    {
+      "temp_ship_id": 21,
+      "recorded_at": "2026-03-04T01:32:32+00:00"
+    },
+    {
+      "temp_ship_id": 23,
+      "recorded_at": "2026-02-27T08:42:00+00:00"
+    },
+    {
+      "temp_ship_id": 23,
+      "recorded_at": "2026-03-01T22:47:01+00:00"
+    },
+    {
+      "temp_ship_id": 24,
+      "recorded_at": "2026-02-28T20:50:43+00:00"
+    },
+    {
+      "temp_ship_id": 24,
+      "recorded_at": "2026-03-02T09:00:56+00:00"
+    },
+    {
+      "temp_ship_id": 26,
+      "recorded_at": "2026-02-28T15:16:20+00:00"
+    },
+    {
+      "temp_ship_id": 27,
+      "recorded_at": "2026-02-27T22:29:25+00:00"
+    },
+    {
+      "temp_ship_id": 27,
+      "recorded_at": "2026-03-03T01:21:50+00:00"
+    },
+    {
+      "temp_ship_id": 29,
+      "recorded_at": "2026-02-26T23:20:29+00:00"
+    },
+    {
+      "temp_ship_id": 29,
+      "recorded_at": "2026-03-02T02:27:38+00:00"
+    },
+    {
+      "temp_ship_id": 30,
+      "recorded_at": "2026-02-27T03:13:16+00:00"
+    },
+    {
+      "temp_ship_id": 30,
+      "recorded_at": "2026-02-27T19:13:14+00:00"
+    },
+    {
+      "temp_ship_id": 30,
+      "recorded_at": "2026-03-01T21:28:27+00:00"
+    },
+    {
+      "temp_ship_id": 30,
+      "recorded_at": "2026-03-01T22:15:52+00:00"
+    },
+    {
+      "temp_ship_id": 31,
+      "recorded_at": "2026-03-01T21:27:00+00:00"
+    },
+    {
+      "temp_ship_id": 31,
+      "recorded_at": "2026-03-01T23:28:27+00:00"
+    },
+    {
+      "temp_ship_id": 33,
+      "recorded_at": "2026-02-27T00:32:21+00:00"
+    },
+    {
+      "temp_ship_id": 33,
+      "recorded_at": "2026-03-02T08:25:23+00:00"
+    },
+    {
+      "temp_ship_id": 37,
+      "recorded_at": "2026-02-27T09:03:14+00:00"
+    },
+    {
+      "temp_ship_id": 37,
+      "recorded_at": "2026-02-28T07:36:02+00:00"
+    },
+    {
+      "temp_ship_id": 37,
+      "recorded_at": "2026-03-04T08:52:06+00:00"
+    },
+    {
+      "temp_ship_id": 38,
+      "recorded_at": "2026-02-27T04:58:00+00:00"
+    },
+    {
+      "temp_ship_id": 40,
+      "recorded_at": "2026-03-01T23:36:38+00:00"
+    },
+    {
+      "temp_ship_id": 42,
+      "recorded_at": "2026-02-26T20:45:26+00:00"
+    },
+    {
+      "temp_ship_id": 42,
+      "recorded_at": "2026-02-28T23:46:09+00:00"
+    },
+    {
+      "temp_ship_id": 43,
+      "recorded_at": "2026-03-01T18:08:37+00:00"
+    },
+    {
+      "temp_ship_id": 44,
+      "recorded_at": "2026-03-04T12:19:27+00:00"
+    },
+    {
+      "temp_ship_id": 45,
+      "recorded_at": "2026-02-28T19:37:21+00:00"
+    },
+    {
+      "temp_ship_id": 46,
+      "recorded_at": "2026-03-02T16:35:06+00:00"
+    },
+    {
+      "temp_ship_id": 46,
+      "recorded_at": "2026-03-02T21:39:29+00:00"
+    },
+    {
+      "temp_ship_id": 46,
+      "recorded_at": "2026-03-03T12:30:16+00:00"
+    },
+    {
+      "temp_ship_id": 47,
+      "recorded_at": "2026-02-27T15:53:41+00:00"
+    },
+    {
+      "temp_ship_id": 48,
+      "recorded_at": "2026-03-02T06:53:53+00:00"
+    },
+    {
+      "temp_ship_id": 49,
+      "recorded_at": "2026-03-01T13:17:16+00:00"
+    },
+    {
+      "temp_ship_id": 50,
+      "recorded_at": "2026-03-03T00:36:45+00:00"
+    },
+    {
+      "temp_ship_id": 50,
+      "recorded_at": "2026-03-04T17:08:30+00:00"
+    },
+    {
+      "temp_ship_id": 51,
+      "recorded_at": "2026-03-03T08:43:02+00:00"
+    },
+    {
+      "temp_ship_id": 51,
+      "recorded_at": "2026-03-04T23:38:40+00:00"
+    },
+    {
+      "temp_ship_id": 53,
+      "recorded_at": "2026-02-27T03:21:46+00:00"
+    },
+    {
+      "temp_ship_id": 53,
+      "recorded_at": "2026-03-01T21:05:59+00:00"
+    },
+    {
+      "temp_ship_id": 53,
+      "recorded_at": "2026-03-02T22:08:37+00:00"
+    },
+    {
+      "temp_ship_id": 54,
+      "recorded_at": "2026-03-03T19:12:42+00:00"
+    },
+    {
+      "temp_ship_id": 56,
+      "recorded_at": "2026-02-28T11:30:28+00:00"
+    },
+    {
+      "temp_ship_id": 58,
+      "recorded_at": "2026-02-27T03:41:01+00:00"
+    },
+    {
+      "temp_ship_id": 60,
+      "recorded_at": "2026-03-02T14:23:15+00:00"
+    },
+    {
+      "temp_ship_id": 62,
+      "recorded_at": "2026-02-26T10:34:29+00:00"
+    },
+    {
+      "temp_ship_id": 62,
+      "recorded_at": "2026-03-02T15:24:01+00:00"
+    },
+    {
+      "temp_ship_id": 62,
+      "recorded_at": "2026-03-02T19:44:44+00:00"
+    },
+    {
+      "temp_ship_id": 62,
+      "recorded_at": "2026-03-03T16:54:43+00:00"
+    },
+    {
+      "temp_ship_id": 63,
+      "recorded_at": "2026-02-27T20:08:46+00:00"
+    },
+    {
+      "temp_ship_id": 64,
+      "recorded_at": "2026-03-03T08:25:58+00:00"
+    },
+    {
+      "temp_ship_id": 64,
+      "recorded_at": "2026-03-03T09:29:53+00:00"
+    },
+    {
+      "temp_ship_id": 66,
+      "recorded_at": "2026-02-27T00:03:58+00:00"
+    },
+    {
+      "temp_ship_id": 68,
+      "recorded_at": "2026-02-27T03:48:09+00:00"
+    },
+    {
+      "temp_ship_id": 68,
+      "recorded_at": "2026-03-03T15:37:58+00:00"
+    },
+    {
+      "temp_ship_id": 69,
+      "recorded_at": "2026-03-02T02:05:29+00:00"
+    },
+    {
+      "temp_ship_id": 70,
+      "recorded_at": "2026-03-01T07:23:34+00:00"
+    },
+    {
+      "temp_ship_id": 71,
+      "recorded_at": "2026-03-03T10:41:29+00:00"
+    },
+    {
+      "temp_ship_id": 71,
+      "recorded_at": "2026-03-03T21:46:50+00:00"
+    },
+    {
+      "temp_ship_id": 72,
+      "recorded_at": "2026-03-02T17:10:48+00:00"
+    },
+    {
+      "temp_ship_id": 73,
+      "recorded_at": "2026-03-02T21:53:51+00:00"
+    },
+    {
+      "temp_ship_id": 74,
+      "recorded_at": "2026-02-28T22:20:46+00:00"
+    },
+    {
+      "temp_ship_id": 75,
+      "recorded_at": "2026-02-27T10:33:43+00:00"
+    },
+    {
+      "temp_ship_id": 75,
+      "recorded_at": "2026-03-01T21:21:31+00:00"
+    },
+    {
+      "temp_ship_id": 75,
+      "recorded_at": "2026-03-04T07:32:44+00:00"
+    },
+    {
+      "temp_ship_id": 77,
+      "recorded_at": "2026-03-04T03:54:57+00:00"
+    },
+    {
+      "temp_ship_id": 77,
+      "recorded_at": "2026-03-04T08:10:02+00:00"
+    },
+    {
+      "temp_ship_id": 78,
+      "recorded_at": "2026-02-27T00:39:39+00:00"
+    },
+    {
+      "temp_ship_id": 79,
+      "recorded_at": "2026-02-27T22:14:00+00:00"
+    },
+    {
+      "temp_ship_id": 80,
+      "recorded_at": "2026-02-28T23:26:12+00:00"
+    },
+    {
+      "temp_ship_id": 84,
+      "recorded_at": "2026-03-01T14:52:07+00:00"
+    },
+    {
+      "temp_ship_id": 84,
+      "recorded_at": "2026-03-02T09:12:54+00:00"
+    },
+    {
+      "temp_ship_id": 86,
+      "recorded_at": "2026-02-27T08:20:45+00:00"
+    },
+    {
+      "temp_ship_id": 86,
+      "recorded_at": "2026-02-27T09:19:25+00:00"
+    },
+    {
+      "temp_ship_id": 87,
+      "recorded_at": "2026-02-27T01:03:38+00:00"
+    },
+    {
+      "temp_ship_id": 90,
+      "recorded_at": "2026-03-02T21:02:13+00:00"
+    },
+    {
+      "temp_ship_id": 91,
+      "recorded_at": "2026-02-27T15:50:49+00:00"
+    },
+    {
+      "temp_ship_id": 91,
+      "recorded_at": "2026-03-01T03:37:35+00:00"
+    },
+    {
+      "temp_ship_id": 91,
+      "recorded_at": "2026-03-01T09:03:38+00:00"
+    },
+    {
+      "temp_ship_id": 92,
+      "recorded_at": "2026-02-26T15:51:39+00:00"
+    },
+    {
+      "temp_ship_id": 92,
+      "recorded_at": "2026-02-28T13:08:45+00:00"
+    },
+    {
+      "temp_ship_id": 94,
+      "recorded_at": "2026-03-04T23:35:41+00:00"
+    },
+    {
+      "temp_ship_id": 96,
+      "recorded_at": "2026-02-26T08:36:52+00:00"
+    },
+    {
+      "temp_ship_id": 96,
+      "recorded_at": "2026-02-28T23:50:22+00:00"
+    },
+    {
+      "temp_ship_id": 96,
+      "recorded_at": "2026-03-01T04:57:16+00:00"
+    },
+    {
+      "temp_ship_id": 97,
+      "recorded_at": "2026-02-26T12:28:11+00:00"
+    },
+    {
+      "temp_ship_id": 97,
+      "recorded_at": "2026-03-04T20:23:16+00:00"
+    },
+    {
+      "temp_ship_id": 98,
+      "recorded_at": "2026-03-04T11:36:10+00:00"
+    },
+    {
+      "temp_ship_id": 99,
+      "recorded_at": "2026-02-28T14:50:06+00:00"
+    },
+    {
+      "temp_ship_id": 100,
+      "recorded_at": "2026-03-02T01:49:51+00:00"
+    },
+    {
+      "temp_ship_id": 101,
+      "recorded_at": "2026-02-28T12:02:24+00:00"
+    },
+    {
+      "temp_ship_id": 102,
+      "recorded_at": "2026-03-03T00:28:57+00:00"
+    },
+    {
+      "temp_ship_id": 104,
+      "recorded_at": "2026-03-02T19:34:02+00:00"
+    },
+    {
+      "temp_ship_id": 104,
+      "recorded_at": "2026-03-03T20:18:30+00:00"
+    },
+    {
+      "temp_ship_id": 105,
+      "recorded_at": "2026-03-02T01:00:15+00:00"
+    },
+    {
+      "temp_ship_id": 105,
+      "recorded_at": "2026-03-02T14:40:17+00:00"
+    },
+    {
+      "temp_ship_id": 108,
+      "recorded_at": "2026-02-28T09:51:46+00:00"
+    },
+    {
+      "temp_ship_id": 108,
+      "recorded_at": "2026-03-01T21:13:35+00:00"
+    },
+    {
+      "temp_ship_id": 108,
+      "recorded_at": "2026-03-04T23:36:20+00:00"
+    },
+    {
+      "temp_ship_id": 110,
+      "recorded_at": "2026-02-28T17:08:12+00:00"
+    },
+    {
+      "temp_ship_id": 110,
+      "recorded_at": "2026-03-03T03:38:28+00:00"
+    },
+    {
+      "temp_ship_id": 112,
+      "recorded_at": "2026-02-26T04:38:06+00:00"
+    },
+    {
+      "temp_ship_id": 112,
+      "recorded_at": "2026-02-28T02:51:50+00:00"
+    },
+    {
+      "temp_ship_id": 113,
+      "recorded_at": "2026-02-28T08:40:17+00:00"
+    },
+    {
+      "temp_ship_id": 115,
+      "recorded_at": "2026-03-04T11:45:20+00:00"
+    },
+    {
+      "temp_ship_id": 116,
+      "recorded_at": "2026-02-28T06:03:11+00:00"
+    },
+    {
+      "temp_ship_id": 118,
+      "recorded_at": "2026-02-26T10:48:33+00:00"
+    },
+    {
+      "temp_ship_id": 118,
+      "recorded_at": "2026-02-27T02:59:51+00:00"
+    },
+    {
+      "temp_ship_id": 118,
+      "recorded_at": "2026-02-27T19:35:03+00:00"
+    },
+    {
+      "temp_ship_id": 118,
+      "recorded_at": "2026-02-28T21:31:37+00:00"
+    },
+    {
+      "temp_ship_id": 118,
+      "recorded_at": "2026-02-28T23:31:39+00:00"
+    },
+    {
+      "temp_ship_id": 120,
+      "recorded_at": "2026-02-27T09:20:35+00:00"
+    },
+    {
+      "temp_ship_id": 121,
+      "recorded_at": "2026-03-04T00:22:05+00:00"
+    },
+    {
+      "temp_ship_id": 122,
+      "recorded_at": "2026-02-28T01:30:02+00:00"
+    },
+    {
+      "temp_ship_id": 122,
+      "recorded_at": "2026-03-03T08:09:36+00:00"
+    },
+    {
+      "temp_ship_id": 123,
+      "recorded_at": "2026-02-27T20:28:48+00:00"
+    },
+    {
+      "temp_ship_id": 124,
+      "recorded_at": "2026-03-02T23:13:02+00:00"
+    },
+    {
+      "temp_ship_id": 124,
+      "recorded_at": "2026-03-04T03:40:47+00:00"
+    },
+    {
+      "temp_ship_id": 129,
+      "recorded_at": "2026-02-26T12:21:51+00:00"
+    },
+    {
+      "temp_ship_id": 131,
+      "recorded_at": "2026-03-03T00:31:19+00:00"
+    },
+    {
+      "temp_ship_id": 134,
+      "recorded_at": "2026-02-27T01:11:47+00:00"
+    },
+    {
+      "temp_ship_id": 134,
+      "recorded_at": "2026-02-28T21:05:08+00:00"
+    },
+    {
+      "temp_ship_id": 135,
+      "recorded_at": "2026-03-01T01:22:48+00:00"
+    },
+    {
+      "temp_ship_id": 135,
+      "recorded_at": "2026-03-04T08:43:25+00:00"
+    },
+    {
+      "temp_ship_id": 136,
+      "recorded_at": "2026-02-26T06:20:49+00:00"
+    },
+    {
+      "temp_ship_id": 136,
+      "recorded_at": "2026-03-01T08:12:38+00:00"
+    },
+    {
+      "temp_ship_id": 138,
+      "recorded_at": "2026-03-01T13:43:39+00:00"
+    },
+    {
+      "temp_ship_id": 138,
+      "recorded_at": "2026-03-02T00:16:48+00:00"
+    },
+    {
+      "temp_ship_id": 139,
+      "recorded_at": "2026-02-26T10:26:48+00:00"
+    },
+    {
+      "temp_ship_id": 139,
+      "recorded_at": "2026-03-03T21:17:16+00:00"
+    },
+    {
+      "temp_ship_id": 139,
+      "recorded_at": "2026-03-04T13:26:16+00:00"
+    },
+    {
+      "temp_ship_id": 140,
+      "recorded_at": "2026-03-03T06:54:55+00:00"
+    },
+    {
+      "temp_ship_id": 141,
+      "recorded_at": "2026-02-26T09:41:28+00:00"
+    },
+    {
+      "temp_ship_id": 141,
+      "recorded_at": "2026-02-28T06:44:20+00:00"
+    },
+    {
+      "temp_ship_id": 143,
+      "recorded_at": "2026-02-27T22:54:48+00:00"
+    },
+    {
+      "temp_ship_id": 146,
+      "recorded_at": "2026-02-27T16:51:42+00:00"
+    },
+    {
+      "temp_ship_id": 146,
+      "recorded_at": "2026-03-01T15:33:08+00:00"
+    },
+    {
+      "temp_ship_id": 146,
+      "recorded_at": "2026-03-02T04:48:15+00:00"
+    },
+    {
+      "temp_ship_id": 147,
+      "recorded_at": "2026-03-04T03:33:09+00:00"
+    },
+    {
+      "temp_ship_id": 148,
+      "recorded_at": "2026-03-03T08:05:44+00:00"
+    },
+    {
+      "temp_ship_id": 148,
+      "recorded_at": "2026-03-03T09:13:32+00:00"
+    },
+    {
+      "temp_ship_id": 150,
+      "recorded_at": "2026-02-28T11:42:58+00:00"
+    }
+  ],
+  "field_missing_records": [],
+  "clean_report_total": 59581,
+  "raw_record_total": 58865,
+  "scenario_features": {
+    "out_of_area_windows": [
+      {
+        "temp_ship_id": 1,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:07:00+00:00",
+        "hours": 24.12,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 1,
+        "start_utc": "2026-02-28T03:36:00+00:00",
+        "end_utc": "2026-03-01T04:55:20+00:00",
+        "hours": 25.32,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 1,
+        "start_utc": "2026-03-02T07:11:20+00:00",
+        "end_utc": "2026-03-03T08:30:40+00:00",
+        "hours": 25.32,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 2,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:04:00+00:00",
+        "hours": 15.07,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 2,
+        "start_utc": "2026-02-28T01:26:00+00:00",
+        "end_utc": "2026-02-28T17:44:00+00:00",
+        "hours": 16.3,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 2,
+        "start_utc": "2026-03-02T04:07:40+00:00",
+        "end_utc": "2026-03-02T20:25:40+00:00",
+        "hours": 16.3,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 2,
+        "start_utc": "2026-03-04T06:51:20+00:00",
+        "end_utc": "2026-03-04T23:09:20+00:00",
+        "hours": 16.3,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 3,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T07:36:20+00:00",
+        "hours": 7.61,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 3,
+        "start_utc": "2026-02-27T02:49:00+00:00",
+        "end_utc": "2026-02-27T20:34:40+00:00",
+        "hours": 17.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 3,
+        "start_utc": "2026-02-28T15:41:20+00:00",
+        "end_utc": "2026-03-01T09:27:00+00:00",
+        "hours": 17.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 3,
+        "start_utc": "2026-03-02T04:44:40+00:00",
+        "end_utc": "2026-03-02T22:30:20+00:00",
+        "hours": 17.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 3,
+        "start_utc": "2026-03-03T17:47:20+00:00",
+        "end_utc": "2026-03-04T11:33:00+00:00",
+        "hours": 17.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 4,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T17:17:00+00:00",
+        "hours": 17.28,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 4,
+        "start_utc": "2026-02-27T14:47:20+00:00",
+        "end_utc": "2026-02-28T06:16:00+00:00",
+        "hours": 15.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 4,
+        "start_utc": "2026-03-01T04:55:20+00:00",
+        "end_utc": "2026-03-01T20:24:00+00:00",
+        "hours": 15.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 4,
+        "start_utc": "2026-03-02T17:53:40+00:00",
+        "end_utc": "2026-03-03T09:22:20+00:00",
+        "hours": 15.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 4,
+        "start_utc": "2026-03-04T08:00:00+00:00",
+        "end_utc": "2026-03-04T23:28:40+00:00",
+        "hours": 15.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 5,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T01:21:00+00:00",
+        "hours": 1.35,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 5,
+        "start_utc": "2026-02-26T23:13:40+00:00",
+        "end_utc": "2026-02-27T14:57:20+00:00",
+        "hours": 15.73,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 5,
+        "start_utc": "2026-02-28T11:52:00+00:00",
+        "end_utc": "2026-03-01T03:35:40+00:00",
+        "hours": 15.73,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 5,
+        "start_utc": "2026-03-02T14:02:40+00:00",
+        "end_utc": "2026-03-03T05:46:20+00:00",
+        "hours": 15.73,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 6,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T20:45:00+00:00",
+        "hours": 20.75,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 6,
+        "start_utc": "2026-02-28T06:34:20+00:00",
+        "end_utc": "2026-03-01T06:33:00+00:00",
+        "hours": 23.98,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 6,
+        "start_utc": "2026-03-02T18:00:20+00:00",
+        "end_utc": "2026-03-03T17:59:00+00:00",
+        "hours": 23.98,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 7,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:45:20+00:00",
+        "hours": 21.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 7,
+        "start_utc": "2026-02-28T03:46:40+00:00",
+        "end_utc": "2026-02-28T10:27:40+00:00",
+        "hours": 6.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 7,
+        "start_utc": "2026-03-01T16:28:00+00:00",
+        "end_utc": "2026-03-01T23:09:00+00:00",
+        "hours": 6.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 7,
+        "start_utc": "2026-03-03T19:37:40+00:00",
+        "end_utc": "2026-03-04T02:18:40+00:00",
+        "hours": 6.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 8,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T10:55:00+00:00",
+        "hours": 10.92,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 8,
+        "start_utc": "2026-02-27T08:32:20+00:00",
+        "end_utc": "2026-02-27T20:02:40+00:00",
+        "hours": 11.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 8,
+        "start_utc": "2026-02-28T17:54:40+00:00",
+        "end_utc": "2026-03-01T05:25:00+00:00",
+        "hours": 11.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 8,
+        "start_utc": "2026-03-02T03:03:20+00:00",
+        "end_utc": "2026-03-02T14:33:40+00:00",
+        "hours": 11.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 8,
+        "start_utc": "2026-03-03T12:16:00+00:00",
+        "end_utc": "2026-03-03T23:46:20+00:00",
+        "hours": 11.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 9,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:50:20+00:00",
+        "hours": 4.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 9,
+        "start_utc": "2026-02-28T01:32:20+00:00",
+        "end_utc": "2026-02-28T06:54:00+00:00",
+        "hours": 5.36,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 9,
+        "start_utc": "2026-03-02T03:51:40+00:00",
+        "end_utc": "2026-03-02T09:13:20+00:00",
+        "hours": 5.36,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 9,
+        "start_utc": "2026-03-04T06:09:20+00:00",
+        "end_utc": "2026-03-04T11:31:00+00:00",
+        "hours": 5.36,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 10,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T10:19:00+00:00",
+        "hours": 10.32,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 10,
+        "start_utc": "2026-02-27T15:48:40+00:00",
+        "end_utc": "2026-02-28T14:33:40+00:00",
+        "hours": 22.75,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 10,
+        "start_utc": "2026-03-01T20:06:20+00:00",
+        "end_utc": "2026-03-02T18:51:20+00:00",
+        "hours": 22.75,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 11,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T17:17:40+00:00",
+        "hours": 17.29,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 11,
+        "start_utc": "2026-02-28T04:01:20+00:00",
+        "end_utc": "2026-02-28T15:56:00+00:00",
+        "hours": 11.91,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 12,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T07:04:00+00:00",
+        "hours": 7.07,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 12,
+        "start_utc": "2026-02-27T13:37:20+00:00",
+        "end_utc": "2026-02-27T19:21:00+00:00",
+        "hours": 5.73,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 13,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T08:13:20+00:00",
+        "hours": 8.22,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 13,
+        "start_utc": "2026-02-27T00:26:40+00:00",
+        "end_utc": "2026-02-27T13:04:20+00:00",
+        "hours": 12.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 13,
+        "start_utc": "2026-02-28T05:12:20+00:00",
+        "end_utc": "2026-02-28T17:50:00+00:00",
+        "hours": 12.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 13,
+        "start_utc": "2026-03-01T09:56:00+00:00",
+        "end_utc": "2026-03-01T22:33:40+00:00",
+        "hours": 12.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 13,
+        "start_utc": "2026-03-02T14:42:20+00:00",
+        "end_utc": "2026-03-03T03:20:00+00:00",
+        "hours": 12.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 14,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:28:40+00:00",
+        "hours": 4.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 14,
+        "start_utc": "2026-02-27T08:36:20+00:00",
+        "end_utc": "2026-02-28T00:09:20+00:00",
+        "hours": 15.55,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 15,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T01:33:00+00:00",
+        "hours": 25.55,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 15,
+        "start_utc": "2026-02-28T04:17:00+00:00",
+        "end_utc": "2026-03-01T04:51:40+00:00",
+        "hours": 24.58,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 16,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:56:20+00:00",
+        "hours": 21.94,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 16,
+        "start_utc": "2026-02-28T01:06:40+00:00",
+        "end_utc": "2026-02-28T17:00:20+00:00",
+        "hours": 15.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 17,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:26:20+00:00",
+        "hours": 21.44,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 17,
+        "start_utc": "2026-02-27T14:10:40+00:00",
+        "end_utc": "2026-02-28T01:22:40+00:00",
+        "hours": 11.2,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 17,
+        "start_utc": "2026-02-28T18:10:00+00:00",
+        "end_utc": "2026-03-01T05:22:00+00:00",
+        "hours": 11.2,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 17,
+        "start_utc": "2026-03-01T22:10:40+00:00",
+        "end_utc": "2026-03-02T09:22:40+00:00",
+        "hours": 11.2,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 17,
+        "start_utc": "2026-03-03T02:10:40+00:00",
+        "end_utc": "2026-03-03T13:22:40+00:00",
+        "hours": 11.2,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 18,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T14:17:00+00:00",
+        "hours": 14.28,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 18,
+        "start_utc": "2026-02-27T15:50:00+00:00",
+        "end_utc": "2026-02-28T06:22:00+00:00",
+        "hours": 14.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 18,
+        "start_utc": "2026-03-01T14:08:40+00:00",
+        "end_utc": "2026-03-02T04:40:40+00:00",
+        "hours": 14.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 18,
+        "start_utc": "2026-03-03T19:27:40+00:00",
+        "end_utc": "2026-03-04T09:59:40+00:00",
+        "hours": 14.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 19,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T03:56:00+00:00",
+        "hours": 3.93,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 19,
+        "start_utc": "2026-02-27T03:33:40+00:00",
+        "end_utc": "2026-02-27T18:54:40+00:00",
+        "hours": 15.35,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 20,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T01:24:40+00:00",
+        "hours": 25.41,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 20,
+        "start_utc": "2026-02-27T21:37:40+00:00",
+        "end_utc": "2026-02-28T15:26:20+00:00",
+        "hours": 17.81,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 20,
+        "start_utc": "2026-03-04T04:06:40+00:00",
+        "end_utc": "2026-03-04T21:55:20+00:00",
+        "hours": 17.81,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 21,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T14:11:40+00:00",
+        "hours": 14.19,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 21,
+        "start_utc": "2026-02-27T19:14:20+00:00",
+        "end_utc": "2026-02-28T02:16:00+00:00",
+        "hours": 7.03,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 22,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T05:12:00+00:00",
+        "hours": 5.2,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 22,
+        "start_utc": "2026-03-01T09:15:20+00:00",
+        "end_utc": "2026-03-02T04:42:40+00:00",
+        "hours": 19.46,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 23,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T12:26:20+00:00",
+        "hours": 12.44,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 23,
+        "start_utc": "2026-02-27T11:02:40+00:00",
+        "end_utc": "2026-02-28T03:44:20+00:00",
+        "hours": 16.69,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 23,
+        "start_utc": "2026-03-01T02:20:40+00:00",
+        "end_utc": "2026-03-01T19:02:20+00:00",
+        "hours": 16.69,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 23,
+        "start_utc": "2026-03-02T17:44:40+00:00",
+        "end_utc": "2026-03-03T10:26:20+00:00",
+        "hours": 16.69,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 24,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T23:05:40+00:00",
+        "hours": 23.09,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 24,
+        "start_utc": "2026-02-27T21:58:00+00:00",
+        "end_utc": "2026-02-28T06:27:40+00:00",
+        "hours": 8.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 24,
+        "start_utc": "2026-03-01T04:30:00+00:00",
+        "end_utc": "2026-03-01T12:59:40+00:00",
+        "hours": 8.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 24,
+        "start_utc": "2026-03-02T11:49:00+00:00",
+        "end_utc": "2026-03-02T20:18:40+00:00",
+        "hours": 8.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 24,
+        "start_utc": "2026-03-03T18:22:00+00:00",
+        "end_utc": "2026-03-04T02:51:40+00:00",
+        "hours": 8.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 25,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T10:30:20+00:00",
+        "hours": 10.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 25,
+        "start_utc": "2026-02-27T08:59:20+00:00",
+        "end_utc": "2026-02-28T08:10:20+00:00",
+        "hours": 23.18,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 25,
+        "start_utc": "2026-03-01T06:56:40+00:00",
+        "end_utc": "2026-03-02T06:07:40+00:00",
+        "hours": 23.18,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 25,
+        "start_utc": "2026-03-03T04:46:20+00:00",
+        "end_utc": "2026-03-04T03:57:20+00:00",
+        "hours": 23.18,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 26,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T08:25:40+00:00",
+        "hours": 8.43,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 26,
+        "start_utc": "2026-02-27T20:04:40+00:00",
+        "end_utc": "2026-02-28T09:19:40+00:00",
+        "hours": 13.25,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 27,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T08:34:40+00:00",
+        "hours": 8.58,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 27,
+        "start_utc": "2026-02-27T03:34:40+00:00",
+        "end_utc": "2026-02-27T15:31:20+00:00",
+        "hours": 11.94,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 27,
+        "start_utc": "2026-02-28T11:29:00+00:00",
+        "end_utc": "2026-02-28T23:25:40+00:00",
+        "hours": 11.94,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 27,
+        "start_utc": "2026-03-01T18:24:40+00:00",
+        "end_utc": "2026-03-02T06:21:20+00:00",
+        "hours": 11.94,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 27,
+        "start_utc": "2026-03-03T02:18:20+00:00",
+        "end_utc": "2026-03-03T14:15:00+00:00",
+        "hours": 11.94,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 27,
+        "start_utc": "2026-03-04T09:13:00+00:00",
+        "end_utc": "2026-03-04T21:09:40+00:00",
+        "hours": 11.94,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 28,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T01:07:40+00:00",
+        "hours": 25.13,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 28,
+        "start_utc": "2026-02-28T04:12:00+00:00",
+        "end_utc": "2026-02-28T21:34:20+00:00",
+        "hours": 17.37,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 28,
+        "start_utc": "2026-03-02T19:02:00+00:00",
+        "end_utc": "2026-03-03T12:24:20+00:00",
+        "hours": 17.37,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 29,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:17:00+00:00",
+        "hours": 4.28,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 29,
+        "start_utc": "2026-02-27T08:06:00+00:00",
+        "end_utc": "2026-02-27T13:06:20+00:00",
+        "hours": 5.01,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 29,
+        "start_utc": "2026-02-28T22:00:40+00:00",
+        "end_utc": "2026-03-01T03:01:00+00:00",
+        "hours": 5.01,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 29,
+        "start_utc": "2026-03-02T06:53:20+00:00",
+        "end_utc": "2026-03-02T11:53:40+00:00",
+        "hours": 5.01,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 30,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:31:00+00:00",
+        "hours": 24.52,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 30,
+        "start_utc": "2026-02-27T19:48:20+00:00",
+        "end_utc": "2026-02-28T10:47:40+00:00",
+        "hours": 14.99,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 30,
+        "start_utc": "2026-03-01T06:03:40+00:00",
+        "end_utc": "2026-03-01T21:03:00+00:00",
+        "hours": 14.99,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 30,
+        "start_utc": "2026-03-02T16:09:20+00:00",
+        "end_utc": "2026-03-03T07:08:40+00:00",
+        "hours": 14.99,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 30,
+        "start_utc": "2026-03-04T02:03:00+00:00",
+        "end_utc": "2026-03-04T17:02:20+00:00",
+        "hours": 14.99,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 31,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:05:40+00:00",
+        "hours": 4.09,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 31,
+        "start_utc": "2026-02-26T22:04:40+00:00",
+        "end_utc": "2026-02-27T05:58:00+00:00",
+        "hours": 7.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 31,
+        "start_utc": "2026-02-27T23:16:40+00:00",
+        "end_utc": "2026-02-28T07:10:00+00:00",
+        "hours": 7.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 31,
+        "start_utc": "2026-03-01T01:11:00+00:00",
+        "end_utc": "2026-03-01T09:04:20+00:00",
+        "hours": 7.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 31,
+        "start_utc": "2026-03-02T17:51:20+00:00",
+        "end_utc": "2026-03-03T01:44:40+00:00",
+        "hours": 7.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 31,
+        "start_utc": "2026-03-03T19:53:40+00:00",
+        "end_utc": "2026-03-04T03:47:00+00:00",
+        "hours": 7.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 32,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T01:33:40+00:00",
+        "hours": 1.56,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 32,
+        "start_utc": "2026-02-27T06:33:00+00:00",
+        "end_utc": "2026-02-27T21:52:40+00:00",
+        "hours": 15.33,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 32,
+        "start_utc": "2026-03-01T12:01:40+00:00",
+        "end_utc": "2026-03-02T03:21:20+00:00",
+        "hours": 15.33,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 33,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T08:53:20+00:00",
+        "hours": 8.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 33,
+        "start_utc": "2026-02-27T13:29:20+00:00",
+        "end_utc": "2026-02-28T06:54:40+00:00",
+        "hours": 17.42,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 33,
+        "start_utc": "2026-03-01T11:30:00+00:00",
+        "end_utc": "2026-03-02T04:55:20+00:00",
+        "hours": 17.42,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 33,
+        "start_utc": "2026-03-03T22:25:40+00:00",
+        "end_utc": "2026-03-04T15:51:00+00:00",
+        "hours": 17.42,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 34,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:48:00+00:00",
+        "hours": 15.8,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 34,
+        "start_utc": "2026-02-27T17:09:40+00:00",
+        "end_utc": "2026-02-28T14:33:40+00:00",
+        "hours": 21.4,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 35,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T11:09:00+00:00",
+        "hours": 11.15,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 35,
+        "start_utc": "2026-02-27T13:51:40+00:00",
+        "end_utc": "2026-02-28T10:11:20+00:00",
+        "hours": 20.33,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 36,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:23:40+00:00",
+        "hours": 21.39,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 36,
+        "start_utc": "2026-02-27T14:04:20+00:00",
+        "end_utc": "2026-02-28T09:17:00+00:00",
+        "hours": 19.21,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 36,
+        "start_utc": "2026-03-03T02:02:40+00:00",
+        "end_utc": "2026-03-03T21:15:20+00:00",
+        "hours": 19.21,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 37,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T07:38:40+00:00",
+        "hours": 7.64,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 37,
+        "start_utc": "2026-02-27T10:40:40+00:00",
+        "end_utc": "2026-02-27T17:49:00+00:00",
+        "hours": 7.14,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 37,
+        "start_utc": "2026-03-01T03:27:00+00:00",
+        "end_utc": "2026-03-01T10:35:20+00:00",
+        "hours": 7.14,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 37,
+        "start_utc": "2026-03-02T13:40:20+00:00",
+        "end_utc": "2026-03-02T20:48:40+00:00",
+        "hours": 7.14,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 37,
+        "start_utc": "2026-03-04T00:00:40+00:00",
+        "end_utc": "2026-03-04T07:09:00+00:00",
+        "hours": 7.14,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 38,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T06:44:40+00:00",
+        "hours": 6.74,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 38,
+        "start_utc": "2026-02-27T10:05:40+00:00",
+        "end_utc": "2026-02-28T10:56:20+00:00",
+        "hours": 24.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 39,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T10:33:00+00:00",
+        "hours": 10.55,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 39,
+        "start_utc": "2026-02-27T13:31:40+00:00",
+        "end_utc": "2026-02-27T21:30:00+00:00",
+        "hours": 7.97,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 40,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:27:20+00:00",
+        "hours": 4.46,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 40,
+        "start_utc": "2026-02-27T16:46:40+00:00",
+        "end_utc": "2026-02-28T00:16:00+00:00",
+        "hours": 7.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 41,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T13:33:40+00:00",
+        "hours": 13.56,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 41,
+        "start_utc": "2026-02-27T13:02:40+00:00",
+        "end_utc": "2026-02-28T06:18:00+00:00",
+        "hours": 17.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 41,
+        "start_utc": "2026-03-01T04:47:20+00:00",
+        "end_utc": "2026-03-01T22:02:40+00:00",
+        "hours": 17.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 41,
+        "start_utc": "2026-03-02T21:35:00+00:00",
+        "end_utc": "2026-03-03T14:50:20+00:00",
+        "hours": 17.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 42,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T02:43:20+00:00",
+        "hours": 2.72,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 42,
+        "start_utc": "2026-02-27T15:24:20+00:00",
+        "end_utc": "2026-02-28T05:53:00+00:00",
+        "hours": 14.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 43,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T05:07:20+00:00",
+        "hours": 5.12,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 43,
+        "start_utc": "2026-02-27T11:15:00+00:00",
+        "end_utc": "2026-02-27T21:56:00+00:00",
+        "hours": 10.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 43,
+        "start_utc": "2026-03-01T04:49:40+00:00",
+        "end_utc": "2026-03-01T15:30:40+00:00",
+        "hours": 10.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 43,
+        "start_utc": "2026-03-03T19:03:00+00:00",
+        "end_utc": "2026-03-04T05:44:00+00:00",
+        "hours": 10.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 44,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T13:36:00+00:00",
+        "hours": 13.6,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 44,
+        "start_utc": "2026-02-27T17:07:40+00:00",
+        "end_utc": "2026-02-28T17:47:20+00:00",
+        "hours": 24.66,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 45,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:06:00+00:00",
+        "hours": 24.1,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 45,
+        "start_utc": "2026-02-28T01:56:00+00:00",
+        "end_utc": "2026-02-28T12:29:40+00:00",
+        "hours": 10.56,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 45,
+        "start_utc": "2026-03-04T11:08:40+00:00",
+        "end_utc": "2026-03-04T21:42:20+00:00",
+        "hours": 10.56,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 46,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:21:20+00:00",
+        "hours": 24.36,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 46,
+        "start_utc": "2026-02-28T09:13:20+00:00",
+        "end_utc": "2026-02-28T19:35:40+00:00",
+        "hours": 10.37,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 46,
+        "start_utc": "2026-03-02T06:07:20+00:00",
+        "end_utc": "2026-03-02T16:29:40+00:00",
+        "hours": 10.37,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 46,
+        "start_utc": "2026-03-04T05:31:20+00:00",
+        "end_utc": "2026-03-04T15:53:40+00:00",
+        "hours": 10.37,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 47,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:26:00+00:00",
+        "hours": 4.43,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 47,
+        "start_utc": "2026-02-27T17:20:40+00:00",
+        "end_utc": "2026-02-27T23:16:00+00:00",
+        "hours": 5.92,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 48,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T01:08:40+00:00",
+        "hours": 25.14,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 48,
+        "start_utc": "2026-02-27T23:03:00+00:00",
+        "end_utc": "2026-02-28T10:18:40+00:00",
+        "hours": 11.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 48,
+        "start_utc": "2026-03-01T09:21:20+00:00",
+        "end_utc": "2026-03-01T20:37:00+00:00",
+        "hours": 11.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 48,
+        "start_utc": "2026-03-02T22:32:20+00:00",
+        "end_utc": "2026-03-03T09:48:00+00:00",
+        "hours": 11.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 49,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T16:14:40+00:00",
+        "hours": 16.24,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 49,
+        "start_utc": "2026-02-27T21:42:00+00:00",
+        "end_utc": "2026-02-28T09:32:20+00:00",
+        "hours": 11.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 49,
+        "start_utc": "2026-03-01T16:13:00+00:00",
+        "end_utc": "2026-03-02T04:03:20+00:00",
+        "hours": 11.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 49,
+        "start_utc": "2026-03-03T09:05:40+00:00",
+        "end_utc": "2026-03-03T20:56:00+00:00",
+        "hours": 11.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 50,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:50:20+00:00",
+        "hours": 15.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 50,
+        "start_utc": "2026-02-27T20:51:00+00:00",
+        "end_utc": "2026-02-28T17:44:40+00:00",
+        "hours": 20.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 51,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:50:00+00:00",
+        "hours": 21.83,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 51,
+        "start_utc": "2026-02-28T04:45:40+00:00",
+        "end_utc": "2026-02-28T16:49:20+00:00",
+        "hours": 12.06,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 52,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:16:00+00:00",
+        "hours": 21.27,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 52,
+        "start_utc": "2026-03-01T06:18:00+00:00",
+        "end_utc": "2026-03-02T03:40:00+00:00",
+        "hours": 21.37,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 53,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T08:53:40+00:00",
+        "hours": 8.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 53,
+        "start_utc": "2026-02-27T21:11:00+00:00",
+        "end_utc": "2026-02-28T14:54:00+00:00",
+        "hours": 17.72,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 53,
+        "start_utc": "2026-03-02T03:21:20+00:00",
+        "end_utc": "2026-03-02T21:04:20+00:00",
+        "hours": 17.72,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 54,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T01:12:40+00:00",
+        "hours": 25.21,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 54,
+        "start_utc": "2026-02-28T06:14:00+00:00",
+        "end_utc": "2026-02-28T21:17:20+00:00",
+        "hours": 15.06,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 55,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T16:39:40+00:00",
+        "hours": 16.66,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 55,
+        "start_utc": "2026-02-27T14:44:00+00:00",
+        "end_utc": "2026-02-27T22:04:20+00:00",
+        "hours": 7.34,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 55,
+        "start_utc": "2026-02-28T20:04:40+00:00",
+        "end_utc": "2026-03-01T03:25:00+00:00",
+        "hours": 7.34,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 55,
+        "start_utc": "2026-03-02T01:24:40+00:00",
+        "end_utc": "2026-03-02T08:45:00+00:00",
+        "hours": 7.34,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 55,
+        "start_utc": "2026-03-03T06:48:40+00:00",
+        "end_utc": "2026-03-03T14:09:00+00:00",
+        "hours": 7.34,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 56,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:11:00+00:00",
+        "hours": 24.18,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 56,
+        "start_utc": "2026-02-27T19:14:00+00:00",
+        "end_utc": "2026-02-28T01:33:40+00:00",
+        "hours": 6.33,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 57,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T17:44:20+00:00",
+        "hours": 17.74,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 57,
+        "start_utc": "2026-02-27T21:14:40+00:00",
+        "end_utc": "2026-02-28T07:56:20+00:00",
+        "hours": 10.69,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 58,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:19:40+00:00",
+        "hours": 15.33,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 58,
+        "start_utc": "2026-02-28T02:58:00+00:00",
+        "end_utc": "2026-02-28T18:53:20+00:00",
+        "hours": 15.92,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 59,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T19:46:00+00:00",
+        "hours": 19.77,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 59,
+        "start_utc": "2026-02-27T14:17:40+00:00",
+        "end_utc": "2026-02-28T08:03:40+00:00",
+        "hours": 17.77,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 59,
+        "start_utc": "2026-03-01T02:35:40+00:00",
+        "end_utc": "2026-03-01T20:21:40+00:00",
+        "hours": 17.77,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 59,
+        "start_utc": "2026-03-02T14:54:00+00:00",
+        "end_utc": "2026-03-03T08:40:00+00:00",
+        "hours": 17.77,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 59,
+        "start_utc": "2026-03-04T03:13:00+00:00",
+        "end_utc": "2026-03-04T20:59:00+00:00",
+        "hours": 17.77,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 60,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T16:20:20+00:00",
+        "hours": 16.34,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 60,
+        "start_utc": "2026-02-27T17:52:40+00:00",
+        "end_utc": "2026-02-28T00:01:40+00:00",
+        "hours": 6.15,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 60,
+        "start_utc": "2026-03-01T00:25:20+00:00",
+        "end_utc": "2026-03-01T06:34:20+00:00",
+        "hours": 6.15,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 60,
+        "start_utc": "2026-03-02T07:59:20+00:00",
+        "end_utc": "2026-03-02T14:08:20+00:00",
+        "hours": 6.15,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 60,
+        "start_utc": "2026-03-03T14:30:40+00:00",
+        "end_utc": "2026-03-03T20:39:40+00:00",
+        "hours": 6.15,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 61,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T01:15:40+00:00",
+        "hours": 1.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 61,
+        "start_utc": "2026-02-27T08:27:40+00:00",
+        "end_utc": "2026-02-27T15:34:00+00:00",
+        "hours": 7.11,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 62,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T09:45:40+00:00",
+        "hours": 9.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 62,
+        "start_utc": "2026-02-27T20:28:40+00:00",
+        "end_utc": "2026-02-28T10:20:40+00:00",
+        "hours": 13.87,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 62,
+        "start_utc": "2026-03-01T19:24:00+00:00",
+        "end_utc": "2026-03-02T09:16:00+00:00",
+        "hours": 13.87,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 62,
+        "start_utc": "2026-03-03T20:04:00+00:00",
+        "end_utc": "2026-03-04T09:56:00+00:00",
+        "hours": 13.87,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 63,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T23:27:00+00:00",
+        "hours": 23.45,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 63,
+        "start_utc": "2026-02-27T21:46:00+00:00",
+        "end_utc": "2026-02-28T03:51:00+00:00",
+        "hours": 6.08,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 63,
+        "start_utc": "2026-03-01T03:10:20+00:00",
+        "end_utc": "2026-03-01T09:15:20+00:00",
+        "hours": 6.08,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 63,
+        "start_utc": "2026-03-02T07:35:20+00:00",
+        "end_utc": "2026-03-02T13:40:20+00:00",
+        "hours": 6.08,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 63,
+        "start_utc": "2026-03-03T12:59:20+00:00",
+        "end_utc": "2026-03-03T19:04:20+00:00",
+        "hours": 6.08,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 63,
+        "start_utc": "2026-03-04T17:25:20+00:00",
+        "end_utc": "2026-03-04T23:30:20+00:00",
+        "hours": 6.08,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 64,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:29:20+00:00",
+        "hours": 15.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 64,
+        "start_utc": "2026-02-27T14:58:40+00:00",
+        "end_utc": "2026-02-28T04:29:40+00:00",
+        "hours": 13.52,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 64,
+        "start_utc": "2026-03-03T10:00:40+00:00",
+        "end_utc": "2026-03-03T23:31:40+00:00",
+        "hours": 13.52,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 65,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T22:28:20+00:00",
+        "hours": 22.47,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 65,
+        "start_utc": "2026-02-28T00:27:20+00:00",
+        "end_utc": "2026-02-28T13:55:20+00:00",
+        "hours": 13.47,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 65,
+        "start_utc": "2026-03-04T03:38:00+00:00",
+        "end_utc": "2026-03-04T17:06:00+00:00",
+        "hours": 13.47,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 66,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:00:40+00:00",
+        "hours": 21.01,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 66,
+        "start_utc": "2026-02-28T04:30:00+00:00",
+        "end_utc": "2026-02-28T14:05:40+00:00",
+        "hours": 9.59,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 66,
+        "start_utc": "2026-03-01T21:16:40+00:00",
+        "end_utc": "2026-03-02T06:52:20+00:00",
+        "hours": 9.59,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 66,
+        "start_utc": "2026-03-04T00:12:00+00:00",
+        "end_utc": "2026-03-04T09:47:40+00:00",
+        "hours": 9.59,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 67,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:29:20+00:00",
+        "hours": 21.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 67,
+        "start_utc": "2026-03-01T04:20:00+00:00",
+        "end_utc": "2026-03-01T18:05:20+00:00",
+        "hours": 13.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 67,
+        "start_utc": "2026-03-04T00:55:40+00:00",
+        "end_utc": "2026-03-04T14:41:00+00:00",
+        "hours": 13.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 68,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T23:34:20+00:00",
+        "hours": 23.57,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 68,
+        "start_utc": "2026-02-27T20:32:20+00:00",
+        "end_utc": "2026-02-28T12:09:00+00:00",
+        "hours": 15.61,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 68,
+        "start_utc": "2026-03-03T19:33:00+00:00",
+        "end_utc": "2026-03-04T11:09:40+00:00",
+        "hours": 15.61,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 69,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:17:40+00:00",
+        "hours": 21.29,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 69,
+        "start_utc": "2026-02-27T18:14:00+00:00",
+        "end_utc": "2026-02-28T06:54:40+00:00",
+        "hours": 12.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 69,
+        "start_utc": "2026-03-01T02:50:20+00:00",
+        "end_utc": "2026-03-01T15:31:00+00:00",
+        "hours": 12.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 69,
+        "start_utc": "2026-03-02T12:22:20+00:00",
+        "end_utc": "2026-03-03T01:03:00+00:00",
+        "hours": 12.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 69,
+        "start_utc": "2026-03-03T20:52:00+00:00",
+        "end_utc": "2026-03-04T09:32:40+00:00",
+        "hours": 12.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 70,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:16:00+00:00",
+        "hours": 15.27,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 70,
+        "start_utc": "2026-02-27T16:11:20+00:00",
+        "end_utc": "2026-02-28T15:57:40+00:00",
+        "hours": 23.77,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 71,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T03:15:20+00:00",
+        "hours": 3.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 71,
+        "start_utc": "2026-02-27T10:23:40+00:00",
+        "end_utc": "2026-02-28T12:11:00+00:00",
+        "hours": 25.79,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 72,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:24:40+00:00",
+        "hours": 24.41,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 72,
+        "start_utc": "2026-02-27T21:20:00+00:00",
+        "end_utc": "2026-02-28T19:53:20+00:00",
+        "hours": 22.56,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 72,
+        "start_utc": "2026-03-03T17:08:20+00:00",
+        "end_utc": "2026-03-04T15:41:40+00:00",
+        "hours": 22.56,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 73,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T22:42:40+00:00",
+        "hours": 22.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 73,
+        "start_utc": "2026-02-28T16:02:00+00:00",
+        "end_utc": "2026-03-01T12:53:00+00:00",
+        "hours": 20.85,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 73,
+        "start_utc": "2026-03-03T06:39:20+00:00",
+        "end_utc": "2026-03-04T03:30:20+00:00",
+        "hours": 20.85,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 74,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T10:49:00+00:00",
+        "hours": 10.82,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 74,
+        "start_utc": "2026-02-27T12:10:40+00:00",
+        "end_utc": "2026-02-28T00:01:20+00:00",
+        "hours": 11.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 74,
+        "start_utc": "2026-03-01T01:26:20+00:00",
+        "end_utc": "2026-03-01T13:17:00+00:00",
+        "hours": 11.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 74,
+        "start_utc": "2026-03-03T07:25:20+00:00",
+        "end_utc": "2026-03-03T19:16:00+00:00",
+        "hours": 11.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 75,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:31:40+00:00",
+        "hours": 24.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 75,
+        "start_utc": "2026-02-28T16:24:00+00:00",
+        "end_utc": "2026-03-01T10:45:20+00:00",
+        "hours": 18.36,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 75,
+        "start_utc": "2026-03-03T03:00:20+00:00",
+        "end_utc": "2026-03-03T21:21:40+00:00",
+        "hours": 18.36,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 76,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T08:35:00+00:00",
+        "hours": 8.58,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 76,
+        "start_utc": "2026-02-27T09:16:20+00:00",
+        "end_utc": "2026-02-27T21:32:00+00:00",
+        "hours": 12.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 76,
+        "start_utc": "2026-03-01T03:03:20+00:00",
+        "end_utc": "2026-03-01T15:19:00+00:00",
+        "hours": 12.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 76,
+        "start_utc": "2026-03-03T06:19:00+00:00",
+        "end_utc": "2026-03-03T18:34:40+00:00",
+        "hours": 12.26,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 77,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T19:45:20+00:00",
+        "hours": 19.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 77,
+        "start_utc": "2026-02-27T20:39:00+00:00",
+        "end_utc": "2026-02-28T09:01:40+00:00",
+        "hours": 12.38,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 77,
+        "start_utc": "2026-03-01T08:42:20+00:00",
+        "end_utc": "2026-03-01T21:05:00+00:00",
+        "hours": 12.38,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 77,
+        "start_utc": "2026-03-02T21:52:40+00:00",
+        "end_utc": "2026-03-03T10:15:20+00:00",
+        "hours": 12.38,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 77,
+        "start_utc": "2026-03-04T09:53:40+00:00",
+        "end_utc": "2026-03-04T22:16:20+00:00",
+        "hours": 12.38,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 78,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T01:17:20+00:00",
+        "hours": 1.29,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 78,
+        "start_utc": "2026-02-27T07:22:40+00:00",
+        "end_utc": "2026-02-27T19:05:00+00:00",
+        "hours": 11.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 79,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:37:40+00:00",
+        "hours": 21.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 79,
+        "start_utc": "2026-02-28T02:02:00+00:00",
+        "end_utc": "2026-02-28T11:56:00+00:00",
+        "hours": 9.9,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 80,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T19:59:20+00:00",
+        "hours": 19.99,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 80,
+        "start_utc": "2026-02-28T03:03:20+00:00",
+        "end_utc": "2026-02-28T09:42:00+00:00",
+        "hours": 6.64,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 81,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T16:39:40+00:00",
+        "hours": 16.66,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 81,
+        "start_utc": "2026-02-27T16:36:20+00:00",
+        "end_utc": "2026-02-28T09:25:00+00:00",
+        "hours": 16.81,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 82,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T01:52:20+00:00",
+        "hours": 1.87,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 82,
+        "start_utc": "2026-02-27T12:32:00+00:00",
+        "end_utc": "2026-02-28T03:57:00+00:00",
+        "hours": 15.42,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 82,
+        "start_utc": "2026-03-01T14:44:00+00:00",
+        "end_utc": "2026-03-02T06:09:00+00:00",
+        "hours": 15.42,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 82,
+        "start_utc": "2026-03-04T05:30:20+00:00",
+        "end_utc": "2026-03-04T20:55:20+00:00",
+        "hours": 15.42,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 83,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T08:25:40+00:00",
+        "hours": 8.43,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 83,
+        "start_utc": "2026-02-27T05:43:20+00:00",
+        "end_utc": "2026-02-28T06:43:20+00:00",
+        "hours": 25.0,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 83,
+        "start_utc": "2026-03-03T04:21:20+00:00",
+        "end_utc": "2026-03-04T05:21:20+00:00",
+        "hours": 25.0,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 84,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T20:40:20+00:00",
+        "hours": 20.67,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 84,
+        "start_utc": "2026-02-27T13:06:40+00:00",
+        "end_utc": "2026-02-27T21:38:20+00:00",
+        "hours": 8.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 84,
+        "start_utc": "2026-03-03T17:49:20+00:00",
+        "end_utc": "2026-03-04T02:21:00+00:00",
+        "hours": 8.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 85,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T23:18:40+00:00",
+        "hours": 23.31,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 85,
+        "start_utc": "2026-02-28T03:50:00+00:00",
+        "end_utc": "2026-03-01T04:09:00+00:00",
+        "hours": 24.32,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 85,
+        "start_utc": "2026-03-03T10:21:40+00:00",
+        "end_utc": "2026-03-04T10:40:40+00:00",
+        "hours": 24.32,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 86,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T01:10:20+00:00",
+        "hours": 25.17,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 86,
+        "start_utc": "2026-02-28T02:55:40+00:00",
+        "end_utc": "2026-02-28T10:49:20+00:00",
+        "hours": 7.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 86,
+        "start_utc": "2026-03-01T12:33:40+00:00",
+        "end_utc": "2026-03-01T20:27:20+00:00",
+        "hours": 7.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 86,
+        "start_utc": "2026-03-02T22:09:20+00:00",
+        "end_utc": "2026-03-03T06:03:00+00:00",
+        "hours": 7.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 86,
+        "start_utc": "2026-03-04T07:43:00+00:00",
+        "end_utc": "2026-03-04T15:36:40+00:00",
+        "hours": 7.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 87,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T06:10:00+00:00",
+        "hours": 6.17,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 87,
+        "start_utc": "2026-02-27T06:58:40+00:00",
+        "end_utc": "2026-02-27T23:23:20+00:00",
+        "hours": 16.41,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 88,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:57:40+00:00",
+        "hours": 15.96,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 88,
+        "start_utc": "2026-02-27T17:44:20+00:00",
+        "end_utc": "2026-02-28T18:26:40+00:00",
+        "hours": 24.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 89,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T14:37:00+00:00",
+        "hours": 14.62,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 89,
+        "start_utc": "2026-02-27T06:35:00+00:00",
+        "end_utc": "2026-02-27T13:03:40+00:00",
+        "hours": 6.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 89,
+        "start_utc": "2026-02-28T04:59:40+00:00",
+        "end_utc": "2026-02-28T11:28:20+00:00",
+        "hours": 6.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 89,
+        "start_utc": "2026-03-01T03:27:00+00:00",
+        "end_utc": "2026-03-01T09:55:40+00:00",
+        "hours": 6.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 89,
+        "start_utc": "2026-03-02T01:51:00+00:00",
+        "end_utc": "2026-03-02T08:19:40+00:00",
+        "hours": 6.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 90,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:01:00+00:00",
+        "hours": 24.02,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 90,
+        "start_utc": "2026-02-28T00:13:40+00:00",
+        "end_utc": "2026-02-28T20:32:20+00:00",
+        "hours": 20.31,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 91,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T11:31:20+00:00",
+        "hours": 11.52,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 91,
+        "start_utc": "2026-02-27T23:09:00+00:00",
+        "end_utc": "2026-02-28T21:17:20+00:00",
+        "hours": 22.14,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 92,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T14:13:20+00:00",
+        "hours": 14.22,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 92,
+        "start_utc": "2026-02-27T14:19:00+00:00",
+        "end_utc": "2026-02-27T19:58:20+00:00",
+        "hours": 5.66,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 92,
+        "start_utc": "2026-03-01T05:16:40+00:00",
+        "end_utc": "2026-03-01T10:56:00+00:00",
+        "hours": 5.66,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 92,
+        "start_utc": "2026-03-03T09:07:20+00:00",
+        "end_utc": "2026-03-03T14:46:40+00:00",
+        "hours": 5.66,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 92,
+        "start_utc": "2026-03-04T13:36:20+00:00",
+        "end_utc": "2026-03-04T19:15:40+00:00",
+        "hours": 5.66,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 93,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T14:50:40+00:00",
+        "hours": 14.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 93,
+        "start_utc": "2026-02-27T12:39:40+00:00",
+        "end_utc": "2026-02-27T19:53:00+00:00",
+        "hours": 7.22,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 93,
+        "start_utc": "2026-02-28T17:51:40+00:00",
+        "end_utc": "2026-03-01T01:05:00+00:00",
+        "hours": 7.22,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 93,
+        "start_utc": "2026-03-01T22:54:00+00:00",
+        "end_utc": "2026-03-02T06:07:20+00:00",
+        "hours": 7.22,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 93,
+        "start_utc": "2026-03-03T04:06:00+00:00",
+        "end_utc": "2026-03-03T11:19:20+00:00",
+        "hours": 7.22,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 94,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T09:32:00+00:00",
+        "hours": 9.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 94,
+        "start_utc": "2026-02-27T09:20:00+00:00",
+        "end_utc": "2026-02-27T22:16:20+00:00",
+        "hours": 12.94,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 94,
+        "start_utc": "2026-03-04T00:08:40+00:00",
+        "end_utc": "2026-03-04T13:05:00+00:00",
+        "hours": 12.94,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 95,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T10:42:00+00:00",
+        "hours": 10.7,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 95,
+        "start_utc": "2026-02-27T14:15:40+00:00",
+        "end_utc": "2026-02-28T12:18:40+00:00",
+        "hours": 22.05,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 95,
+        "start_utc": "2026-03-01T15:57:40+00:00",
+        "end_utc": "2026-03-02T14:00:40+00:00",
+        "hours": 22.05,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 95,
+        "start_utc": "2026-03-03T23:00:00+00:00",
+        "end_utc": "2026-03-04T21:03:00+00:00",
+        "hours": 22.05,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 96,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:26:20+00:00",
+        "hours": 4.44,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 96,
+        "start_utc": "2026-02-27T08:35:00+00:00",
+        "end_utc": "2026-02-28T05:56:00+00:00",
+        "hours": 21.35,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 97,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T06:03:00+00:00",
+        "hours": 6.05,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 97,
+        "start_utc": "2026-02-27T06:31:00+00:00",
+        "end_utc": "2026-02-27T12:01:40+00:00",
+        "hours": 5.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 97,
+        "start_utc": "2026-02-28T11:13:00+00:00",
+        "end_utc": "2026-02-28T16:43:40+00:00",
+        "hours": 5.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 97,
+        "start_utc": "2026-03-03T16:32:40+00:00",
+        "end_utc": "2026-03-03T22:03:20+00:00",
+        "hours": 5.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 98,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T07:57:20+00:00",
+        "hours": 7.96,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 98,
+        "start_utc": "2026-02-27T14:34:00+00:00",
+        "end_utc": "2026-02-28T01:00:00+00:00",
+        "hours": 10.43,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 98,
+        "start_utc": "2026-03-01T06:15:20+00:00",
+        "end_utc": "2026-03-01T16:41:20+00:00",
+        "hours": 10.43,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 98,
+        "start_utc": "2026-03-02T23:17:40+00:00",
+        "end_utc": "2026-03-03T09:43:40+00:00",
+        "hours": 10.43,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 99,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T10:46:40+00:00",
+        "hours": 10.78,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 99,
+        "start_utc": "2026-02-27T12:00:40+00:00",
+        "end_utc": "2026-02-27T19:39:20+00:00",
+        "hours": 7.64,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 99,
+        "start_utc": "2026-03-03T15:23:20+00:00",
+        "end_utc": "2026-03-03T23:02:00+00:00",
+        "hours": 7.64,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 100,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T06:44:20+00:00",
+        "hours": 6.74,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 100,
+        "start_utc": "2026-02-27T07:31:00+00:00",
+        "end_utc": "2026-02-28T07:47:00+00:00",
+        "hours": 24.27,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 101,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T01:46:00+00:00",
+        "hours": 25.77,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 101,
+        "start_utc": "2026-02-28T01:29:00+00:00",
+        "end_utc": "2026-02-28T09:00:40+00:00",
+        "hours": 7.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 102,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T14:34:40+00:00",
+        "hours": 14.58,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 102,
+        "start_utc": "2026-02-27T17:42:00+00:00",
+        "end_utc": "2026-02-28T02:36:00+00:00",
+        "hours": 8.9,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 102,
+        "start_utc": "2026-03-03T11:33:20+00:00",
+        "end_utc": "2026-03-03T20:27:20+00:00",
+        "hours": 8.9,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 103,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:45:40+00:00",
+        "hours": 15.76,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 103,
+        "start_utc": "2026-02-27T20:50:40+00:00",
+        "end_utc": "2026-02-28T09:20:00+00:00",
+        "hours": 12.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 104,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T22:20:00+00:00",
+        "hours": 22.33,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 104,
+        "start_utc": "2026-02-27T22:13:40+00:00",
+        "end_utc": "2026-02-28T12:14:20+00:00",
+        "hours": 14.01,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 105,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T12:30:00+00:00",
+        "hours": 12.5,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 105,
+        "start_utc": "2026-02-27T16:32:20+00:00",
+        "end_utc": "2026-02-28T14:34:40+00:00",
+        "hours": 22.04,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 105,
+        "start_utc": "2026-03-03T04:20:40+00:00",
+        "end_utc": "2026-03-04T02:23:00+00:00",
+        "hours": 22.04,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 106,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T02:35:20+00:00",
+        "hours": 2.59,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 106,
+        "start_utc": "2026-02-27T03:16:20+00:00",
+        "end_utc": "2026-02-27T17:05:20+00:00",
+        "hours": 13.82,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 106,
+        "start_utc": "2026-02-28T17:45:40+00:00",
+        "end_utc": "2026-03-01T07:34:40+00:00",
+        "hours": 13.82,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 106,
+        "start_utc": "2026-03-03T10:56:40+00:00",
+        "end_utc": "2026-03-04T00:45:40+00:00",
+        "hours": 13.82,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 107,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:04:40+00:00",
+        "hours": 15.08,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 107,
+        "start_utc": "2026-02-27T10:00:00+00:00",
+        "end_utc": "2026-02-28T00:59:00+00:00",
+        "hours": 14.98,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 107,
+        "start_utc": "2026-02-28T19:01:00+00:00",
+        "end_utc": "2026-03-01T10:00:00+00:00",
+        "hours": 14.98,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 107,
+        "start_utc": "2026-03-02T04:55:40+00:00",
+        "end_utc": "2026-03-02T19:54:40+00:00",
+        "hours": 14.98,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 107,
+        "start_utc": "2026-03-03T13:58:00+00:00",
+        "end_utc": "2026-03-04T04:57:00+00:00",
+        "hours": 14.98,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 108,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T20:37:20+00:00",
+        "hours": 20.62,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 108,
+        "start_utc": "2026-03-02T10:15:20+00:00",
+        "end_utc": "2026-03-03T01:06:40+00:00",
+        "hours": 14.86,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 109,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T10:09:00+00:00",
+        "hours": 10.15,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 109,
+        "start_utc": "2026-02-27T07:13:00+00:00",
+        "end_utc": "2026-02-28T06:26:00+00:00",
+        "hours": 23.22,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 110,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T14:37:40+00:00",
+        "hours": 14.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 110,
+        "start_utc": "2026-02-27T21:01:00+00:00",
+        "end_utc": "2026-02-28T12:34:00+00:00",
+        "hours": 15.55,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 111,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T19:05:40+00:00",
+        "hours": 19.09,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 111,
+        "start_utc": "2026-02-28T02:00:40+00:00",
+        "end_utc": "2026-03-01T03:14:40+00:00",
+        "hours": 25.23,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 111,
+        "start_utc": "2026-03-02T10:24:00+00:00",
+        "end_utc": "2026-03-03T11:38:00+00:00",
+        "hours": 25.23,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 112,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T01:05:20+00:00",
+        "hours": 1.09,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 112,
+        "start_utc": "2026-02-26T21:33:00+00:00",
+        "end_utc": "2026-02-27T21:41:20+00:00",
+        "hours": 24.14,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 113,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T01:49:00+00:00",
+        "hours": 1.82,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 113,
+        "start_utc": "2026-02-26T20:04:20+00:00",
+        "end_utc": "2026-02-27T17:42:00+00:00",
+        "hours": 21.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 113,
+        "start_utc": "2026-02-28T11:44:00+00:00",
+        "end_utc": "2026-03-01T09:21:40+00:00",
+        "hours": 21.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 113,
+        "start_utc": "2026-03-02T03:16:40+00:00",
+        "end_utc": "2026-03-03T00:54:20+00:00",
+        "hours": 21.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 113,
+        "start_utc": "2026-03-03T18:50:00+00:00",
+        "end_utc": "2026-03-04T16:27:40+00:00",
+        "hours": 21.63,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 114,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T07:10:20+00:00",
+        "hours": 7.17,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 114,
+        "start_utc": "2026-02-27T15:24:00+00:00",
+        "end_utc": "2026-02-27T22:03:40+00:00",
+        "hours": 6.66,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 115,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T09:52:20+00:00",
+        "hours": 9.87,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 115,
+        "start_utc": "2026-02-27T06:12:20+00:00",
+        "end_utc": "2026-02-27T17:42:00+00:00",
+        "hours": 11.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 115,
+        "start_utc": "2026-02-28T13:54:00+00:00",
+        "end_utc": "2026-03-01T01:23:40+00:00",
+        "hours": 11.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 115,
+        "start_utc": "2026-03-01T21:43:00+00:00",
+        "end_utc": "2026-03-02T09:12:40+00:00",
+        "hours": 11.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 115,
+        "start_utc": "2026-03-03T05:28:40+00:00",
+        "end_utc": "2026-03-03T16:58:20+00:00",
+        "hours": 11.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 116,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T08:41:00+00:00",
+        "hours": 8.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 116,
+        "start_utc": "2026-02-27T03:35:00+00:00",
+        "end_utc": "2026-02-27T20:58:00+00:00",
+        "hours": 17.38,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 116,
+        "start_utc": "2026-02-28T15:45:00+00:00",
+        "end_utc": "2026-03-01T09:08:00+00:00",
+        "hours": 17.38,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 116,
+        "start_utc": "2026-03-02T04:02:20+00:00",
+        "end_utc": "2026-03-02T21:25:20+00:00",
+        "hours": 17.38,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 116,
+        "start_utc": "2026-03-03T16:12:40+00:00",
+        "end_utc": "2026-03-04T09:35:40+00:00",
+        "hours": 17.38,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 117,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T12:34:20+00:00",
+        "hours": 12.57,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 117,
+        "start_utc": "2026-02-27T19:45:40+00:00",
+        "end_utc": "2026-02-28T02:52:00+00:00",
+        "hours": 7.11,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 117,
+        "start_utc": "2026-03-01T09:43:00+00:00",
+        "end_utc": "2026-03-01T16:49:20+00:00",
+        "hours": 7.11,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 117,
+        "start_utc": "2026-03-02T23:38:20+00:00",
+        "end_utc": "2026-03-03T06:44:40+00:00",
+        "hours": 7.11,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 117,
+        "start_utc": "2026-03-04T13:54:40+00:00",
+        "end_utc": "2026-03-04T21:01:00+00:00",
+        "hours": 7.11,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 118,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T07:57:20+00:00",
+        "hours": 7.96,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 118,
+        "start_utc": "2026-02-27T21:45:20+00:00",
+        "end_utc": "2026-02-28T19:55:00+00:00",
+        "hours": 22.16,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 119,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:29:20+00:00",
+        "hours": 21.49,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 119,
+        "start_utc": "2026-02-28T07:57:40+00:00",
+        "end_utc": "2026-02-28T19:21:20+00:00",
+        "hours": 11.39,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 120,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T09:05:00+00:00",
+        "hours": 9.08,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 120,
+        "start_utc": "2026-02-27T18:12:20+00:00",
+        "end_utc": "2026-02-28T09:43:20+00:00",
+        "hours": 15.52,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 120,
+        "start_utc": "2026-03-01T17:18:00+00:00",
+        "end_utc": "2026-03-02T08:49:00+00:00",
+        "hours": 15.52,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 121,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T11:48:40+00:00",
+        "hours": 11.81,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 121,
+        "start_utc": "2026-02-28T00:08:00+00:00",
+        "end_utc": "2026-02-28T06:01:20+00:00",
+        "hours": 5.89,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 122,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T22:26:20+00:00",
+        "hours": 22.44,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 122,
+        "start_utc": "2026-02-28T06:21:20+00:00",
+        "end_utc": "2026-02-28T20:57:20+00:00",
+        "hours": 14.6,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 122,
+        "start_utc": "2026-03-02T06:19:40+00:00",
+        "end_utc": "2026-03-02T20:55:40+00:00",
+        "hours": 14.6,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 122,
+        "start_utc": "2026-03-04T04:50:20+00:00",
+        "end_utc": "2026-03-04T19:26:20+00:00",
+        "hours": 14.6,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 123,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T20:40:40+00:00",
+        "hours": 20.68,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 123,
+        "start_utc": "2026-02-27T21:18:00+00:00",
+        "end_utc": "2026-02-28T03:31:40+00:00",
+        "hours": 6.23,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 123,
+        "start_utc": "2026-03-01T23:23:20+00:00",
+        "end_utc": "2026-03-02T05:37:00+00:00",
+        "hours": 6.23,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 123,
+        "start_utc": "2026-03-03T06:31:00+00:00",
+        "end_utc": "2026-03-03T12:44:40+00:00",
+        "hours": 6.23,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 123,
+        "start_utc": "2026-03-04T12:36:00+00:00",
+        "end_utc": "2026-03-04T18:49:40+00:00",
+        "hours": 6.23,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 124,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T02:10:00+00:00",
+        "hours": 2.17,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 124,
+        "start_utc": "2026-02-27T17:22:40+00:00",
+        "end_utc": "2026-02-28T09:30:40+00:00",
+        "hours": 16.13,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 125,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T15:17:20+00:00",
+        "hours": 15.29,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 125,
+        "start_utc": "2026-02-27T07:20:00+00:00",
+        "end_utc": "2026-02-28T04:37:40+00:00",
+        "hours": 21.29,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 125,
+        "start_utc": "2026-02-28T20:38:20+00:00",
+        "end_utc": "2026-03-01T17:56:00+00:00",
+        "hours": 21.29,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 125,
+        "start_utc": "2026-03-02T09:54:00+00:00",
+        "end_utc": "2026-03-03T07:11:40+00:00",
+        "hours": 21.29,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 125,
+        "start_utc": "2026-03-03T23:06:20+00:00",
+        "end_utc": "2026-03-04T20:24:00+00:00",
+        "hours": 21.29,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 126,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T14:36:00+00:00",
+        "hours": 14.6,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 126,
+        "start_utc": "2026-02-28T13:44:00+00:00",
+        "end_utc": "2026-03-01T14:32:00+00:00",
+        "hours": 24.8,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 126,
+        "start_utc": "2026-03-03T13:40:20+00:00",
+        "end_utc": "2026-03-04T14:28:20+00:00",
+        "hours": 24.8,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 127,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T06:50:20+00:00",
+        "hours": 6.84,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 127,
+        "start_utc": "2026-02-27T03:22:40+00:00",
+        "end_utc": "2026-02-28T02:53:00+00:00",
+        "hours": 23.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 127,
+        "start_utc": "2026-02-28T23:24:00+00:00",
+        "end_utc": "2026-03-01T22:54:20+00:00",
+        "hours": 23.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 127,
+        "start_utc": "2026-03-02T19:21:40+00:00",
+        "end_utc": "2026-03-03T18:52:00+00:00",
+        "hours": 23.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 128,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:17:20+00:00",
+        "hours": 24.29,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 128,
+        "start_utc": "2026-02-28T01:05:20+00:00",
+        "end_utc": "2026-03-01T00:30:20+00:00",
+        "hours": 23.42,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 128,
+        "start_utc": "2026-03-02T02:23:00+00:00",
+        "end_utc": "2026-03-03T01:48:00+00:00",
+        "hours": 23.42,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 129,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:25:40+00:00",
+        "hours": 4.43,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 129,
+        "start_utc": "2026-02-27T04:01:20+00:00",
+        "end_utc": "2026-02-27T17:33:00+00:00",
+        "hours": 13.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 129,
+        "start_utc": "2026-02-28T15:58:00+00:00",
+        "end_utc": "2026-03-01T05:29:40+00:00",
+        "hours": 13.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 129,
+        "start_utc": "2026-03-02T04:58:40+00:00",
+        "end_utc": "2026-03-02T18:30:20+00:00",
+        "hours": 13.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 129,
+        "start_utc": "2026-03-03T16:57:40+00:00",
+        "end_utc": "2026-03-04T06:29:20+00:00",
+        "hours": 13.53,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 130,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T09:28:00+00:00",
+        "hours": 9.47,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 130,
+        "start_utc": "2026-02-27T07:30:20+00:00",
+        "end_utc": "2026-02-28T05:16:20+00:00",
+        "hours": 21.77,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 131,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T18:26:40+00:00",
+        "hours": 18.44,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 131,
+        "start_utc": "2026-02-28T06:03:00+00:00",
+        "end_utc": "2026-03-01T04:34:00+00:00",
+        "hours": 22.52,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 131,
+        "start_utc": "2026-03-03T15:50:40+00:00",
+        "end_utc": "2026-03-04T14:21:40+00:00",
+        "hours": 22.52,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 132,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T10:30:40+00:00",
+        "hours": 10.51,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 132,
+        "start_utc": "2026-02-27T03:22:20+00:00",
+        "end_utc": "2026-02-27T21:16:20+00:00",
+        "hours": 17.9,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 132,
+        "start_utc": "2026-03-03T18:20:00+00:00",
+        "end_utc": "2026-03-04T12:14:00+00:00",
+        "hours": 17.9,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 133,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T20:08:40+00:00",
+        "hours": 20.14,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 133,
+        "start_utc": "2026-02-27T23:26:40+00:00",
+        "end_utc": "2026-02-28T20:09:20+00:00",
+        "hours": 20.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 133,
+        "start_utc": "2026-03-01T23:36:40+00:00",
+        "end_utc": "2026-03-02T20:19:20+00:00",
+        "hours": 20.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 133,
+        "start_utc": "2026-03-03T23:36:20+00:00",
+        "end_utc": "2026-03-04T20:19:00+00:00",
+        "hours": 20.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 134,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T02:02:00+00:00",
+        "hours": 2.03,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 134,
+        "start_utc": "2026-02-27T15:44:20+00:00",
+        "end_utc": "2026-02-28T09:05:20+00:00",
+        "hours": 17.35,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 134,
+        "start_utc": "2026-03-01T22:37:40+00:00",
+        "end_utc": "2026-03-02T15:58:40+00:00",
+        "hours": 17.35,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 134,
+        "start_utc": "2026-03-04T05:41:20+00:00",
+        "end_utc": "2026-03-04T23:02:20+00:00",
+        "hours": 17.35,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 135,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T11:20:00+00:00",
+        "hours": 11.33,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 135,
+        "start_utc": "2026-02-27T11:10:40+00:00",
+        "end_utc": "2026-02-28T10:58:40+00:00",
+        "hours": 23.8,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 136,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:19:20+00:00",
+        "hours": 4.32,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 136,
+        "start_utc": "2026-02-27T02:56:40+00:00",
+        "end_utc": "2026-02-27T10:39:20+00:00",
+        "hours": 7.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 136,
+        "start_utc": "2026-02-28T09:29:00+00:00",
+        "end_utc": "2026-02-28T17:11:40+00:00",
+        "hours": 7.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 136,
+        "start_utc": "2026-03-01T15:47:40+00:00",
+        "end_utc": "2026-03-01T23:30:20+00:00",
+        "hours": 7.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 136,
+        "start_utc": "2026-03-02T22:19:40+00:00",
+        "end_utc": "2026-03-03T06:02:20+00:00",
+        "hours": 7.71,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 137,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T11:58:40+00:00",
+        "hours": 11.98,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 137,
+        "start_utc": "2026-02-27T10:28:40+00:00",
+        "end_utc": "2026-02-28T02:22:40+00:00",
+        "hours": 15.9,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 138,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:27:40+00:00",
+        "hours": 24.46,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 138,
+        "start_utc": "2026-02-28T02:53:00+00:00",
+        "end_utc": "2026-03-01T03:04:20+00:00",
+        "hours": 24.19,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 138,
+        "start_utc": "2026-03-02T05:31:40+00:00",
+        "end_utc": "2026-03-03T05:43:00+00:00",
+        "hours": 24.19,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 139,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:09:40+00:00",
+        "hours": 4.16,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 139,
+        "start_utc": "2026-02-27T03:09:00+00:00",
+        "end_utc": "2026-02-28T00:57:40+00:00",
+        "hours": 21.81,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 139,
+        "start_utc": "2026-03-01T00:08:20+00:00",
+        "end_utc": "2026-03-01T21:57:00+00:00",
+        "hours": 21.81,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 139,
+        "start_utc": "2026-03-02T21:10:40+00:00",
+        "end_utc": "2026-03-03T18:59:20+00:00",
+        "hours": 21.81,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 140,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T21:58:00+00:00",
+        "hours": 21.97,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 140,
+        "start_utc": "2026-02-27T21:07:00+00:00",
+        "end_utc": "2026-02-28T13:34:20+00:00",
+        "hours": 16.46,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 140,
+        "start_utc": "2026-03-01T12:39:00+00:00",
+        "end_utc": "2026-03-02T05:06:20+00:00",
+        "hours": 16.46,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 140,
+        "start_utc": "2026-03-03T17:41:40+00:00",
+        "end_utc": "2026-03-04T10:09:00+00:00",
+        "hours": 16.46,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 141,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T04:03:40+00:00",
+        "hours": 4.06,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 141,
+        "start_utc": "2026-02-26T22:31:00+00:00",
+        "end_utc": "2026-02-28T00:06:40+00:00",
+        "hours": 25.59,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 141,
+        "start_utc": "2026-03-01T06:37:00+00:00",
+        "end_utc": "2026-03-02T08:12:40+00:00",
+        "hours": 25.59,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 141,
+        "start_utc": "2026-03-03T18:14:20+00:00",
+        "end_utc": "2026-03-04T19:50:00+00:00",
+        "hours": 25.59,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 142,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T03:29:00+00:00",
+        "hours": 3.48,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 142,
+        "start_utc": "2026-02-27T02:35:20+00:00",
+        "end_utc": "2026-02-28T01:19:20+00:00",
+        "hours": 22.73,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 143,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T01:37:20+00:00",
+        "hours": 25.62,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 143,
+        "start_utc": "2026-02-28T05:42:20+00:00",
+        "end_utc": "2026-02-28T22:02:20+00:00",
+        "hours": 16.33,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 144,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T17:59:00+00:00",
+        "hours": 17.98,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 144,
+        "start_utc": "2026-02-28T00:57:20+00:00",
+        "end_utc": "2026-02-28T09:04:20+00:00",
+        "hours": 8.12,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 144,
+        "start_utc": "2026-03-01T14:39:20+00:00",
+        "end_utc": "2026-03-01T22:46:20+00:00",
+        "hours": 8.12,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 144,
+        "start_utc": "2026-03-03T05:45:00+00:00",
+        "end_utc": "2026-03-03T13:52:00+00:00",
+        "hours": 8.12,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 145,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T11:54:40+00:00",
+        "hours": 11.91,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 145,
+        "start_utc": "2026-02-27T15:14:20+00:00",
+        "end_utc": "2026-02-28T05:15:40+00:00",
+        "hours": 14.02,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 146,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-27T00:41:20+00:00",
+        "hours": 24.69,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 146,
+        "start_utc": "2026-02-28T06:13:40+00:00",
+        "end_utc": "2026-02-28T11:21:40+00:00",
+        "hours": 5.13,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 146,
+        "start_utc": "2026-03-01T18:13:20+00:00",
+        "end_utc": "2026-03-01T23:21:20+00:00",
+        "hours": 5.13,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 146,
+        "start_utc": "2026-03-03T04:52:40+00:00",
+        "end_utc": "2026-03-03T10:00:40+00:00",
+        "hours": 5.13,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 146,
+        "start_utc": "2026-03-04T16:56:20+00:00",
+        "end_utc": "2026-03-04T22:04:20+00:00",
+        "hours": 5.13,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 147,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T09:52:00+00:00",
+        "hours": 9.87,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 147,
+        "start_utc": "2026-02-27T21:14:40+00:00",
+        "end_utc": "2026-02-28T21:59:20+00:00",
+        "hours": 24.74,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 148,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T03:39:40+00:00",
+        "hours": 3.66,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 148,
+        "start_utc": "2026-02-27T04:08:00+00:00",
+        "end_utc": "2026-02-28T03:23:00+00:00",
+        "hours": 23.25,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 148,
+        "start_utc": "2026-03-01T07:14:00+00:00",
+        "end_utc": "2026-03-02T06:29:00+00:00",
+        "hours": 23.25,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 149,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T02:23:40+00:00",
+        "hours": 2.39,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 149,
+        "start_utc": "2026-02-27T03:17:40+00:00",
+        "end_utc": "2026-02-27T17:50:20+00:00",
+        "hours": 14.54,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 150,
+        "start_utc": "2026-02-26T00:00:00+00:00",
+        "end_utc": "2026-02-26T00:54:20+00:00",
+        "hours": 0.91,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      },
+      {
+        "temp_ship_id": 150,
+        "start_utc": "2026-02-27T06:54:00+00:00",
+        "end_utc": "2026-02-28T03:08:00+00:00",
+        "hours": 20.23,
+        "meaning_zh": "该船在此期间已驶离模拟水域（非信号丢失）。"
+      }
+    ],
+    "out_of_area_note_zh": "船舶驶出模拟水域后不再产生报位，随后重新进入。这是情景允许的进出区域行为，不是注入的异常；判断长间隔原因时请先对照此表。"
+  }
+}

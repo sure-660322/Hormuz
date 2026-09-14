@@ -1,6 +1,6 @@
 #schemas.py 定义FastAPI允许向前端返回什么json
 #models.py定义数据如何存入PostgreSQL
-from datetime import datetime
+from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict
 
 #BaseModel:Pydantic的数据验证和转换基类
@@ -13,7 +13,7 @@ class ShipResponse(BaseModel):
     mmsi:str
     name:str
     ship_type:str
-    flag:str
+    flag:str | None
     imo:str | None
     callsign:str | None
 
@@ -32,15 +32,38 @@ class ShipPositionResponse(BaseModel):
 class EventResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id:int
-    title:str
-    description:str
-    event_type:str
-    latitude:float
-    longitude:float
-    occurred_at:datetime
-    source_name:str | None
-    source_url:str | None
+    id: int
+    event_id: str
+    title_zh: str
+    summary_zh: str
+    event_type: str
+    event_datetime: datetime | None
+    event_time_text: str | None
+    event_location_text: str | None
+    event_region: str | None
+    event_lat: float | None
+    event_lng: float | None
+    geo_method: str | None
+    geo_note: str | None
+    coverage_count: int
+    perspectives: list[str]
+    mentioned_vessels: list[str]
+    publish_date_min: date | None
+    publish_date_max: date | None
+
+
+class EventNewsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    story_id: str
+    title_zh: str
+    summary_zh: str
+    title: str
+    canonical_url: str
+    media_name: str
+    perspective: str
+    publish_date: date
+
 
 class NearbyEventResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -63,7 +86,7 @@ class ShipMapResponse(BaseModel):
     mmsi: str
     name: str
     ship_type: str
-    flag: str
+    flag: str | None
     imo: str | None
     callsign: str | None
     latitude: float

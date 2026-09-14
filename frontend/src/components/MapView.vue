@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createCountryLayer } from '../services/countryLayer'
+import { hasEventLocation, eventLocationLabel, type LocatedEvent } from '../domain/maritime'
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -6,14 +8,14 @@ import type { ApiEvent, ApiMapShip, ApiShipPosition } from '../api'
 import {
   eventKind,
   formatTime,
-  displayZone, zoneLabel, riskColors, shipShape, shipStatus, projectPosition, eventPriority,
+  displayZone, riskColors, shipShape, shipStatus, projectPosition, eventPriority,
   type GeoPoint,
   type LayerState,
   type ViewBounds,
 } from '../domain/maritime'
 const props = defineProps<{
   ships: ApiMapShip[]
-  events: ApiEvent[]
+  events: LocatedEvent[]
   selectedShipId: number | null
   selectedEvent: ApiEvent | null
   track: ApiShipPosition[]
@@ -39,12 +41,14 @@ const emit = defineEmits<{
   boundsChange: [bounds: ViewBounds]
   pickCenter: [point: GeoPoint]
   harbourStatus: [status: string]
+  countryStatus: [status: string]
   clearSelection: []
   shareView: [view: { lat: number; lon: number; zoom: number }]
 }>()
 const container = ref<HTMLElement | null>(null)
 const tileError = ref(false)
 let map: L.Map | undefined
+let countryLayer: ReturnType<typeof createCountryLayer> | undefined
 let observer: ResizeObserver | undefined
 let shipLayer: L.LayerGroup,
   eventLayer: L.LayerGroup,
@@ -73,7 +77,7 @@ function shipIcon(ship: ApiMapShip) {
   const complete = selected || (map?.getZoom() ?? 0) >= 10
   const shape = shipShape(ship.ship_type)
   const path = complete || shape === '△' ? 'M14 3 20 23 14 19 8 23Z' : shape === '■' ? 'M8 8H20V20H8Z' : shape === '▶' ? 'M14 5 22 22H6Z' : 'M14 5 22 14 14 23 6 14Z'
-  const dimmed = props.selectedEvent ? !nearby : props.selectedShipId !== null && !selected
+  const dimmed = props.selectedShipId !== null && !selected
   return L.divIcon({
     className: `vessel-marker${selected ? ' selected' : ''}${dimmed ? ' muted' : ''}`,
     html: `<svg viewBox="0 0 28 28" aria-hidden="true"><g transform="rotate(${complete ? angle : ship.course} 14 14)"><path d="${path}" fill="${color}" stroke="#EAF1F8" stroke-width="1"/>${!complete ? `<path d="M14 5V-2" stroke="${color}" stroke-width="2"/>` : ''}</g>${selected ? '<path d="M1 8V1H8M20 1H27V8M27 20V27H20M8 27H1V20" fill="none" stroke="#38BDF8" stroke-width="1.5"/>' : ''}</svg>`,
@@ -167,10 +171,8 @@ function renderShips() {
 function renderLinks() {
   if (!linkLayer) return
   linkLayer.clearLayers()
-  const event = props.selectedEvent
-  if (!event || !props.layers.events || !props.layers.ships || props.isolated) return
-  for (const ship of props.ships.filter(s => props.nearbyShipIds.includes(s.id)))
-    L.polyline([[event.latitude, event.longitude], [ship.latitude, ship.longitude]], { renderer: canvas, color: riskColors.selected, weight: 1, dashArray: '5 7', opacity: 0.7, interactive: false }).addTo(linkLayer)
+  // Cross-period news-to-ship links are intentionally disabled.
+
 }
 function globalView() {
   if (props.ships.length)
@@ -192,35 +194,37 @@ function renderEvents() {
   eventLayer.clearLayers()
   renderLinks()
   if (!props.layers.events || props.isolated) return
-  const groups = new Map<string, ApiEvent[]>()
+  const groups = new Map<string, LocatedEvent[]>()
   for (const event of props.events) {
-    const point = map.project([event.latitude, event.longitude])
-    const key = event.id === props.selectedEvent?.id ? `selected:${event.id}` : `${event.event_type}:${Math.floor(point.x / 36)}:${Math.floor(point.y / 36)}`
+    // Only co-located records share a marker; nearby coordinates must not move.
+    const key = `${event.latitude},${event.longitude}`
     const group = groups.get(key) ?? []; group.push(event); groups.set(key, group)
   }
   for (const group of groups.values()) {
-    const event = group[0]!
+    const event = group.find(item => item.id === props.selectedEvent?.id) ?? group[0]!
     const kind = eventKind(event.event_type)
     const selected = props.selectedEvent?.id === event.id
+    const locationLabel = eventLocationLabel(event)
+    const markerTitle = group.length > 1 ? `${group.length} 条同坐标事件（点击展开）` : `${kind.label} · ${locationLabel} · ${event.title}`
     const icon = L.divIcon({
       className: `incident-marker${selected ? ' selected' : ''}${props.selectedEvent && !selected ? ' muted' : ''}${selected && eventPriority(event.event_type) !== 'normal' ? ' urgent' : ''}`,
-      html: `<div class="incident-symbol" style="--risk:${kind.color}">${selected ? '<i class="incident-halo"></i><i class="selection-corners"></i>' : ''}<span class="incident-core">${kind.symbol}</span>${group.length > 1 ? `<b class="incident-count">${group.length}</b>` : ''}${selected ? `<span class="incident-label"><b>●</b> ${kind.label} · ${formatTime(event.occurred_at)} ${zoneLabel()}</span>` : ''}</div>`,
+      html: `<div class="incident-symbol" style="--risk:${kind.color}">${selected ? '<i class="incident-halo"></i><i class="selection-corners"></i>' : ''}<span class="incident-core">${kind.symbol}</span>${group.length > 1 ? `<b class="incident-count">${group.length}</b>` : ''}${selected ? `<span class="incident-label"><b>●</b> ${locationLabel} · 报道 ${event.publish_date_min ?? '日期未明'}</span>` : ''}</div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     })
     const marker = L.marker([event.latitude, event.longitude], {
       icon,
-      title: `${kind.label} ${event.title}`,
+      title: markerTitle,
       bubblingMouseEvents: false,
     })
-      .bindTooltip(safeText(`${formatTime(event.occurred_at)} ${event.title}`))
+      .bindTooltip(safeText(`${markerTitle} · ${event.latitude.toFixed(4)}, ${event.longitude.toFixed(4)}`))
       .on('click', () => {
         if (props.picking) return
         if (group.length === 1) emit('selectEvent', event)
         else {
           const list = document.createElement('div'); list.className = 'cluster-list'
           for (const item of group) {
-            const button = document.createElement('button'); button.textContent = `${formatTime(item.occurred_at)} ${item.title}`
+            const button = document.createElement('button'); button.textContent = `${eventKind(item.event_type).label} · ${eventLocationLabel(item)} · ${item.title}`
             button.onclick = () => { map?.closePopup(); emit('selectEvent', item) }; list.append(button)
           }
           L.popup().setLatLng([event.latitude, event.longitude]).setContent(list).openOn(map!)
@@ -229,7 +233,13 @@ function renderEvents() {
       .addTo(eventLayer)
     marker
       .getElement()
-      ?.setAttribute('aria-label', `${kind.label} ${event.title}`)
+      ?.setAttribute('aria-label', markerTitle)
+    const element = marker.getElement()
+    if (element) {
+      element.dataset.eventIds = group.map(item => item.event_id).join(',')
+      element.dataset.latitude = String(event.latitude)
+      element.dataset.longitude = String(event.longitude)
+    }
     marker.setZIndexOffset(selected ? 2000 : 300)
   }
 }
@@ -375,6 +385,7 @@ async function loadHarbours() {
 }
 function syncLayers() {
   if (!map) return
+  void countryLayer?.setVisible(props.layers.countries)
   if (props.layers.seamarks) {
     if (!map.hasLayer(seamarks)) seamarks.addTo(map)
   } else seamarks.remove()
@@ -413,7 +424,7 @@ watch(
 watch(
   () => props.selectedEvent,
   (event) => {
-    if (event) smoothlyCenterOn([event.latitude, event.longitude])
+    if (event && hasEventLocation(event)) smoothlyCenterOn([event.latitude, event.longitude])
   },
 )
 watch(() => props.globalViewRequest, globalView)
@@ -466,6 +477,7 @@ onMounted(() => {
         'Seamarks &copy; <a href="https://www.openseamap.org">OpenSeaMap</a>',
     },
   )
+  countryLayer = createCountryLayer(map, status => emit('countryStatus', status))
   canvas = L.canvas({ padding: 0.5 })
   vectorLayer = L.layerGroup().addTo(map)
   linkLayer = L.layerGroup().addTo(map)
@@ -499,6 +511,7 @@ onBeforeUnmount(() => {
   observer?.disconnect()
   harbourRequest?.abort()
   clearTimeout(harbourTimer)
+  countryLayer?.destroy()
   map?.remove()
   map = undefined
   markers.clear()

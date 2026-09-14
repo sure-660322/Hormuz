@@ -1384,3 +1384,17 @@ button.primary:hover { background: #83D8FC; }
   .print-report th, .print-report td { text-align: left; border-bottom: 1px solid #C5D3DC; padding: 7px; }
   .print-report tr { break-inside: avoid; }
 }
+
+/* Reference geography sits below operational overlays and never captures clicks. */
+.leaflet-countryBoundaries-pane, .leaflet-countryLabels-pane,
+.leaflet-countryBoundaries-pane *, .leaflet-countryLabels-pane * { pointer-events: none !important; }
+.country-name { background: none; border: 0; text-align: center; white-space: nowrap; }
+.country-name span { color: #D4E2EC; font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-weight: 650; line-height: 26px; text-shadow: -1px -1px 2px #152B3A, 1px 1px 2px #152B3A, 0 0 4px #152B3A; }
+.country-name-highlight span { color: #FFAF85; font-weight: 800; }
+[data-theme="light"] .country-name span { color: #3E566C; text-shadow: -1px -1px 2px #fff, 1px 1px 2px #fff, 0 0 4px #fff; }
+[data-theme="light"] .country-name-highlight span { color: #A74420; }
+@media print {
+  .leaflet-countryBoundaries-pane, .leaflet-countryLabels-pane { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .country-name span { color: #314A60 !important; text-shadow: -1px -1px 2px #fff, 1px 1px 2px #fff !important; }
+  .country-name-highlight span { color: #A74420 !important; }
+}

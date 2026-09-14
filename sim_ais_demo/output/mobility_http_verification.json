@@ -1,0 +1,27 @@
+{
+  "/health": {
+    "status": 200,
+    "bytes": 15
+  },
+  "/docs": {
+    "status": 200,
+    "bytes": 1006
+  },
+  "/mobility-demo": {
+    "status": 200,
+    "bytes": 10467
+  },
+  "/mobility-demo/analysis?area=strait": {
+    "status": 200,
+    "bytes": 1941
+  },
+  "/mobility-demo/analysis?area=approach": {
+    "status": 200,
+    "bytes": 1950
+  },
+  "/mobility-demo/tracks": {
+    "status": 200,
+    "bytes": 86129
+  },
+  "invalid_area": 422
+}

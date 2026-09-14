@@ -11,6 +11,7 @@ execFileSync(
   [
     path.join(root, 'node_modules/typescript/bin/tsc'),
     'src/domain/maritime.ts',
+    'src/domain/countryLabels.ts',
     'src/services/workbench.ts',
     'src/composables/usePlayback.ts',
     '--ignoreConfig',
@@ -35,8 +36,43 @@ const { distanceNm, inBounds, eventKind, shipType, projectPosition, sampleAge, s
 const { localWorkbench } = require(path.join(out, 'services/workbench.js'))
 const api = require(path.join(out, 'api.js'))
 const { usePlayback } = require(path.join(out, 'composables/usePlayback.js'))
+const { hasEventLocation, eventTimeText, safeNewsUrl } = require(path.join(out, 'domain/maritime.js'))
 
 async function main() {
+  const { countryLabelPosition } = require(path.join(out, 'domain/countryLabels.js'))
+  const countryData = JSON.parse(require('node:fs').readFileSync(path.join(root, 'public/data/gulf-countries.geojson'), 'utf8'))
+  assert.equal(countryData.features.length, 13)
+  for (const feature of countryData.features) {
+    const [lat, lng] = feature.properties.label
+    assert.deepEqual(countryLabelPosition(feature, { south: lat - .01, north: lat + .01, west: lng - .01, east: lng + .01 }), [lat, lng])
+    assert.equal(countryLabelPosition(feature, { south: -60, north: -50, west: -120, east: -110 }), null)
+  }
+  const palestine = countryData.features.find(f => f.properties.code === 'PSX')
+  assert.equal(palestine.geometry.type, 'MultiPolygon')
+  assert.equal(palestine.geometry.coordinates.length, 2, 'Keep both Gaza and the West Bank')
+  for (const [lat, lng] of [[31.45, 34.4], [32.0, 35.3]]) {
+    assert.ok(countryLabelPosition(palestine, { south: lat - .001, north: lat + .001, west: lng - .001, east: lng + .001 }), 'Both Palestinian areas must have geometry')
+    assert.equal(countryLabelPosition(countryData.features.find(f => f.properties.code === 'ISR'), { south: lat - .001, north: lat + .001, west: lng - .001, east: lng + .001 }), null, 'Palestinian interior points must not receive Israel fill')
+  }
+  const donut = { properties: { label: [5, 5] }, geometry: { type: 'Polygon', coordinates: [
+    [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]],
+    [[4, 4], [6, 4], [6, 6], [4, 6], [4, 4]],
+  ] } }
+  const interior = countryLabelPosition(donut, { south: 0, north: 10, west: 0, east: 10 })
+  assert.ok(interior && !(interior[0] > 4 && interior[0] < 6 && interior[1] > 4 && interior[1] < 6), 'Country labels must not land in polygon holes')
+  const unknownEvent = api.toEventView({ title_zh: '测试', summary_zh: '摘要', event_lat: null, event_lng: null, event_datetime: null, event_time_text: null })
+  assert.equal(unknownEvent.latitude, null)
+  assert.equal(unknownEvent.occurred_at, null)
+  assert.equal(hasEventLocation(unknownEvent), false)
+  assert.equal(hasEventLocation({ latitude: 0, longitude: 0 }), true)
+  assert.equal(hasEventLocation({ latitude: NaN, longitude: 50 }), false)
+  assert.equal(hasEventLocation({ latitude: 26, longitude: null }), false)
+  assert.equal(eventTimeText(unknownEvent), '时间未明确')
+  assert.equal(eventTimeText({ event_time_text: '3月初' }), '3月初')
+  assert.equal(eventKind('attack').label, '袭击')
+  assert.equal(eventKind('blockade').label, '封锁')
+  assert.equal(safeNewsUrl('javascript:alert(1)'), undefined)
+  assert.equal(safeNewsUrl('https://example.com/news'), 'https://example.com/news')
   assert.match(api.describeApiError(new TypeError('Failed to fetch'), '失败'), /无法连接数据服务/)
   assert.match(api.describeApiError(new DOMException('timeout', 'TimeoutError'), '失败'), /请求超时/)
   const center = { latitude: 0, longitude: 0 }
@@ -145,6 +181,7 @@ async function main() {
     start_at: first.recorded_at,
     end_at: last.recorded_at,
     frame_count: 2,
+    frame_interval_seconds: 300,
   })
   api.fetchMapShips = async () => [ship]
   api.fetchPlaybackPositions = async () => [last, first]
@@ -168,13 +205,27 @@ async function main() {
   playback.seek('2026-08-30T00:05:00Z')
   assert.equal(
     playback.currentShips.value[0].speed,
-    12,
-    'Seek selects first frame at or after event time',
+    8,
+    'An intermediate display tick holds the last report without future leakage',
   )
   playback.seek('2026-08-29T00:00:00Z')
   assert.equal(playback.index.value, 0)
   playback.seek('2026-08-31T00:00:00Z')
-  assert.equal(playback.index.value, 1)
+  assert.equal(playback.index.value, 2)
+  assert.equal(playback.currentShips.value[0].speed, 12)
+  const multiEnd = '2026-09-01T00:01:00Z'
+  api.fetchSimulationMeta = async () => ({ start_at: first.recorded_at, end_at: multiEnd, frame_count: 578, frame_interval_seconds: 300 })
+  const windows = []
+  api.fetchPlaybackPositions = async (start, end) => {
+    windows.push([Date.parse(start), Date.parse(end)])
+    return [first, last]
+  }
+  await playback.load()
+  assert.equal(windows.length, 3)
+  assert.ok(windows.every(([start, end]) => end - start <= 86400000))
+  assert.equal(windows[0][1], windows[1][0])
+  assert.equal(playback.tracks.value[7].length, 2, 'Inclusive window duplicates are removed')
+  assert.equal(playback.times.value.at(-1), new Date(multiEnd).toISOString())
   api.fetchPlaybackPositions = async () => {
     throw new Error('模拟接口失败')
   }

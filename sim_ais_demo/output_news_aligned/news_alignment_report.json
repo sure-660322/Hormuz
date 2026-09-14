@@ -1,0 +1,66 @@
+{
+  "scope": "Only output_news_aligned; old batch not rechecked.",
+  "definition_zh": "跨越56.2与56.7两条门线才算完整穿越，保留带内多次报位之间的状态；不把跨入一条线计为过境。",
+  "completed_crossings_by_phase": {
+    "P0_pre_incident": 22,
+    "P1_onset": 2,
+    "P2_peak": 0,
+    "P3_continued_waiting": 0
+  },
+  "post_closure_completed_crossings": [],
+  "post_closure_core_position_count": 0,
+  "gulf_internal_ship_ids": [
+    1,
+    3,
+    5,
+    9,
+    11,
+    14,
+    15,
+    21,
+    29
+  ],
+  "transit_ships_not_waiting_at_last_report": [],
+  "last_observation_waiting_ships": [
+    2,
+    4,
+    6,
+    7,
+    8,
+    10,
+    12,
+    13,
+    16,
+    17,
+    18,
+    19,
+    20,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    30
+  ],
+  "last_observation_underway_ships": [
+    1,
+    3,
+    5,
+    9,
+    11,
+    14,
+    15,
+    21,
+    29
+  ],
+  "assumptions": [
+    "全部船舶和逐船行为为教学模拟。30艘不是实际船数或真实航运比例。",
+    "evt_007正文称2月28日晚禁行警告，事件时间为3月1日00:00 UTC（日级锚点，并非已核实的宣告时分）。2月28日15:00 UTC约当地18:30，作为晚间响应起点的模拟假设。",
+    "警告后两侧船舶平滑减速、原水域漂航待命；海峡内部船舶先驶离再待命，禁止后续再次穿越。湾内支线继续航行。",
+    "未核实水深，不将等待点标作法定锚地或真实锚泊点；不模拟返港、袭击、沉船或真实涉事船轨迹。",
+    "3月3日至4日仅延续等待的模拟假设，不假设复航；3月5日撤保生效位于窗口终点，未提前设为已生效。"
+  ],
+  "failures": []
+}

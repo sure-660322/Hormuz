@@ -26,6 +26,13 @@ frontend/dist-ssr/
 # Logs
 *.log
 
+# Local database recovery archives
+data/db_backups/
+.workbuddy/
+sim_ais_demo/output/old_batch_backup/
+sim_ais_demo/output_news_aligned/database_backups/
+sim_ais_demo/output_news_aligned_repeat_check/
+
 # Editor settings
 .vscode/
 .idea/

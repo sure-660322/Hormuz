@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import type { ApiEvent } from '../api'
+import type { ApiEvent as NewsEvent } from '../api'
+type ApiEvent = NewsEvent & { occurred_at: string }
 import { eventKind, eventKinds, formatTime, zoneLabel } from '../domain/maritime'
 const props = defineProps<{
   frameTimes: string[]
@@ -195,7 +196,7 @@ onBeforeUnmount(() => {
     <template v-else>
       <div class="timeline-toolbar">
         <div class="replay-title">
-          <strong>历史回放</strong
+          <strong>模拟船舶回放</strong
           ><span
             >{{ formatTime(frameTimes[0], true).split(' ')[0] }} ·
             模拟采样</span
@@ -242,7 +243,7 @@ onBeforeUnmount(() => {
           >{{ modelValue + 1 }} / {{ frameTimes.length }} 帧</span
         >
       </div>
-      <div class="timeline-options"><select aria-label="时间轴事件类别" :value="eventType" @change="emit('typeChange', ($event.target as HTMLSelectElement).value)"><option value="all">全部 · 密度概览</option><option v-for="(kind, type) in eventKinds" :key="type" :value="type">{{ kind.label }} · 展开节点</option></select><button :disabled="!nextEvent" @click="nextEvent && emit('selectEvent', nextEvent)">下一事件</button><button :disabled="zoomStart === 0 && zoomEnd === null" @click="resetZoom">恢复全时段</button><span>{{ zoneLabel() }} · 拖动柱图缩放</span></div>
+      <div v-if="events.length" class="timeline-options"><select aria-label="时间轴事件类别" :value="eventType" @change="emit('typeChange', ($event.target as HTMLSelectElement).value)"><option value="all">全部 · 密度概览</option><option v-for="(kind, type) in eventKinds" :key="type" :value="type">{{ kind.label }} · 展开节点</option></select><button :disabled="!nextEvent" @click="nextEvent && emit('selectEvent', nextEvent)">下一事件</button><button :disabled="zoomStart === 0 && zoomEnd === null" @click="resetZoom">恢复全时段</button><span>{{ zoneLabel() }} · 拖动柱图缩放</span></div>
       <div ref="body" class="timeline-body">
         <div class="timeline-scale">
           <span>时间</span>
@@ -271,8 +272,8 @@ onBeforeUnmount(() => {
             @input="move(Number(($event.target as HTMLInputElement).value))"
           />
         </div>
-        <div class="density-row"><span>事件密度</span><div class="density-chart" aria-label="事件密度，拖动选择时间范围；下方也可使用键盘选择范围" @pointerdown="startBrush" @pointermove="dragStart !== null && (dragEnd = pointerPercent($event))" @pointerup="finishBrush" @pointercancel="dragStart = null; dragEnd = null"><div v-for="(bin, i) in histogram" :key="i" class="density-bin" :title="`${bin.count} 条事件`"><i :style="{ height: `${Math.max(bin.count ? 8 : 0, bin.height)}%` }"></i></div><span class="density-head" :style="{ left: progress + '%' }"></span><div v-if="dragStart !== null && dragEnd !== null" class="brush-selection" :style="{ left: Math.min(dragStart, dragEnd) + '%', width: Math.abs(dragStart - dragEnd) + '%' }"></div></div></div>
-        <div class="event-lanes">
+        <div v-if="events.length" class="density-row"><span>事件密度</span><div class="density-chart" aria-label="事件密度，拖动选择时间范围；下方也可使用键盘选择范围" @pointerdown="startBrush" @pointermove="dragStart !== null && (dragEnd = pointerPercent($event))" @pointerup="finishBrush" @pointercancel="dragStart = null; dragEnd = null"><div v-for="(bin, i) in histogram" :key="i" class="density-bin" :title="`${bin.count} 条事件`"><i :style="{ height: `${Math.max(bin.count ? 8 : 0, bin.height)}%` }"></i></div><span class="density-head" :style="{ left: progress + '%' }"></span><div v-if="dragStart !== null && dragEnd !== null" class="brush-selection" :style="{ left: Math.min(dragStart, dragEnd) + '%', width: Math.abs(dragStart - dragEnd) + '%' }"></div></div></div>
+        <div v-if="events.length" class="event-lanes">
           <div
             class="playhead"
             :style="{ left: `calc(78px + (100% - 78px) * ${progress / 100})` }"
@@ -305,7 +306,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="timeline-caption">
-        <span>空格播放 / 暂停 · ← → 逐帧 · 同类节点重复点击切换</span
+        <span>空格播放 / 暂停 · ← → 逐帧 · 新闻事件不参与回放</span
         ><span>1× 每秒推进一帧 · 仅显示载入时段</span>
       </div>
       <details class="time-range-accessible"><summary>精确选择时间范围</summary><label>开始 <select :value="zoomStart" @change="stop(); zoomStart = Math.min(rangeEnd, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label><label>结束 <select :value="rangeEnd" @change="stop(); zoomEnd = Math.max(zoomStart, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label></details>

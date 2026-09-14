@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import type { ApiMapShip, ApiEvent } from '../api'
 import { localWorkbench } from '../services/workbench'
-import { shipType, formatTime } from '../domain/maritime'
+import { shipType } from '../domain/maritime'
 const props = defineProps<{ ships: ApiMapShip[]; loading: boolean; events: ApiEvent[] }>()
 const emit = defineEmits<{ select: [ship: ApiMapShip]; selectEvent: [event: ApiEvent] }>()
 const input = ref<HTMLInputElement | null>(null)
@@ -57,7 +57,7 @@ function choose(ship: ApiMapShip) {
     </div>
     <div v-if="open" id="ship-search-results" class="search-results">
       <p class="search-summary">
-        {{ loading ? '正在载入船舶…' : `当前时刻 · ${results.length} 个匹配` }}
+        {{ loading ? '正在载入船舶…' : `模拟船舶 ${results.length} 个匹配 · 新闻显示 ${eventResults.length} 条（最多15条）` }}
       </p>
       <button
         v-for="ship in results.slice(0, 30)"
@@ -69,7 +69,7 @@ function choose(ship: ApiMapShip) {
         ><span>{{ shipType(ship.ship_type) }} · MMSI {{ ship.mmsi }}</span
         ><small v-if="ship.imo">IMO {{ ship.imo }}</small>
       </button>
-      <button v-for="event in eventResults" :key="`event-${event.id}`" class="ship-result" @click="chooseEvent(event)"><strong>{{ event.title }}</strong><small>模拟事件 · {{ formatTime(event.occurred_at, true) }}</small></button>
+      <button v-for="event in eventResults" :key="`event-${event.id}`" class="ship-result" @click="chooseEvent(event)"><strong>{{ event.title }}</strong><small>新闻事件 · 报道 {{ event.publish_date_min || '日期未明' }}</small></button>
       <p v-if="!loading && !results.length && !eventResults.length" class="empty">
         没有匹配船舶。请尝试船名片段或完整编号。
       </p>

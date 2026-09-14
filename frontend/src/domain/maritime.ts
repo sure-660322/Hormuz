@@ -30,11 +30,12 @@ export const eventKinds: Record<
   string,
   { label: string; color: string; symbol: string }
 > = {
-  conflict: { label: '冲突风险', color: riskColors.high, symbol: '!' },
-  navigation_control: { label: '航道管制', color: riskColors.warning, symbol: '⊘' },
-  bad_weather: { label: '恶劣天气', color: riskColors.warning, symbol: '☂' },
-  equipment_failure: { label: '设备故障', color: riskColors.warning, symbol: 'ϟ' },
-  port_congestion: { label: '港口拥堵', color: riskColors.normal, symbol: '≋' },
+  attack: { label: '袭击', color: '#B66A60', symbol: '!' },
+  blockade: { label: '封锁', color: '#AA8753', symbol: '⊘' },
+  passage: { label: '通航', color: '#5F927D', symbol: '↗' },
+  market: { label: '市场', color: '#7791A7', symbol: '≋' },
+  analysis: { label: '分析', color: '#9588A7', symbol: '◇' },
+  other: { label: '其他', color: '#687681', symbol: '●' },
 }
 export function eventKind(type: string) {
   return (
@@ -91,6 +92,7 @@ export interface AreaResult {
   source: 'local-simulation'
 }
 export interface LayerState {
+  countries: boolean
   ships: boolean
   tracks: boolean
   events: boolean
@@ -116,4 +118,28 @@ export function inBounds(p: GeoPoint, b: ViewBounds) {
     p.longitude >= b.west &&
     p.longitude <= b.east
   )
+}
+
+export type LocatedEvent = ApiEvent & GeoPoint
+export function hasEventLocation(e: ApiEvent): e is LocatedEvent {
+  return typeof e.latitude === 'number' && Number.isFinite(e.latitude) && Math.abs(e.latitude) <= 90
+    && typeof e.longitude === 'number' && Number.isFinite(e.longitude) && Math.abs(e.longitude) <= 180
+}
+export function eventTimeText(e: ApiEvent) {
+  return e.event_time_text || (e.event_datetime ? `${e.event_datetime.slice(0, 10)}（日期记录）` : '时间未明确')
+}
+export function eventCoordinates(e: ApiEvent) {
+  return hasEventLocation(e) ? `${e.latitude.toFixed(4)}, ${e.longitude.toFixed(4)}` : '暂无可定位坐标'
+}
+export function safeNewsUrl(value: string): string | undefined {
+  try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined }
+  catch { return undefined }
+}
+
+export function eventLocationLabel(e: ApiEvent) {
+  if (!hasEventLocation(e)) return '暂无定位'
+  if (e.geo_method === 'multi') return '多点中心 · 非事发点'
+  if (e.geo_method === 'region_centroid' || /coarse|国家中心|国家代表点|国家点/.test(e.geo_note ?? ''))
+    return '区域代表点 · 非精确位置'
+  return '地名代表点 · 非精确位置'
 }

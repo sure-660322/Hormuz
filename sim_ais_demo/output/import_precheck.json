@@ -1,0 +1,77 @@
+{
+  "outdir": "D:\\my_project\\Hormuz\\sim_ais_demo\\output",
+  "mode": "dry-run",
+  "ships_in_batch": 150,
+  "positions_in_batch": 58567,
+  "position_files": [
+    "positions_2026-02-26.jsonl",
+    "positions_2026-02-27.jsonl",
+    "positions_2026-02-28.jsonl",
+    "positions_2026-03-01.jsonl",
+    "positions_2026-03-02.jsonl",
+    "positions_2026-03-03.jsonl",
+    "positions_2026-03-04.jsonl"
+  ],
+  "started_at_utc": "2026-09-11T08:12:56+00:00",
+  "planned_actions": {
+    "ships_to_insert": 150,
+    "ships_linked_to_existing": 0,
+    "positions_to_insert": 58567,
+    "positions_skipped_as_duplicate": 0,
+    "tables_touched": [
+      "ships",
+      "ship_positions"
+    ],
+    "writes": [
+      "INSERT INTO ships (...)",
+      "INSERT INTO ship_positions (...)"
+    ],
+    "columns_to_write": {
+      "ships": [
+        "callsign",
+        "flag",
+        "imo",
+        "length_m",
+        "mmsi",
+        "name",
+        "ship_type",
+        "width_m"
+      ],
+      "ship_positions": [
+        "ais_type",
+        "course",
+        "data_source",
+        "destination",
+        "draught_m",
+        "heading",
+        "latitude",
+        "longitude",
+        "nav_status",
+        "recorded_at",
+        "rot",
+        "ship_id",
+        "speed",
+        "unix_time"
+      ]
+    },
+    "missing_columns": {
+      "ships": [],
+      "ship_positions": []
+    },
+    "location_written": false,
+    "never_done": [
+      "不清空任何表",
+      "不删除或覆盖已有船舶与船位",
+      "不写入 location（数据库生成列）",
+      "不修改 events 与 news"
+    ]
+  },
+  "errors": [],
+  "executed": false,
+  "existing_ship_count": 150,
+  "mmsi_collisions": 0,
+  "mmsi_collision_sample": [],
+  "existing_positions_for_linked_ships": 0,
+  "note_zh": "当前为 dry-run，未写入任何数据。确认无误后加 --apply 执行。",
+  "finished_at_utc": "2026-09-11T08:12:57+00:00"
+}

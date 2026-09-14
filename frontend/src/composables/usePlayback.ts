@@ -42,13 +42,19 @@ export function usePlayback() {
       ])
       if (!meta.start_at || !meta.end_at || !meta.frame_count)
         throw new Error('暂无可回放的模拟位置数据')
-      const positions = await fetchPlaybackPositions(meta.start_at, meta.end_at)
-      const byTime = new Map<string, ApiShipPosition[]>()
+      const start = Date.parse(meta.start_at)
+      const end = Date.parse(meta.end_at)
+      const positionsById = new Map<number, ApiShipPosition>()
+      // The API accepts at most 24 hours. Inclusive boundaries can repeat a point.
+      let cursor = start
+      do {
+        const until = Math.min(end, cursor + 24 * 60 * 60 * 1000)
+        const chunk = await fetchPlaybackPositions(new Date(cursor).toISOString(), new Date(until).toISOString())
+        chunk.forEach((position) => positionsById.set(position.id, position))
+        cursor = until
+      } while (cursor < end)
       const byShip: Record<number, ApiShipPosition[]> = {}
-      for (const p of positions) {
-        const key = new Date(p.recorded_at).toISOString()
-        if (!byTime.has(key)) byTime.set(key, [])
-        byTime.get(key)!.push(p)
+      for (const p of positionsById.values()) {
         ;(byShip[p.ship_id] ??= []).push(p)
       }
       Object.values(byShip).forEach((track) =>
@@ -58,9 +64,12 @@ export function usePlayback() {
       )
       ships.value = identities
       tracks.value = byShip
-      frames.value = [...byTime]
-        .sort(([a], [b]) => Date.parse(a) - Date.parse(b))
-        .map(([time, positions]) => ({ time, positions }))
+      const step = Math.max(1, meta.frame_interval_seconds) * 1000
+      const displayTimes: number[] = []
+      for (let at = start; at < end; at += step) displayTimes.push(at)
+      displayTimes.push(end)
+      // Display ticks do not resample or interpolate the underlying reports.
+      frames.value = displayTimes.map((at) => ({ time: new Date(at).toISOString(), positions: [] }))
       index.value = 0
     } catch (e) {
       ships.value = []

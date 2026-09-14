@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "start_at": "2026-02-26T01:02:41Z",
+    "end_at": "2026-03-04T23:59:41Z",
+    "frame_interval_seconds": 300,
+    "frame_count": 2005,
+    "ship_count": 150,
+    "position_count": 58567,
+    "event_count": 0,
+    "is_simulated": true
+  },
+  "window_counts": [
+    6732,
+    9716,
+    8926,
+    7625,
+    7601,
+    9660,
+    8307
+  ],
+  "unique_positions": 58567,
+  "health_docs_ships_events": "passed"
+}

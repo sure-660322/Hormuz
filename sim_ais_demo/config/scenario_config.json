@@ -1,0 +1,700 @@
+{
+  "config_version": "1.0.0",
+  "batch_id": "sim_ais_hormuz_20260226_20260305",
+  "purpose": "霍尔木兹海峡船舶态势地图教学模拟数据（脏 AIS 报位特征演示）",
+  "data_source_value": "simulation",
+  "time_window": {
+    "start_utc": "2026-02-26T00:00:00+00:00",
+    "end_utc": "2026-03-05T00:00:00+00:00",
+    "days": 7,
+    "timezone": "UTC",
+    "shard_by": "utc_date",
+    "rationale_zh": "2026-02-26 至 2026-03-04（UTC，共 7 个自然日）。起点取现有新闻最早报道日 2026-02-26；终点 2026-03-05T00:00Z 恰为新闻 evt_049（战争险撤保）报道的伦敦生效时刻。窗口内 02-26/27 为事件前，02-28 为影响出现，03-01/02 为持续影响（现有新闻覆盖到此），03-03/04 为无新闻支持的模拟后续阶段。"
+  },
+  "random_seed": 20260226,
+  "ships": {
+    "count": 150,
+    "mmsi_prefix": "899",
+    "mmsi_digits": 9,
+    "name_template": "SIM {ship_type_zh} {index:03d}",
+    "callsign_template": "SIM9{index:03d}",
+    "flag_pool": [
+      "模拟船旗-A",
+      "模拟船旗-B",
+      "模拟船旗-C",
+      "模拟船旗-D",
+      "模拟船旗-E"
+    ],
+    "imo": null,
+    "type_mix": [
+      {
+        "ship_type": "油轮",
+        "count": 44,
+        "ais_type": "油轮",
+        "speed_kn": [
+          9.0,
+          14.5
+        ],
+        "length_m": [
+          180,
+          333
+        ],
+        "width_m": [
+          28,
+          60
+        ],
+        "draught_m": [
+          8.0,
+          21.0
+        ],
+        "impact_weight": 1.0
+      },
+      {
+        "ship_type": "散货船",
+        "count": 30,
+        "ais_type": "散货船",
+        "speed_kn": [
+          9.5,
+          15.5
+        ],
+        "length_m": [
+          150,
+          292
+        ],
+        "width_m": [
+          23,
+          45
+        ],
+        "draught_m": [
+          6.0,
+          18.0
+        ],
+        "impact_weight": 0.85
+      },
+      {
+        "ship_type": "集装箱船",
+        "count": 30,
+        "ais_type": "集装箱船",
+        "speed_kn": [
+          12.0,
+          20.5
+        ],
+        "length_m": [
+          150,
+          400
+        ],
+        "width_m": [
+          23,
+          61
+        ],
+        "draught_m": [
+          8.0,
+          16.5
+        ],
+        "impact_weight": 0.6
+      },
+      {
+        "ship_type": "液化气船",
+        "count": 9,
+        "ais_type": "液化气船",
+        "speed_kn": [
+          11.0,
+          17.0
+        ],
+        "length_m": [
+          120,
+          300
+        ],
+        "width_m": [
+          20,
+          50
+        ],
+        "draught_m": [
+          6.0,
+          13.0
+        ],
+        "impact_weight": 0.95
+      },
+      {
+        "ship_type": "化学品船",
+        "count": 8,
+        "ais_type": "化学品船",
+        "speed_kn": [
+          10.0,
+          15.0
+        ],
+        "length_m": [
+          100,
+          185
+        ],
+        "width_m": [
+          17,
+          32
+        ],
+        "draught_m": [
+          5.5,
+          12.0
+        ],
+        "impact_weight": 0.8
+      },
+      {
+        "ship_type": "杂货船",
+        "count": 11,
+        "ais_type": "杂货船",
+        "speed_kn": [
+          8.5,
+          14.0
+        ],
+        "length_m": [
+          90,
+          180
+        ],
+        "width_m": [
+          14,
+          28
+        ],
+        "draught_m": [
+          4.5,
+          11.0
+        ],
+        "impact_weight": 0.6
+      },
+      {
+        "ship_type": "车辆运输船",
+        "count": 8,
+        "ais_type": "车辆运输船",
+        "speed_kn": [
+          14.0,
+          19.5
+        ],
+        "length_m": [
+          140,
+          232
+        ],
+        "width_m": [
+          25,
+          36
+        ],
+        "draught_m": [
+          6.5,
+          10.5
+        ],
+        "impact_weight": 0.7
+      },
+      {
+        "ship_type": "拖轮",
+        "count": 10,
+        "ais_type": "拖轮",
+        "speed_kn": [
+          3.5,
+          9.0
+        ],
+        "length_m": [
+          20,
+          45
+        ],
+        "width_m": [
+          8,
+          15
+        ],
+        "draught_m": [
+          3.0,
+          6.5
+        ],
+        "impact_weight": 0.35
+      }
+    ]
+  },
+  "geography": {
+    "region_name_zh": "霍尔木兹海峡及邻近水域",
+    "bounding_box": {
+      "lat_min": 24.4,
+      "lat_max": 27.6,
+      "lon_min": 53.3,
+      "lon_max": 58.8
+    },
+    "strait_reference_point": {
+      "lat": 26.55,
+      "lon": 56.45,
+      "name_zh": "海峡最窄段参考点"
+    },
+    "source_note_zh": "海峡长约 167 km，最宽约 97 km，最窄约 39 km（21 海里），位于阿曼穆桑代姆半岛与伊朗盖什姆岛之间。IMO 分道通航制（TSS）由两条各约 3 km 宽的通航带与约 3 km 分隔带组成。本模拟只使用两条简化中心线，并非 TSS 法定边界，也不是实测航道。",
+    "routes": {
+      "inbound_to_gulf": {
+        "label_zh": "进入波斯湾方向（阿曼湾 → 海峡 → 波斯湾），走偏南的简化通航带",
+        "lane": "south",
+        "waypoints_lat_lon": [
+          [
+            24.88,
+            58.68
+          ],
+          [
+            25.06,
+            58.36
+          ],
+          [
+            25.24,
+            58.04
+          ],
+          [
+            25.42,
+            57.72
+          ],
+          [
+            25.56,
+            57.44
+          ],
+          [
+            25.68,
+            57.2
+          ],
+          [
+            25.86,
+            57.0
+          ],
+          [
+            26.02,
+            56.86
+          ],
+          [
+            26.2,
+            56.74
+          ],
+          [
+            26.36,
+            56.64
+          ],
+          [
+            26.46,
+            56.57
+          ],
+          [
+            26.53,
+            56.48
+          ],
+          [
+            26.57,
+            56.36
+          ],
+          [
+            26.58,
+            56.22
+          ],
+          [
+            26.58,
+            56.08
+          ],
+          [
+            26.57,
+            55.94
+          ],
+          [
+            26.55,
+            55.78
+          ],
+          [
+            26.52,
+            55.6
+          ],
+          [
+            26.47,
+            55.4
+          ],
+          [
+            26.4,
+            55.16
+          ],
+          [
+            26.31,
+            54.9
+          ],
+          [
+            26.19,
+            54.62
+          ],
+          [
+            26.04,
+            54.36
+          ],
+          [
+            25.86,
+            54.16
+          ],
+          [
+            25.63,
+            53.98
+          ],
+          [
+            25.38,
+            53.8
+          ]
+        ]
+      },
+      "outbound_from_gulf": {
+        "label_zh": "驶出波斯湾方向（波斯湾 → 海峡 → 阿曼湾），走偏北的简化通航带",
+        "lane": "north",
+        "waypoints_lat_lon": [
+          [
+            25.22,
+            53.52
+          ],
+          [
+            25.46,
+            53.72
+          ],
+          [
+            25.7,
+            53.94
+          ],
+          [
+            25.95,
+            54.16
+          ],
+          [
+            26.16,
+            54.44
+          ],
+          [
+            26.32,
+            54.74
+          ],
+          [
+            26.42,
+            55.02
+          ],
+          [
+            26.49,
+            55.3
+          ],
+          [
+            26.53,
+            55.56
+          ],
+          [
+            26.55,
+            55.8
+          ],
+          [
+            26.56,
+            56.0
+          ],
+          [
+            26.57,
+            56.16
+          ],
+          [
+            26.58,
+            56.3
+          ],
+          [
+            26.59,
+            56.44
+          ],
+          [
+            26.57,
+            56.56
+          ],
+          [
+            26.5,
+            56.68
+          ],
+          [
+            26.4,
+            56.8
+          ],
+          [
+            26.28,
+            56.92
+          ],
+          [
+            26.06,
+            57.04
+          ],
+          [
+            25.72,
+            57.22
+          ],
+          [
+            25.52,
+            57.52
+          ],
+          [
+            25.32,
+            57.88
+          ],
+          [
+            25.12,
+            58.22
+          ],
+          [
+            24.92,
+            58.56
+          ]
+        ]
+      },
+      "gulf_internal": {
+        "label_zh": "波斯湾内支线（不穿越海峡者），沿湾内向西北航行",
+        "lane": "gulf",
+        "waypoints_lat_lon": [
+          [
+            25.45,
+            54.85
+          ],
+          [
+            25.7,
+            54.5
+          ],
+          [
+            25.98,
+            54.16
+          ],
+          [
+            26.26,
+            53.82
+          ],
+          [
+            26.52,
+            53.48
+          ],
+          [
+            26.76,
+            53.14
+          ],
+          [
+            26.98,
+            52.78
+          ],
+          [
+            27.18,
+            52.4
+          ],
+          [
+            27.38,
+            52.02
+          ],
+          [
+            27.58,
+            51.64
+          ],
+          [
+            27.8,
+            51.26
+          ],
+          [
+            28.04,
+            50.88
+          ],
+          [
+            28.3,
+            50.5
+          ],
+          [
+            28.56,
+            50.12
+          ]
+        ]
+      }
+    }
+  },
+  "motion": {
+    "integration_step_seconds": 20,
+    "route_start_offset_km": [
+      0.0,
+      260.0
+    ],
+    "route_entry_variation_km": 40.0,
+    "waypoint_jitter_km": 1.2,
+    "lateral_offset_km": [
+      -2.0,
+      2.0
+    ],
+    "lateral_offset_wavelength_km": [
+      55.0,
+      160.0
+    ],
+    "speed_variation_amplitude": 0.09,
+    "speed_variation_period_hours": [
+      5.0,
+      13.0
+    ],
+    "departure_window_hours": [
+      0.0,
+      26.0
+    ],
+    "turn_smoothing_km": 12.0,
+    "turnaround_hours": [
+      5.0,
+      26.0
+    ]
+  },
+  "reporting": {
+    "sigma_log_space": 0.6,
+    "underway_mean_interval_seconds": 900,
+    "anchored_mean_interval_seconds": 2700,
+    "min_interval_seconds": null,
+    "max_interval_seconds": null,
+    "first_report_phase_seconds": [
+      0,
+      900
+    ],
+    "underway_speed_threshold_kn": 0.5,
+    "note_zh": "15/45 分钟为本教学数据集设定的稀疏观测平均间隔，不是 AIS 设备标准广播周期。默认不设置最小/最大间隔截断，因此算术均值不被改变。"
+  },
+  "anomalies": {
+    "enabled": true,
+    "dropout_probability": 0.012,
+    "blackout_ship_fraction": 0.09,
+    "blackout_hours": [
+      1.0,
+      4.0
+    ],
+    "position_noise_std_deg": 0.0006,
+    "speed_noise_kn": 0.4,
+    "course_noise_deg": 3.0,
+    "heading_missing_probability": 0.07,
+    "destination_stale_probability": 0.05,
+    "duplicate_probability": 0.003,
+    "out_of_order_probability": 0.005,
+    "position_jump_probability": 0.0015,
+    "position_jump_km": [
+      30.0,
+      120.0
+    ]
+  },
+  "cleaning": {
+    "remove_exact_duplicates": true,
+    "keep_irregular_intervals": true,
+    "keep_dropouts": true,
+    "interpolate": false,
+    "note_zh": "数据库兼容文件只做去重、跳点隔离与排序，不做插值、不做等间隔重采样。缺报、长空窗与轻微噪声保留。跳点隔离使用两条不依赖注入记录的规则：前后点时间插值偏差，以及与该船自身报位航速不符的推算航速。",
+    "quarantine_spike_km_per_minute": 0.22,
+    "quarantine_spike_min_km": 3.0,
+    "quarantine_spike_max_span_minutes": 240.0,
+    "quarantine_spike_max_km": 25.0,
+    "quarantine_speed_ratio": 1.6,
+    "quarantine_speed_margin_kn": 4.0,
+    "quarantine_speed_floor_kn": 6.0
+  },
+  "scenario_phases": [
+    {
+      "id": "P0_pre_incident",
+      "label_zh": "事件前：局势紧张但通航正常",
+      "start_utc": "2026-02-26T00:00:00+00:00",
+      "end_utc": "2026-02-28T06:00:00+00:00",
+      "evidence": "reported",
+      "news_refs": [
+        "evt_001",
+        "evt_003",
+        "evt_004",
+        "evt_005"
+      ],
+      "traffic_intent_zh": "全部船舶按正常航速通过，无额外等待。",
+      "speed_multiplier": 1.0,
+      "anchor_probability_scale": 0.0,
+      "impact_scale": 0.0
+    },
+    {
+      "id": "P1_onset",
+      "label_zh": "影响出现：空袭与报复行动，航运开始收缩",
+      "start_utc": "2026-02-28T06:00:00+00:00",
+      "end_utc": "2026-03-01T00:00:00+00:00",
+      "evidence": "reported",
+      "news_refs": [
+        "evt_008",
+        "evt_009",
+        "evt_011",
+        "evt_014"
+      ],
+      "traffic_intent_zh": "海峡附近部分船舶提前减速、推迟进入；远处船舶基本不受影响。",
+      "speed_multiplier": 0.72,
+      "anchor_probability_scale": 0.35,
+      "impact_scale": 0.72
+    },
+    {
+      "id": "P2_peak",
+      "label_zh": "持续影响：海峡关闭宣告、油轮遇袭、船舶滞留",
+      "start_utc": "2026-03-01T00:00:00+00:00",
+      "end_utc": "2026-03-03T00:00:00+00:00",
+      "evidence": "reported",
+      "news_refs": [
+        "evt_007",
+        "evt_016",
+        "evt_028",
+        "evt_040",
+        "evt_065",
+        "evt_024",
+        "evt_029",
+        "evt_049",
+        "evt_052"
+      ],
+      "traffic_intent_zh": "海峡两端出现大量等待与锚泊，通行量显著下降；部分船舶转向等待区分流。",
+      "speed_multiplier": 0.32,
+      "anchor_probability_scale": 1.0,
+      "impact_scale": 1.15
+    },
+    {
+      "id": "P3_simulated_partial_recovery",
+      "label_zh": "后续变化（模拟假设）：有限复航与试探性通行",
+      "start_utc": "2026-03-03T00:00:00+00:00",
+      "end_utc": "2026-03-05T00:00:00+00:00",
+      "evidence": "simulated_assumption",
+      "news_refs": [
+        "evt_047",
+        "evt_049"
+      ],
+      "traffic_intent_zh": "无新闻报道支持。作为教学情景假设，部分滞留船恢复航行、通行量回升但低于事发前水平，仍有相当比例保持等待。",
+      "speed_multiplier": 0.62,
+      "anchor_probability_scale": 0.45,
+      "impact_scale": 0.38
+    }
+  ],
+  "reaction_model": {
+    "unaffected_ship_fraction": 0.16,
+    "response_delay_hours_median": 3.0,
+    "response_delay_sigma_log_space": 0.8,
+    "recovery_delay_hours": [
+      0.0,
+      0.0
+    ],
+    "ramp_hours": 4.0,
+    "near_strait_km": 90.0,
+    "far_from_strait_km": 330.0,
+    "min_distance_factor": 0.05,
+    "outbound_extra_factor": 1.25,
+    "inbound_extra_factor": 0.95,
+    "already_passed_factor": 0.45,
+    "behaviour_thresholds": {
+      "anchor": 0.7,
+      "hold": 0.45,
+      "slow": 0.2
+    },
+    "hold_speed_kn": [
+      0.05,
+      0.3
+    ],
+    "anchor_speed_kn": [
+      0.0,
+      0.06
+    ],
+    "slow_speed_factor": [
+      0.28,
+      0.58
+    ],
+    "lane_clearance_offset_km": [
+      0.5,
+      1.5
+    ],
+    "tidal_sway_period_hours": 12.42,
+    "tidal_sway_semi_major_m": [
+      60.0,
+      240.0
+    ],
+    "score_gain": 1.45
+  },
+  "output": {
+    "directory": "output",
+    "positions_subdir": "positions_by_date",
+    "raw_subdir": "raw_observations",
+    "quarantine_subdir": "quarantine"
+  }
+}

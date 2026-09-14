@@ -61,7 +61,7 @@ const points = computed(() => {
         </div>
         <h2>{{ ship.name }}</h2>
         <p>
-          {{ shipType(ship.ship_type) }} <span>{{ ship.flag }}</span>
+          {{ shipType(ship.ship_type) }} <span>{{ ship.flag ?? '未提供' }}</span>
         </p>
       </header>
       <div class="vessel-readings">
@@ -188,15 +188,15 @@ const points = computed(() => {
         <details class="sample-records"><summary>模拟位置记录（{{ track.length }} 条）</summary><table><thead><tr><th>时间</th><th>纬度 / 经度</th><th>kn</th></tr></thead><tbody><tr v-for="p in [...track].reverse()" :key="p.id"><td>{{ formatTime(p.recorded_at) }}</td><td>{{ p.latitude.toFixed(3) }} / {{ p.longitude.toFixed(3) }}</td><td>{{ p.speed.toFixed(1) }}</td></tr></tbody></table></details>
       </section>
       <section v-else-if="section === 'events'" class="detail-section">
-        <h3>当前船位周边 10 NM</h3>
+        <h3>船舶事件关联</h3>
         <p class="caption">
-          仅含已发生事件；基于前端模拟快照计算距离，不代表业务关联。
+          新闻事件与模拟船位时段不重合，本阶段不进行船舶事件关联。
         </p>
         <p v-if="eventsLoading || eventsError" class="empty">
           {{ eventsError || '正在加载事件…' }}
         </p>
         <p v-else-if="!nearbyEvents.length" class="empty">
-          当前时间与范围内没有事件。
+          关联功能暂未适配，请在“事件”面板独立查看新闻。
         </p>
         <button
           v-for="event in nearbyEvents"
@@ -213,9 +213,9 @@ const points = computed(() => {
         </button>
       </section>
       <section v-else class="detail-section empty">
-        <h3>新闻尚未接入</h3>
-        <p>接入带时间、来源与地理位置的新闻后，可在此查看船舶周边报道。</p>
-        <p>当前不会将模拟事件当作新闻。</p>
+        <h3>船舶新闻关联暂不可用</h3>
+        <p>当前船位为8月的教学模拟，不能与2—3月新闻直接建立关联。</p>
+        <p>已采集新闻可在事件详情中查看；尚无与这艘模拟船舶的可靠关联。</p>
       </section>
     </template>
     <template v-else

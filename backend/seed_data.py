@@ -78,6 +78,7 @@ def seed_positions() -> None:
 
         positions = [
             ShipPosition(
+                data_source="simulation",
                 ship_id=ships[mmsi].id,
                 latitude=latitude,
                 longitude=longitude,

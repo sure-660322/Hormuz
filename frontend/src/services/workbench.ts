@@ -1,5 +1,5 @@
 import type { ApiMapShip, ApiEvent } from '../api'
-import { distanceNm, type AreaQuery, type AreaResult } from '../domain/maritime'
+import { hasEventLocation, distanceNm, type AreaQuery, type AreaResult } from '../domain/maritime'
 
 // These adapters operate on the loaded simulation, never on invented AIS/news.
 export interface WorkbenchService {
@@ -26,6 +26,7 @@ export const localWorkbench: WorkbenchService = {
       ),
       events: events.filter(
         (event) =>
+          hasEventLocation(event) && event.occurred_at !== null &&
           Date.parse(event.occurred_at) <= Date.parse(query.at) &&
           distanceNm(query.center, event) <= query.radiusNm,
       ),

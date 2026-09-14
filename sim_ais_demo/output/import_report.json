@@ -1,0 +1,36 @@
+{
+  "outdir": "D:\\my_project\\Hormuz\\sim_ais_demo\\output",
+  "mode": "dry-run",
+  "ships_in_batch": 150,
+  "positions_in_batch": 58567,
+  "position_files": [
+    "positions_2026-02-26.jsonl",
+    "positions_2026-02-27.jsonl",
+    "positions_2026-02-28.jsonl",
+    "positions_2026-03-01.jsonl",
+    "positions_2026-03-02.jsonl",
+    "positions_2026-03-03.jsonl",
+    "positions_2026-03-04.jsonl"
+  ],
+  "started_at_utc": "2026-09-11T14:36:43+00:00",
+  "planned_actions": {},
+  "errors": [
+    "批次中有 150 个 MMSI 已存在于 ships 表。默认不覆盖、不重复插入。若确认要复用现有船舶并只补船位，请加 --link-existing。"
+  ],
+  "executed": false,
+  "existing_ship_count": 150,
+  "mmsi_collisions": 150,
+  "mmsi_collision_sample": [
+    "899000001",
+    "899000002",
+    "899000003",
+    "899000004",
+    "899000005",
+    "899000006",
+    "899000007",
+    "899000008",
+    "899000009",
+    "899000010"
+  ],
+  "finished_at_utc": "2026-09-11T14:36:43+00:00"
+}

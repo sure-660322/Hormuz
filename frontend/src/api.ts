@@ -3,7 +3,7 @@ export interface ApiShip{   //描述FastAPI/ships返回的数据结构
     mmsi:string
     name:string
     ship_type:string
-    flag:string
+    flag:string | null
     imo:string | null
     callsign:string | null
 }
@@ -24,7 +24,7 @@ export interface ApiMapShip{
     mmsi: string
     name: string
     ship_type: string
-    flag: string
+    flag: string | null
     imo: string | null
     callsign: string | null
     latitude: number
@@ -35,16 +35,57 @@ export interface ApiMapShip{
     recorded_at: string
 }
 
-export interface ApiEvent {
+export interface EventRecord {
   id: number
+  event_id: string
+  title_zh: string
+  summary_zh: string
+  event_type: string
+  event_datetime: string | null
+  event_time_text: string | null
+  event_location_text: string | null
+  event_region: string | null
+  event_lat: number | null
+  event_lng: number | null
+  geo_method: string | null
+  geo_note: string | null
+  coverage_count: number
+  perspectives: string[]
+  mentioned_vessels: string[]
+  publish_date_min: string | null
+  publish_date_max: string | null
+}
+
+// View aliases keep existing components readable; nullable values stay nullable.
+export interface ApiEvent extends EventRecord {
   title: string
   description: string
-  event_type: string
-  latitude: number
-  longitude: number
-  occurred_at: string
-  source_name: string | null
-  source_url: string | null
+  latitude: number | null
+  longitude: number | null
+  occurred_at: string | null
+}
+export interface ApiEventNews {
+  story_id: string
+  title_zh: string
+  summary_zh: string
+  title: string
+  canonical_url: string
+  media_name: string
+  perspective: string
+  publish_date: string
+}
+
+export function toEventView(e: EventRecord): ApiEvent {
+  return { ...e, title: e.title_zh, description: e.summary_zh,
+    latitude: e.event_lat, longitude: e.event_lng, occurred_at: e.event_datetime }
+}
+
+export async function fetchEventNews(eventId: string, signal?: AbortSignal): Promise<ApiEventNews[]> {
+  const response = await fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventId)}/news`, {
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) throw new Error(`关联新闻加载失败：${response.status}`)
+  return response.json()
 }
 
 export interface ApiSimulationMeta {
@@ -102,7 +143,8 @@ export async function fetchEvents(): Promise<ApiEvent[]> {
     throw new Error(`获取事件数据失败：${response.status}`)
   }
 
-  return response.json()
+  const records: EventRecord[] = await response.json()
+  return records.map(toEventView)
 }
 
 export async function fetchSimulationMeta(): Promise<ApiSimulationMeta> {

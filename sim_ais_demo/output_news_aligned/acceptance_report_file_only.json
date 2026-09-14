@@ -1,0 +1,494 @@
+{
+  "outdir": "sim_ais_demo\\output_news_aligned",
+  "checks": {
+    "row_counts": {
+      "ships": 30,
+      "position_files": 7,
+      "positions": 9354,
+      "raw_files": 7,
+      "raw_records": 9403,
+      "expected_ships": 30,
+      "expected_days": 7
+    },
+    "ships": {
+      "mmsi_unique": true,
+      "mmsi_9_digit": true,
+      "temp_id_unique": true,
+      "field_issue_count": 0,
+      "field_issues_sample": [],
+      "ship_type_distribution": {
+        "油轮": 9,
+        "集装箱船": 6,
+        "散货船": 6,
+        "液化气船": 2,
+        "杂货船": 2,
+        "化学品船": 2,
+        "拖轮": 2,
+        "车辆运输船": 1
+      },
+      "has_sim_in_name": true,
+      "imo_all_null": true
+    },
+    "positions_schema": {
+      "issue_count": 0,
+      "issues_sample": [],
+      "fields_present": [
+        "ais_type",
+        "course",
+        "data_source",
+        "destination",
+        "draught_m",
+        "heading",
+        "latitude",
+        "longitude",
+        "nav_status",
+        "recorded_at",
+        "rot",
+        "speed",
+        "temp_ship_id",
+        "unix_time"
+      ],
+      "unix_time_mismatch": 0,
+      "non_utc_recorded_at": 0,
+      "latitude_out_of_range": 0,
+      "longitude_out_of_range": 0,
+      "speed_out_of_range": 0,
+      "course_out_of_range": 0,
+      "heading_out_of_range": 0,
+      "data_source_not_simulation": 0,
+      "null_counts": {
+        "heading": 699,
+        "rot": 9354
+      },
+      "rot_null_ratio": 1.0,
+      "unix_time_present_ratio": 1.0,
+      "ais_type_present_ratio": 1.0,
+      "draught_present_ratio": 1.0
+    },
+    "intervals": {
+      "underway": {
+        "n": 6495,
+        "mean": 1339.95,
+        "median": 765.0,
+        "p10": 345.0,
+        "p90": 1676.6,
+        "min": 87.0,
+        "max": 94167.0,
+        "stdev": 5239.61,
+        "cv": 3.9103
+      },
+      "anchored": {
+        "n": 2806,
+        "mean": 2709.67,
+        "median": 2211.5,
+        "p10": 1004.5,
+        "p90": 4939.0,
+        "min": 217.0,
+        "max": 16355.0,
+        "stdev": 1873.07,
+        "cv": 0.6913
+      },
+      "state_transition": {
+        "n": 23,
+        "mean": 1436.61,
+        "median": 1096.0,
+        "p10": 683.8,
+        "p90": 2508.4,
+        "min": 601.0,
+        "max": 3399.0,
+        "stdev": 814.44,
+        "cv": 0.5669
+      },
+      "per_ship_position_count": {
+        "n": 30,
+        "mean": 311.8,
+        "median": 286.0,
+        "p10": 254.7,
+        "p90": 409.6,
+        "min": 230.0,
+        "max": 519.0,
+        "stdev": 74.1,
+        "cv": 0.2376
+      },
+      "gaps_over_1h": 710,
+      "gaps_over_1h_by_state": {
+        "underway_both_ends": 90,
+        "anchored_both_ends": 620,
+        "state_transition": 0
+      },
+      "gaps_over_4h": 50,
+      "distinct_interval_minute_buckets": 228,
+      "top_interval_buckets": [
+        [
+          "9",
+          419
+        ],
+        [
+          "8",
+          413
+        ],
+        [
+          "12",
+          407
+        ],
+        [
+          "7",
+          388
+        ],
+        [
+          "10",
+          386
+        ]
+      ],
+      "expected_log_normal_tail_note_zh": "对数正态 σ=0.6 时，在航间隔超过 1 小时的天然概率约 0.5%，锚泊间隔（均值 45 分钟）超过 1 小时的天然概率约 22%。因此固定 1 小时阈值不是识别信号丢失的好办法；锚泊间隔的长尾属于分布本身，不能当作异常。"
+    },
+    "irregularity": {
+      "total_positions": 9354,
+      "distinct_recorded_at": 9280,
+      "distinct_ratio": 0.9921,
+      "max_ships_in_same_second": 3,
+      "max_rows_in_same_second": 3,
+      "underway_interval_unique_ratio": 0.3024,
+      "exactly_900s_share": 0.000308,
+      "exactly_1800s_share": 0.0
+    },
+    "anomalies_observed_in_files": {
+      "raw_records": 9403,
+      "clean_records": 9354,
+      "removed_by_cleaning": 49,
+      "duplicate_records_detected": 36,
+      "out_of_order_records_detected": 28,
+      "records_with_implied_speed_over_threshold": 20,
+      "heading_missing_in_raw": 703,
+      "heading_missing_ratio_raw": 0.07476,
+      "heading_missing_in_clean": 699,
+      "raw_sorted_by_arrival_seq": false,
+      "longest_single_gap_hours": 26.157,
+      "gaps_over_1h": 710
+    },
+    "anomalies_injected": {
+      "source": "anomaly_labels.json（生成过程写入的注入记录，文件级验收可读取其计数）",
+      "by_type": {
+        "dropout_random": {
+          "unit": "report",
+          "injected": 118,
+          "note_zh": "按固定概率逐一丢弃基础报位，不重新排布剩余时间。"
+        },
+        "blackout": {
+          "unit": "window",
+          "injected": 3,
+          "suppressed_reports": 24,
+          "note_zh": "受影响船在 1-4 小时内全部报位丢失。"
+        },
+        "duplicate": {
+          "unit": "report",
+          "injected": 36,
+          "note_zh": "字段与 recorded_at 完全相同的重复报文。"
+        },
+        "out_of_order": {
+          "unit": "report",
+          "injected": 40,
+          "note_zh": "接收时间被额外延迟，原始文件按到达顺序排列，记录时间非单调。"
+        },
+        "position_jump": {
+          "unit": "report",
+          "injected": 10,
+          "note_zh": "孤立位置跳点，瞬时偏移 30-120 km，不影响相邻真实船位。"
+        },
+        "position_noise": {
+          "unit": "report",
+          "sigma_deg": 0.0006,
+          "note_zh": "叠加到全部原始报位的高斯定位噪声。"
+        },
+        "speed_noise": {
+          "unit": "report",
+          "sigma_kn_half": 0.2
+        },
+        "course_noise": {
+          "unit": "report",
+          "sigma_deg_half": 1.5
+        },
+        "heading_missing": {
+          "unit": "report",
+          "injected": 701,
+          "note_zh": "航首向字段偶发缺失，course 不受影响。"
+        },
+        "destination_stale": {
+          "unit": "report",
+          "injected": 370,
+          "note_zh": "航次切换后目的地字段短暂滞后于上一航次。"
+        }
+      },
+      "blackout_windows": 3,
+      "position_jump_records": 10,
+      "duplicate_records": 36
+    },
+    "trajectory_consistency": {
+      "pairs": 9275,
+      "implied_speed": {
+        "n": 9275,
+        "mean": 8.15,
+        "median": 10.12,
+        "p10": 0.07,
+        "p90": 15.23,
+        "min": 0.0,
+        "max": 22.51,
+        "stdev": 6.27,
+        "cv": 0.7692
+      },
+      "reported_speed": {
+        "n": 9275,
+        "mean": 8.12,
+        "median": 10.13,
+        "p10": 0.0,
+        "p90": 15.17,
+        "min": 0.0,
+        "max": 22.09,
+        "stdev": 6.28,
+        "cv": 0.774
+      },
+      "relative_deviation_share": {
+        "n": 6470,
+        "mean": 3.94,
+        "median": 2.19,
+        "p10": 0.39,
+        "p90": 7.68,
+        "min": 0.0,
+        "max": 138.4,
+        "stdev": 7.75,
+        "cv": 1.9638
+      },
+      "note_zh": "推算航速由相邻报位距离除以时间得到；受不规则间隔与定位噪声影响，与报位航速存在差异属预期现象。"
+    },
+    "land_check": {
+      "clean_positions_on_land": 0,
+      "raw_positions_on_land": 2,
+      "clean_on_land_ratio": 0.0,
+      "affected_ship_ids_sample": [],
+      "reference": "Natural Earth 1:10m land polygons",
+      "precision_note_zh": "1:10m 概化岸线，近岸精度数百米至 1 km，缺失防波堤、填海区、极小岛礁。只能筛查明显穿越陆地，不等于航道级验证。"
+    },
+    "playback_limits": {
+      "max_range_hours": 24,
+      "max_points": 50000,
+      "daily": {
+        "2026-02-26": {
+          "positions": 1150,
+          "within_24h_limit": true,
+          "within_point_limit": true
+        },
+        "2026-02-27": {
+          "positions": 2130,
+          "within_24h_limit": true,
+          "within_point_limit": true
+        },
+        "2026-02-28": {
+          "positions": 1335,
+          "within_24h_limit": true,
+          "within_point_limit": true
+        },
+        "2026-03-01": {
+          "positions": 1174,
+          "within_24h_limit": true,
+          "within_point_limit": true
+        },
+        "2026-03-02": {
+          "positions": 1215,
+          "within_24h_limit": true,
+          "within_point_limit": true
+        },
+        "2026-03-03": {
+          "positions": 1252,
+          "within_24h_limit": true,
+          "within_point_limit": true
+        },
+        "2026-03-04": {
+          "positions": 1098,
+          "within_24h_limit": true,
+          "within_point_limit": true
+        }
+      },
+      "all_days_within_point_limit": true,
+      "note_zh": "分片粒度为 UTC 自然日（24 小时），因此每次回放请求天然满足 24 小时上限；每片点数须不超过 50,000。"
+    },
+    "phase_behaviour": {
+      "P0_pre_incident": {
+        "label_zh": "事件前：局势紧张但通航正常",
+        "evidence": "reported",
+        "window_utc": [
+          "2026-02-26T00:00:00+00:00",
+          "2026-02-28T06:00:00+00:00"
+        ],
+        "reports": 3554,
+        "distinct_ships": 30,
+        "ships_ever_anchored": 0,
+        "ships_ever_anchored_share": 0.0,
+        "ships_active_in_strait_box": 21,
+        "mean_speed_kn": 12.06,
+        "median_speed_kn": 12.3,
+        "anchored_report_share": 0.0,
+        "below_1kn_report_share": 0.0
+      },
+      "P1_onset": {
+        "label_zh": "影响出现：空袭与报复行动，航运开始收缩",
+        "evidence": "reported",
+        "window_utc": [
+          "2026-02-28T06:00:00+00:00",
+          "2026-03-01T00:00:00+00:00"
+        ],
+        "reports": 1061,
+        "distinct_ships": 29,
+        "ships_ever_anchored": 17,
+        "ships_ever_anchored_share": 0.5667,
+        "ships_active_in_strait_box": 2,
+        "mean_speed_kn": 8.56,
+        "median_speed_kn": 9.96,
+        "anchored_report_share": 0.1725,
+        "below_1kn_report_share": 0.1913
+      },
+      "P2_peak": {
+        "label_zh": "持续影响：海峡关闭宣告、油轮遇袭、船舶滞留",
+        "evidence": "reported",
+        "window_utc": [
+          "2026-03-01T00:00:00+00:00",
+          "2026-03-03T00:00:00+00:00"
+        ],
+        "reports": 2389,
+        "distinct_ships": 30,
+        "ships_ever_anchored": 21,
+        "ships_ever_anchored_share": 0.7,
+        "ships_active_in_strait_box": 0,
+        "mean_speed_kn": 5.12,
+        "median_speed_kn": 0.27,
+        "anchored_report_share": 0.55,
+        "below_1kn_report_share": 0.5521
+      },
+      "P3_continued_waiting": {
+        "label_zh": "后续（模拟假设）：延续等待，无复航",
+        "evidence": "simulated_assumption",
+        "window_utc": [
+          "2026-03-03T00:00:00+00:00",
+          "2026-03-05T00:00:00+00:00"
+        ],
+        "reports": 2350,
+        "distinct_ships": 30,
+        "ships_ever_anchored": 21,
+        "ships_ever_anchored_share": 0.7,
+        "ships_active_in_strait_box": 0,
+        "mean_speed_kn": 5.15,
+        "median_speed_kn": 0.25,
+        "anchored_report_share": 0.5664,
+        "below_1kn_report_share": 0.5664
+      }
+    },
+    "phase_behaviour_note_zh": "ships_active_in_strait_box 统计在 26.20-26.95°N / 56.15-56.75°E 参考框内至少报位一次的模拟船数量，是过境活跃度的近似指标，不是官方过境统计。锚泊比例按报位条数加权，锚泊船报位更稀疏，因此该比例低于“曾经锚泊的船数占比”。",
+    "strait_throughput": {
+      "definition_zh": "同一船舶相邻两条报位跨越海峡带（经度从 <56.2 到 >56.7，或反向，且两条报位纬度都在 26.1-27.1N、航速都不低于 3.0 节）即计一次过境。",
+      "min_speed_kn": 3.0,
+      "total_crossings": 24,
+      "total_distinct_ships": 21,
+      "total_crossings_by_unaffected_ships": 0,
+      "unaffected_ship_count": 0,
+      "per_day": {
+        "2026-02-26": 5,
+        "2026-02-27": 17,
+        "2026-02-28": 2
+      },
+      "per_phase": {
+        "P0_pre_incident": {
+          "label_zh": "事件前：局势紧张但通航正常",
+          "evidence": "reported",
+          "hours": 54.0,
+          "crossings": 22,
+          "crossings_per_day": 9.78,
+          "distinct_ships": 21,
+          "eastbound": 12,
+          "westbound": 10,
+          "crossings_by_unaffected_ships": 0,
+          "crossings_by_unaffected_share": 0.0
+        },
+        "P1_onset": {
+          "label_zh": "影响出现：空袭与报复行动，航运开始收缩",
+          "evidence": "reported",
+          "hours": 18.0,
+          "crossings": 2,
+          "crossings_per_day": 2.67,
+          "distinct_ships": 2,
+          "eastbound": 1,
+          "westbound": 1,
+          "crossings_by_unaffected_ships": 0,
+          "crossings_by_unaffected_share": 0.0
+        },
+        "P2_peak": {
+          "label_zh": "持续影响：海峡关闭宣告、油轮遇袭、船舶滞留",
+          "evidence": "reported",
+          "hours": 48.0,
+          "crossings": 0,
+          "crossings_per_day": 0.0,
+          "distinct_ships": 0,
+          "eastbound": 0,
+          "westbound": 0,
+          "crossings_by_unaffected_ships": 0,
+          "crossings_by_unaffected_share": null
+        },
+        "P3_continued_waiting": {
+          "label_zh": "后续（模拟假设）：延续等待，无复航",
+          "evidence": "simulated_assumption",
+          "hours": 48.0,
+          "crossings": 0,
+          "crossings_per_day": 0.0,
+          "distinct_ships": 0,
+          "eastbound": 0,
+          "westbound": 0,
+          "crossings_by_unaffected_ships": 0,
+          "crossings_by_unaffected_share": null
+        }
+      },
+      "peak_vs_baseline_drop": 1.0,
+      "note_zh": "本项只统计被观测到的过境。船舶在出境时段或长空窗期间穿越海峡不会被计入，因此这是过境量的下限估计，不是官方过境统计。crossings_by_unaffected_ships 指情景中被设定为“任何阶段都不响应”的背景船所贡献的过境次数，用于判断残余通行量中有多少来自刻意保留的不响应船。"
+    },
+    "reproducibility": {
+      "manifest_declared_files": 18,
+      "recomputed_files": 18,
+      "missing_declared_files": [],
+      "hash_mismatches": [],
+      "declared_payload_sha256": "af37199ca3da0a121f1d258e60b45a9f29246f7ab4c991954bb5e7de8148cbf7",
+      "note_zh": "文件摘要与 manifest 一致说明产物未被修改。同种子同配置的可重复性需要另外运行 generate.py --repeat-check 验证。"
+    },
+    "model_side_statistics": {
+      "note_zh": "文件级验收无法取得生成过程中的“缺报前生成间隔”等内存统计，因此本报告中该部分为空。如需对比，请查看生成时写出的 acceptance_report.json。",
+      "available": false
+    },
+    "verification_scope": {
+      "actual_database_verified": false,
+      "actual_database_notes": [],
+      "model_only_checks": [
+        "间隔均值设计值（在航 900 秒 / 锚泊 2700 秒）与实际观测均值的对比",
+        "异常注入数量（dropout / blackout / duplicate / out-of-order / jump）",
+        "陆地修剪（land clamp）触发次数",
+        "阶段与行为的内部判定过程"
+      ],
+      "file_only_checks": [
+        "字段类型、必填项、长度、外键映射",
+        "标识唯一性、UTC 与 Unix 秒一致性、坐标与方向取值区间",
+        "实际观测间隔统计（在航 / 锚泊 / 状态切换）",
+        "不规则性与异步性证据",
+        "文件侧异常计数（重复、乱序、跳点、字段缺失）",
+        "轨迹一致性、陆地相交、每日点数与回放限制",
+        "阶段与观测航速、锚泊比例的对应关系",
+        "文件摘要与 manifest 一致性"
+      ],
+      "news_snapshot_available": true
+    }
+  },
+  "failures": [],
+  "warnings": [],
+  "summary": {
+    "ships": 30,
+    "positions": 9354,
+    "raw_records": 9403,
+    "days": 7,
+    "failures": 0,
+    "warnings": 0
+  }
+}

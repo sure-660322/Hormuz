@@ -1,0 +1,73 @@
+{
+  "mode": "apply",
+  "old_ships": 150,
+  "old_positions": 58567,
+  "new_ships": 30,
+  "new_positions": 9354,
+  "protected_before": {
+    "events": {
+      "count": 65,
+      "digest": "ab34b169b3a9e50827295d4e5d936e50"
+    },
+    "news": {
+      "count": 290,
+      "digest": "3b4192935a2a3279b5a4f84275b3c1f3"
+    }
+  },
+  "backup": "D:\\my_project\\Hormuz\\sim_ais_demo\\output_news_aligned\\database_backups\\20260913T145301618376Z",
+  "backup_hashes": {
+    "ships": {
+      "rows": 150,
+      "sha256": "2bbd19000cbd2bfa2b3dca9ea201419f4647d299ebaf8a548eab148858079ea3"
+    },
+    "ship_positions": {
+      "rows": 58567,
+      "sha256": "3a65d6724ca1e38e94e082af74fc8f0c2ca66ffa32fa99e6c2620dd4e6ee9c52"
+    },
+    "mobility_demo_segments": {
+      "rows": 71,
+      "sha256": "84964cb5d5ce7ae524eca43ef5f421c2726107a3d510916070597d43e506b387"
+    }
+  },
+  "protected_unchanged": true,
+  "mobility_rebuilt": {
+    "segments": 114,
+    "ships": 10,
+    "points": 2740
+  },
+  "readback_positions_verified": 9354,
+  "temp_ship_id_to_real_id": {
+    "1": 301,
+    "2": 302,
+    "3": 303,
+    "4": 304,
+    "5": 305,
+    "6": 306,
+    "7": 307,
+    "8": 308,
+    "9": 309,
+    "10": 310,
+    "11": 311,
+    "12": 312,
+    "13": 313,
+    "14": 314,
+    "15": 315,
+    "16": 316,
+    "17": 317,
+    "18": 318,
+    "19": 319,
+    "20": 320,
+    "21": 321,
+    "22": 322,
+    "23": 323,
+    "24": 324,
+    "25": 325,
+    "26": 326,
+    "27": 327,
+    "28": 328,
+    "29": 329,
+    "30": 330
+  },
+  "committed": true,
+  "finished_at_utc": "2026-09-13T14:53:02.784275+00:00"
+}

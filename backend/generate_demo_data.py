@@ -338,6 +338,7 @@ def build_positions(
 
             positions.append(
                 ShipPosition(
+                    data_source="simulation",
                     ship_id=ship.id,
                     latitude=round(point[0], 6),
                     longitude=round(point[1], 6),

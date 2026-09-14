@@ -1,0 +1,14 @@
+{
+  "source": "data/ship_data/ais_positions.csv",
+  "rows_total": 175773,
+  "extent": {
+    "lon_min": 48.0072,
+    "lon_max": 59.8241,
+    "lat_min": 22.2405,
+    "lat_max": 30.0064
+  },
+  "gulf_region_cells": 2372,
+  "strait_region_cells": 83,
+  "cell_deg": 0.02,
+  "conclusion_zh": "现有区域 AIS 数据覆盖波斯湾至阿拉伯海，但在霍尔木兹海峡最窄段几乎没有观测，无法支撑陆地/水域判定，也无法据此重建真实航道。因此本次生成改用 Natural Earth 1:10m 陆地面作为岸线参考，并明确其精度限制。"
+}

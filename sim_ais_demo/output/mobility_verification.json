@@ -1,0 +1,323 @@
+{
+  "source_tables_unchanged": true,
+  "synthetic_crossing_seconds": 1800.0,
+  "two_segments_excluding_gap_seconds": 7200.0,
+  "strait": {
+    "max_difference_hours": 4.973353572257366e-05,
+    "analysis": {
+      "area": "strait",
+      "bounds": [
+        56.15,
+        26.2,
+        56.75,
+        26.95
+      ],
+      "ships": [
+        {
+          "id": 151,
+          "name": "SIM 油轮 001",
+          "mmsi": "899000001",
+          "after": {
+            "area_hours": 3.3651,
+            "covered_hours": 26.0489
+          },
+          "before": {
+            "area_hours": 2.6973,
+            "covered_hours": 23.7644
+          }
+        },
+        {
+          "id": 154,
+          "name": "SIM 集装箱船 004",
+          "mmsi": "899000004",
+          "after": {
+            "area_hours": 2.8881,
+            "covered_hours": 26.0636
+          },
+          "before": {
+            "area_hours": 2.9836,
+            "covered_hours": 21.3406
+          }
+        },
+        {
+          "id": 155,
+          "name": "SIM 集装箱船 005",
+          "mmsi": "899000005",
+          "after": {
+            "area_hours": 4.0064,
+            "covered_hours": 34.1778
+          },
+          "before": {
+            "area_hours": 2.7975,
+            "covered_hours": 30.5458
+          }
+        },
+        {
+          "id": 156,
+          "name": "SIM 油轮 006",
+          "mmsi": "899000006",
+          "after": {
+            "area_hours": 3.423,
+            "covered_hours": 33.1958
+          },
+          "before": {
+            "area_hours": 3.1958,
+            "covered_hours": 25.4025
+          }
+        },
+        {
+          "id": 161,
+          "name": "SIM 油轮 011",
+          "mmsi": "899000011",
+          "after": {
+            "area_hours": 0.0,
+            "covered_hours": 40.82
+          },
+          "before": {
+            "area_hours": 4.323,
+            "covered_hours": 30.5992
+          }
+        },
+        {
+          "id": 162,
+          "name": "SIM 散货船 012",
+          "mmsi": "899000012",
+          "after": {
+            "area_hours": 40.8978,
+            "covered_hours": 40.8978
+          },
+          "before": {
+            "area_hours": 3.7925,
+            "covered_hours": 34.9803
+          }
+        },
+        {
+          "id": 164,
+          "name": "SIM 散货船 014",
+          "mmsi": "899000014",
+          "after": {
+            "area_hours": 0.0,
+            "covered_hours": 34.8942
+          },
+          "before": {
+            "area_hours": 3.7737,
+            "covered_hours": 27.9519
+          }
+        },
+        {
+          "id": 165,
+          "name": "SIM 油轮 015",
+          "mmsi": "899000015",
+          "after": {
+            "area_hours": 0.0,
+            "covered_hours": 39.8614
+          },
+          "before": {
+            "area_hours": 2.6103,
+            "covered_hours": 22.4292
+          }
+        },
+        {
+          "id": 166,
+          "name": "SIM 油轮 016",
+          "mmsi": "899000016",
+          "after": {
+            "area_hours": 0.0,
+            "covered_hours": 36.5728
+          },
+          "before": {
+            "area_hours": 2.8439,
+            "covered_hours": 24.2303
+          }
+        },
+        {
+          "id": 169,
+          "name": "SIM 液化气船 019",
+          "mmsi": "899000019",
+          "after": {
+            "area_hours": 39.3828,
+            "covered_hours": 39.3828
+          },
+          "before": {
+            "area_hours": 2.9202,
+            "covered_hours": 28.2958
+          }
+        }
+      ],
+      "is_simulated": true,
+      "gap_minutes": 90,
+      "window_hours": 48,
+      "windows": {
+        "before": [
+          "2026-02-26T00:00:00Z",
+          "2026-02-28T00:00:00Z"
+        ],
+        "after": [
+          "2026-03-01T00:00:00Z",
+          "2026-03-03T00:00:00Z"
+        ]
+      },
+      "segments": 71,
+      "built_at": "2026-09-11 14:31:06.219195+00:00"
+    }
+  },
+  "approach": {
+    "max_difference_hours": 4.981748975207978e-05,
+    "analysis": {
+      "area": "approach",
+      "bounds": [
+        56.0,
+        25.8,
+        57.3,
+        27.1
+      ],
+      "ships": [
+        {
+          "id": 151,
+          "name": "SIM 油轮 001",
+          "mmsi": "899000001",
+          "after": {
+            "area_hours": 6.2219,
+            "covered_hours": 26.0489
+          },
+          "before": {
+            "area_hours": 6.7704,
+            "covered_hours": 23.7644
+          }
+        },
+        {
+          "id": 154,
+          "name": "SIM 集装箱船 004",
+          "mmsi": "899000004",
+          "after": {
+            "area_hours": 5.2685,
+            "covered_hours": 26.0636
+          },
+          "before": {
+            "area_hours": 5.3888,
+            "covered_hours": 21.3406
+          }
+        },
+        {
+          "id": 155,
+          "name": "SIM 集装箱船 005",
+          "mmsi": "899000005",
+          "after": {
+            "area_hours": 10.2412,
+            "covered_hours": 34.1778
+          },
+          "before": {
+            "area_hours": 7.837,
+            "covered_hours": 30.5458
+          }
+        },
+        {
+          "id": 156,
+          "name": "SIM 油轮 006",
+          "mmsi": "899000006",
+          "after": {
+            "area_hours": 7.3377,
+            "covered_hours": 33.1958
+          },
+          "before": {
+            "area_hours": 6.7377,
+            "covered_hours": 25.4025
+          }
+        },
+        {
+          "id": 161,
+          "name": "SIM 油轮 011",
+          "mmsi": "899000011",
+          "after": {
+            "area_hours": 0.0,
+            "covered_hours": 40.82
+          },
+          "before": {
+            "area_hours": 8.3542,
+            "covered_hours": 30.5992
+          }
+        },
+        {
+          "id": 162,
+          "name": "SIM 散货船 012",
+          "mmsi": "899000012",
+          "after": {
+            "area_hours": 40.8978,
+            "covered_hours": 40.8978
+          },
+          "before": {
+            "area_hours": 7.1868,
+            "covered_hours": 34.9803
+          }
+        },
+        {
+          "id": 164,
+          "name": "SIM 散货船 014",
+          "mmsi": "899000014",
+          "after": {
+            "area_hours": 33.5874,
+            "covered_hours": 34.8942
+          },
+          "before": {
+            "area_hours": 6.8414,
+            "covered_hours": 27.9519
+          }
+        },
+        {
+          "id": 165,
+          "name": "SIM 油轮 015",
+          "mmsi": "899000015",
+          "after": {
+            "area_hours": 31.9719,
+            "covered_hours": 39.8614
+          },
+          "before": {
+            "area_hours": 6.8514,
+            "covered_hours": 22.4292
+          }
+        },
+        {
+          "id": 166,
+          "name": "SIM 油轮 016",
+          "mmsi": "899000016",
+          "after": {
+            "area_hours": 0.0,
+            "covered_hours": 36.5728
+          },
+          "before": {
+            "area_hours": 6.9497,
+            "covered_hours": 24.2303
+          }
+        },
+        {
+          "id": 169,
+          "name": "SIM 液化气船 019",
+          "mmsi": "899000019",
+          "after": {
+            "area_hours": 39.3828,
+            "covered_hours": 39.3828
+          },
+          "before": {
+            "area_hours": 5.7459,
+            "covered_hours": 28.2958
+          }
+        }
+      ],
+      "is_simulated": true,
+      "gap_minutes": 90,
+      "window_hours": 48,
+      "windows": {
+        "before": [
+          "2026-02-26T00:00:00Z",
+          "2026-02-28T00:00:00Z"
+        ],
+        "after": [
+          "2026-03-01T00:00:00Z",
+          "2026-03-03T00:00:00Z"
+        ]
+      },
+      "segments": 71,
+      "built_at": "2026-09-11 14:31:06.219195+00:00"
+    }
+  }
+}

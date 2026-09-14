@@ -1,0 +1,65 @@
+{
+  "/health": {
+    "status": 200
+  },
+  "/docs": {
+    "status": 200
+  },
+  "/simulation/meta": {
+    "status": 200,
+    "data": {
+      "start_at": "2026-02-26T02:43:10Z",
+      "end_at": "2026-03-04T23:59:14Z",
+      "frame_interval_seconds": 300,
+      "frame_count": 1985,
+      "ship_count": 30,
+      "position_count": 9354,
+      "event_count": 0,
+      "is_simulated": true
+    }
+  },
+  "/ships": {
+    "status": 200,
+    "count": 30,
+    "all_new": true
+  },
+  "/events": {
+    "status": 200
+  },
+  "/mobility/meta": {
+    "error": "HTTPError"
+  },
+  "diagnostic_note": "Initial /mobility/meta probe was 404 because that route does not exist; actual routes are /mobility-demo/analysis and /mobility-demo/tracks.",
+  "/mobility-demo/analysis": {
+    "status": 200,
+    "response_type": "dict",
+    "keys": [
+      "area",
+      "bounds",
+      "ships",
+      "is_simulated",
+      "gap_minutes",
+      "window_hours",
+      "windows",
+      "segments",
+      "built_at"
+    ]
+  },
+  "/mobility-demo/tracks": {
+    "status": 200,
+    "response_type": "dict",
+    "keys": [
+      "type",
+      "features"
+    ]
+  },
+  "browser_verified": {
+    "url": "http://localhost:5174/",
+    "replay_utc": "2026-03-01T14:03",
+    "selected_ship": "SIM V2 油轮 004",
+    "mmsi": "898000004",
+    "speed_kn": 0,
+    "console_errors_and_warnings": [],
+    "playback_requests": "7 date slices returned 200; checked in backend log"
+  }
+}

@@ -3,10 +3,9 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { fetchEvents, describeApiError, type ApiEvent, type ApiMapShip } from './api'
 import { usePlayback } from './composables/usePlayback'
 import {
-  distanceNm,
   inBounds,
   formatTime,
-  displayZone, zoneLabel, eventPriority,
+  displayZone, zoneLabel, hasEventLocation, eventTimeText, eventCoordinates,
   type GeoPoint,
   type LayerState,
   type Panel,
@@ -47,7 +46,6 @@ const selectedShipId = ref<number | null>(null)
 const selectedEvent = ref<ApiEvent | null>(null)
 const eventType = ref('all')
 const eventSort = ref<'asc' | 'desc'>('asc')
-const occurredOnly = ref(false)
 const isolated = ref(false)
 const trackVisible = ref(false)
 const globalViewRequest = ref(0)
@@ -58,6 +56,7 @@ const center = ref<GeoPoint | null>(null)
 const radius = ref(10)
 const picking = ref(false)
 const harbourStatus = ref('按需加载')
+const countryStatus = ref('按需加载')
 const theme = ref<'dark' | 'light'>('dark')
 const vectorMinutes = ref(6)
 const tailMinutes = ref(360)
@@ -65,14 +64,12 @@ const playbackSpeed = ref(1)
 const vectorLinked = ref(false)
 const effectiveVector = computed(() => vectorMinutes.value * (vectorLinked.value ? playbackSpeed.value : 1))
 const notice = ref('')
-const acknowledged = ref<number[]>([])
 const fenceEnabled = ref(false)
 const shareRequest = ref(0)
 const sharedView = ref<{ lat: number; lon: number; zoom: number } | null>(null)
-const highEvents = computed(() => occurredEvents.value.filter(e => eventPriority(e.event_type) === 'high'))
-const pendingHigh = computed(() => highEvents.value.filter(e => !acknowledged.value.includes(e.id)))
 const printReport = () => window.print()
 const layers = ref<LayerState>({
+  countries: true,
   ships: true,
   tracks: true,
   events: true,
@@ -91,29 +88,15 @@ const selectedTrack = computed(() =>
           time.value && Date.parse(p.recorded_at) <= Date.parse(time.value),
       ),
 )
-const occurredEvents = computed(() =>
-  time.value
-    ? events.value.filter(
-        (e) => Date.parse(e.occurred_at) <= Date.parse(time.value!),
-      )
-    : [],
-)
 const filteredEvents = computed(() =>
-  [...(occurredOnly.value ? occurredEvents.value : events.value)]
-    .filter(
-      (e) => eventType.value === 'all' || e.event_type === eventType.value,
-    )
-    .sort(
-      (a, b) =>
-        (Date.parse(a.occurred_at) - Date.parse(b.occurred_at) || a.id - b.id) *
-        (eventSort.value === 'asc' ? 1 : -1),
-    ),
+  [...events.value].filter(e => eventType.value === 'all' || e.event_type === eventType.value)
+    .sort((a, b) => {
+      const left = a.publish_date_min, right = b.publish_date_min
+      if (!left || !right) return left ? -1 : right ? 1 : a.event_id.localeCompare(b.event_id)
+      return (left.localeCompare(right) || a.event_id.localeCompare(b.event_id)) * (eventSort.value === 'asc' ? 1 : -1)
+    }),
 )
-const mapEvents = computed(() =>
-  occurredEvents.value.filter(
-    (e) => eventType.value === 'all' || e.event_type === eventType.value,
-  ),
-)
+const mapEvents = computed(() => filteredEvents.value.filter(hasEventLocation))
 const viewShips = computed(() =>
   bounds.value
     ? currentShips.value.filter((s) => inBounds(s, bounds.value!))
@@ -121,8 +104,8 @@ const viewShips = computed(() =>
 )
 const viewEvents = computed(() =>
   bounds.value
-    ? occurredEvents.value.filter((e) => inBounds(e, bounds.value!))
-    : occurredEvents.value,
+    ? mapEvents.value.filter((e) => inBounds(e, bounds.value!))
+    : mapEvents.value,
 )
 const averageSpeed = computed(() =>
   viewShips.value.length
@@ -132,27 +115,15 @@ const averageSpeed = computed(() =>
       ).toFixed(1)
     : '—',
 )
-const nearbyEvents = computed(() =>
-  selectedShip.value
-    ? occurredEvents.value
-        .map((e) => ({ ...e, distance: distanceNm(selectedShip.value!, e) }))
-        .filter((e) => e.distance <= 10)
-        .sort((a, b) => a.distance - b.distance)
-    : [],
-)
-const nearbyShipIds = computed(() =>
-  selectedEvent.value
-    ? currentShips.value
-        .filter((s) => distanceNm(s, selectedEvent.value!) <= 10)
-        .map((s) => s.id)
-    : [],
-)
+// News dates and simulated ship dates do not overlap: no implied association.
+const nearbyEvents: (ApiEvent & { distance: number })[] = []
+const nearbyShipIds: number[] = []
 const areaResult = computed(() =>
   center.value && time.value
     ? localWorkbench.queryArea(
         { center: center.value, radiusNm: radius.value, at: time.value },
         currentShips.value,
-        occurredEvents.value,
+        [],
       )
     : null,
 )
@@ -166,14 +137,10 @@ watch(fenceInside, (ids, previous) => {
   const left = previous.filter(id => !ids.includes(id)).length
   if (entered || left) notice.value = `模拟围栏变化：${entered} 艘进入，${left} 艘离开（相邻回放快照）`
 })
-watch(pendingHigh, (items, previous) => {
-  const fresh = items.filter(e => !previous.some(p => p.id === e.id))
-  if (fresh.length) notice.value = `${fresh.length} 条模拟高优先级事件待查看：${fresh[0]!.title}`
-})
 watch(theme, value => document.documentElement.dataset.theme = value, { immediate: true })
 async function shareView(view: { lat: number; lon: number; zoom: number }) {
   const url = new URL(window.location.href)
-  url.hash = new URLSearchParams({ lat: view.lat.toFixed(5), lon: view.lon.toFixed(5), z: String(view.zoom), at: time.value ?? '', ship: String(selectedShipId.value ?? ''), event: String(selectedEvent.value?.id ?? ''), theme: theme.value, zone: displayZone.value }).toString()
+  url.hash = new URLSearchParams({ lat: view.lat.toFixed(5), lon: view.lon.toFixed(5), z: String(view.zoom), at: time.value ?? '', ship: String(selectedShipId.value ?? ''), event: selectedEvent.value?.event_id ?? '', theme: theme.value, zone: displayZone.value }).toString()
   history.replaceState(null, '', url)
   try { await navigator.clipboard.writeText(url.href); notice.value = '当前视野、时间与选中目标链接已复制。同一数据服务下可复现。' }
   catch { notice.value = '视图状态已写入地址栏，可复制地址分享。' }
@@ -183,7 +150,7 @@ async function initialize() {
   const state = new URLSearchParams(location.hash.slice(1))
   if (state.get('theme') === 'light') theme.value = 'light'
   if (state.get('zone') === 'Asia/Shanghai') displayZone.value = 'Asia/Shanghai'
-  const event = events.value.find(e => String(e.id) === state.get('event'))
+  const event = events.value.find(e => e.event_id === state.get('event'))
   if (event) chooseEvent(event)
   const at = state.get('at')
   if (at && Number.isFinite(Date.parse(at))) seek(at)
@@ -221,11 +188,11 @@ function clearShip() {
 }
 function chooseEvent(event: ApiEvent) {
   clearShip()
+  if (eventType.value !== 'all' && eventType.value !== event.event_type)
+    eventType.value = 'all'
   selectedEvent.value = event
   panel.value = 'events'
   panelOpen.value = true
-  seek(event.occurred_at)
-  seekRequest.value++
   layers.value.events = true
 }
 function restore() {
@@ -266,13 +233,6 @@ function clearArea() {
   center.value = null
   picking.value = false
 }
-watch(time, (value) => {
-  if (
-    selectedEvent.value &&
-    (!value || Date.parse(selectedEvent.value.occurred_at) > Date.parse(value))
-  )
-    selectedEvent.value = null
-})
 function onKey(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     clearShip()
@@ -301,7 +261,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
       </div>
       <div class="top-status">
-        <span class="simulation-label">教学模拟</span
+        <span class="simulation-label">模拟船舶 · 新闻事件</span
         ><span class="data-status">{{
           loading
             ? '数据加载中'
@@ -309,8 +269,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               ? '数据不可用'
               : `${ships.length} 艘船舶已载入`
         }}</span
-        ><button class="alert-count" @click="pendingHigh[0] ? chooseEvent(pendingHigh[0]) : togglePanel('events')" title="冲突类型按教学展示规则列为高优先级，不代表真实风险">! {{ pendingHigh.length }} 待确认</button>
+        ><button class="alert-count" @click="togglePanel('events')">{{ events.length }} 条新闻事件</button>
         <button @click="displayZone = displayZone === 'UTC' ? 'Asia/Shanghai' : 'UTC'" aria-label="切换时区">{{ zoneLabel() }}</button>
+        <a href="http://127.0.0.1:8000/mobility-demo" target="_blank" rel="noopener" style="color:inherit;font-size:12px">停留分析试验</a>
         <button @click="theme = theme === 'dark' ? 'light' : 'dark'" aria-label="切换地图主题">{{ theme === 'dark' ? '浅色' : '深色' }}</button>
       </div>
       <button
@@ -351,6 +312,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @bounds-change="bounds = $event"
         @pick-center="chooseCenter"
         @harbour-status="harbourStatus = $event"
+        @country-status="countryStatus = $event"
       />
       <div class="map-top-tools">
         <ShipSearch
@@ -394,7 +356,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
       <div class="map-hud">
         <span>当前视野</span><strong>{{ viewShips.length }}</strong> 船舶 <i></i
-        ><strong>{{ viewEvents.length }}</strong> 已发生事件 <i></i
+        ><strong>{{ viewEvents.length }}</strong> 新闻事件 <i></i
         ><span class="hud-speed"
           >平均航速 <strong>{{ averageSpeed }}</strong> kn</span
         >
@@ -402,8 +364,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <div class="map-legend">
         <span><b class="vessel-key">▲</b> 当前船位</span
         ><span><b class="track-key">─•─</b> 已航行轨迹</span
-        ><span v-if="selectedEvent">虚线：10 NM 内空间邻近，不代表受影响</span
-        ><span v-else>船舶与事件均为模拟</span>
+        ><span>船位为教学模拟；事件为代表点，非精确事发位置</span>
       </div>
       <div v-if="loading || error" class="map-data-status" role="status">
         {{ error || '正在载入船舶与历史采样…'
@@ -427,22 +388,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         v-if="panel === 'events'"
         :events="filteredEvents"
         :total-count="events.length"
-        :occurred-count="occurredEvents.length"
         :event-type="eventType"
         :sort="eventSort"
-        :occurred-only="occurredOnly"
         :selected="selectedEvent"
-        :time="time"
         :loading="eventsLoading"
         :error="eventsError"
         @select="chooseEvent"
         @type-change="changeEventType"
         @sort-change="eventSort = $event"
-        @occurred-change="occurredOnly = $event"
         @clear="selectedEvent = null"
         @retry="loadEvents"
       />
-      <button v-if="panel === 'events' && selectedEvent && eventPriority(selectedEvent.event_type) === 'high'" class="acknowledge" :disabled="acknowledged.includes(selectedEvent.id)" @click="acknowledged.push(selectedEvent.id)">{{ acknowledged.includes(selectedEvent.id) ? '已确认 · 本次会话' : '确认已查看此模拟告警' }}</button>
       <ShipInspector
         v-if="panel === 'ships'"
         :time="time"
@@ -473,8 +429,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :time="time"
         :picking="picking"
         :harbour-status="harbourStatus"
+        :country-status="countryStatus"
         :loading="loading"
-        :error="error || eventsError"
+        :error="error"
         @pick="startPicking"
         @clear="clearArea"
         @select-ship="chooseShip"
@@ -494,21 +451,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <TimelineControls
       v-model="index"
       :frame-times="times"
-      :events="filteredEvents"
-      :selected-event-id="selectedEvent?.id ?? null"
+      :events="[]"
+      :selected-event-id="null"
       :seek-request="seekRequest"
       :loading="loading"
       :error-message="error"
-      :event-type="eventType"
-      @type-change="changeEventType"
+      event-type="all"
       @speed-change="playbackSpeed = $event"
       @retry="load"
       @select-event="chooseEvent"
     />
     <section class="print-report">
-      <h2>霍尔木兹海峡 · 模拟态势复盘</h2><p>{{ formatTime(time, true) }} {{ zoneLabel() }} · 教学模拟，非真实 AIS</p>
-      <p>当前视野 {{ viewShips.length }} 艘船舶、{{ viewEvents.length }} 条已发生事件。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
-      <table><thead><tr><th>时间（{{ zoneLabel() }}）</th><th>事件</th><th>经纬度</th></tr></thead><tbody><tr v-for="e in viewEvents" :key="e.id"><td>{{ formatTime(e.occurred_at, true) }}</td><td>{{ e.title }}</td><td>{{ e.latitude.toFixed(3) }}, {{ e.longitude.toFixed(3) }}</td></tr></tbody></table>
+      <h2>霍尔木兹海峡 · 船位与新闻概览</h2><p>{{ formatTime(time, true) }} {{ zoneLabel() }} · 船位为教学模拟，新闻事件为独立历史资料</p>
+      <p>当前视野 {{ viewShips.length }} 艘船舶、{{ viewEvents.length }} 条新闻事件。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
+      <table><thead><tr><th>事件时间文字</th><th>事件</th><th>经纬度</th></tr></thead><tbody><tr v-for="e in viewEvents" :key="e.id"><td>{{ eventTimeText(e) }}</td><td>{{ e.title }}</td><td>{{ eventCoordinates(e) }}</td></tr></tbody></table>
     </section>
   </main>
 </template>

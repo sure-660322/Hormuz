@@ -1,0 +1,97 @@
+{
+  "batch_id": "sim_ais_hormuz_20260226_20260305",
+  "config_version": "1.0.0",
+  "random_seed": 20260226,
+  "data_source_value": "simulation",
+  "time_window": {
+    "start_utc": "2026-02-26T00:00:00+00:00",
+    "end_utc": "2026-03-05T00:00:00+00:00",
+    "days": 7
+  },
+  "generated_at_utc": "2026-09-11T14:37:41+00:00",
+  "deterministic_payload_sha256": "eb3af04521df5161ed273653c85e69472dd15289c75a940d81bd23e6bb025c69",
+  "deterministic_payload_note_zh": "该摘要只覆盖数据文件（ships/positions/raw/quarantine/anomaly_labels/scenario_links），用于同种子同配置的重复性验证；manifest.json 与 acceptance_report.json 含生成时间，不参与该摘要。",
+  "ship_count": 150,
+  "clean_position_count": 58567,
+  "raw_position_count": 58865,
+  "quarantined_record_count": 136,
+  "daily_clean_counts": {
+    "2026-02-26": 6175,
+    "2026-02-27": 9992,
+    "2026-02-28": 8746,
+    "2026-03-01": 7750,
+    "2026-03-02": 7644,
+    "2026-03-03": 9525,
+    "2026-03-04": 8735
+  },
+  "daily_raw_counts": {
+    "2026-02-26": 6198,
+    "2026-02-27": 10048,
+    "2026-02-28": 8796,
+    "2026-03-01": 7784,
+    "2026-03-02": 7689,
+    "2026-03-03": 9565,
+    "2026-03-04": 8785
+  },
+  "route_validation": {
+    "inbound_to_gulf": {
+      "length_km": 610.06,
+      "samples": 3061,
+      "land_samples": 0,
+      "clean": true
+    },
+    "outbound_from_gulf": {
+      "length_km": 638.99,
+      "samples": 3208,
+      "land_samples": 0,
+      "clean": true
+    },
+    "gulf_internal": {
+      "length_km": 583.6,
+      "samples": 2924,
+      "land_samples": 0,
+      "clean": true
+    },
+    "gulf_internal_reversed": {
+      "length_km": 583.6,
+      "samples": 2924,
+      "land_samples": 0,
+      "clean": true
+    }
+  },
+  "land_reference": {
+    "file": "reference/ne_10m_land.geojson",
+    "dataset": "Natural Earth 1:10m Physical Vectors - Land (public domain)",
+    "sha256": "1ac90796408bc6ad6911d69448485d3c4dbf2190370080368a09976e1c9f7416",
+    "precision_note_zh": "1:10m 制图概化数据，近岸精度约数百米至 1 km，缺失防波堤、填海区与极小岛礁。仅用于筛查航线是否明显穿越陆地，不构成航道级安全验证。",
+    "edge_index": {
+      "rings": 6838,
+      "edges": 446175,
+      "lat_bands": 16868,
+      "long_edges": 0,
+      "band_deg": 0.01
+    }
+  },
+  "route_definition_note_zh": "海峡长约 167 km，最宽约 97 km，最窄约 39 km（21 海里），位于阿曼穆桑代姆半岛与伊朗盖什姆岛之间。IMO 分道通航制（TSS）由两条各约 3 km 宽的通航带与约 3 km 分隔带组成。本模拟只使用两条简化中心线，并非 TSS 法定边界，也不是实测航道。",
+  "playback_note_zh": "船位按 UTC 自然日分片；每片不超过 24 小时，用于满足回放接口的单次 24 小时 / 50,000 点限制。",
+  "files": {
+    "ships.jsonl": "bec09b44e712855978b3d0660d45bd5b134e511696e40a6dcd4de9b8254b8125",
+    "positions_2026-02-26.jsonl": "1253628670c77d40520ca5794a3e6f71e8e566693bbe45a5e965e26d874d158b",
+    "positions_2026-02-27.jsonl": "775e3d28dd7c75649f660415a5d90214381e6dd18a5515cc722fb0ac3ba912c4",
+    "positions_2026-02-28.jsonl": "792f1901bb3636b4c66e746649922c8686324a5f77901511fd44788c14c2a738",
+    "positions_2026-03-01.jsonl": "128e333506519798e68b7f6c4667178e9c1e1b413f491201f517aa4a649d4af0",
+    "positions_2026-03-02.jsonl": "fa914f3e8d4ce68ef8d3056f60d513c27bc2e6a2bc2f2d2971e249a6c777e6a4",
+    "positions_2026-03-03.jsonl": "ca2a5d846d97d96e619a6b05c6ce54776fe6a901a9dd485c9661bff6996178de",
+    "positions_2026-03-04.jsonl": "4632c1668f50b79d33babb57243fff94bbf384cf3f59b126faf7642967f936b5",
+    "raw_2026-02-26.jsonl": "e5fd3329a7d22f54931f81102d99c12dd5da835903b7d42bff307f8b76f5aa65",
+    "raw_2026-02-27.jsonl": "a94cce7596a11e4d35e4ae65185f5a3002216f7db0cb7bcc36c9811b72c1439e",
+    "raw_2026-02-28.jsonl": "d178d4f998d44f5fa17c6f9202e281d1a3bd3cd7e3dfde9a9bddc0a39ccae0f7",
+    "raw_2026-03-01.jsonl": "d07a9fef4137f2807e514b10390f91405ad96cb0caa7222a1ab2dbe26ea6623c",
+    "raw_2026-03-02.jsonl": "eeaf15fdd7231fa79cd6b69ba7819b59fc9ab6e7605a10630bf11103f7d8297d",
+    "raw_2026-03-03.jsonl": "88ee631b61da072bd605903bd993576d293a97a295a85b084684a792231e0c89",
+    "raw_2026-03-04.jsonl": "7cfd34bbb9a22f1e5a88302a3cd9a2f03156024de7ab6ce837aecadcb0b97ac4",
+    "quarantined_records.jsonl": "7160dd5ba096e541e280f603e04215ac71c2e64c4f989d6ec7e16d49f5253543",
+    "anomaly_labels.json": "bc1fde03e8f77e44fcbf3d365474f65fc684811d797b27b28cbe247991772c39",
+    "scenario_links.json": "4402bee1ca873d6a563103586da3a33733dd07654a67ff8e0e3ab6d0b6b41798"
+  }
+}

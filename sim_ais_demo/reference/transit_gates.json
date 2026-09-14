@@ -1,0 +1,16 @@
+{
+  "source": "data/crossing_data/transit_events.csv",
+  "note_zh": "现有过境数据只覆盖迪拜/杰贝阿里进出港，不含海峡内的分道通航数据。",
+  "gates": {
+    "Dubai / Jebel Ali Approach | INBOUND": {
+      "n": 162,
+      "centroid_lat": 25.24935,
+      "centroid_lon": 55.17247
+    },
+    "Dubai / Jebel Ali Approach | OUTBOUND": {
+      "n": 98,
+      "centroid_lat": 25.22286,
+      "centroid_lon": 55.11213
+    }
+  }
+}

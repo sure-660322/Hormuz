@@ -1,0 +1,79 @@
+{
+  "transaction_read_only": "on",
+  "ship_window": [
+    "2026-08-30 00:00:00+00:00",
+    "2026-08-30 07:55:00+00:00"
+  ],
+  "candidate_contract": {
+    "events": 65,
+    "linked_news": 223,
+    "unlinked_news": 67,
+    "serialized_bytes": 168188
+  },
+  "profile": {
+    "coordinates_present": 40,
+    "time_present": 27,
+    "within_ship_window": 0,
+    "with_point_arrays": 16,
+    "point_count": 57,
+    "types": {
+      "analysis": 21,
+      "other": 13,
+      "market": 9,
+      "blockade": 2,
+      "attack": 20
+    },
+    "geo_methods": {
+      "null": 25,
+      "nominatim": 22,
+      "multi": 11,
+      "region_centroid": 7
+    }
+  },
+  "rename_only_legacy_contract": {
+    "pass": 23,
+    "fail": 42
+  },
+  "invalid_point_coordinates": [],
+  "representative_point_spatial_probe": {
+    "radius_km": 20,
+    "ship_event_pairs": 72,
+    "elapsed_ms": 50.03,
+    "note": "One local run; geographical comparison only, no same-time relation."
+  },
+  "spatial_plan": [
+    "Incremental Sort  (cost=13495.13..49154.89 rows=4 width=24) (actual time=10.986..16.036 rows=72 loops=1)",
+    "  Sort Key: ship_positions.ship_id, ((st_distance(ship_positions.location, (st_setsrid(st_makepoint(events.event_lng, events.event_lat), 4326))::geography, true) / '1000'::double precision)), events.id",
+    "  Presorted Key: ship_positions.ship_id",
+    "  Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB",
+    "  Buffers: shared hit=482",
+    "  ->  Nested Loop  (cost=1608.59..49154.71 rows=4 width=24) (actual time=5.515..16.011 rows=72 loops=1)",
+    "        Join Filter: st_dwithin(ship_positions.location, (st_setsrid(st_makepoint(events.event_lng, events.event_lat), 4326))::geography, '20000'::double precision, true)",
+    "        Rows Removed by Join Filter: 5928",
+    "        Buffers: shared hit=482",
+    "        ->  Unique  (cost=1608.59..1680.59 rows=150 width=56) (actual time=5.321..6.546 rows=150 loops=1)",
+    "              Buffers: shared hit=470",
+    "              ->  Sort  (cost=1608.59..1644.59 rows=14400 width=56) (actual time=5.319..5.857 rows=14400 loops=1)",
+    "                    Sort Key: ship_positions.ship_id, ship_positions.recorded_at DESC, ship_positions.id DESC",
+    "                    Sort Method: quicksort  Memory: 1397kB",
+    "                    Buffers: shared hit=470",
+    "                    ->  Seq Scan on ship_positions  (cost=0.00..614.00 rows=14400 width=56) (actual time=0.065..1.039 rows=14400 loops=1)",
+    "                          Buffers: shared hit=470",
+    "        ->  Materialize  (cost=0.00..12.78 rows=25 width=24) (actual time=0.000..0.002 rows=40 loops=150)",
+    "              Buffers: shared hit=12",
+    "              ->  Seq Scan on events  (cost=0.00..12.65 rows=25 width=24) (actual time=0.010..0.028 rows=40 loops=1)",
+    "                    Filter: ((event_lat IS NOT NULL) AND (event_lng IS NOT NULL))",
+    "                    Rows Removed by Filter: 25",
+    "                    Buffers: shared hit=12",
+    "Planning:",
+    "  Buffers: shared hit=4",
+    "Planning Time: 0.182 ms",
+    "Execution Time: 16.163 ms"
+  ],
+  "event_news_fk_index": [
+    "CREATE UNIQUE INDEX news_pkey ON public.news USING btree (id)",
+    "CREATE UNIQUE INDEX news_story_id_key ON public.news USING btree (story_id)",
+    "CREATE UNIQUE INDEX news_canonical_url_key ON public.news USING btree (canonical_url)"
+  ],
+  "same_name_ship_matches": 0
+}

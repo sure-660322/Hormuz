@@ -11,6 +11,7 @@ defineProps<{
   time: string | null
   picking: boolean
   harbourStatus: string
+  countryStatus: string
   loading: boolean
   error: string
 }>()
@@ -27,6 +28,7 @@ const layerOptions: {
   label: string
   description: string
 }[] = [
+  { key: 'countries', label: '国界与中文国名', description: '伊朗与以色列橙红高亮 · 其他国家低饱和多色填充 · 随缩放显示中文国名' },
   {
     key: 'ships',
     label: '船舶当前位置',
@@ -40,7 +42,7 @@ const layerOptions: {
   {
     key: 'events',
     label: '海事事件',
-    description: '当前时刻已发生且符合筛选的事件',
+    description: '符合筛选且有代表点的新闻事件，不随船位回放过滤',
   },
   {
     key: 'seamarks',
@@ -72,7 +74,8 @@ const layerOptions: {
         /><span
           ><strong>{{ item.label }}</strong
           ><small>{{ item.description }}</small
-          ><small
+          ><small v-if="item.key === 'countries' && layers.countries" role="status">{{ countryStatus }}</small>
+          <small
             v-if="item.key === 'harbours' && layers.harbours"
             role="status"
             >{{ harbourStatus }}</small
@@ -84,7 +87,7 @@ const layerOptions: {
       </p>
       <h3 class="group-label">待接入数据</h3>
       <div
-        v-for="name in ['新闻报道', '航道边界', '风险区域', 'AIS 密度']"
+        v-for="name in ['航道边界', '风险区域', 'AIS 密度']"
         :key="name"
         class="layer-row unavailable"
       >
@@ -112,14 +115,14 @@ const layerOptions: {
         </div>
         <p class="analysis-total">
           <strong>{{ viewShips.length }}</strong> 艘船舶
-          <strong>{{ viewEventCount }}</strong> 条已发生事件
+          <strong>{{ viewEventCount }}</strong> 条新闻事件（独立历史资料）
         </p>
         <p class="caption">统计当前视野内全部快照数据，不受图层显隐影响。</p>
       </div>
       <div class="detail-section">
         <h3>圆形半径查询</h3>
         <p class="caption">
-          在地图上选择中心，按当前回放时刻计算范围内的船舶和事件。
+          在地图上选择中心，按当前回放时刻计算范围内的模拟船舶。新闻事件空间查询尚未适配。
         </p>
         <label class="radius-control"
           >半径
@@ -161,14 +164,13 @@ const layerOptions: {
           <span>{{ radius }} NM</span>
         </div>
         <p class="analysis-total">
-          船舶 <strong>{{ result.ships.length }}</strong> 事件
-          <strong>{{ result.events.length }}</strong>
+          模拟船舶 <strong>{{ result.ships.length }}</strong>
         </p>
         <p class="caption">
-          本地模拟快照计算 · 非后端空间查询<br />新闻未接入，未计入统计。
+          本地模拟快照计算 · 非后端空间查询<br />新闻事件未参与半径统计。
         </p>
         <p v-if="!result.ships.length && !result.events.length" class="empty">
-          范围内暂无船舶或已发生事件。可扩大半径或更换时间。
+          范围内暂无模拟船舶。可扩大半径或更换时间。
         </p>
         <button
           v-for="ship in result.ships"
