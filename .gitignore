@@ -15,13 +15,18 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 htmlcov/
 .playwright-cli/
+/output/playwright/
+/frontend/playwright-report/
+/frontend/test-results/
 
 # Frontend dependencies and build output
 frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
+*.tsbuildinfo
 
 # Logs
 *.log
@@ -32,6 +37,17 @@ data/db_backups/
 sim_ais_demo/output/old_batch_backup/
 sim_ais_demo/output_news_aligned/database_backups/
 sim_ais_demo/output_news_aligned_repeat_check/
+
+# Previous 150-ship batch: reproducible bulk output, kept locally only.
+# Keep its ships.jsonl (used by the batch replacement script), reports,
+# manifest, anomaly labels and scenario evidence in version control.
+/sim_ais_demo/output/positions_by_date/
+/sim_ais_demo/output/raw_observations/
+
+# Keep the COMPLETE current output_news_aligned batch: the importer checks
+# manifest hashes for clean positions, raw observations and quarantine files.
+# Keep data/ source material, reference/ inputs, frontend/public/data/ assets,
+# package lockfiles, SQL, documentation and .env.example tracked.
 
 # Editor settings
 .vscode/
