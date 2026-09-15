@@ -14,6 +14,7 @@ import {
 import { localWorkbench } from './services/workbench'
 import MapView from './components/MapView.vue'
 import EventPanel from './components/EventPanel.vue'
+import AgentPanel from './components/AgentPanel.vue'
 import ShipInspector from './components/ShipInspector.vue'
 import TimelineControls from './components/TimelineControls.vue'
 import ShipSearch from './components/ShipSearch.vue'
@@ -40,6 +41,7 @@ const panelTabs = [
   ['ships', '船舶'],
   ['layers', '图层'],
   ['analysis', '分析'],
+  ['agent', '智能体'],
 ] as const
 const panelOpen = ref(!window.matchMedia('(max-width: 760px)').matches)
 const selectedShipId = ref<number | null>(null)
@@ -115,7 +117,7 @@ const averageSpeed = computed(() =>
       ).toFixed(1)
     : '—',
 )
-// News dates and simulated ship dates do not overlap: no implied association.
+// 新闻与模拟船位属同一时期但相互独立：不因时间或空间接近建立关联。
 const nearbyEvents: (ApiEvent & { distance: number })[] = []
 const nearbyShipIds: number[] = []
 const areaResult = computed(() =>
@@ -417,6 +419,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @event="chooseEvent"
         @locate="focusShipRequest++"
       />
+      <AgentPanel v-if="panel === 'agent'" />
       <WorkspaceTools
         v-if="panel === 'layers' || panel === 'analysis'"
         :panel="panel"

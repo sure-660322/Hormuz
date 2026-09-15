@@ -99,7 +99,7 @@ export interface LayerState {
   seamarks: boolean
   harbours: boolean
 }
-export type Panel = 'events' | 'ships' | 'layers' | 'analysis'
+export type Panel = 'events' | 'ships' | 'layers' | 'analysis' | 'agent'
 export function distanceNm(a: GeoPoint, b: GeoPoint) {
   const rad = Math.PI / 180
   const dlat = (b.latitude - a.latitude) * rad

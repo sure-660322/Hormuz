@@ -174,6 +174,110 @@ export async function fetchPlaybackPositions(
   return response.json()
 }
 
+// 智能体 POST /agent/analyze 的请求与响应类型，字段对齐 backend/app/schemas_agent.py（契约 v2）。
+export interface AgentAnalyzeRequest {
+  question: string
+  closure_at: string | null
+  end_at: string | null
+}
+
+export interface AgentContext {
+  batch: string
+  ship_data_source: string
+  closure_at: string
+  end_at: string
+  closure_source: string
+  passage_rule: string
+  schema_version: string
+}
+
+export interface AgentShip {
+  ship_id: number
+  name: string
+  passage_count: number
+}
+
+export interface AgentPositionFix {
+  recorded_at: string
+  longitude: number
+  latitude: number
+}
+
+export interface AgentEvidence {
+  evidence_id: string
+  ship_id: number
+  direction: string
+  start_fix: AgentPositionFix
+  completion_fix: AgentPositionFix
+  observed_completion_at: string
+}
+
+export interface AgentQuerySummary {
+  position_count: number
+  matched_ship_count: number
+  passage_count: number
+  uncertain_candidate_count: number
+  coverage_start: string | null
+  coverage_end: string | null
+  truncated: boolean
+}
+
+export interface AgentAnalyzeResponse {
+  schema_version: string
+  request_id: string
+  status: string  // ok / no_data / partial / needs_clarification
+  answer: string
+  context: AgentContext
+  ships: AgentShip[]
+  evidence: AgentEvidence[]
+  query_summary: AgentQuerySummary | null
+  limitations: string[]
+  clarification: string | null
+}
+
+export interface AgentErrorDetail {
+  code: string
+  message: string
+  request_id: string
+}
+
+// 智能体接口错误：message 为后端返回的原文，code/request_id 供面板做友好提示与定位。
+export class AgentRequestError extends Error {
+  code: string
+  requestId: string
+  constructor(detail: AgentErrorDetail | null, status: number) {
+    super(detail ? detail.message : `智能体请求失败：${status}`)
+    this.name = 'AgentRequestError'
+    this.code = detail?.code ?? 'UNKNOWN'
+    this.requestId = detail?.request_id ?? ''
+  }
+}
+
+export async function fetchAgentAnalyze(
+  payload: AgentAnalyzeRequest,
+  signal?: AbortSignal,
+): Promise<AgentAnalyzeResponse> {
+  const response = await fetch(`${API_BASE_URL}/agent/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    // 智能体后端整体预算为 60 秒（契约 v2），需覆盖该预算，不沿用新闻查询的 20 秒惯例。
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(75_000)]) : AbortSignal.timeout(75_000),
+  })
+  if (!response.ok) {
+    let detail: AgentErrorDetail | null = null
+    try {
+      const body = await response.json()
+      if (body && typeof body === 'object' && body.detail && typeof body.detail === 'object' && 'code' in body.detail)
+        detail = body.detail as AgentErrorDetail
+    } catch {
+      // 非契约错误体时按 HTTP 状态提示
+    }
+    throw new AgentRequestError(detail, response.status)
+  }
+  return response.json()
+}
+
 export function describeApiError(error: unknown, fallback: string): string {
   if (error instanceof Error && error.name === 'TimeoutError') return '数据请求超时，请重试。'
   if (error instanceof TypeError && /fetch|network/i.test(error.message)) return '无法连接数据服务，请确认后端与访问地址后重试。'

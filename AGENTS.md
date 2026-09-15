@@ -9,7 +9,7 @@
 - 船舶与轨迹为教学模拟；events 为新闻聚合事件，news 为已采集的真实报道及加工字段。不得统一称为“全模拟”或“真实 AIS”。
 - 当前批次为 sim_ais_demo/output_news_aligned/；数量是可变状态，变更前查询实际数据。
 - MobilityDB 已用于局部派生轨迹与停留分析；主回放不使用该派生表。TimescaleDB 已安装，业务未使用时序表。
-- 智能体尚未实现。接入前阅读 docs/agent_integration.md，区分预设契约和已注册路由。
+- 智能体最小版已实现：后端 POST /agent/analyze 已注册，前端右侧工作面板有智能体问答页签。涉及智能体时仍先阅读 docs/agent_integration.md，区分契约预设与已注册路由的实际行为。
 
 ## 修改与协作
 
@@ -65,7 +65,7 @@ npm run dev -- --port 5174
 - 修改模型后验证导入与元数据；修改数据库后回查系统目录、约束、索引及实际数据。
 - 前后端联调检查浏览器控制台、网络请求和后端日志；无法验证时明确范围和原因。
 - 纯文档修改核对代码、链接、样例与状态，不必重跑不相关业务测试。
-- 前端 API 地址在 frontend/src/api.ts；CORS 当前只允许 http://localhost:5174 和 GET，新增 POST 时同步调整。
+- 前端 API 地址在 frontend/src/api.ts；CORS 当前只允许 http://localhost:5174，方法为 GET 和 POST（POST /agent/analyze）；新增其他方法时同步调整。
 - 当前无认证授权、实时推送和正式部署；已有轻量检查，不等于完整自动化测试体系。
 
 ## Windows 沙箱与 Git 权限
