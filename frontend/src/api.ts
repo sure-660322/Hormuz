@@ -174,11 +174,17 @@ export async function fetchPlaybackPositions(
   return response.json()
 }
 
-// 智能体 POST /agent/analyze 的请求与响应类型，字段对齐 backend/app/schemas_agent.py（契约 v2）。
+// 智能体 POST /agent/analyze 的请求与响应类型，字段对齐 backend/app/schemas_agent.py（契约 v3）。
+export interface AgentTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export interface AgentAnalyzeRequest {
   question: string
   closure_at: string | null
   end_at: string | null
+  history?: AgentTurn[]  // 多轮对话历史，最多最近 10 轮；单轮不传
 }
 
 export interface AgentContext {
@@ -231,9 +237,69 @@ export interface AgentAnalyzeResponse {
   ships: AgentShip[]
   evidence: AgentEvidence[]
   query_summary: AgentQuerySummary | null
+  tools_used: string[]  // 本次实际执行的工具名（执行顺序去重）
+  results: Record<string, AgentToolResult>  // 各工具结构化结果，按工具名
   limitations: string[]
   clarification: string | null
 }
+
+// 非通行工具的结构化结果（字段定义见 docs/agent_integration.md 与后端工具模块）
+export interface AgentToolEventNews {
+  story_id: string
+  media_name: string
+  publish_date: string | null
+  perspective: string
+  title_zh: string
+  url: string
+}
+
+export interface AgentToolEvent {
+  event_id: string
+  event_type: string
+  title_zh: string
+  summary_zh: string
+  event_datetime: string | null
+  event_time_text: string | null
+  event_location_text: string | null
+  event_region: string | null
+  event_lat: number | null
+  event_lng: number | null
+  mentioned_vessels: string[]
+  perspectives: string[]
+  story_count: number
+  news: AgentToolEventNews[]
+}
+
+export interface AgentToolEventContextResult {
+  status: string
+  returned_event_count: number
+  truncated: boolean
+  events: AgentToolEvent[]
+}
+
+export interface AgentToolShipSearchResult {
+  status: string
+  keyword: string
+  returned_count: number
+  matched_count: number
+  truncated: boolean
+  matches: { ship_id: number; name: string; mmsi: string; ship_type: string; flag: string | null }[]
+}
+
+export interface AgentToolShipTrackResult {
+  status: string
+  ship_id: number
+  ship_name: string
+  fix_count: number
+  coverage_start: string | null
+  coverage_end: string | null
+}
+
+export type AgentToolResult =
+  | AgentToolEventContextResult
+  | AgentToolShipSearchResult
+  | AgentToolShipTrackResult
+  | Record<string, unknown>
 
 export interface AgentErrorDetail {
   code: string

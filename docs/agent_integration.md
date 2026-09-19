@@ -1,6 +1,6 @@
 # 智能体接入契约与任务
 
-状态：2026-10-04，v2 最小版已实现。根据与学长沟通的结论，第一版采用“大模型 API + 自定义只读查询工具”，未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入最小问答。
+状态：2026-10-05，v3 多工具版已实现。根据与学长沟通的结论，采用“大模型 API + 自定义只读查询工具”，未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。v3 在 v2 单工具（海峡通行）基础上新增 search_ships / get_ship_track / get_event_context 三个只读工具（接入 news/events 数据）与多轮 history 支持；工具执行预算由 2 次提高到 3 次。
 
 ## 第一版目标与分工
 
@@ -32,7 +32,7 @@
 
 ## 预设接口与工具
 
-POST /agent/analyze，一次请求返回完整回答。不要求流式输出、会话持久化、多智能体、新闻搜索和地图联动。
+POST /agent/analyze，一次请求返回完整回答。不要求流式输出、多智能体和地图联动（地图定位为前端后续项）。
 
 以下日期仅为结构示例，不代表真实封锁时间；联调需替换成核验后的参数：
 
@@ -40,13 +40,25 @@ POST /agent/analyze，一次请求返回完整回答。不要求流式输出、�
 {
   "question": "封锁后有哪些船还通过了海峡？",
   "closure_at": "2026-03-01T00:00:00Z",
-  "end_at": "2026-03-02T00:00:00Z"
+  "end_at": "2026-03-02T00:00:00Z",
+  "history": [{"role": "user", "content": "之前的问题"}, {"role": "assistant", "content": "之前的回答"}]
 }
 ```
 
-question 必填，去除首尾空白后 1–2000 字符。时间字段可省略，但须从明确表述或已核验情景上下文补齐；缺失或与页面条件冲突时返回 needs_clarification。时间须带时区，统一 UTC，closure_at < end_at；建议第一版最多 24 小时，超限报错，不静默截断。不要求选定单船。
+question 必填，去除首尾空白后 1–2000 字符。时间字段可省略，但须从明确表述或已核验情景上下文补齐；缺失时使用后端默认封锁时刻（当前模拟批次假设的警告响应起点）和 24 小时窗口，不反问用户。时间须带时区，统一 UTC，closure_at < end_at；最多 24 小时，超限报错，不静默截断。不要求选定单船。
 
-仅注册 query_strait_passages(closure_at, end_at) 业务工具。批次、门线和限额由后端控制。函数校验参数、查询数据库、判定完整通行、去重计数，返回船只和证据，不要求单独公开 HTTP 路由。
+history 可选，为此前对话的轮次（role 限 user/assistant，content 去除首尾空白后 1–2000 字符），最多携带最近 10 轮；服务端将 history 插在 system 与本次问题之间。单轮问答不传 history。
+
+已注册四个业务工具，批次、门线、读取上限和返回条数上限由后端控制。函数校验参数、执行参数化只读查询，不要求单独公开 HTTP 路由：
+
+| 工具 | 参数 | 说明 |
+| --- | --- | --- |
+| query_strait_passages | closure_at, end_at | [closure_at, end_at) 内观测完成的海峡完整通行（门线 56.2°E / 56.7°E 侧别变化口径） |
+| search_ships | keyword（必填）, limit | 按关键字模糊检索教学模拟船（船名/MMSI/IMO/callsign/船型/船旗），返回 ship_id 等；limit 默认 10、上限 20 |
+| get_ship_track | ship_id（必填）, start_at, end_at | 单船窗口内全部轨迹报位（时间/经纬度/航速/航向）；时间缺省用默认封锁窗口 |
+| get_event_context | event_id 或 keyword（二选一）, start_at, end_at | 新闻聚合事件及关联真实报道；事件是真实新闻数据，与模拟船相互独立，不得按船名关联 |
+
+时间窗语义：请求显式提供 closure_at/end_at 时以请求为准（模型自拟时间参数忽略）；否则用模型在工具参数里给的时间，缺省回退默认封锁时刻 + 24 小时窗口。search_ships 不带时间窗。
 
 ```text
 接收问题及上下文 → 校验/澄清参数
@@ -59,7 +71,7 @@ question 必填，去除首尾空白后 1–2000 字符。时间字段可省略�
 
 模型未调用工具、调用未知工具或伪造结果时，不得返回未查询的成功回答；允许有限纠正，超过预算报错。结构化船只、计数和证据直接来自后端结果。SQL、距离和通行判断不交给模型计算。
 
-建议整体超时 60 秒、最多 4 轮模型请求、2 次业务工具执行；读取上限 50000 个报位，展示最多 100 艘和 200 条通行证据。读取超限要求缩小范围，不能截断后宣称零匹配；仅展示截断时保留实际总数并标记 truncated。前端超时覆盖后端预算，不沿用新闻查询的 20 秒。
+建议整体超时 60 秒、最多 4 轮模型请求、3 次业务工具执行；读取上限 50000 个报位，船舶检索上限 20 条，事件查询上限 5 个事件、每事件 10 条报道。读取超限要求缩小范围，不能截断后宣称零匹配；仅展示截断时保留实际总数并标记 truncated。前端超时覆盖后端预算，不沿用新闻查询的 20 秒。
 
 模型密钥和数据库凭据只保留在后端环境，不进入前端、回答或日志。使用参数化只读查询；不执行模型生成的 Python/SQL。数据库文本和新闻属于不可信数据，不执行其中指令。遗留 nearby-events 接口和 MobilityDB 固定窗口试验不作为本版通用工具。
 
@@ -67,20 +79,22 @@ question 必填，去除首尾空白后 1–2000 字符。时间字段可省略�
 
 | 字段 | 含义 |
 | --- | --- |
-| schema_version / request_id | 契约版本（本版为 "2"）和请求标识 |
+| schema_version / request_id | 契约版本（本版为 "3"）和请求标识 |
 | status | ok、no_data、partial、needs_clarification |
 | answer | 根据工具结果回答，并说明模拟边界 |
 | context | 实际批次、closure_at、end_at、封锁时间来源、通行规则版本、ship_data_source=simulation；待澄清值为空 |
-| ships | ship_id、name、passage_count；数据库 ID，按船去重 |
+| ships | ship_id、name、passage_count；数据库 ID，按船去重；仅执行过 query_strait_passages 时非空 |
 | evidence | evidence_id、ship_id、direction、两侧报位时间及经纬度、observed_completion_at；正文用 [P1] 等引用 |
-| query_summary | position_count、matched_ship_count、passage_count、uncertain_candidate_count、coverage_start、coverage_end、truncated；后端计算 |
-| limitations | 覆盖不足、判定限制或截断说明 |
+| query_summary | position_count、matched_ship_count、passage_count、uncertain_candidate_count、coverage_start、coverage_end、truncated；后端计算；未执行通行工具时为 null |
+| tools_used | 本次实际执行的工具名列表（执行顺序去重） |
+| results | 各工具的结构化结果（按工具名键入），供前端展示与追溯；字段由各工具定义 |
+| limitations | 覆盖不足、判定限制、数据集边界（模拟/真实新闻相互独立）或截断说明 |
 | clarification | 待补充问题；非澄清状态为空 |
 
 - ok：判定完整完成，包括零匹配。零匹配时 ships/evidence 为空，数量为 0，回答限定为“指定模拟数据范围内未发现符合规则的完整通行”。
-- no_data：无可用报位或必要前置状态不足，无法判定，不能解释成封锁有效。
+- no_data：无可用报位或必要前置状态不足，无法判定，不能解释成封锁有效；仅使用 search_ships / get_event_context 等非通行工具且全部无命中时，ships/evidence/query_summary 为空。
 - partial：存在已确认结果和数据缺口/不确定候选，仅说明已确认部分。
-- needs_clarification：不执行依赖缺失条件的查询，ships/evidence 为空，query_summary 为 null，避免把未查询当成零结果。
+- needs_clarification：不执行依赖缺失条件的查询，ships/evidence 为空，query_summary 为 null，避免把未查询当成零结果。（当前实现不产生此状态：缺时间时使用默认窗口。）
 
 模型完全不可用时返回错误，不用硬编码样例冒充成功。实际实现前补充含真实数据库 ID 的成功、零匹配和无数据样例，不编造数量。
 
@@ -101,16 +115,21 @@ question 必填，去除首尾空白后 1–2000 字符。时间字段可省略�
 - [x] 独立实现并验证查询函数，对照人工样例与文件验收脚本，解释差异。
 - [x] 命令行跑通一次模型 API、工具调用及结果回传，保留无密钥的参数和结果摘要。
 - [x] 实现 schemas、注册 /agent/analyze、统一错误并为 CORS 增加 POST。
-- [x] 最小页面展示输入、加载、回答、船只和证据，同步前端类型与超时；地图联动后续实施。
+- [x] 最小页面展示输入、加载、回答、船只和证据，同步前端类型与超时；v3 起支持多轮对话渲染与回答内船只/事件的地图定位。
 - [x] 验证封锁前进入/后完成、起止边界、单门线折返、多次通行、乱序报位、跳点、长间隔、无报位、零匹配、缺参数、未知工具和超时。
 - [x] 新批次若为零通行则如实展示，用封锁前窗口或独立测试数据验证正例，不改源数据制造演示结果。
 - [x] 核对查询前后源数据未变、回答 ID/数量/证据与工具结果一致，不推导真实因果。
 - [x] 验证 /health、/docs 和新接口；改前端后运行 npm run build，涉及工作台语义运行 npm run check:workbench，并检查网络请求与后端日志。
+- [x] v3：新增 search_ships / get_ship_track / get_event_context 三个只读工具，参数校验、命中上限与数据集边界声明（模拟船与真实新闻不关联）随工具返回。
+- [x] v3：runner 改为工具注册表多工具循环（预算 3 次工具执行），请求显式时间窗为权威值，缺省回退默认封锁窗口。
+- [x] v3：请求支持 history（≤10 轮），多轮追问仍强制重新调用工具核对，不得仅凭历史回答。
+- [x] v3：响应新增 tools_used 与 results（按工具名的结构化结果），通行结果继续填充 ships/evidence/query_summary 顶层字段。
+- [x] v3：scripts/test_deepseek_toolcall.py 三场景（通行回归 / search+track 链式 / 事件查询）真实联调通过；scripts/check_agent_api.py 覆盖 history 校验并通过。
 
 ## 后续范围
 
-首版稳定后再做地图定位、轨迹回放、新闻引用和事件与模拟船交互建模。旧版 get_ship_context、find_news_events、get_event_evidence 及地图定位响应保留为后续方向，不是本版必做项；新闻扩展仍须区分报道日期与事件时间，保留来源标识，不按船名自动匹配真实与模拟船。
+地图定位、轨迹回放联动为前端下一步（回答中的船/事件可在地图上定位）；更细粒度的事件与模拟船交互建模仍需设计。旧版 get_ship_context、find_news_events、get_event_evidence 保留为参考，不是本版必做项；新闻扩展仍须区分报道日期与事件时间，保留来源标识，不按船名自动匹配真实与模拟船。
 
 受限 Text-to-SQL 另行设计表/字段/函数白名单、SQL 校验和数据库权限。复杂分支、恢复或持久化需求出现后，再评估 LangChain/LangGraph，不预先增加框架依赖。
 
-最小版已实现并联调：后端 /agent/analyze 与前端智能体面板已跑通默认问题（返回 1 艘 SIM V2 化学品船 019，证据 P1，观测完成于 2026-02-28T18:14:54Z）；npm run build 与 npm run check:workbench 已通过。环境交接见 [database_setup.md](database_setup.md)。
+最小版（v2）已实现并联调：后端 /agent/analyze 与前端智能体面板已跑通默认问题（返回 1 艘 SIM V2 化学品船 019，证据 P1，观测完成于 2026-02-28T18:14:54Z）；npm run build 与 npm run check:workbench 已通过。v3 多工具版（2026-10-05）联调通过：通行回归问题 1 次工具调用 4.1s；「油轮 SIM V2 油轮 004 轨迹」问题链式调用 search_ships + get_ship_track 共 2 次 5.7s；「evt_001 事件与报道」1 次 get_event_context 3.1s，回答均保留来源链接与模拟边界声明。环境交接见 [database_setup.md](database_setup.md)。

@@ -19,9 +19,11 @@ import ShipInspector from './components/ShipInspector.vue'
 import TimelineControls from './components/TimelineControls.vue'
 import ShipSearch from './components/ShipSearch.vue'
 import WorkspaceTools from './components/WorkspaceTools.vue'
+import ToolRail from './components/ToolRail.vue'
+import OverviewPanel from './components/OverviewPanel.vue'
+import LayersPopover from './components/LayersPopover.vue'
 
 const {
-  ships,
   tracks,
   index,
   loading,
@@ -35,15 +37,10 @@ const {
 const events = ref<ApiEvent[]>([])
 const eventsLoading = ref(true)
 const eventsError = ref('')
-const panel = ref<Panel>('events')
-const panelTabs = [
-  ['events', '事件'],
-  ['ships', '船舶'],
-  ['layers', '图层'],
-  ['analysis', '分析'],
-  ['agent', '智能体'],
-] as const
+const panel = ref<Panel>('overview')
 const panelOpen = ref(!window.matchMedia('(max-width: 760px)').matches)
+const layersOpen = ref(false)
+const legendOpen = ref(false)
 const selectedShipId = ref<number | null>(null)
 const selectedEvent = ref<ApiEvent | null>(null)
 const eventType = ref('all')
@@ -99,6 +96,13 @@ const filteredEvents = computed(() =>
     }),
 )
 const mapEvents = computed(() => filteredEvents.value.filter(hasEventLocation))
+// 仅传入 occurred_at 非空的事件：报道无明确发生时刻时不补造时间，不进时间轴。
+const timelineEvents = computed(
+  () =>
+    filteredEvents.value.filter((e) => e.occurred_at) as (ApiEvent & {
+      occurred_at: string
+    })[],
+)
 const viewShips = computed(() =>
   bounds.value
     ? currentShips.value.filter((s) => inBounds(s, bounds.value!))
@@ -197,6 +201,28 @@ function chooseEvent(event: ApiEvent) {
   panelOpen.value = true
   layers.value.events = true
 }
+// 智能体回答中的「地图定位」：定位的是地图当前回放时刻的位置；
+// 目标不在当前回放快照或缺少位置时如实提示，不伪造。
+function locateAgentShip(shipId: number) {
+  const ship = currentShips.value.find((item) => item.id === shipId)
+  if (!ship) {
+    notice.value = `当前回放时刻没有 ID ${shipId} 的船位；地图显示的是当前时刻快照，可调整时间后再定位。`
+    return
+  }
+  chooseShip(ship)
+}
+function locateAgentEvent(eventId: string) {
+  const event = events.value.find((item) => item.event_id === eventId)
+  if (!event) {
+    notice.value = `未找到事件 ${eventId}。`
+    return
+  }
+  if (!hasEventLocation(event)) {
+    notice.value = `事件 ${eventId} 没有地图位置（报道未给出可定位地点）。`
+    return
+  }
+  chooseEvent(event)
+}
 function restore() {
   clearShip()
   selectedEvent.value = null
@@ -207,6 +233,24 @@ function togglePanel(value: Panel) {
   panelOpen.value = true
   picking.value = false
 }
+const panelTitles: Record<Panel, string> = {
+  overview: '态势概览',
+  events: '新闻事件',
+  ships: '船舶',
+  agent: '智能体',
+  analysis: '半径分析',
+}
+const headTitle = computed(() => panelTitles[panel.value])
+const headContext = computed(() => {
+  if (panel.value === 'events' && selectedEvent.value) return selectedEvent.value.title
+  if (panel.value === 'ships' && selectedShip.value) return selectedShip.value.name
+  return ''
+})
+function backToOverview() {
+  clearShip()
+  selectedEvent.value = null
+  panel.value = 'overview'
+}
 function chooseCenter(point: GeoPoint) {
   center.value = point
   picking.value = false
@@ -215,6 +259,7 @@ function chooseCenter(point: GeoPoint) {
 }
 function startPicking() {
   picking.value = !picking.value
+  layersOpen.value = false
   if (picking.value && window.matchMedia('(max-width: 760px)').matches)
     panelOpen.value = false
 }
@@ -240,6 +285,9 @@ function onKey(event: KeyboardEvent) {
     clearShip()
     selectedEvent.value = null
     picking.value = false
+    layersOpen.value = false
+    legendOpen.value = false
+    panel.value = 'overview'
   }
 }
 onMounted(() => {
@@ -259,22 +307,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </svg>
         <div>
           <h1>霍尔木兹<span>海事态势分析</span></h1>
-          <p>航运态势与历史调查工作台</p>
         </div>
       </div>
       <div class="top-status">
-        <span class="simulation-label">模拟船舶 · 新闻事件</span
-        ><span class="data-status">{{
-          loading
-            ? '数据加载中'
-            : error
-              ? '数据不可用'
-              : `${ships.length} 艘船舶已载入`
-        }}</span
-        ><button class="alert-count" @click="togglePanel('events')">{{ events.length }} 条新闻事件</button>
+        <span class="simulation-label">模拟船舶 · 新闻事件</span>
         <button @click="displayZone = displayZone === 'UTC' ? 'Asia/Shanghai' : 'UTC'" aria-label="切换时区">{{ zoneLabel() }}</button>
-        <a href="http://127.0.0.1:8000/mobility-demo" target="_blank" rel="noopener" style="color:inherit;font-size:12px">停留分析试验</a>
         <button @click="theme = theme === 'dark' ? 'light' : 'dark'" aria-label="切换地图主题">{{ theme === 'dark' ? '浅色' : '深色' }}</button>
+        <details class="top-more">
+          <summary aria-label="更多" title="更多">⋯</summary>
+          <div class="top-more-menu">
+            <a href="http://127.0.0.1:8000/mobility-demo" target="_blank" rel="noopener">停留分析试验</a>
+          </div>
+        </details>
       </div>
       <button
         class="panel-toggle"
@@ -285,6 +329,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         {{ panelOpen ? '收起面板' : '工作面板' }}
       </button>
     </header>
+    <ToolRail
+      :layers-active="layersOpen"
+      :area-active="picking"
+      :agent-active="panel === 'agent' && panelOpen"
+      @open-layers="layersOpen = !layersOpen"
+      @start-area="openAreaAnalysis"
+      @share="shareRequest++"
+      @print="printReport"
+      @open-agent="togglePanel('agent')"
+    />
+    <LayersPopover
+      v-if="layersOpen"
+      v-model:layers="layers"
+      v-model:vector-minutes="vectorMinutes"
+      v-model:vector-linked="vectorLinked"
+      v-model:tail-minutes="tailMinutes"
+      :harbour-status="harbourStatus"
+      :country-status="countryStatus"
+      :effective-vector="effectiveVector"
+      @close="layersOpen = false"
+    />
     <section class="map-workspace" aria-label="霍尔木兹海峡态势地图">
       <MapView
         :ships="currentShips"
@@ -331,23 +396,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           ⌖ 全局视野
         </button>
       </div>
-      <div class="map-side-tools">
-        <button class="map-tool" @click="shareRequest++">分享视图</button>
-        <button class="map-tool" @click="printReport">导出 / 打印 PDF</button>
-        <button
-          class="map-tool"
-          :class="{ active: panel === 'layers' && panelOpen }"
-          @click="togglePanel('layers')"
-        >
-          ▱ 图层</button
-        ><button
-          class="map-tool"
-          :class="{ active: picking }"
-          @click="openAreaAnalysis"
-        >
-          ⊕ 半径分析
-        </button>
-      </div>
       <div v-if="notice" class="alert-toast" role="status"><span>{{ notice }}</span><button @click="notice = ''" aria-label="关闭提醒">×</button></div>
       <div v-if="picking" class="map-instruction" role="status">
         点击地图选点，或按 Enter 使用视野中心
@@ -357,13 +405,24 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         仅显示选中船舶 <button @click="isolated = false">恢复全部</button>
       </div>
       <div class="map-hud">
-        <span>当前视野</span><strong>{{ viewShips.length }}</strong> 船舶 <i></i
-        ><strong>{{ viewEvents.length }}</strong> 新闻事件 <i></i
+        <span
+          ><strong>{{ viewShips.length }}</strong> 船</span
+        ><span
+          ><strong>{{ viewEvents.length }}</strong> 事件</span
         ><span class="hud-speed"
-          >平均航速 <strong>{{ averageSpeed }}</strong> kn</span
+          >均速 <strong>{{ averageSpeed }}</strong> kn</span
         >
       </div>
-      <div class="map-legend">
+      <button
+        class="legend-toggle"
+        :aria-expanded="legendOpen"
+        aria-label="图例与数据说明"
+        title="图例与数据说明"
+        @click="legendOpen = !legendOpen"
+      >
+        ⓘ
+      </button>
+      <div v-if="legendOpen" class="map-legend">
         <span><b class="vessel-key">▲</b> 当前船位</span
         ><span><b class="track-key">─•─</b> 已航行轨迹</span
         ><span>船位为教学模拟；事件为代表点，非精确事发位置</span>
@@ -372,20 +431,54 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         {{ error || '正在载入船舶与历史采样…'
         }}<button v-if="error" @click="load">重试</button>
       </div>
+      <div class="timeline-dock">
+        <TimelineControls
+          v-model="index"
+          :frame-times="times"
+          :events="timelineEvents"
+          :selected-event-id="selectedEvent?.id ?? null"
+          :seek-request="seekRequest"
+          :loading="loading"
+          :error-message="error"
+          :event-type="eventType"
+          @speed-change="playbackSpeed = $event"
+          @retry="load"
+          @select-event="chooseEvent"
+          @type-change="changeEventType"
+        />
+      </div>
     </section>
     <aside v-show="panelOpen" class="inspector" aria-label="上下文工作面板">
-      <nav class="panel-tabs" aria-label="工作面板分类">
+      <header class="inspector-head">
         <button
-          v-for="item in panelTabs"
-          :key="item[0]"
-          :class="{ active: panel === item[0] }"
-          :aria-pressed="panel === item[0]"
-          @click="togglePanel(item[0])"
+          v-if="panel !== 'overview'"
+          class="head-back"
+          aria-label="返回态势概览"
+          title="返回态势概览"
+          @click="backToOverview"
         >
-          {{ item[1]
-          }}<span v-if="item[0] === 'events'">{{ events.length }}</span>
-        </button>
-      </nav>
+          ‹</button
+        >
+        <h2>
+          {{ headTitle
+          }}<span v-if="headContext" :title="headContext">· {{ headContext }}</span>
+        </h2>
+      </header>
+      <OverviewPanel
+        v-if="panel === 'overview'"
+        :time="time"
+        :view-ships="viewShips"
+        :view-events="viewEvents"
+        :events="filteredEvents"
+        :total-ships="currentShips.length"
+        :total-events="events.length"
+        :average-speed="averageSpeed"
+        :events-loading="eventsLoading"
+        @select-ship="chooseShip"
+        @select-event="chooseEvent"
+        @open-events="togglePanel('events')"
+        @open-ships="togglePanel('ships')"
+      />
       <EventPanel
         v-if="panel === 'events'"
         :events="filteredEvents"
@@ -419,11 +512,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @event="chooseEvent"
         @locate="focusShipRequest++"
       />
-      <AgentPanel v-if="panel === 'agent'" />
+      <AgentPanel
+        v-if="panel === 'agent'"
+        @locate-ship="locateAgentShip"
+        @locate-event="locateAgentEvent"
+      />
       <WorkspaceTools
-        v-if="panel === 'layers' || panel === 'analysis'"
-        :panel="panel"
-        v-model:layers="layers"
+        v-if="panel === 'analysis'"
         v-model:radius="radius"
         :center="center"
         :result="areaResult"
@@ -431,8 +526,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :view-event-count="viewEvents.length"
         :time="time"
         :picking="picking"
-        :harbour-status="harbourStatus"
-        :country-status="countryStatus"
         :loading="loading"
         :error="error"
         @pick="startPicking"
@@ -440,30 +533,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @select-ship="chooseShip"
         @select-event="chooseEvent"
       />
-      <div v-if="panel === 'layers'" class="display-settings">
-        <label>速度矢量 <select v-model.number="vectorMinutes"><option :value="3">3 分钟</option><option :value="6">6 分钟</option><option :value="12">12 分钟</option></select></label>
-        <label><input type="checkbox" v-model="vectorLinked" /> 随回放倍率调整（当前 {{ effectiveVector }} 分钟）</label>
-        <label>尾迹 {{ tailMinutes }} 分钟 <input aria-label="尾迹长度" type="range" v-model.number="tailMinutes" min="15" max="1440" step="15" /></label>
-        <p class="caption">实线为有效船首向；虚线为 COG/SOG 等速外推。无 ROT 与船体尺寸数据，不绘制转向旗和真尺度轮廓。</p>
-      </div>
       <div v-if="panel === 'analysis' && center" class="display-settings"><label><input type="checkbox" v-model="fenceEnabled" /> 将查询圆设为模拟电子围栏</label><p class="caption">{{ fenceEnabled ? `围栏内 ${fenceInside.length} 艘；随回放提示进入/离开。` : '仅本次会话有效；不判断两个采样之间的穿越。' }}</p></div>
-      <footer class="inspector-footer">
-        {{ formatTime(time, true) }} <span>历史快照 · 非实时 AIS</span>
-      </footer>
     </aside>
-    <TimelineControls
-      v-model="index"
-      :frame-times="times"
-      :events="[]"
-      :selected-event-id="null"
-      :seek-request="seekRequest"
-      :loading="loading"
-      :error-message="error"
-      event-type="all"
-      @speed-change="playbackSpeed = $event"
-      @retry="load"
-      @select-event="chooseEvent"
-    />
     <section class="print-report">
       <h2>霍尔木兹海峡 · 船位与新闻概览</h2><p>{{ formatTime(time, true) }} {{ zoneLabel() }} · 船位为教学模拟，新闻事件为独立历史资料</p>
       <p>当前视野 {{ viewShips.length }} 艘船舶、{{ viewEvents.length }} 条新闻事件。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>

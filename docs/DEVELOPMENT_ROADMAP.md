@@ -443,13 +443,13 @@ MapContextSnapshot
 └── is_simulated / data_timestamp
 ```
 
-推荐的智能体只读工具：
+推荐的智能体只读工具（2026-10-05 更新：前三个已按契约 v3 实现并联调，见 docs/agent_integration.md）：
 
-- `search_ships`：按字段查找船舶；
-- `get_ship_track`：查询指定时间范围轨迹；
-- `get_nearby_context`：查询指定时刻邻近关系；
-- `get_event_context`：查询事件和事发时周边船舶；
-- `get_situation_snapshot`：获得当前地图范围的结构化摘要。
+- `search_ships`：按字段查找船舶；【已实施】
+- `get_ship_track`：查询指定时间范围轨迹；【已实施】
+- `get_event_context`：查询事件和事发时周边船舶；【已实施——当前为事件与关联报道查询，不含事发时周边模拟船关联，该项仍需设计】
+- `get_nearby_context`：查询指定时刻邻近关系；【未实施】
+- `get_situation_snapshot`：获得当前地图范围的结构化摘要。【未实施】
 
 可逐步实现的能力：
 

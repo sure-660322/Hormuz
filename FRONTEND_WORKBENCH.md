@@ -44,11 +44,11 @@
 | frontend/src/services/countryLayer.ts | 国家边界与标签 |
 | frontend/checks/workbench.cjs | 工作台轻量语义检查 |
 
-## 智能体接入（已实现最小版）
+## 智能体接入（契约 v3）
 
-智能体最小问答已接入：POST /agent/analyze 已注册（schemas、统一错误、CORS POST 均已同步），前端 AgentPanel.vue 位于右侧工作面板「智能体」页签，发送问题及可选封锁窗口，展示带引用的回答（状态、回答、上下文、船只、证据、统计、限制）。地图定位与轨迹联动后续再做。
+POST /agent/analyze 已注册（schemas、统一错误、CORS POST 均已同步），前端 AgentPanel.vue 位于右侧工作面板「智能体」页签。契约 v3 起支持多工具（海峡通行 / 船舶检索 / 单船轨迹 / 新闻事件）与多轮 history（最近 10 轮）：对话按轮次堆叠展示（问题 + 状态徽标 + 工具标签 + 回答 + 上下文/统计/证据），「清空对话」重置全部轮次。回答中的船只与事件带「地图定位」按钮，经 App.vue 选中当前回放快照中的船/事件（目标不在当前快照或事件无位置时如实提示，不伪造）。
 
-智能体请求是独立异步加载，不放入 computed：由 AgentPanel 管理加载、取消、超时与错误状态，过期响应被忽略。新的智能体请求预算与现有新闻20秒超时分别处理：前端 75 秒超时覆盖后端 60 秒整体预算。样例响应均有显式标识（request_id 与批次说明）。
+智能体请求是独立异步加载，不放入 computed：由 AgentPanel 管理加载、取消、超时与错误状态，过期响应被忽略。前端 75 秒超时覆盖后端 60 秒整体预算，与新闻 20 秒超时分开。样例响应均有显式标识（request_id、批次与工具结果）。地图定位的是当前回放时刻的位置，非历史轨迹点。
 
 ## 验证
 
@@ -60,4 +60,4 @@ npm run build
 npm run check:workbench
 ```
 
-2026-10-04 本地提交前以上两项已通过。本次在浏览器中实测了智能体页签问答（回答如期返回 1 艘 SIM V2 化学品船 019，完成于 2026-02-28T18:14:54Z）；历史浏览器记录见 sim_ais_demo/output_news_aligned/api_startup_report.json，不等于完整端到端覆盖。
+2026-10-04 本地提交前以上两项已通过。2026-10-05 契约 v3：npm run build 与 npm run check:workbench 通过；浏览器端到端联调通过（多轮追问渲染两轮、事件结果与定位按钮渲染、定位后选中船、控制台无未处理错误）；历史浏览器记录见 sim_ais_demo/output_news_aligned/api_startup_report.json，不等于完整端到端覆盖。

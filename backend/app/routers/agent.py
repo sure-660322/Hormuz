@@ -1,4 +1,4 @@
-"""POST /agent/analyze：智能体问答接口（契约 v2）。
+"""POST /agent/analyze：智能体问答接口（契约 v3）。
 
 错误体统一为 detail 对象 {code, message, request_id}，对齐契约「预设响应与错误」。
 """
@@ -60,6 +60,7 @@ def analyze(
             question=request.question,
             closure_at=request.closure_at,
             end_at=request.end_at,
+            history=[turn.model_dump() for turn in request.history] if request.history else None,
         )
     except AgentTimeoutError as exc:
         _error(504, "AGENT_TIMEOUT", str(exc), request_id)

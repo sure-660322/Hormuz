@@ -24,10 +24,8 @@ from backend.app.services.agent.config import (
     LONG_GAP_THRESHOLD,
     MAX_POSITIONS_READ,
     MAX_WINDOW,
+    SCHEMA_VERSION,
 )
-
-# 契约版本（docs/agent_integration.md v2）
-SCHEMA_VERSION = "2"
 
 
 @dataclass

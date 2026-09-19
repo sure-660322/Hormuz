@@ -26,6 +26,19 @@ const zoomStart = ref(0)
 const zoomEnd = ref<number | null>(null)
 const dragStart = ref<number | null>(null)
 const dragEnd = ref<number | null>(null)
+// 呈现层展开态：悬停/聚焦展开，刷选拖拽中或精确时间 details 打开时绝不收起。
+const expanded = ref(false)
+const rangeOpen = ref(false)
+function onPointerLeave() {
+  if (dragStart.value !== null || rangeOpen.value) return
+  expanded.value = false
+}
+function onFocusOut(event: FocusEvent) {
+  const next = event.relatedTarget as Node | null
+  if (next && (event.currentTarget as HTMLElement).contains(next)) return
+  if (dragStart.value !== null || rangeOpen.value) return
+  expanded.value = false
+}
 const rangeEnd = computed(() => Math.min(last.value, zoomEnd.value ?? last.value))
 const visibleFrames = computed(() => props.frameTimes.slice(zoomStart.value, rangeEnd.value + 1))
 function resetZoom() { zoomStart.value = 0; zoomEnd.value = null }
@@ -188,7 +201,15 @@ onBeforeUnmount(() => {
 })
 </script>
 <template>
-  <section class="timeline" aria-label="船舶轨迹回放时间轴">
+  <section
+    class="timeline"
+    :class="{ expanded }"
+    aria-label="船舶轨迹回放时间轴"
+    @pointerenter="expanded = true"
+    @pointerleave="onPointerLeave"
+    @focusin="expanded = true"
+    @focusout="onFocusOut"
+  >
     <div v-if="loading || errorMessage" class="timeline-status" role="status">
       {{ errorMessage || '正在加载模拟回放数据…'
       }}<button v-if="errorMessage" @click="emit('retry')">重试</button>
@@ -243,7 +264,18 @@ onBeforeUnmount(() => {
           >{{ modelValue + 1 }} / {{ frameTimes.length }} 帧</span
         >
       </div>
-      <div v-if="events.length" class="timeline-options"><select aria-label="时间轴事件类别" :value="eventType" @change="emit('typeChange', ($event.target as HTMLSelectElement).value)"><option value="all">全部 · 密度概览</option><option v-for="(kind, type) in eventKinds" :key="type" :value="type">{{ kind.label }} · 展开节点</option></select><button :disabled="!nextEvent" @click="nextEvent && emit('selectEvent', nextEvent)">下一事件</button><button :disabled="zoomStart === 0 && zoomEnd === null" @click="resetZoom">恢复全时段</button><span>{{ zoneLabel() }} · 拖动柱图缩放</span></div>
+      <div class="timeline-mini" aria-hidden="true">
+        <div class="mini-bins">
+          <i
+            v-for="(bin, i) in histogram"
+            :key="i"
+            :style="{ height: `${Math.max(bin.count ? 15 : 0, bin.height)}%` }"
+          ></i>
+        </div>
+        <span class="mini-progress" :style="{ width: progress + '%' }"></span>
+      </div>
+      <div class="timeline-detail">
+        <div v-if="events.length" class="timeline-options"><select aria-label="时间轴事件类别" :value="eventType" @change="emit('typeChange', ($event.target as HTMLSelectElement).value)"><option value="all">全部 · 密度概览</option><option v-for="(kind, type) in eventKinds" :key="type" :value="type">{{ kind.label }} · 展开节点</option></select><button :disabled="!nextEvent" @click="nextEvent && emit('selectEvent', nextEvent)">下一事件</button><button :disabled="zoomStart === 0 && zoomEnd === null" @click="resetZoom">恢复全时段</button><span>{{ zoneLabel() }} · 拖动柱图缩放</span></div>
       <div ref="body" class="timeline-body">
         <div class="timeline-scale">
           <span>时间</span>
@@ -309,7 +341,8 @@ onBeforeUnmount(() => {
         <span>空格播放 / 暂停 · ← → 逐帧 · 新闻事件不参与回放</span
         ><span>1× 每秒推进一帧 · 仅显示载入时段</span>
       </div>
-      <details class="time-range-accessible"><summary>精确选择时间范围</summary><label>开始 <select :value="zoomStart" @change="stop(); zoomStart = Math.min(rangeEnd, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label><label>结束 <select :value="rangeEnd" @change="stop(); zoomEnd = Math.max(zoomStart, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label></details>
+      <details class="time-range-accessible" @toggle="rangeOpen = ($event.target as HTMLDetailsElement).open"><summary>精确选择时间范围</summary><label>开始 <select :value="zoomStart" @change="stop(); zoomStart = Math.min(rangeEnd, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label><label>结束 <select :value="rangeEnd" @change="stop(); zoomEnd = Math.max(zoomStart, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label></details>
+      </div>
     </template>
   </section>
 </template>

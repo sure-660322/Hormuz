@@ -5,6 +5,9 @@ sim_ais_demo/tools/verify_news_alignment.py（门线判定参考实现）。
 """
 from datetime import datetime, timedelta, timezone
 
+# 智能体契约版本（docs/agent_integration.md）；v3 起支持多工具与多轮 history
+SCHEMA_VERSION = "3"
+
 # ---- 门线定义（与 sim_ais_demo/tools/verify_news_alignment.py 完全一致）----
 # 判定纬度带：仅在该纬度带内的报位参与侧别判定
 GATE_LAT_MIN = 25.8

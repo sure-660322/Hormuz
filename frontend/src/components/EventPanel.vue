@@ -53,7 +53,6 @@ onBeforeUnmount(() => request?.abort())
 <template>
   <section ref="panel" class="panel-content event-panel">
     <header class="panel-heading">
-      <h2>新闻事件</h2>
       <p>显示 {{ events.length }} / {{ totalCount }} 条 · 按首次报道日期排序</p>
       <p>独立浏览历史新闻，不改变模拟船舶回放。</p>
     </header>
@@ -104,9 +103,8 @@ onBeforeUnmount(() => request?.abort())
           <button class="event-row" :class="{ selected: selected?.event_id === event.event_id }" :data-event-id="event.event_id" @click="emit('select', event)">
             <time>{{ event.publish_date_min?.slice(5) || '—' }}</time>
             <span class="event-dot" :style="{ color: eventKind(event.event_type).color }">{{ eventKind(event.event_type).symbol }}</span>
-            <span class="event-row-body"><span class="event-row-title"><strong>{{ eventKind(event.event_type).label }}</strong><small>{{ event.coverage_count }} 篇报道</small></span>
-              <span>{{ event.title }}</span><small>{{ hasEventLocation(event) ? '代表点可定位' : '暂无坐标 · 可查看详情' }}</small>
-            </span>
+            <span class="event-row-title">{{ event.title }}</span>
+            <small class="event-row-count">{{ event.coverage_count }} 篇</small>
           </button>
         </li>
       </ul>

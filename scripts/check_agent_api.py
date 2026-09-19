@@ -1,4 +1,4 @@
-"""只读 HTTP 检查：POST /agent/analyze（智能体契约 v2）。
+"""只读 HTTP 检查：POST /agent/analyze（智能体契约 v3）。
 
 假设服务已在 8000 端口运行（uvicorn backend.app.main:app --port 8000）。
 从仓库根目录运行：
@@ -53,9 +53,11 @@ def main():
     )
     assert status == 200, f"预期 200，实际 {status}: {body}"
     assert headers["Access-Control-Allow-Origin"] == "http://localhost:5174"
-    assert body["schema_version"] == "2"
+    assert body["schema_version"] == "3"
     assert body["status"] == "ok", f"status={body['status']}"
     assert body["request_id"]
+    assert body["tools_used"] == ["query_strait_passages"]
+    assert set(body["results"].keys()) == {"query_strait_passages"}
     assert body["query_summary"]["matched_ship_count"] == 1
     assert body["query_summary"]["passage_count"] == 1
     assert len(body["ships"]) == 1 and body["ships"][0]["name"].startswith("SIM V2")
@@ -112,6 +114,23 @@ def main():
     status, _, body = post_json(args.base, "/agent/analyze", {"question": padded})
     assert status == 200, f"2000 字符边界应通过，实际 {status}: {body.get('detail', body)}"
     print("PASS: question 空/超长 422，2000 字符边界通过")
+
+    # history 校验：超过 10 轮 → 422；合法 history 透传成功
+    too_many = [{"role": "user", "content": "之前的问题"}] * 11
+    status, _, body = post_json(
+        args.base, "/agent/analyze", {"question": base_q, "history": too_many}
+    )
+    assert status == 422, f"history 超轮数预期 422，实际 {status}"
+    history = [
+        {"role": "user", "content": "刚才提到哪艘船通过了海峡？"},
+        {"role": "assistant", "content": "模拟船 SIM V2 化学品船 019（ship_id 319）通过了海峡。"},
+    ]
+    status, _, body = post_json(
+        args.base, "/agent/analyze", {"question": "它是什么船型？", "history": history}
+    )
+    assert status == 200, f"带 history 提问预期 200，实际 {status}: {body}"
+    assert body["answer"].strip()
+    print("PASS: history 超 10 轮 422，合法多轮提问 200")
 
     # 无 key 场景：无法在不重启服务的情况下去掉 key，此处仅验证错误体结构存在
     print("SKIP: 无 key 场景需以空 DEEPSEEK_API_KEY 重启服务后验证（映射 503 AGENT_UNAVAILABLE）")

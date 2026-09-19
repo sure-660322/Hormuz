@@ -106,12 +106,18 @@ npm run dev -- --port 5174
 
 后续再做地图定位、轨迹回放联动与新闻引用扩展。SQL 由开发者编写，本版不是 Text-to-SQL。事件与具体船只的交互关联尚未实现；查询不证明真实因果，零通行必须与数据不足区分。
 
+## 下一步：MobilityDB 时空能力扩展
+
+现有 MobilityDB 仅有固定窗口的停留分析试验（`mobility_demo_segments`）。接下来的计划是以 MobilityDB 为核心建立可复用的时空数据能力底座：轨迹插值与时空计算全部下沉数据库层，派生表显式重建并留痕，统一 API 支撑速度着色轨迹、事件—船舶关联、锚地/等待识别、船舶相遇分析和回放抽稀五类前端能力。设计以未来真实 AIS 数据直接承接为目标：模拟与真实数据共用同一条管线，仅在接入层以 `data_source` 区分，换源不重构。
+
+完整方案见 [MobilityDB 时空能力底座技术方案](docs/mobility_capability_plan.md)（当前为设计稿，未实施）。实施优先级：P0 泛化派生表与重建管线 → P1 轨迹/速度 API 与着色 → P2 事件关联 → P3 停留识别 → P4 相遇分析 → P5 回放抽稀。
+
 ## 尚未实现与限制
 
 - 真实 AIS 接入、实时推送、自动刷新、认证授权和正式部署。
 - 智能体仅为初步最小版：仅一个查询工具（海峡通行）、仅 DeepSeek 一家模型、无会话持久化；模型主动澄清、大结果集截断、无密钥 503 等路径未实测。
 - 新闻事件与船舶回放的自动关联、事件多点完整展示。
-- 通用双地图对比、AIS 密度分析；MobilityDB 仅有固定窗口局部试验。
+- 通用双地图对比、AIS 密度分析；MobilityDB 仅有固定窗口局部试验，扩展规划见上文及 [技术方案](docs/mobility_capability_plan.md)。
 - 完整浏览器端到端测试；已有独立 Docker 空库导入及后端接口验证、工作台语义检查和专项脚本。
 - 已预留船讯网相关 ORM 字段，但未接入真实供应方；新增字段也未全部暴露给前端。
 
@@ -131,6 +137,7 @@ npm run check:workbench
 - [数据库与环境交接](docs/database_setup.md)
 - [智能体接入契约](docs/agent_integration.md)
 - [MobilityDB 停留试验](docs/mobility_demo.md)
+- [MobilityDB 时空能力扩展方案](docs/mobility_capability_plan.md)（设计稿，未实施）
 - [新闻适配阶段记录](docs/event_adaptation_phase1.md)
 - [006 新闻迁移记录](backend/sql/006_migration_report.md)
 - [项目智能体工作规则](AGENTS.md)
