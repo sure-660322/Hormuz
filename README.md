@@ -14,7 +14,7 @@
 | 地图工作台 | 概览面板与地图工具栏、船舶搜索、检查面板、轨迹、航速曲线、图层控制、国家边界及本地半径船舶查询；选中船舶支持派生层速度着色轨迹（<3 / 3–8 / 8–12 / >12 kn） |
 | 历史回放 | 按不超过 24 小时的窗口加载，5 分钟展示步长，共 1,985 个刻度；取当前时刻前最近报位，不插值 |
 | 新闻浏览 | 分类及报道日期排序、关联报道和来源链接、有代表坐标的事件定位；与船舶回放独立 |
-| MobilityDB | 局部停留分析试验：10 艘样本船、114 段派生轨迹；P0 泛化派生层已建：30 艘模拟船 289 段 ship_tracks（tgeompoint 轨迹 + tfloat 速度，gap 90 分钟，manifest 留痕，独立核对通过）；P2 事件×船舶关联派生表已建（27 条 mentioned 文本证据、29 条 observed 演示关联，独立核对通过）；均不是主回放存储 |
+| MobilityDB | 时空能力底座 **P0–P2 已实施、P3–P5 未实施**（进度见下文专节）：P0 泛化派生层 30 艘模拟船 289 段 ship_tracks（tgeompoint 轨迹 + tfloat 速度，manifest 留痕，独立核对通过）；P2 事件×船舶关联派生表（27 条 mentioned 文本证据 + 29 条 observed 演示关联，独立核对通过）；旧停留试验（10 艘样本船 114 段）仍并存、未标记 legacy；均不是主回放存储 |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
 | 智能体 | v3 多工具版已接入：POST /agent/analyze + 前端「智能体」问答页签；大模型 API + 4 个自定义只读查询工具，支持多轮对话与回答内船只/事件地图定位；契约见下文 |
 
@@ -109,18 +109,29 @@ npm run dev -- --port 5174
 
 后续再做：地图定位当前指向回放快照位置，历史轨迹逐点回放联动尚未实现；服务端会话持久化未做（history 由客户端逐请求携带）。SQL 由开发者编写，本版不是 Text-to-SQL（受限版另行设计）。事件与具体船只的交互关联尚未实现；查询不证明真实因果，零通行必须与数据不足区分。
 
-## 下一步：MobilityDB 时空能力扩展
+## MobilityDB 时空能力底座：P0–P5 进度
 
-现有 MobilityDB 仅有固定窗口的停留分析试验（`mobility_demo_segments`）。接下来的计划是以 MobilityDB 为核心建立可复用的时空数据能力底座：轨迹插值与时空计算全部下沉数据库层，派生表显式重建并留痕，统一 API 支撑速度着色轨迹、事件—船舶关联、锚地/等待识别、船舶相遇分析和回放抽稀五类前端能力。设计以未来真实 AIS 数据直接承接为目标：模拟与真实数据共用同一条管线，仅在接入层以 `data_source` 区分，换源不重构。
+底座目标：以 MobilityDB 为核心建立可复用的时空数据能力层——轨迹插值与时空计算全部下沉数据库层，派生表显式重建并留痕（manifest），模拟与真实数据共用同一条管线（仅以接入层 `data_source` 区分，换源不重构）。旧的小规模停留试验（`mobility_demo_segments`，10 艘样本船 114 段）仍并存，未标记 legacy。
 
-完整方案见 [MobilityDB 时空能力底座技术方案](docs/mobility_capability_plan.md)（当前为设计稿，未实施）。实施优先级：P0 泛化派生表与重建管线 → P1 轨迹/速度 API 与着色 → P2 事件关联 → P3 停留识别 → P4 相遇分析 → P5 回放抽稀。
+| 阶段 | 内容 | 状态 |
+| --- | --- | --- |
+| P0 | 泛化派生表与重建管线（009：`ship_tracks` + `track_build_manifest` + 源表索引；参数化重建脚本；独立核对） | ✅ **已完成**（2026-09-19）：30 艘模拟船 289 段，插值采样误差 0 m、速度 0 不符，manifest 留痕 |
+| P1 | 轨迹/速度 API 与着色（`/api/tracks` full/simplified + 前端速度着色） | ✅ **已完成**（2026-09-19）：三分支验证通过，浏览器端到端通过 |
+| P2 | 事件—船舶关联（010：`event_ship_links` mentioned/observed 分列 + 双向 API + 事件面板关联区） | ✅ **已完成**（2026-09-19）：27 条 mentioned + 29 条 observed，逐条独立重算核对通过 |
+| P3 | 锚地/等待识别（`ship_dwell` 派生表 + 等待区图层） | ⬜ **未实施** |
+| P4 | 相遇分析（`encounters` 派生表 + analyze/query API） | ⬜ **未实施** |
+| P5 | 回放抽稀层 + data-health（回放主链路切换 simplified 层、覆盖率体检） | ⬜ **未实施**（P1 已提供 API 级时间桶抽稀，主回放仍走原始报位） |
+
+边界声明：observed 事件关联为模拟数据时空邻近**演示**，不构成真实因果；mentioned 为新闻原文船名文本证据，恒不指向模拟船。实施过程中发现并规避的 MobilityDB 陷阱（`tstzspan` 文本参数静默错解析）已记录在技术方案 §3。
+
+完整方案与各阶段验收细节见 [MobilityDB 时空能力底座技术方案](docs/mobility_capability_plan.md)（P0–P2 已按实施更新，P3–P5 仍为设计稿）。
 
 ## 尚未实现与限制
 
 - 真实 AIS 接入、实时推送、自动刷新、认证授权和正式部署。
 - 智能体为 v3 多工具版：4 个只读工具、多轮 history（由客户端逐请求携带，无服务端会话持久化）、仅 DeepSeek 一家模型；模型主动澄清、无密钥 503 等路径未实测。
 - 新闻事件与模拟船舶的自动因果关联、事件多点完整展示。事件面板现提供演示级 observed 关联（模拟数据时空邻近，明确标注不构成真实因果）与 mentioned 原文船名，二者严格分列。
-- 通用双地图对比、AIS 密度分析；MobilityDB 已建 P0 泛化派生层（ship_tracks），但 API 与五类前端能力未实施，扩展规划见上文及 [技术方案](docs/mobility_capability_plan.md)。
+- 通用双地图对比、AIS 密度分析；MobilityDB 底座 P0–P2 已落地（派生轨迹 API、速度着色、事件关联），P3 停留识别、P4 相遇分析、P5 回放抽稀与 data-health 未实施，规划见上文及 [技术方案](docs/mobility_capability_plan.md)。
 - 完整浏览器端到端测试；已有独立 Docker 空库导入及后端接口验证、工作台语义检查和专项脚本。
 - 已预留船讯网相关 ORM 字段，但未接入真实供应方；新增字段也未全部暴露给前端。
 
@@ -140,7 +151,7 @@ npm run check:workbench
 - [数据库与环境交接](docs/database_setup.md)
 - [智能体接入契约](docs/agent_integration.md)
 - [MobilityDB 停留试验](docs/mobility_demo.md)
-- [MobilityDB 时空能力扩展方案](docs/mobility_capability_plan.md)（设计稿，未实施）
+- [MobilityDB 时空能力底座方案](docs/mobility_capability_plan.md)（P0–P2 已实施，P3–P5 设计稿）
 - [新闻适配阶段记录](docs/event_adaptation_phase1.md)
 - [006 新闻迁移记录](backend/sql/006_migration_report.md)
 - [项目智能体工作规则](AGENTS.md)
