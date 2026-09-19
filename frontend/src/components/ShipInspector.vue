@@ -7,6 +7,7 @@ const props = defineProps<{
   ships: ApiMapShip[]
   track: ApiShipPosition[]
   trackVisible: boolean
+  speedColor: boolean
   isolated: boolean
   nearbyEvents: (ApiEvent & { distance: number })[]
   eventsError: string
@@ -17,6 +18,7 @@ const emit = defineEmits<{
   select: [ship: ApiMapShip]
   clear: []
   track: []
+  'speed-color': []
   isolate: []
   event: [event: ApiEvent]
   locate: []
@@ -117,10 +119,18 @@ const points = computed(() => {
           @click="emit('track')"
         >
           {{ trackVisible ? '隐藏轨迹' : '查看轨迹' }}</button
+        ><button :aria-pressed="speedColor" @click="emit('speed-color')">
+          {{ speedColor ? '关闭着色' : '速度着色' }}</button
         ><button :aria-pressed="isolated" @click="emit('isolate')">
           {{ isolated ? '恢复全部' : '仅看此船' }}</button
         ><button @click="emit('locate')">定位</button>
       </div>
+      <p v-if="speedColor" class="speed-legend">
+        派生层着色（数据库插值结果）：<span style="color: #8a97a3">■</span> &lt;3 kn
+        <span style="color: #2e9e5b">■</span> 3–8
+        <span style="color: #e6a23c">■</span> 8–12
+        <span style="color: #d64f4f">■</span> &gt;12 kn · 窗口为回放时刻前溯
+      </p>
       <nav class="detail-tabs" aria-label="船舶详情分类">
         <button
           :class="{ active: section === 'track' }"

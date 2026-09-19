@@ -174,6 +174,51 @@ export async function fetchPlaybackPositions(
   return response.json()
 }
 
+// P1 派生轨迹：/api/tracks/{ship_id}（MobilityDB 派生层，几何与速度序列同源于数据库）。
+export interface ApiTrackSegment {
+  segment_no: number
+  t_start: string | null
+  t_end: string | null
+  point_count: number
+  geometry: { type: 'LineString'; coordinates: [number, number][] }
+  speed: [number, number][]
+}
+
+export interface ApiTracksResponse {
+  status: string
+  ship: { id: number; mmsi: string; name: string; ship_type: string; flag: string | null }
+  level: string
+  bucket_seconds: number | null
+  gap_minutes: number
+  built_at: string
+  stale: boolean
+  is_simulated: boolean
+  segments: ApiTrackSegment[]
+}
+
+export async function fetchShipTracks(
+  shipId: number,
+  from?: string,
+  to?: string,
+): Promise<ApiTracksResponse> {
+  const params = new URLSearchParams()
+  if (from && to) {
+    params.set('from', from)
+    params.set('to', to)
+  }
+  const query = params.toString()
+  const response = await fetch(
+    `${API_BASE_URL}/api/tracks/${shipId}${query ? `?${query}` : ''}`,
+    { signal: AbortSignal.timeout(20_000) },
+  )
+
+  if (!response.ok) {
+    throw new Error(`获取派生轨迹失败：${response.status}`)
+  }
+
+  return response.json()
+}
+
 // 智能体 POST /agent/analyze 的请求与响应类型，字段对齐 backend/app/schemas_agent.py（契约 v3）。
 export interface AgentTurn {
   role: 'user' | 'assistant'

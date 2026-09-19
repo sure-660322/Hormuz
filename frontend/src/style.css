@@ -918,6 +918,12 @@ button.primary:hover {
 .ship-inspector > .ship-actions {
   margin: 16px 20px 20px;
 }
+.speed-legend {
+  margin: -10px 20px 14px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted, #6b7d8c);
+}
 .detail-tabs {
   display: flex;
   margin: 0 20px;

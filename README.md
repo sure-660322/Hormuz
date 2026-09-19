@@ -11,7 +11,7 @@
 | 船舶与船位 | 30 艘模拟船、9,354 条清洗后船位；不是实际 AIS |
 | 模拟时间 | 2026-02-26 02:43:10 至 2026-03-04 23:59:14，UTC |
 | 新闻 | 65 个新闻聚合事件、290 条报道（223 条关联事件，67 条未关联）；40 个事件有代表坐标，27 个有非空事件时间，非空不等于精确到时分 |
-| 地图工作台 | 概览面板与地图工具栏、船舶搜索、检查面板、轨迹、航速曲线、图层控制、国家边界及本地半径船舶查询 |
+| 地图工作台 | 概览面板与地图工具栏、船舶搜索、检查面板、轨迹、航速曲线、图层控制、国家边界及本地半径船舶查询；选中船舶支持派生层速度着色轨迹（<3 / 3–8 / 8–12 / >12 kn） |
 | 历史回放 | 按不超过 24 小时的窗口加载，5 分钟展示步长，共 1,985 个刻度；取当前时刻前最近报位，不插值 |
 | 新闻浏览 | 分类及报道日期排序、关联报道和来源链接、有代表坐标的事件定位；与船舶回放独立 |
 | MobilityDB | 局部停留分析试验：10 艘样本船、114 段派生轨迹；P0 泛化派生层已建：30 艘模拟船 289 段 ship_tracks（tgeompoint 轨迹 + tfloat 速度，gap 90 分钟，manifest 留痕，独立核对通过）；均不是主回放存储 |
@@ -85,6 +85,7 @@ npm run dev -- --port 5174
 | GET | `/ships/map` | 每艘船最新报位，不代表任意历史时刻 |
 | GET | `/ships/playback?start_at=&end_at=` | 带时区时间参数，单次不超过 24 小时及 50,000 点 |
 | GET | `/ships/{ship_id}/positions` | 单船完整历史位置 |
+| GET | `/api/tracks/{ship_id}?from=&to=&level=full\|simplified` | P1 派生轨迹：MobilityDB 插值几何 + 对齐速度序列（full）或时间桶抽稀（simplified）；窗口可选、带时区、≤24 小时；返回 manifest 新鲜度与 `stale`、`is_simulated` 标识 |
 | GET | `/events` | 新闻聚合事件，按最早报道日期排序 |
 | GET | `/events/{event_id}/news` | 使用业务事件字符串 ID 查询关联报道，不是数据库整数主键 |
 | GET | `/simulation/meta` | 模拟船位范围及刻度；`event_count=0` 指不含回放模拟事件，不是新闻数为零 |
@@ -131,7 +132,7 @@ npm run build
 npm run check:workbench
 ```
 
-后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-19 MobilityDB P0：009 建 ship_tracks/track_build_manifest 及源表索引；backend/build_ship_tracks.py 全量重建 30 船 289 段并写 manifest；scripts/verify_ship_tracks.py 独立核对通过（分段一致、采样插值误差 0 m、速度 0 不符、源表指纹未变）；demo 表与 /health 未受影响。2026-09-19 README 同步智能体 v3 多工具版实现状态（docs/agent_integration.md 与 FRONTEND_WORKBENCH.md 已先行更新核对）；纯文档修改，未重新核验数据库数量与构建。2026-10-04 智能体前端接入：npm run build 与 npm run check:workbench 通过，浏览器实测智能体页签问答返回预期结果。2026-09-14 本次文档更新核对了代码、数据库数量和扩展；未重新执行数据生成或迁移。此前同日本地提交前构建、工作台检查及新闻和停留分析接口检查已通过。
+后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-19 MobilityDB P1：/api/tracks（full/simplified）已注册（Repository 层参数化只读 SQL），三分支验证通过（成功/空窗 not_found 与 no_data/422 参数错误）；前端船舶面板新增速度着色（回放窗口量化 15 分钟取派生层，色带 <3/3–8/8–12/>12 kn）；npm run build 与 npm run check:workbench 通过；浏览器端到端未实测。2026-09-19 MobilityDB P0：009 建 ship_tracks/track_build_manifest 及源表索引；backend/build_ship_tracks.py 全量重建 30 船 289 段并写 manifest；scripts/verify_ship_tracks.py 独立核对通过（分段一致、采样插值误差 0 m、速度 0 不符、源表指纹未变）；demo 表与 /health 未受影响。2026-09-19 README 同步智能体 v3 多工具版实现状态（docs/agent_integration.md 与 FRONTEND_WORKBENCH.md 已先行更新核对）；纯文档修改，未重新核验数据库数量与构建。2026-10-04 智能体前端接入：npm run build 与 npm run check:workbench 通过，浏览器实测智能体页签问答返回预期结果。2026-09-14 本次文档更新核对了代码、数据库数量和扩展；未重新执行数据生成或迁移。此前同日本地提交前构建、工作台检查及新闻和停留分析接口检查已通过。
 
 - [当前前端工作台](FRONTEND_WORKBENCH.md)
 - [数据库与环境交接](docs/database_setup.md)

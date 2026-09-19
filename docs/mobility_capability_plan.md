@@ -1,6 +1,6 @@
 # MobilityDB 时空数据能力底座技术方案
 
-> 状态：**P0 已实施（2026-09-19），P1–P5 未实施**。本文描述方案；P0 的已实现事实以 `backend/sql/009_ship_tracks.sql`、`backend/build_ship_tracks.py`、`scripts/verify_ship_tracks.py` 及 `sim_ais_demo/output_news_aligned/ship_tracks_{build,verification}.json` 为准。
+> 状态：**P0–P1 已实施（2026-09-19），P2–P5 未实施**。本文描述方案；已实施部分以代码、`backend/sql/009_ship_tracks.sql`、`backend/build_ship_tracks.py`、`scripts/verify_ship_tracks.py` 及 `sim_ais_demo/output_news_aligned/ship_tracks_{build,verification}.json` 为准。
 >
 > 目标：以 MobilityDB 为核心建立可复用的时空数据能力层，支撑 AIS 船舶轨迹 + 海事事件 + GIS 地图 + 后续真实数据接入。当前使用模拟数据，但本方案以真实生产数据能够直接承接为设计目标，不因模拟数据做临时实现。
 
@@ -181,7 +181,7 @@ GET /api/data-health
 | 阶段 | 内容 | 理由 |
 | --- | --- | --- |
 | P0 ✅ | 009 迁移（ship_tracks 泛化表+索引+manifest）、参数化重建任务、独立 Python 核对 | 底座先立；替代 demo 表，验证管线与规模。已验收：009 建表+索引；重建 30 船 289 段（gap 90 分钟，32640）；manifest id 1 留痕；独立核对 segmentation 全一致、41 组采样插值误差 0 m、速度 0 不符 |
-| P1 | `/api/tracks` + speed 输出 + 速度着色前端 | 展示冲击力最强，打通"派生→API→地图"全链路 |
+| P1 ✅ | `/api/tracks` + speed 输出 + 速度着色前端 | 展示冲击力最强，打通"派生→API→地图"全链路。已实施：GET /api/tracks/{ship_id}（full=整段几何+对齐 [[epoch,kn]] 速度序列，simplified=时间桶抽稀）；ShipInspector「速度着色」按回放窗口（15 分钟量化）取派生层，四档色带渲染；三分支验证与 build/check:workbench 通过（2026-09-19） |
 | P2 | `event_ship_links` 模型 + 事件/船舶双向 API + 高亮 | 项目核心叙事（事件×船） |
 | P3 | dwell 识别 + 等待区图层 | 复用 P0 管线，纯增量 |
 | P4 | encounters 分析与查询 | 组合复杂度最高，放稳态后 |

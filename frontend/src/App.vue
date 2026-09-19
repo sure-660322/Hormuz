@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { fetchEvents, describeApiError, type ApiEvent, type ApiMapShip } from './api'
+import { fetchEvents, fetchShipTracks, describeApiError, type ApiEvent, type ApiMapShip, type ApiTrackSegment } from './api'
 import { usePlayback } from './composables/usePlayback'
 import {
   inBounds,
@@ -275,6 +275,39 @@ function toggleTrack() {
   trackVisible.value = !trackVisible.value
   layers.value.tracks = true
 }
+// P1 速度着色：消费 /api/tracks 派生层（数据库插值 + 实测速度序列）。
+const speedColorOn = ref(false)
+const speedSegments = ref<ApiTrackSegment[]>([])
+// 窗口量化到 15 分钟边界，避免回放步进触发频繁重取。
+const speedWindow = computed(() => {
+  if (!time.value) return null
+  const end = Math.floor(Date.parse(time.value) / 900000) * 900000
+  return { from: new Date(end - tailMinutes.value * 60000).toISOString(), to: new Date(end).toISOString() }
+})
+watch(
+  () => [selectedShipId.value, speedColorOn.value, speedWindow.value?.from, speedWindow.value?.to],
+  async () => {
+    if (!speedColorOn.value || selectedShipId.value === null || !speedWindow.value) {
+      speedSegments.value = []
+      return
+    }
+    const id = selectedShipId.value
+    try {
+      const data = await fetchShipTracks(id, speedWindow.value.from, speedWindow.value.to)
+      if (selectedShipId.value === id) speedSegments.value = data.status === 'ok' ? data.segments : []
+    } catch {
+      if (selectedShipId.value === id) speedSegments.value = []
+    }
+  },
+  { immediate: true },
+)
+function toggleSpeedColor() {
+  speedColorOn.value = !speedColorOn.value
+  if (speedColorOn.value) {
+    trackVisible.value = true
+    layers.value.tracks = true
+  }
+}
 function clearArea() {
   fenceEnabled.value = false
   center.value = null
@@ -358,6 +391,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :selected-event="selectedEvent"
         :track="selectedTrack"
         :track-visible="trackVisible"
+        :speed-segments="speedColorOn ? speedSegments : null"
         :isolated="isolated"
         :layers="layers"
         :global-view-request="globalViewRequest"
@@ -501,6 +535,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :ships="currentShips"
         :track="selectedTrack"
         :track-visible="trackVisible"
+        :speed-color="speedColorOn"
         :isolated="isolated"
         :nearby-events="nearbyEvents"
         :events-error="eventsError"
@@ -508,6 +543,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @select="chooseShip"
         @clear="clearShip"
         @track="toggleTrack"
+        @speed-color="toggleSpeedColor"
         @isolate="isolated = !isolated"
         @event="chooseEvent"
         @locate="focusShipRequest++"

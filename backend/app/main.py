@@ -8,6 +8,7 @@ from backend.app.routers.events import router as events_router
 from backend.app.routers.simulation import router as simulation_router
 from backend.app.routers.mobility import router as mobility_router
 from backend.app.routers.agent import router as agent_router
+from backend.app.routers.tracks import router as tracks_router
 
 app = FastAPI()
 #添加中间件
@@ -37,6 +38,7 @@ app.include_router(events_router)   #把events.py中定义的路由加入主应�
 app.include_router(simulation_router)
 app.include_router(mobility_router)
 app.include_router(agent_router)
+app.include_router(tracks_router)
 
 @app.get("/health")
 def health_check():

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { createCountryLayer } from '../services/countryLayer'
 import { hasEventLocation, eventLocationLabel, type LocatedEvent } from '../domain/maritime'
+import type { ApiTrackSegment } from '../api'
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -20,6 +21,7 @@ const props = defineProps<{
   selectedEvent: ApiEvent | null
   track: ApiShipPosition[]
   trackVisible: boolean
+  speedSegments: ApiTrackSegment[] | null
   isolated: boolean
   layers: LayerState
   globalViewRequest: number
@@ -243,16 +245,49 @@ function renderEvents() {
     marker.setZIndexOffset(selected ? 2000 : 300)
   }
 }
+function speedBucketColor(v: number): string {
+  return v < 3 ? '#8a97a3' : v < 8 ? '#2e9e5b' : v < 12 ? '#e6a23c' : '#d64f4f'
+}
+function renderSpeedSegments() {
+  if (!props.speedSegments?.length) return
+  for (const segment of props.speedSegments) {
+    const coords = segment.geometry.coordinates
+    let group: L.LatLngTuple[] = []
+    let currentColor = ''
+    const flush = () => {
+      if (group.length > 1)
+        L.polyline(group, {
+          renderer: canvas,
+          color: currentColor,
+          weight: 3,
+          opacity: 0.9,
+          interactive: false,
+        }).addTo(trackLayer)
+    }
+    for (let i = 0; i < coords.length - 1; i++) {
+      const color = speedBucketColor(segment.speed[i]?.[1] ?? 0)
+      if (color !== currentColor && group.length) {
+        flush()
+        group = []
+      }
+      currentColor = color
+      if (!group.length) group.push([coords[i][1], coords[i][0]])
+      group.push([coords[i + 1][1], coords[i + 1][0]])
+    }
+    flush()
+  }
+}
 function renderTrack() {
   if (!map) return
   trackLayer.clearLayers()
   if (!props.trackVisible || !props.layers.tracks) return
+  renderSpeedSegments()
   const tail = props.track.filter(p => !props.time || Date.parse(p.recorded_at) >= Date.parse(props.time) - props.tailMinutes * 60000)
   const points = tail.map((p): L.LatLngTuple => [
     p.latitude,
     p.longitude,
   ])
-  if (points.length > 1)
+  if (points.length > 1 && !props.speedSegments?.length)
     L.polyline(points, {
       renderer: canvas,
       color: riskColors.selected,
@@ -406,7 +441,7 @@ watch(
   renderShips,
 )
 watch(() => [props.events, props.selectedEvent, displayZone.value], renderEvents)
-watch(() => [props.track, props.trackVisible, props.tailMinutes, displayZone.value], renderTrack)
+watch(() => [props.track, props.trackVisible, props.tailMinutes, props.speedSegments, displayZone.value], renderTrack)
 watch(() => props.shareRequest, () => { if (map) { const c = map.getCenter(); emit('shareView', { lat: c.lat, lon: c.lng, zoom: map.getZoom() }) } })
 watch(() => props.sharedView, view => { if (view) map?.setView([view.lat, view.lon], view.zoom, { animate: false }) }, { flush: 'post' })
 watch(() => [props.layers, props.isolated], syncLayers, { deep: true })
