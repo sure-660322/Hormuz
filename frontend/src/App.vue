@@ -192,6 +192,11 @@ function clearShip() {
   trackVisible.value = false
   isolated.value = false
 }
+// P2：事件面板「地图定位」关联船——在回放快照中找船并选中聚焦。
+function focusShipById(shipId: number) {
+  const ship = currentShips.value.find((item) => item.id === shipId)
+  if (ship) chooseShip(ship)
+}
 function chooseEvent(event: ApiEvent) {
   clearShip()
   if (eventType.value !== 'all' && eventType.value !== event.event_type)
@@ -523,6 +528,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :loading="eventsLoading"
         :error="eventsError"
         @select="chooseEvent"
+        @select-ship="focusShipById"
         @type-change="changeEventType"
         @sort-change="eventSort = $event"
         @clear="selectedEvent = null"

@@ -1,0 +1,61 @@
+{
+  "manifest_id": 3,
+  "sha256": "c7baa38fb5dfe123b008057883715d07bcff9bac29bd8f1fc630fb4e9f4dd9bf",
+  "summary": {
+    "observed": 29,
+    "mentioned": 27
+  },
+  "observed_preview": [
+    {
+      "event_id": "evt_016",
+      "ship": "SIM V2 散货船 023",
+      "distance_m": 96.9
+    },
+    {
+      "event_id": "evt_016",
+      "ship": "SIM V2 化学品船 019",
+      "distance_m": 831.2
+    },
+    {
+      "event_id": "evt_016",
+      "ship": "SIM V2 化学品船 019",
+      "distance_m": 17388.3
+    },
+    {
+      "event_id": "evt_016",
+      "ship": "SIM V2 化学品船 019",
+      "distance_m": 17574.1
+    },
+    {
+      "event_id": "evt_016",
+      "ship": "SIM V2 集装箱船 002",
+      "distance_m": 40568.7
+    },
+    {
+      "event_id": "evt_011",
+      "ship": "SIM V2 油轮 030",
+      "distance_m": 3765.2
+    },
+    {
+      "event_id": "evt_011",
+      "ship": "SIM V2 油轮 027",
+      "distance_m": 5315.4
+    },
+    {
+      "event_id": "evt_011",
+      "ship": "SIM V2 化学品船 019",
+      "distance_m": 7173.6
+    },
+    {
+      "event_id": "evt_011",
+      "ship": "SIM V2 油轮 004",
+      "distance_m": 7195.1
+    },
+    {
+      "event_id": "evt_011",
+      "ship": "SIM V2 车辆运输船 013",
+      "distance_m": 7788.1
+    }
+  ],
+  "source_tables_unchanged": true
+}

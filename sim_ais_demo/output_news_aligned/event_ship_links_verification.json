@@ -1,0 +1,19 @@
+{
+  "manifest": {
+    "id": 3,
+    "params": {
+      "srid": 32640,
+      "observed": 29,
+      "mentioned": 27,
+      "radius_km": 50.0,
+      "geolocated_events": 40,
+      "half_window_hours": 12
+    }
+  },
+  "manifest_sha256_verified": true,
+  "mentioned_match_source": true,
+  "mentioned_count": 27,
+  "observed_count": 29,
+  "observed_max_stored_distance_m": 49389.3,
+  "structure_ok": true
+}

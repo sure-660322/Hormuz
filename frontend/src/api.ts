@@ -219,6 +219,37 @@ export async function fetchShipTracks(
   return response.json()
 }
 
+// P2 事件—船舶关联：mentioned（文本证据，不指向模拟船）与 observed（模拟数据演示）严格分开。
+export interface ApiEventShipLink {
+  link_type: 'mentioned' | 'observed'
+  vessel_name: string | null
+  ship: { id: number; mmsi: string; name: string; ship_type: string } | null
+  confidence: number | null
+  min_distance_m: number | null
+  note: string
+}
+
+export interface ApiEventShipsResponse {
+  status: string
+  event_id: string
+  title_zh: string
+  links: ApiEventShipLink[]
+  built_at: string | null
+}
+
+export async function fetchEventShips(eventId: string): Promise<ApiEventShipsResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}/ships`,
+    { signal: AbortSignal.timeout(20_000) },
+  )
+
+  if (!response.ok) {
+    throw new Error(`获取事件关联失败：${response.status}`)
+  }
+
+  return response.json()
+}
+
 // 智能体 POST /agent/analyze 的请求与响应类型，字段对齐 backend/app/schemas_agent.py（契约 v3）。
 export interface AgentTurn {
   role: 'user' | 'assistant'

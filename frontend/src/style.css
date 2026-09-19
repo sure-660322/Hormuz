@@ -809,6 +809,26 @@ button.primary:hover {
   color: var(--muted);
   line-height: 1.8;
 }
+.event-links {
+  margin: 10px 0;
+}
+.event-links h3 {
+  margin: 9px 0 4px;
+  font-size: 12px;
+}
+.link-ship {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent, #386d99);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.link-ship:hover {
+  text-decoration: underline;
+}
 .section-title {
   display: flex;
   align-items: center;

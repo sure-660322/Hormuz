@@ -1,6 +1,6 @@
 # MobilityDB 时空数据能力底座技术方案
 
-> 状态：**P0–P1 已实施（2026-09-19），P2–P5 未实施**。本文描述方案；已实施部分以代码、`backend/sql/009_ship_tracks.sql`、`backend/build_ship_tracks.py`、`scripts/verify_ship_tracks.py` 及 `sim_ais_demo/output_news_aligned/ship_tracks_{build,verification}.json` 为准。
+> 状态：**P0–P2 已实施（2026-09-19），P3–P5 未实施**。本文描述方案；已实施部分以代码、`backend/sql/009_ship_tracks.sql`、`backend/sql/010_event_ship_links.sql`、构建/核对脚本及 `sim_ais_demo/output_news_aligned/` 下对应报告为准。
 >
 > 目标：以 MobilityDB 为核心建立可复用的时空数据能力层，支撑 AIS 船舶轨迹 + 海事事件 + GIS 地图 + 后续真实数据接入。当前使用模拟数据，但本方案以真实生产数据能够直接承接为设计目标，不因模拟数据做临时实现。
 
@@ -105,6 +105,8 @@ GiST(track) 索引。**为什么加 `speed tfloat`**：速度着色的业务语�
 
 **轨迹查询**：按船 + 时间窗（`atTime`）、按船 + 空间范围（`atGeometry`）、按区域找船（GiST(track) 索引 + `intersects`）三类主查询，全部由索引支撑，不走全表扫描。
 
+> 实施陷阱（2026-09-19 实测）：`tstzspan` 的文本形式**经参数绑定传入会被 MobilityDB 静默错解析**（`atTime` 不报错但不裁剪），字面量内嵌则正常。所有参数化 SQL 必须用 `span(CAST(:a AS timestamptz), CAST(:b AS timestamptz))` 构造时间跨度。`scripts/verify_event_ship_links.py` 的逐条独立重算曾捕获此问题。
+
 ## 4. 预计算派生层原则
 
 - **一次性重算、多次读取**：停留、相遇、事件关联都是 O(n) 以上的批量计算，绝不在 API 请求路径上实时跑；API 只查派生表。
@@ -182,7 +184,7 @@ GET /api/data-health
 | --- | --- | --- |
 | P0 ✅ | 009 迁移（ship_tracks 泛化表+索引+manifest）、参数化重建任务、独立 Python 核对 | 底座先立；替代 demo 表，验证管线与规模。已验收：009 建表+索引；重建 30 船 289 段（gap 90 分钟，32640）；manifest id 1 留痕；独立核对 segmentation 全一致、41 组采样插值误差 0 m、速度 0 不符 |
 | P1 ✅ | `/api/tracks` + speed 输出 + 速度着色前端 | 展示冲击力最强，打通"派生→API→地图"全链路。已实施：GET /api/tracks/{ship_id}（full=整段几何+对齐 [[epoch,kn]] 速度序列，simplified=时间桶抽稀）；ShipInspector「速度着色」按回放窗口（15 分钟量化）取派生层，四档色带渲染；三分支验证与 build/check:workbench 通过（2026-09-19） |
-| P2 | `event_ship_links` 模型 + 事件/船舶双向 API + 高亮 | 项目核心叙事（事件×船） |
+| P2 ✅ | `event_ship_links` 模型 + 事件/船舶双向 API + 高亮 | 项目核心叙事（事件×船）。已实施：010 迁移（mentioned/observed 分列，mentioned ship_id 恒空）；构建脚本（50 km 半径时空邻近，阈值入 manifest）；双向 API（/api/events/{id}/ships、/api/ships/{id}/events）；事件面板关联区（observed 可定位船）；独立核对逐条重算距离 ≤2 m（2026-09-19） |
 | P3 | dwell 识别 + 等待区图层 | 复用 P0 管线，纯增量 |
 | P4 | encounters 分析与查询 | 组合复杂度最高，放稳态后 |
 | P5 | 回放抽稀层 + data-health 完善 | 真实数据临近时重点强化 |

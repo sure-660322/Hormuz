@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, watch, onBeforeUnmount } from 'vue'
-import { fetchEventNews, describeApiError, type ApiEvent, type ApiEventNews } from '../api'
+import { fetchEventNews, fetchEventShips, describeApiError, type ApiEvent, type ApiEventNews, type ApiEventShipLink } from '../api'
 import { eventKind, eventKinds, eventTimeText, eventCoordinates, eventLocationLabel, hasEventLocation, safeNewsUrl } from '../domain/maritime'
 const props = defineProps<{
   events: ApiEvent[]
@@ -13,6 +13,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   select: [event: ApiEvent]
+  selectShip: [shipId: number]
   typeChange: [type: string]
   sortChange: [sort: 'asc' | 'desc']
   clear: []
@@ -22,6 +23,7 @@ const panel = ref<HTMLElement | null>(null)
 const news = ref<ApiEventNews[]>([])
 const newsLoading = ref(false)
 const newsError = ref('')
+const links = ref<ApiEventShipLink[]>([])
 let request: AbortController | null = null
 async function loadNews() {
   request?.abort()
@@ -30,6 +32,7 @@ async function loadNews() {
   news.value = []
   newsError.value = ''
   newsLoading.value = false
+  links.value = []
   const event = props.selected
   if (!event) return
   newsLoading.value = true
@@ -41,6 +44,13 @@ async function loadNews() {
       newsError.value = describeApiError(error, '关联新闻加载失败')
   } finally {
     if (request === controller) newsLoading.value = false
+  }
+  try {
+    const data = await fetchEventShips(event.event_id)
+    if (request === controller && !controller.signal.aborted) links.value = data.status === 'ok' ? data.links : []
+  } catch {
+    // 关联加载失败不阻塞新闻浏览
+    if (request === controller) links.value = []
   }
 }
 watch(() => props.selected?.event_id, async () => {
@@ -82,6 +92,27 @@ onBeforeUnmount(() => request?.abort())
           <div v-if="selected.mentioned_vessels.length"><dt>提及船名</dt><dd>{{ selected.mentioned_vessels.join('、') }}（原文提及，未关联模拟船舶）</dd></div>
         </dl>
         <p class="caption">{{ hasEventLocation(selected) ? '地图仅展示代表点，地名或区域中心不等于精确事发位置；多点展示待适配。' : '此事件没有可定位坐标，保留文字详情，不移动地图。' }}</p>
+        <section v-if="links.length" class="event-links">
+          <h3>事件 × 船舶关联</h3>
+          <p class="caption">observed 为模拟数据时空邻近演示，不构成真实因果；mentioned 为原文船名，未关联模拟船。</p>
+          <ul class="news-list">
+            <li v-for="(link, i) in links" :key="i">
+              <template v-if="link.link_type === 'observed' && link.ship">
+                <button class="link-ship" @click="emit('selectShip', link.ship!.id)">
+                  {{ link.ship.name }}（{{ link.ship.mmsi }}）· 地图定位
+                </button>
+                <p>
+                  最近距离 {{ ((link.min_distance_m ?? 0) / 1000).toFixed(1) }} km ·
+                  演示置信度 {{ link.confidence?.toFixed(3) ?? '—' }}
+                </p>
+              </template>
+              <template v-else>
+                <strong>{{ link.vessel_name }}</strong>
+                <p>新闻原文提及 · {{ link.note }}</p>
+              </template>
+            </li>
+          </ul>
+        </section>
         <section class="event-news">
           <h3>关联新闻 · {{ selected.coverage_count }} 篇</h3>
           <p v-if="newsLoading" role="status">正在加载关联新闻…</p>
