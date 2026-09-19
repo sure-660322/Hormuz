@@ -110,6 +110,7 @@ docker compose --env-file deploy/handoff.env -f compose.handoff.yaml stop
 
 - 008_fresh_handoff_schema.sql 是新空库入口，由 handoff 脚本在事务和空库保护下执行；不要对已有库直接重放。
 - 001–007 是历史演进，不能无条件顺序执行；006 会重建新闻表。
+- 009_ship_tracks.sql 是 P0 泛化派生层（ship_tracks、track_build_manifest、源表 BRIN/data_source 索引），全部由 backend/build_ship_tracks.py 以幂等 DDL 执行并负责重建与 manifest 留痕；不进交接包，新库首次重建时自动建立。
 - create_tables.py 只补 ORM 表，不准备全部扩展、空间结构和索引。
 - migrate_real_news.py 仍是维护者历史迁移工具，依赖仓库外源路径；新成员使用本页的导入入口。
 - seed_data.py、generate_demo_data.py 使用旧事件语义，不作为当前初始化入口。

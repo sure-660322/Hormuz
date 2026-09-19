@@ -1,6 +1,6 @@
 # MobilityDB 时空数据能力底座技术方案
 
-> 状态：**设计稿（未实施）**。2026-10-04。本文只描述方案，不包含已实现事实；实施前以当前代码、数据库结构和实际验证结果为准。
+> 状态：**P0 已实施（2026-09-19），P1–P5 未实施**。本文描述方案；P0 的已实现事实以 `backend/sql/009_ship_tracks.sql`、`backend/build_ship_tracks.py`、`scripts/verify_ship_tracks.py` 及 `sim_ais_demo/output_news_aligned/ship_tracks_{build,verification}.json` 为准。
 >
 > 目标：以 MobilityDB 为核心建立可复用的时空数据能力层，支撑 AIS 船舶轨迹 + 海事事件 + GIS 地图 + 后续真实数据接入。当前使用模拟数据，但本方案以真实生产数据能够直接承接为设计目标，不因模拟数据做临时实现。
 
@@ -180,7 +180,7 @@ GET /api/data-health
 
 | 阶段 | 内容 | 理由 |
 | --- | --- | --- |
-| P0 | 009 迁移（ship_tracks 泛化表+索引+manifest）、参数化重建任务、独立 Python 核对 | 底座先立；替代 demo 表，验证管线与规模 |
+| P0 ✅ | 009 迁移（ship_tracks 泛化表+索引+manifest）、参数化重建任务、独立 Python 核对 | 底座先立；替代 demo 表，验证管线与规模。已验收：009 建表+索引；重建 30 船 289 段（gap 90 分钟，32640）；manifest id 1 留痕；独立核对 segmentation 全一致、41 组采样插值误差 0 m、速度 0 不符 |
 | P1 | `/api/tracks` + speed 输出 + 速度着色前端 | 展示冲击力最强，打通"派生→API→地图"全链路 |
 | P2 | `event_ship_links` 模型 + 事件/船舶双向 API + 高亮 | 项目核心叙事（事件×船） |
 | P3 | dwell 识别 + 等待区图层 | 复用 P0 管线，纯增量 |
@@ -192,6 +192,6 @@ GET /api/data-health
 
 ## 11. 与现有资产的关系
 
-- `mobility_demo_segments` 与 `/mobility-demo/*` 在 P0 完成前保留不动；P0 验收后可将其标记为 legacy 或改造为 `ship_tracks` 的只读视图，避免文档与历史验收记录失真。
+- `mobility_demo_segments` 与 `/mobility-demo/*` 在 P0 验收前保留不动；当前两者均在库（demo 114 段 / 10 船未受影响）。后续可将其标记为 legacy 或改造为 `ship_tracks` 的只读视图，避免文档与历史验收记录失真。
 - `handoff.py` 交接包流程继续用于源表迁移；派生表不进交接包（服务器端重建），manifest 可随包传递供核对。
 - 数据库变更全部走 `backend/sql/009+` 递增文件，遵守 006 的重放禁令。

@@ -14,7 +14,7 @@
 | 地图工作台 | 概览面板与地图工具栏、船舶搜索、检查面板、轨迹、航速曲线、图层控制、国家边界及本地半径船舶查询 |
 | 历史回放 | 按不超过 24 小时的窗口加载，5 分钟展示步长，共 1,985 个刻度；取当前时刻前最近报位，不插值 |
 | 新闻浏览 | 分类及报道日期排序、关联报道和来源链接、有代表坐标的事件定位；与船舶回放独立 |
-| MobilityDB | 已实现局部停留分析试验：10 艘样本船、114 段派生轨迹；不是主回放存储 |
+| MobilityDB | 局部停留分析试验：10 艘样本船、114 段派生轨迹；P0 泛化派生层已建：30 艘模拟船 289 段 ship_tracks（tgeompoint 轨迹 + tfloat 速度，gap 90 分钟，manifest 留痕，独立核对通过）；均不是主回放存储 |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
 | 智能体 | v3 多工具版已接入：POST /agent/analyze + 前端「智能体」问答页签；大模型 API + 4 个自定义只读查询工具，支持多轮对话与回答内船只/事件地图定位；契约见下文 |
 
@@ -117,7 +117,7 @@ npm run dev -- --port 5174
 - 真实 AIS 接入、实时推送、自动刷新、认证授权和正式部署。
 - 智能体为 v3 多工具版：4 个只读工具、多轮 history（由客户端逐请求携带，无服务端会话持久化）、仅 DeepSeek 一家模型；模型主动澄清、无密钥 503 等路径未实测。
 - 新闻事件与船舶回放的自动关联、事件多点完整展示。
-- 通用双地图对比、AIS 密度分析；MobilityDB 仅有固定窗口局部试验，扩展规划见上文及 [技术方案](docs/mobility_capability_plan.md)。
+- 通用双地图对比、AIS 密度分析；MobilityDB 已建 P0 泛化派生层（ship_tracks），但 API 与五类前端能力未实施，扩展规划见上文及 [技术方案](docs/mobility_capability_plan.md)。
 - 完整浏览器端到端测试；已有独立 Docker 空库导入及后端接口验证、工作台语义检查和专项脚本。
 - 已预留船讯网相关 ORM 字段，但未接入真实供应方；新增字段也未全部暴露给前端。
 
@@ -131,7 +131,7 @@ npm run build
 npm run check:workbench
 ```
 
-后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-19 README 同步智能体 v3 多工具版实现状态（docs/agent_integration.md 与 FRONTEND_WORKBENCH.md 已先行更新核对）；纯文档修改，未重新核验数据库数量与构建。2026-10-04 智能体前端接入：npm run build 与 npm run check:workbench 通过，浏览器实测智能体页签问答返回预期结果。2026-09-14 本次文档更新核对了代码、数据库数量和扩展；未重新执行数据生成或迁移。此前同日本地提交前构建、工作台检查及新闻和停留分析接口检查已通过。
+后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-19 MobilityDB P0：009 建 ship_tracks/track_build_manifest 及源表索引；backend/build_ship_tracks.py 全量重建 30 船 289 段并写 manifest；scripts/verify_ship_tracks.py 独立核对通过（分段一致、采样插值误差 0 m、速度 0 不符、源表指纹未变）；demo 表与 /health 未受影响。2026-09-19 README 同步智能体 v3 多工具版实现状态（docs/agent_integration.md 与 FRONTEND_WORKBENCH.md 已先行更新核对）；纯文档修改，未重新核验数据库数量与构建。2026-10-04 智能体前端接入：npm run build 与 npm run check:workbench 通过，浏览器实测智能体页签问答返回预期结果。2026-09-14 本次文档更新核对了代码、数据库数量和扩展；未重新执行数据生成或迁移。此前同日本地提交前构建、工作台检查及新闻和停留分析接口检查已通过。
 
 - [当前前端工作台](FRONTEND_WORKBENCH.md)
 - [数据库与环境交接](docs/database_setup.md)

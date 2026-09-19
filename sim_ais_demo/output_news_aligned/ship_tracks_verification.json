@@ -1,0 +1,21 @@
+{
+  "manifest": {
+    "id": 1,
+    "params": {
+      "srid": 32640,
+      "scope": "full",
+      "ships": 30,
+      "points": 9332,
+      "data_source": null,
+      "gap_minutes": 90
+    }
+  },
+  "source_tables_unchanged": true,
+  "manifest_sha256_verified": true,
+  "structure_ok": true,
+  "segmentation_match": true,
+  "segments": 289,
+  "sampled_checks": 41,
+  "max_position_error_m": 0.0,
+  "speed_mismatches": 0
+}
