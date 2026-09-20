@@ -183,7 +183,7 @@ GET /api/data-health
 | 阶段 | 内容 | 理由 |
 | --- | --- | --- |
 | P0 ✅ | 009 迁移（ship_tracks 泛化表+索引+manifest）、参数化重建任务、独立 Python 核对 | 底座先立；替代 demo 表，验证管线与规模。已验收：009 建表+索引；重建 30 船 289 段（gap 90 分钟，32640）；manifest id 1 留痕；独立核对 segmentation 全一致、41 组采样插值误差 0 m、速度 0 不符 |
-| P1 ✅ | `/api/tracks` + speed 输出 + 速度着色前端 | 展示冲击力最强，打通"派生→API→地图"全链路。已实施：GET /api/tracks/{ship_id}（full=整段几何+对齐 [[epoch,kn]] 速度序列，simplified=时间桶抽稀）；ShipInspector「速度着色」按回放窗口（15 分钟量化）取派生层，四档色带渲染；三分支验证与 build/check:workbench 通过（2026-09-19） |
+| P1 ✅ | `/api/tracks` + speed 输出 + 速度着色前端 | 展示冲击力最强，打通"派生→API→地图"全链路。已实施：GET /api/tracks/{ship_id}（full=整段几何+对齐 [[epoch,kn]] 速度序列，simplified=时间桶抽稀）；ShipInspector「速度着色」按回放窗口（15 分钟量化）取派生层，四档色带渲染；显示范围超过后端 24h 单窗上限时按 ≤24h 分片并行取回、按 segment_no 去重合并，覆盖整条显示轨迹，另可切换为仅最近 24h 着色；三分支验证与 build/check:workbench 通过（2026-09-19，分片合并 2026-09-20） |
 | P2 ✅ | `event_ship_links` 模型 + 事件/船舶双向 API + 高亮 | 项目核心叙事（事件×船）。已实施：010 迁移（mentioned/observed 分列，mentioned ship_id 恒空）；构建脚本（50 km 半径时空邻近，阈值入 manifest）；双向 API（/api/events/{id}/ships、/api/ships/{id}/events）；事件面板关联区（observed 可定位船）；独立核对逐条重算距离 ≤2 m（2026-09-19） |
 | P3 | dwell 识别 + 等待区图层 | 复用 P0 管线，纯增量 |
 | P4 | encounters 分析与查询 | 组合复杂度最高，放稳态后 |

@@ -58,7 +58,8 @@ const harbourStatus = ref('按需加载')
 const countryStatus = ref('按需加载')
 const theme = ref<'dark' | 'light'>('dark')
 const vectorMinutes = ref(6)
-const tailMinutes = ref(360)
+// 轨迹展示范围：默认显示全部已回放报位点；开启后只看回放时刻前 24 小时。
+const trackRecent24h = ref(false)
 const playbackSpeed = ref(1)
 const vectorLinked = ref(false)
 const effectiveVector = computed(() => vectorMinutes.value * (vectorLinked.value ? playbackSpeed.value : 1))
@@ -282,24 +283,73 @@ function toggleTrack() {
 }
 // P1 速度着色：消费 /api/tracks 派生层（数据库插值 + 实测速度序列）。
 const speedColorOn = ref(false)
+// 开启后只着色回放时刻前 24 小时；关闭则与显示的轨迹同范围（超出 24h 的部分分片取回）。
+const speedColorRecent24h = ref(false)
 const speedSegments = ref<ApiTrackSegment[]>([])
-// 窗口量化到 15 分钟边界，避免回放步进触发频繁重取。
-const speedWindow = computed(() => {
-  if (!time.value) return null
-  const end = Math.floor(Date.parse(time.value) / 900000) * 900000
-  return { from: new Date(end - tailMinutes.value * 60000).toISOString(), to: new Date(end).toISOString() }
+// 着色范围与地图当前显示的轨迹一致：起点为首个可见报位点，终点为回放时刻。
+// 边界量化到 15 分钟边界，避免回放步进触发频繁重取；量化后仍不超出显示范围。
+// 后端单次查询窗口上限 24h，跨度更长时拆成多个 ≤24h 的分片并行取回，按 segment_no 去重合并；
+// 分片起点对齐首个可见报位点，随回放推进分片边界保持稳定，只有末分片需要重取。
+const speedChunks = computed(() => {
+  if (!time.value || selectedShipId.value === null) return null
+  const endMs = Date.parse(time.value)
+  const cutoff = trackRecent24h.value ? endMs - 24 * 60 * 60 * 1000 : null
+  const visible = (tracks.value[selectedShipId.value] ?? []).filter(
+    (p) =>
+      Date.parse(p.recorded_at) <= endMs &&
+      (cutoff === null || Date.parse(p.recorded_at) >= cutoff),
+  )
+  if (!visible.length) return null
+  const toMs = Math.floor(endMs / 900000) * 900000
+  let fromMs = Math.ceil(Date.parse(visible[0]!.recorded_at) / 900000) * 900000
+  if (speedColorRecent24h.value)
+    fromMs = Math.max(fromMs, toMs - 24 * 60 * 60 * 1000)
+  if (toMs <= fromMs)
+    return [{ from: visible[0]!.recorded_at, to: new Date(endMs).toISOString() }]
+  const DAY = 24 * 60 * 60 * 1000
+  const chunks: { from: string; to: string }[] = []
+  for (let start = fromMs; start < toMs; start += DAY)
+    chunks.push({
+      from: new Date(start).toISOString(),
+      to: new Date(Math.min(start + DAY, toMs)).toISOString(),
+    })
+  return chunks
 })
 watch(
-  () => [selectedShipId.value, speedColorOn.value, speedWindow.value?.from, speedWindow.value?.to],
+  () => [
+    selectedShipId.value,
+    speedColorOn.value,
+    speedChunks.value?.map((c) => `${c.from}|${c.to}`).join(';'),
+  ],
   async () => {
-    if (!speedColorOn.value || selectedShipId.value === null || !speedWindow.value) {
+    const chunks = speedChunks.value
+    if (!speedColorOn.value || selectedShipId.value === null || !chunks) {
       speedSegments.value = []
       return
     }
     const id = selectedShipId.value
     try {
-      const data = await fetchShipTracks(id, speedWindow.value.from, speedWindow.value.to)
-      if (selectedShipId.value === id) speedSegments.value = data.status === 'ok' ? data.segments : []
+      const results = await Promise.all(
+        chunks.map((c) => fetchShipTracks(id, c.from, c.to)),
+      )
+      if (selectedShipId.value !== id) return
+      // 相邻分片都会返回跨边界的整条 segment，按 segment_no 去重（保留顶点更全的一份），
+      // 超出显示范围的顶点由 MapView 按时间戳裁剪。
+      const merged = new Map<number, ApiTrackSegment>()
+      for (const data of results) {
+        if (data.status !== 'ok') continue
+        for (const segment of data.segments) {
+          const existing = merged.get(segment.segment_no)
+          if (
+            !existing ||
+            segment.geometry.coordinates.length > existing.geometry.coordinates.length
+          )
+            merged.set(segment.segment_no, segment)
+        }
+      }
+      speedSegments.value = [...merged.values()].sort(
+        (a, b) => a.segment_no - b.segment_no,
+      )
     } catch {
       if (selectedShipId.value === id) speedSegments.value = []
     }
@@ -382,7 +432,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       v-model:layers="layers"
       v-model:vector-minutes="vectorMinutes"
       v-model:vector-linked="vectorLinked"
-      v-model:tail-minutes="tailMinutes"
       :harbour-status="harbourStatus"
       :country-status="countryStatus"
       :effective-vector="effectiveVector"
@@ -408,7 +457,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :theme="theme"
         :time="time"
         :vector-minutes="effectiveVector"
-        :tail-minutes="tailMinutes"
+        :track-recent-24h="trackRecent24h"
         :share-request="shareRequest"
         :shared-view="sharedView"
         @share-view="shareView"
@@ -542,6 +591,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :track="selectedTrack"
         :track-visible="trackVisible"
         :speed-color="speedColorOn"
+        v-model:track-recent-24h="trackRecent24h"
+        v-model:speed-color-recent-24h="speedColorRecent24h"
         :isolated="isolated"
         :nearby-events="nearbyEvents"
         :events-error="eventsError"

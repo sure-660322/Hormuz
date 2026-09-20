@@ -33,7 +33,7 @@ const props = defineProps<{
   theme: 'dark' | 'light'
   time: string | null
   vectorMinutes: number
-  tailMinutes: number
+  trackRecent24h: boolean
   shareRequest: number
   sharedView: { lat: number; lon: number; zoom: number } | null
 }>()
@@ -248,10 +248,22 @@ function renderEvents() {
 function speedBucketColor(v: number): string {
   return v < 3 ? '#8a97a3' : v < 8 ? '#2e9e5b' : v < 12 ? '#e6a23c' : '#d64f4f'
 }
-function renderSpeedSegments() {
+// 后端契约：segment.geometry 顶点与 segment.speed 序列一一对应，speed[i] = [epoch 秒, kn]。
+// 后端按“整条相交 segment”返回；App.vue 已把显示范围按 ≤24h 分片取回并去重合并，
+// 这里再按顶点时间戳裁剪到当前显示的轨迹范围 [tFirst, tLast]，保证着色不多余延伸。
+function renderSpeedSegments(tFirst: number, tLast: number) {
   if (!props.speedSegments?.length) return
   for (const segment of props.speedSegments) {
     const coords = segment.geometry.coordinates
+    const keptCoords: [number, number][] = []
+    const keptSpeed: number[] = []
+    for (let i = 0; i < coords.length; i++) {
+      const t = (segment.speed[i]?.[0] ?? NaN) * 1000
+      if (Number.isFinite(t) && t >= tFirst && t <= tLast) {
+        keptCoords.push(coords[i]!)
+        keptSpeed.push(segment.speed[i]![1] ?? 0)
+      }
+    }
     let group: L.LatLngTuple[] = []
     let currentColor = ''
     const flush = () => {
@@ -264,15 +276,15 @@ function renderSpeedSegments() {
           interactive: false,
         }).addTo(trackLayer)
     }
-    for (let i = 0; i < coords.length - 1; i++) {
-      const color = speedBucketColor(segment.speed[i]?.[1] ?? 0)
+    for (let i = 0; i < keptCoords.length - 1; i++) {
+      const color = speedBucketColor(keptSpeed[i] ?? 0)
       if (color !== currentColor && group.length) {
         flush()
         group = []
       }
       currentColor = color
-      if (!group.length) group.push([coords[i][1], coords[i][0]])
-      group.push([coords[i + 1][1], coords[i + 1][0]])
+      if (!group.length) group.push([keptCoords[i]![1], keptCoords[i]![0]])
+      group.push([keptCoords[i + 1]![1], keptCoords[i + 1]![0]])
     }
     flush()
   }
@@ -281,13 +293,19 @@ function renderTrack() {
   if (!map) return
   trackLayer.clearLayers()
   if (!props.trackVisible || !props.layers.tracks) return
-  renderSpeedSegments()
-  const tail = props.track.filter(p => !props.time || Date.parse(p.recorded_at) >= Date.parse(props.time) - props.tailMinutes * 60000)
-  const points = tail.map((p): L.LatLngTuple => [
+  // 默认展示全部已回放报位点；开启“只看最近 24h”时按回放时刻前溯过滤。
+  const cutoff = props.trackRecent24h && props.time
+    ? Date.parse(props.time) - 24 * 60 * 60 * 1000
+    : null
+  const track = cutoff === null
+    ? props.track
+    : props.track.filter(p => Date.parse(p.recorded_at) >= cutoff)
+  const points = track.map((p): L.LatLngTuple => [
     p.latitude,
     p.longitude,
   ])
-  if (points.length > 1 && !props.speedSegments?.length)
+  // 基础轨迹线始终绘制；速度着色作为叠加层画在其上，避免完全盖住轨迹。
+  if (points.length > 1)
     L.polyline(points, {
       renderer: canvas,
       color: riskColors.selected,
@@ -295,10 +313,14 @@ function renderTrack() {
       opacity: 0.8,
       interactive: false,
     }).addTo(trackLayer)
-  for (const point of tail.slice(0, -1)) {
+  // 着色范围 = 当前显示轨迹的首末报位点，不多余显示。
+  const tFirst = track.length ? Date.parse(track[0]!.recorded_at) : 0
+  const tLast = track.length ? Date.parse(track[track.length - 1]!.recorded_at) : Number.POSITIVE_INFINITY
+  renderSpeedSegments(tFirst, tLast)
+  for (const point of track.slice(0, -1)) {
+    // 用默认 SVG 渲染而非 canvas：canvas 路径的 hover tooltip 不可靠。
     L.circleMarker([point.latitude, point.longitude], {
       radius: 3,
-      renderer: canvas,
       color: riskColors.selected,
       weight: 1,
       fillColor: '#f5fafb',
@@ -306,7 +328,7 @@ function renderTrack() {
     })
       .bindTooltip(
         safeText(
-          `${formatTime(point.recorded_at, true)} | ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} | ${point.speed.toFixed(1)} kn | 航向 ${point.course.toFixed(0)}° | 教学模拟采样`,
+          `报位 ${formatTime(point.recorded_at, true)} · ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ${point.speed.toFixed(1)} kn · 航向 ${point.course.toFixed(0)}°（教学模拟采样）`,
         ),
         { direction: 'top' },
       )
@@ -441,7 +463,7 @@ watch(
   renderShips,
 )
 watch(() => [props.events, props.selectedEvent, displayZone.value], renderEvents)
-watch(() => [props.track, props.trackVisible, props.tailMinutes, props.speedSegments, displayZone.value], renderTrack)
+watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, displayZone.value], renderTrack)
 watch(() => props.shareRequest, () => { if (map) { const c = map.getCenter(); emit('shareView', { lat: c.lat, lon: c.lng, zoom: map.getZoom() }) } })
 watch(() => props.sharedView, view => { if (view) map?.setView([view.lat, view.lon], view.zoom, { animate: false }) }, { flush: 'post' })
 watch(() => [props.layers, props.isolated], syncLayers, { deep: true })

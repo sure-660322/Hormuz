@@ -7,7 +7,9 @@ const props = defineProps<{
   ships: ApiMapShip[]
   track: ApiShipPosition[]
   trackVisible: boolean
+  trackRecent24h: boolean
   speedColor: boolean
+  speedColorRecent24h: boolean
   isolated: boolean
   nearbyEvents: (ApiEvent & { distance: number })[]
   eventsError: string
@@ -19,6 +21,8 @@ const emit = defineEmits<{
   clear: []
   track: []
   'speed-color': []
+  'update:speedColorRecent24h': [value: boolean]
+  'update:trackRecent24h': [value: boolean]
   isolate: []
   event: [event: ApiEvent]
   locate: []
@@ -121,6 +125,12 @@ const points = computed(() => {
           {{ trackVisible ? '隐藏轨迹' : '查看轨迹' }}</button
         ><button :aria-pressed="speedColor" @click="emit('speed-color')">
           {{ speedColor ? '关闭着色' : '速度着色' }}</button
+        ><button
+          v-if="speedColor"
+          :aria-pressed="speedColorRecent24h"
+          @click="emit('update:speedColorRecent24h', !speedColorRecent24h)"
+        >
+          {{ speedColorRecent24h ? '着色：全部范围' : '着色：仅最近 24h' }}</button
         ><button :aria-pressed="isolated" @click="emit('isolate')">
           {{ isolated ? '恢复全部' : '仅看此船' }}</button
         ><button @click="emit('locate')">定位</button>
@@ -129,7 +139,8 @@ const points = computed(() => {
         派生层着色（数据库插值结果）：<span style="color: #8a97a3">■</span> &lt;3 kn
         <span style="color: #2e9e5b">■</span> 3–8
         <span style="color: #e6a23c">■</span> 8–12
-        <span style="color: #d64f4f">■</span> &gt;12 kn · 窗口为回放时刻前溯
+        <span style="color: #d64f4f">■</span> &gt;12 kn ·
+        {{ speedColorRecent24h ? '仅回放时刻前 24 小时' : '范围与当前显示的轨迹一致' }}
       </p>
       <nav class="detail-tabs" aria-label="船舶详情分类">
         <button
@@ -191,10 +202,19 @@ const points = computed(() => {
         <p class="track-note">
           {{
             trackVisible
-              ? '地图已显示已航行轨迹。悬停采样点查看时间、位置与航速。'
+              ? trackRecent24h
+                ? '地图仅显示回放时刻前 24 小时的轨迹。'
+                : '地图已显示全部已航行轨迹。悬停采样点查看时间、位置与航速。'
               : '点击“查看轨迹”在地图上显示历史采样。'
           }}
         </p>
+        <label v-if="trackVisible" class="track-scope"
+          ><input
+            type="checkbox"
+            :checked="trackRecent24h"
+            @change="emit('update:trackRecent24h', ($event.target as HTMLInputElement).checked)"
+          />只看最近 24h 轨迹</label
+        >
         <details class="sample-records"><summary>模拟位置记录（{{ track.length }} 条）</summary><table><thead><tr><th>时间</th><th>纬度 / 经度</th><th>kn</th></tr></thead><tbody><tr v-for="p in [...track].reverse()" :key="p.id"><td>{{ formatTime(p.recorded_at) }}</td><td>{{ p.latitude.toFixed(3) }} / {{ p.longitude.toFixed(3) }}</td><td>{{ p.speed.toFixed(1) }}</td></tr></tbody></table></details>
       </section>
       <section v-else-if="section === 'events'" class="detail-section">
