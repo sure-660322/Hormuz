@@ -23,6 +23,7 @@ from backend.app.services.agent.config import (
 from backend.app.services.agent.dwell_query import run_dwell_query
 from backend.app.services.agent.encounters_query import run_encounters_query
 from backend.app.services.agent.event_context import get_event_context
+from backend.app.services.agent.event_ship_links_query import run_event_ship_links_query
 from backend.app.services.agent.model_client import default_model
 from backend.app.services.agent.ship_search import (
     MAX_LIMIT as SHIP_SEARCH_MAX_LIMIT,
@@ -161,6 +162,11 @@ def _run_ship_dwell(db: Session, args: dict, closure_at: datetime, end_at: datet
 def _run_encounters(db: Session, args: dict, closure_at: datetime, end_at: datetime):
     # AG-04：只读 encounters 派生层；绝不调用 analyze_encounters 重建写路径
     return run_encounters_query(db, args)
+
+
+def _run_event_ship_links(db: Session, args: dict, closure_at: datetime, end_at: datetime):
+    # AG-05：只读 event_ship_links 派生层；双向查询，mentioned/observed 严格分列
+    return run_event_ship_links_query(db, args)
 
 
 TOOL_REGISTRY: dict[str, AgentTool] = {
@@ -372,6 +378,55 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
             windowed=False,
             execute=_run_encounters,
         ),
+        AgentTool(
+            name="query_event_ship_links",
+            description=(
+                "只读查询事件—船舶关联派生层（event_ship_links）：按事件查原文提及船名"
+                "（mentioned，文本证据，无 ship_id）或模拟船时空邻近（observed），"
+                "或按模拟船反查被哪些事件 observed 关联；只读，不触发重建"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "event_id": {
+                        "type": "string",
+                        "description": (
+                            "事件 ID（如 evt_001），与 ship_id 二选一；"
+                            "查询该事件下的 mentioned/observed 关联"
+                        ),
+                    },
+                    "ship_id": {
+                        "type": "integer",
+                        "description": (
+                            "模拟船 ID（ships.id，先用 search_ships 检索确认），"
+                            "与 event_id 二选一；反查该船被哪些事件 observed 关联"
+                        ),
+                    },
+                    "link_type": {
+                        "type": "string",
+                        "enum": ["observed", "mentioned"],
+                        "description": (
+                            "关联类型：observed=模拟轨迹时空邻近演示；"
+                            "mentioned=新闻原文提及的真实船名（仅支持 event_id 方向）；"
+                            "省略默认 observed"
+                        ),
+                    },
+                    "start_at": {
+                        "type": "string",
+                        "description": (
+                            "可选窗口开始，仅按船反查（ship_id）时可用，ISO 8601，"
+                            "必须带时区（统一 UTC），与 end_at 成对，窗口最长 24 小时"
+                        ),
+                    },
+                    "end_at": {
+                        "type": "string",
+                        "description": "可选窗口结束，ISO 8601，必须带时区（统一 UTC）",
+                    },
+                },
+            },
+            windowed=False,
+            execute=_run_event_ship_links,
+        ),
     ]
 }
 
@@ -415,6 +470,14 @@ SYSTEM_PROMPT = f"""你是霍尔木兹海峡船舶回放教学项目的问答助
      阈值（结果里的 params.distance_nm），超过会被拒绝、绝不是零结果；时间窗省略时返回
      全部已构建船对。最小距离是离散采样近似，接近不等于实际交互；禁止要求重建
      （重建是写操作，本工具绝不执行）；status=not_built 时如实说明派生层未构建。
+   - query_event_ship_links：查询事件—船舶关联（event_ship_links 派生层）。
+     「事件附近有哪些模拟船/事件提到哪些船名/某船被哪些事件关联」类问题必须调用它。
+     event_id 与 ship_id 二选一：按事件查时 link_type=mentioned 返回原文船名文本证据
+     （ship_id 恒为空，真实船名与模拟船不按名称关联为同一实体）；link_type=observed
+     返回模拟轨迹时空邻近演示（不构成真实因果）。按船反查仅支持 observed。
+     关联距离是构建时投影平面近似、有跨带失真，不是精确地理度量；事件 ID 或船 ID
+     不存在时会收到错误提示，应按提示先用 get_event_context / search_ships 检索，
+     不得把未知 ID 当成零结果。
 3. 工作方式（必须遵守）：回答任何数据问题前必须先调用相应工具；回答必须完全基于工具返回的
    结果（船只 ID、名称、数量、证据编号 P1…、事件 ID、story_id），不自行计算或编造。
    不得仅凭对话历史中的信息回答数据问题——即使之前的回答里给过船 ID 或事件结论，

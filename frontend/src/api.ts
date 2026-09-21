@@ -431,12 +431,56 @@ export interface AgentToolEncountersResult {
   limitations: string[]
 }
 
+// AG-05 query_event_ship_links 的结构化结果（字段见 docs/agent_tool_event_ship_links.md）
+export interface AgentToolEventShipLink {
+  link_type: string  // observed / mentioned
+  vessel_name: string | null  // mentioned：原文船名文本证据
+  ship: { id: number; name: string; mmsi: string; ship_type: string } | null  // mentioned 恒为 null
+  confidence: number | null
+  min_distance_m: number | null
+  window: unknown | null
+  is_simulated: boolean | null
+  note: string
+}
+
+export interface AgentToolEventShipEvent {
+  event_id: string
+  title_zh: string
+  event_type: string
+  event_datetime: string | null
+  event_time_text: string | null
+  publish_date_min: string | null
+  publish_date_max: string | null
+  representative_point: { lng: number; lat: number } | null
+  confidence: number | null
+  min_distance_m: number | null
+  note: string
+}
+
+export interface AgentToolEventShipLinksResult {
+  status: string  // ok / no_data
+  direction: string  // by_event / by_ship
+  event_id?: string
+  title_zh?: string
+  ship_id?: number
+  ship_name?: string
+  link_type: string
+  window: [string, string] | null
+  links: AgentToolEventShipLink[]
+  events: AgentToolEventShipEvent[]
+  returned_count: number
+  built_at: string | null
+  params: Record<string, unknown> | null
+  limitations: string[]
+}
+
 export type AgentToolResult =
   | AgentToolEventContextResult
   | AgentToolShipSearchResult
   | AgentToolShipTrackResult
   | AgentToolDwellResult
   | AgentToolEncountersResult
+  | AgentToolEventShipLinksResult
   | Record<string, unknown>
 
 export interface AgentErrorDetail {
