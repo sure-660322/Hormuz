@@ -4,10 +4,10 @@
 
 ## 已确定的方向与当前基线
 
-- 保留原有四个工具：query_strait_passages、search_ships、get_ship_track、get_event_context；AG-02 已新增第五个只读工具 get_data_health。
+- 保留原有四个工具，并已完成 AG-02～05：get_data_health、query_ship_dwell、query_encounters、query_event_ship_links；当前共 8 个已注册只读工具。
 - 沿用现有模型 API 和工具循环，暂不引入 LangChain/LangGraph。运行时仍使用当前 DeepSeek；Kimi、ChatGPT、Codex 是开发协作者，无需作为多个模型接入应用。
 - 一个模型选择 query_analytics 并生成 SQL/参数，后端确定性校验和只读执行，同一模型根据结果回答。
-- 后端已有 data-health、dwell、encounters、event links 业务能力；data-health 已通过 AG-02 注册为智能体只读工具，后三者仍未注册。相遇 POST /api/encounters/analyze 会写入派生表，禁止接入只读智能体。
+- 后端 data-health、dwell、encounters、event links 均已注册为智能体只读工具；相遇 POST /api/encounters/analyze 会写入派生表，仍禁止接入只读智能体。
 - 当前 v3 的 history、结果结构和默认封锁窗口偏向通行查询。新增统计工具前要设计独立查询范围，不能给所有新闻统计强加封锁后 24 小时；新增查询澄清不能伪装成零结果。
 - 保留「模拟船位 / 真实报道 / 模拟假设」边界。来源标识、结果 ID、覆盖/截断说明由后端提供。
 
@@ -22,14 +22,14 @@ Kimi/ChatGPT 可整理脱敏材料、案例和评审意见；具备本地仓库�
 | AG-00 | 基线归属、文档整理、分组验收与提交交接 | Codex + 各在途负责人 | 进行中：Kimi 已结束，成果整理及有限回归完成；交接包重新导出与独立空库验收仍阻塞 |
 | AG-01 | 问题—能力矩阵，正常/澄清/拒绝/无数据案例 | Kimi 或 ChatGPT；整合者核对 | **已评审通过**（2026-09-21，分支 `kimi/ag01-sql01-contract`）：[agent_question_matrix.md](agent_question_matrix.md) 共 56 条例（existing_tool 8 / new_deterministic_tool 11 / text_to_sql 9 / clarification 8 / refuse 7 / non_data_question 8 / deferred 5）；R-01～R-39 评审闭环见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)。这是需求与验收基线，不表示对应工具均已注册。 |
 | AG-02 | get_data_health 只读工具 | Kimi Code 或 Codex | **已实现待真实模型验证**（2026-09-21，提交 `1c98c7f`）：复用 data_health 服务，无参数、只读、不触发重建；正常、来源缺失、未构建、查询失败、工具选择、响应契约和无写入共 7 项离线测试通过。真实模型联调未重跑。 |
-| AG-03 | query_ship_dwell，只读查询既有派生结果 | Kimi | **独立分支已实现待整合/真实验证**（`kimi/ag03-ship-dwell`，提交 `d03705a`，基线 `af888e9`）：服务适配、runner 注册、前端类型、模块文档与 8 项离线测试已提交；分支工作区干净。未合入本分支，真实库只读抽测和真实模型联调未重跑。 |
-| AG-04 | query_encounters，只读，保留参数和覆盖限制 | Kimi | **独立分支已实现待整合/真实验证**（`kimi/ag04-encounters`，提交 `57dfc43`，基线 `af888e9`）：只接 GET 读取路径，不调用 analyze 写路径；runner 注册、前端类型、模块文档与 9 项离线测试已提交；分支工作区干净。未合入本分支，真实库只读抽测和真实模型联调未重跑。 |
-| AG-05 | 事件—船舶关联工具，mentioned/observed 分列 | Kimi | **独立分支已实现待整合/真实验证**（`kimi/ag05-event-ship-links`，提交 `694582e`，基线 `af888e9`）：服务适配、runner 注册、前端类型、模块文档与 10 项离线测试已提交；分支工作区干净。未合入本分支，真实库只读抽测和真实模型联调未重跑，整合者仍需核对语义。 |
+| AG-03 | query_ship_dwell，只读查询既有派生结果 | Kimi；Codex 整合 | **已合入 main，待真实验证**（来源提交 `d03705a`，整合提交 `31e9034`）：服务适配、runner 注册、前端类型和模块文档已整合；8 项专项及合并后全量回归通过。真实库只读抽测和真实模型联调未重跑。 |
+| AG-04 | query_encounters，只读，保留参数和覆盖限制 | Kimi；Codex 整合 | **已合入 main，待真实验证**（来源提交 `57dfc43`，整合提交 `ef33d7f`）：只接 GET 读取路径，不调用 analyze 写路径；9 项专项及合并后全量回归通过。真实库只读抽测和真实模型联调未重跑。 |
+| AG-05 | 事件—船舶关联工具，mentioned/observed 分列 | Kimi；Codex 整合 | **已合入 main，待真实验证**（来源提交 `694582e`，整合提交 `4bb9557`）：双向读取与 mentioned/observed 边界已整合；10 项专项及合并后全量回归通过。真实库只读抽测和真实模型联调未重跑。 |
 | SQL-01 | 固定输入输出、目录、白名单和错误/澄清契约 | Kimi/ChatGPT 草拟，Codex 核对 | **已评审通过**（2026-09-21，分支 `kimi/ag01-sql01-contract`）：[query_analytics_contract.md](query_analytics_contract.md) 已冻结输入、正向白名单、校验与执行唯一对应、语义视图目录、只读角色、资源与并发限制、失败映射及验收边界；R-01～R-39 已闭环。纯契约无实现代码，`query_analytics` 仍未注册且默认关闭；允许进入 SQL-02，SQL-03 启动时锁定并实测解析器版本。 |
 | SQL-02 | 语义视图、独立只读角色、配置示例和独立库验收 | Codex | **已验证**（2026-09-21，worktree `D:/my_project/Hormuz-codex-sql02`，分支 `codex/sql02-agent-reader`，接续基线 `260678b`）：三视图、最小权限角色、catalog v1、`pg_get_viewdef` SHA-256 绑定和自动验证脚本已交付；在一次性 PostgreSQL 17 中通过 56 项允许/拒绝、角色、结构、哈希及额外对象漂移检查。SQL-04 将哈希条件补全为固定 `search_path=pg_catalog` 后复跑仍为 56 项通过，视图 SQL 未改变。未连接共享数据库；`query_analytics` 仍未注册。见 [SQL-02 说明](query_analytics_sql02.md)。 |
 | SQL-03 | AST 策略校验器和离线攻击用例 | Codex；Kimi 补充测试样例 | **已验证**（2026-09-21，分支 `codex/sql03-ast-validator`，基线 `3d51a5a`）：锁定 SQLGlot 30.18.0 / `postgres`，实现 catalog v1 全树正向白名单、参数/类型/函数/JOIN/聚合/复杂度校验和同 AST 规范化；58 条允许、62 条拒绝及 9 项边界检查均通过，当时完整后端回归 136 项通过。SQL-03 本身为纯离线；其规范化输出已在后续 SQL-04 的 PostgreSQL 17 验证中真实执行。见 [SQL-03 说明](query_analytics_sql03.md)。 |
 | SQL-04 | 独立只读执行器、超时、结果限制及审计 | Codex | **已验证**（2026-09-21，分支 `codex/sql04-executor`，共同基线 `af888e9`）：专用只读池、每次 catalog 实物核验、只读事务、5s/1s 超时、2/4 非排队并发门、500 行/256 KiB 流式截断、取消、稳定错误映射和无敏感正文审计已实现；一次性 PostgreSQL 17 专项 11 项通过，后端回归 140 项通过/7 项集成默认跳过；未连接共享数据库、未注册工具。见 [SQL-04 说明](query_analytics_sql04.md)。 |
-| SQL-05 | 注册 query_analytics、更新契约/前端类型和最小展示 | Codex | **待开始（等待共享文件正式交接与 AG 批次整合）**：SQL-04 已满足前置；AG-03～05 三个独立提交均已出现，但各自从同一基线修改 `runner.py`/前端类型，尚未合入本分支。先审查并整合这些共享文件、确认所有权移交，再开始 SQL-05。 |
+| SQL-05 | 注册 query_analytics、更新契约/前端类型和最小展示 | Codex | **准备就绪**：SQL-04 和 AG-03～05 已合入 main，共享 `runner.py`/前端类型由 Codex 接管；合并后后端 167 项、前端 build/check:workbench、SQL-02 56 项及 SQL-04 11 项均通过。下一步在独立 `codex/sql05-integration` worktree 实施，`query_analytics` 当前仍默认关闭且未注册。 |
 | SQL-06 | 旧工具回归、SQL 正确性/安全/错误/页面验收 | Kimi 提供案例，Codex 实测 | SQL-05；待开始 |
 
 每项任务在领取时记录工作目录、分支、基线 commit、文件所有权及验收输出；完成一轮即更新本表和受影响文档。不得将未提交的当前目录自动当成其他 worktree 的基线。

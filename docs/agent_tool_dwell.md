@@ -1,6 +1,6 @@
 # query_ship_dwell 智能体工具（AG-03）
 
-2026-09-21，分支 `kimi/ag03-ship-dwell`，基线 `af888e9`。只读查询 `ship_dwell` 停留派生层的既有结果，复用 P3 `/api/dwell` 的服务与 repository（`backend/app/services/dwell.py`、`backend/app/repositories/dwell.py`），不重写停留识别算法、不触发重建或任何写入。
+2026-09-21，来源分支 `kimi/ag03-ship-dwell`（基线 `af888e9`），后由 Codex 合入本地 main。只读查询 `ship_dwell` 停留派生层的既有结果，复用 P3 `/api/dwell` 的服务与 repository（`backend/app/services/dwell.py`、`backend/app/repositories/dwell.py`），不重写停留识别算法、不触发重建或任何写入。
 
 ## 参数（模型侧 JSON Schema）
 
@@ -38,3 +38,4 @@
 - 运行：`python -m pytest backend/tests/test_agent_dwell.py -q`（不连真实库、不需要模型密钥）。
 - 真实库只读抽测与真实模型联调未重跑，状态「已实现待验证」。
 - 未改动 `backend/app/services/dwell.py` 与 repository 层语义。
+- 合并后后端全量 167 项、前端 build/check:workbench 通过；真实库只读抽测与真实模型联调仍未重跑。

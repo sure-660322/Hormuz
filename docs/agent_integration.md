@@ -1,6 +1,6 @@
 # 智能体接入契约与任务
 
-2026-09-21 状态核对：下文 v3 为当前已注册契约。data-health 已作为第五个只读工具接入；受限 Text-to-SQL 的 SQL-02 数据库边界、SQL-03 AST 校验与 SQL-04 独立执行器已经隔离验证，但 `query_analytics` 尚未注册且默认关闭，不能写成当前可用能力。AG-03～05 与 SQL-05 见 [下一阶段开发计划](agent_development_plan.md)。
+2026-09-21 状态核对：下文 v3 为当前已注册契约。data-health、停留、相遇和事件—船舶关联已接入，当前共 8 个只读工具；受限 Text-to-SQL 的 SQL-02 数据库边界、SQL-03 AST 校验与 SQL-04 独立执行器已经隔离验证，但 `query_analytics` 尚未注册且默认关闭，不能写成当前可用能力。SQL-05 见 [下一阶段开发计划](agent_development_plan.md)。
 
 文档核对：2026-09-20，v3 多工具版已实现；本次核对代码与文档，未调用模型或重跑接口验收。根据与学长沟通的结论，采用“大模型 API + 自定义只读查询工具”，未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。v3 在 v2 单工具（海峡通行）基础上新增 search_ships / get_ship_track / get_event_context 三个只读工具（接入 news/events 数据）与多轮 history 支持；工具执行预算由 2 次提高到 3 次。
 
@@ -8,7 +8,7 @@
 
 已实现的基础流程：用户问“封锁后有哪些船还通过了海峡？” → 模型提出工具调用 → 后端查询数据库并判定通行 → 返回对应模拟船只、数量和依据。回答内船只/事件的地图定位已实现；历史轨迹逐点回放联动尚未实现。
 
-用户反馈新生成的小规模模拟数据已表现出封锁后停止通过海峡；本次文档修改不重新核验数据库批次或数量，不将其写成已验证的数据库结论。事件面板已接入 P2 的 observed 演示关联与 mentioned 文本提及；当前智能体五个工具尚未接入该关联查询。通行工具按明确的模拟封锁时间检索，不推导真实事件对具体船只的因果影响。
+用户反馈新生成的小规模模拟数据已表现出封锁后停止通过海峡；本次文档修改不重新核验数据库批次或数量，不将其写成已验证的数据库结论。事件面板和智能体均已接入 P2 关联读取，但 observed 演示邻近与 mentioned 文本提及严格分列；通行及关联工具都不得推导真实事件对具体船只的因果影响。
 
 已集成现有 FastAPI：路由位于 backend/app/routers/agent.py，工具调用循环、模型适配及查询服务位于 backend/app/services/agent/。当前使用 DeepSeek 的 OpenAI 兼容 API，通过 openai Python SDK 调用；配置和密钥仅由后端环境提供。
 
@@ -51,7 +51,7 @@ question 必填，去除首尾空白后 1–2000 字符。时间字段可省略�
 
 history 可选，为此前对话的消息列表（role 限 user/assistant，content 去除首尾空白后 1–2000 字符），最多携带最近 10 条消息（user/assistant 各计一条，通常为 5 组问答）；服务端将 history 插在 system 与本次问题之间。单轮问答不传 history。
 
-已注册四个业务工具，批次、门线、读取上限和返回条数上限由后端控制。函数校验参数、执行参数化只读查询，不要求单独公开 HTTP 路由：
+已注册八个业务工具，批次、门线、读取上限和返回条数上限由后端控制。函数校验参数、执行参数化只读查询，不要求单独公开 HTTP 路由：
 
 | 工具 | 参数 | 说明 |
 | --- | --- | --- |
@@ -59,14 +59,12 @@ history 可选，为此前对话的消息列表（role 限 user/assistant，cont
 | search_ships | keyword（必填）, limit | 按关键字模糊检索教学模拟船（船名/MMSI/IMO/callsign/船型/船旗），返回 ship_id 等；limit 默认 10、上限 20 |
 | get_ship_track | ship_id（必填）, start_at, end_at | 单船窗口内全部轨迹报位（时间/经纬度/航速/航向）；时间缺省用默认封锁窗口 |
 | get_event_context | event_id 或 keyword（二选一）, start_at, end_at | 新闻聚合事件及关联真实报道；事件是真实新闻数据，与模拟船相互独立，不得按船名关联 |
-
-2026-09-21（分支 `kimi/agent-data-health`）新增第五个只读工具 `get_data_health`（AG-02，无参数）：
-
-| 工具 | 参数 | 说明 |
-| --- | --- | --- |
 | get_data_health | 无 | 复用 P5 /api/data-health 服务：各 data_source 报位数/船数/覆盖区间/中位间隔 + 四张派生表行数/built_at/params/stale（含未构建标记）；stale 仅为时间启发式，stale=false 不证明历史数据未被修改；来源缺失表示未导入，不得解释为真实数量为零；工具只读，不触发迁移、导入或派生层重建。派生层无源时间基准时 stale 返回 null（不可判定），不报 false |
+| query_ship_dwell | kind, start_at/end_at, limit | 只读既有 ship_dwell；kind 限 at_anchor/drift/slow_transit，窗口成对且 ≤24h，缺省为全批次；返回阈值快照、stale、真实匹配数与截断状态，不重建 |
+| query_encounters | start_at/end_at, max_distance_nm, limit | 只读既有 encounters；距离过滤只能缩小构建阈值，窗口筛选为与预计算 period 重叠，最小距离是离散采样近似；不调用写入型 analyze |
+| query_event_ship_links | event_id 或 ship_id（二选一）, link_type, start_at/end_at | 按事件查 mentioned/observed 或按模拟船反查 observed；mentioned 不映射模拟 ship_id，observed 只表示模拟时空邻近；不重建 |
 
-AG-02 离线自动测试 7 项通过（backend/tests/test_agent_data_health.py：正常、来源缺数据、派生层未构建、查询失败映射 DATA_QUERY_FAILED、模型选择工具、工具结果进入最终响应、全流程无数据库写入）；真实模型联调尚未重跑，状态为「已实现待验证」。服务侧同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。
+AG-02～05 离线自动测试分别 7 / 8 / 9 / 10 项通过；合并后完整后端回归 167 项通过，前端 build 与 check:workbench 通过。真实数据库只读抽测和三个新增工具的真实模型联调尚未重跑，状态为「已实现并离线验证，待真实验证」。服务侧此前同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。
 
 时间窗语义：请求显式提供 closure_at/end_at 时以请求为准（模型自拟时间参数忽略）；否则用模型在工具参数里给的时间，缺省回退默认封锁时刻 + 24 小时窗口。search_ships 不带时间窗。
 
@@ -136,6 +134,7 @@ AG-02 离线自动测试 7 项通过（backend/tests/test_agent_data_health.py�
 - [x] v3：runner 改为工具注册表多工具循环（预算 3 次工具执行），请求显式时间窗为权威值，缺省回退默认封锁窗口。
 - [x] v3：请求支持 history（≤10 条消息，user/assistant 各计一条），多轮追问仍强制重新调用工具核对，不得仅凭历史回答。
 - [x] v3：响应新增 tools_used 与 results（按工具名的结构化结果），通行结果继续填充 ships/evidence/query_summary 顶层字段。
+- [x] AG-02～05：注册 get_data_health / query_ship_dwell / query_encounters / query_event_ship_links，保留派生层阈值、stale、截断、模拟边界和只读约束；合并后离线回归及前端构建通过。
 - [x] v3：scripts/test_deepseek_toolcall.py 三场景（通行回归 / search+track 链式 / 事件查询）真实联调通过；scripts/check_agent_api.py 覆盖 history 校验并通过。
 
 ## 后续范围

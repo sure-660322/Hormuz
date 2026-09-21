@@ -46,7 +46,7 @@
 
 ```powershell
 & 'D:\my_project\Hormuz\backend\.venv\Scripts\python.exe' -m pytest backend/tests -q
-# 140 passed, 7 skipped, 1 warning
+# SQL-04 分支当时：140 passed, 7 skipped, 1 warning
 ```
 
 7 个 skip 是上述需要一次性 PostgreSQL 的集成用例；专项脚本已单独全部执行。SQL-02 验证器按新的固定 search_path 哈希规则复跑：`PASS ... (56 checks)`。
@@ -59,7 +59,9 @@ PostgreSQL 17 实测表明，`pg_get_viewdef(regclass, false)` 会根据调用�
 
 ## 仍未实现或未验证
 
-- `query_analytics` 尚未注册，实际 `/agent/analyze` 请求仍不能调用它；AG-03～05 已有三个独立提交，但共享 `runner.py`/前端类型尚未整合及正式移交，SQL-05 在该步骤完成后再开始。
+- `query_analytics` 尚未注册，实际 `/agent/analyze` 请求仍不能调用它；AG-03～05 后续已合入 main，共享文件已移交 Codex，SQL-05 前置条件已满足。
 - 没有修改 `runner.py`、`schemas_agent.py` 或前端类型，没有真实模型调用、HTTP/前端验收或共享业务数据统计。
 - SQL-05 必须把实际服务绑定地址传入并保持本地限制；本模块只能校验其配置值，不能独立证明外层 uvicorn 未被其他参数绑定到远端地址。
 - 多进程边界已在真实 PostgreSQL 中用 4 个全局锁槽验证“满时立即拒绝”；未做多 worker 长时间压力测试。
+
+2026-09-21 后续整合验证：SQL-04 与 AG-03～05 合入 main 后，后端全量 `167 passed, 7 skipped`，前端 build/check:workbench 通过；本专项的一次性 PostgreSQL 17 仍为 11 项通过，SQL-02 仍为 56 项通过。未连接共享数据库。

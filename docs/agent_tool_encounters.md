@@ -1,6 +1,6 @@
 # query_encounters 智能体工具（AG-04）
 
-2026-09-21，分支 `kimi/ag04-encounters`，基线 `af888e9`。只读查询 `encounters` 相遇派生层的既有结果，复用 P4 `/api/encounters` GET 路径的服务与 repository（`backend/app/services/encounters.py`、`backend/app/repositories/encounters.py`），绝不调用 `analyze_encounters` 重建写路径（POST /api/encounters/analyze）。
+2026-09-21，来源分支 `kimi/ag04-encounters`（基线 `af888e9`），后由 Codex 合入本地 main。只读查询 `encounters` 相遇派生层的既有结果，复用 P4 `/api/encounters` GET 路径的服务与 repository（`backend/app/services/encounters.py`、`backend/app/repositories/encounters.py`），绝不调用 `analyze_encounters` 重建写路径（POST /api/encounters/analyze）。
 
 ## 参数（模型侧 JSON Schema）
 
@@ -39,3 +39,4 @@
 - 运行：`python -m pytest backend/tests/test_agent_encounters.py -q`（不连真实库、不需要模型密钥）。
 - 真实库只读抽测与真实模型联调未重跑，状态「已实现待验证」。
 - 未改动 `backend/app/services/encounters.py` 与 repository 层语义。
+- 合并后后端全量 167 项、前端 build/check:workbench 通过；真实库只读抽测与真实模型联调仍未重跑。

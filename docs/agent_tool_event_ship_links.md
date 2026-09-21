@@ -1,6 +1,6 @@
 # query_event_ship_links 智能体工具（AG-05）
 
-2026-09-21，分支 `kimi/ag05-event-ship-links`，基线 `af888e9`。只读查询 `event_ship_links` 派生层既有结果，复用 P2 事件—船舶关联服务（`backend/app/services/event_links.py` 的 `get_event_ships` / `get_ship_events`）与 repository，不触发重建。语义草拟由 Kimi 完成（本分支），整合时由 Codex 核对。
+2026-09-21，来源分支 `kimi/ag05-event-ship-links`（基线 `af888e9`），后由 Codex 合入本地 main。只读查询 `event_ship_links` 派生层既有结果，复用 P2 事件—船舶关联服务（`backend/app/services/event_links.py` 的 `get_event_ships` / `get_ship_events`）与 repository，不触发重建。语义草拟由 Kimi 完成，整合时由 Codex 核对。
 
 ## 参数（模型侧 JSON Schema）
 
@@ -41,3 +41,4 @@
 - 运行：`python -m pytest backend/tests/test_agent_event_ship_links.py -q`（不连真实库、不需要模型密钥）。
 - 真实库只读抽测与真实模型联调未重跑，状态「已实现待验证」。
 - 未改动 `backend/app/services/event_links.py` 与 repository 层语义。
+- 合并后后端全量 167 项、前端 build/check:workbench 通过；真实库只读抽测与真实模型联调仍未重跑。
