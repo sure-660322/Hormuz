@@ -1,6 +1,6 @@
 # query_analytics 受限 Text-to-SQL 契约（SQL-01）
 
-> 文档状态：**SQL-01 已完成最终安全评审**（2026-09-21，分支 `kimi/ag01-sql01-contract`；R-01～R-39 见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)）。SQL-02 数据库边界与 SQL-03 离线 AST 校验器已验证，但 SQL-04 执行器和 SQL-05 工具注册尚未实现；**query_analytics 仍不可用且默认关闭。** 实现进度见 [agent_development_plan.md](agent_development_plan.md)，SQL-03 证据见 [query_analytics_sql03.md](query_analytics_sql03.md)。
+> 文档状态：**SQL-01 已完成最终安全评审**（2026-09-21，分支 `kimi/ag01-sql01-contract`；R-01～R-39 见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)）。SQL-02 数据库边界、SQL-03 离线 AST 校验器和 SQL-04 独立只读执行器均已验证，但 SQL-05 工具注册尚未实现；**query_analytics 仍不可用且默认关闭。** 实现进度见 [agent_development_plan.md](agent_development_plan.md)，执行器证据见 [query_analytics_sql04.md](query_analytics_sql04.md)。
 > 问题样例见 [agent_question_matrix.md](agent_question_matrix.md)；当前 v3 运行契约见 [agent_integration.md](agent_integration.md)。
 
 ## 1. 目标与非目标

@@ -1,6 +1,6 @@
 # SQL-02 语义视图与只读角色
 
-状态：**已完成并通过隔离验证**（2026-09-21，分支 `codex/sql02-agent-reader`，本轮接续基线 `260678b`）。本阶段只建设数据库读取边界和 catalog v1；`query_analytics` 执行器仍未实现、未注册且默认关闭。
+状态：**已完成并通过隔离验证**（2026-09-21，分支 `codex/sql02-agent-reader`，本轮接续基线 `260678b`；SQL-04 于同日补全固定 `search_path=pg_catalog` 的哈希条件并复跑 56 项通过）。本阶段建设数据库读取边界和 catalog v1；SQL-04 执行器现已验证，但 `query_analytics` 仍未注册且默认关闭。
 
 ## 交付内容
 
@@ -13,13 +13,13 @@
 
 ## catalog v1 与哈希绑定
 
-catalog 版本为 `1.0`，目标数据库主版本为 PostgreSQL 17。定义指纹固定为：读取 `pg_get_viewdef(regclass, false)` 的原始 UTF-8 字节并计算 SHA-256；不能用迁移编号代替定义指纹。
+catalog 版本为 `1.0`，目标数据库主版本为 PostgreSQL 17。定义指纹固定为：事务内先设 `search_path=pg_catalog`，再读取 `pg_get_viewdef(regclass, false)` 的原始 UTF-8 字节并计算 SHA-256；不能用迁移编号代替定义指纹。SQL-04 实测发现 `pg_get_viewdef` 输出会受调用者 search_path 影响，因而补全这一规范化条件并在固定 PostgreSQL 17 镜像中重新生成指纹；视图 SQL 本身未改变。
 
 | 视图 | `pg_get_viewdef` SHA-256 |
 | --- | --- |
-| `agent_data.v_ships` | `99c96b138697e6cecd01e6e99afdfda1180f53d639b3099fef01e2b8b1b11f62` |
-| `agent_data.v_events` | `c159d8ffee1d11aee401e908da08ebff184fba0dff9356c9bf123824302a3abc` |
-| `agent_data.v_news` | `640a13434f3084c06111f29c1cae10547c591f70e282ccf5ca84550b57f8f274` |
+| `agent_data.v_ships` | `d30b58dc52154a1a6bbb5686caaece6bfed6ff4a19a358c429365156b2979f79` |
+| `agent_data.v_events` | `a68a9c54168e8d5e6e6a72487045a067c8b236c1fbb5d23125436c0bc241f3cc` |
+| `agent_data.v_news` | `5c90da2c942cd37e02f96dbb7f8938bee1436791585325b7fe3b5c5204431488` |
 
 视图定义、字段、类型、nullable、owner 或 PostgreSQL 主版本变化时，必须评审语义变更、递增 catalog 版本、从目标版本数据库重新生成三个哈希并完整复跑验证。禁止只修改 JSON 哈希来绕过漂移。SQL-04 加载 catalog 时仍须执行同一套实物核验，任一不一致即 fail closed。
 
@@ -61,6 +61,6 @@ PostgreSQL 的数据库 TEMP 和 `public` schema 权限可通过 `PUBLIC` 继承
 
 ## 仍未实现或未验证
 
-- SQL-04 的专用连接池、运行时 catalog 加载审计和只读执行器尚未实现；不能仅凭本次迁移开启功能。
+- SQL-04 的专用连接池、运行时 catalog 加载审计和只读执行器已在隔离 PostgreSQL 17 验证；SQL-05 尚未注册工具，仍不能开启对外能力。
 - 未在当前共享数据库或远端环境部署，也未使用当前业务数据验证统计结果；本轮只证明 SQL-02 固定 fixture 下的结构和权限边界。
 - 未配置认证与限流前，`query_analytics` 不得在远端可访问环境启用。

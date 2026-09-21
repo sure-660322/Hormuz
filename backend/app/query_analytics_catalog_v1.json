@@ -4,6 +4,7 @@
   "postgres_major": 17,
   "view_definition_hash": {
     "source": "pg_get_viewdef(regclass, false)",
+    "search_path": "pg_catalog",
     "encoding": "UTF-8",
     "algorithm": "SHA-256"
   },
@@ -12,7 +13,7 @@
     {
       "name": "agent_data.v_ships",
       "owner": "agent_view_owner",
-      "definition_sha256": "99c96b138697e6cecd01e6e99afdfda1180f53d639b3099fef01e2b8b1b11f62",
+      "definition_sha256": "d30b58dc52154a1a6bbb5686caaece6bfed6ff4a19a358c429365156b2979f79",
       "row_limit": 500,
       "requires_time_filter": false,
       "data_scope": "teaching simulation vessel identities",
@@ -35,7 +36,7 @@
     {
       "name": "agent_data.v_events",
       "owner": "agent_view_owner",
-      "definition_sha256": "c159d8ffee1d11aee401e908da08ebff184fba0dff9356c9bf123824302a3abc",
+      "definition_sha256": "a68a9c54168e8d5e6e6a72487045a067c8b236c1fbb5d23125436c0bc241f3cc",
       "row_limit": 500,
       "requires_time_filter": false,
       "data_scope": "aggregated real-news event records",
@@ -58,7 +59,7 @@
     {
       "name": "agent_data.v_news",
       "owner": "agent_view_owner",
-      "definition_sha256": "640a13434f3084c06111f29c1cae10547c591f70e282ccf5ca84550b57f8f274",
+      "definition_sha256": "5c90da2c942cd37e02f96dbb7f8938bee1436791585325b7fe3b5c5204431488",
       "row_limit": 500,
       "requires_time_filter": false,
       "data_scope": "collected real-news reporting metadata",
