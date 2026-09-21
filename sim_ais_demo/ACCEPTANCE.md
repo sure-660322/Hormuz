@@ -1,5 +1,7 @@
 # 验收报告：霍尔木兹海峡教学模拟 AIS 数据批次
 
+> 本文验收对象是旧 output/ 批次，不是当前数据库或 output_news_aligned/。当前模拟批次见 [新闻对应批次说明](output_news_aligned/README.md)；保留本报告用于历史追溯。
+
 - 批次 ID：`sim_ais_hormuz_20260226_20260305`
 - 随机种子：`20260226`
 - 配置：`sim_ais_demo/config/scenario_config.json`

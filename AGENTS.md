@@ -8,8 +8,8 @@
 - 前端为 frontend/（Vue 3、TypeScript、Vite、Leaflet）；后端为 backend/（FastAPI、SQLAlchemy）；数据库为 PostgreSQL / PostGIS。
 - 船舶与轨迹为教学模拟；events 为新闻聚合事件，news 为已采集的真实报道及加工字段。不得统一称为“全模拟”或“真实 AIS”。
 - 当前批次为 sim_ais_demo/output_news_aligned/；数量是可变状态，变更前查询实际数据。
-- MobilityDB 已用于局部派生轨迹与停留分析；主回放不使用该派生表。TimescaleDB 已安装，业务未使用时序表。
-- 智能体最小版已实现：后端 POST /agent/analyze 已注册，前端右侧工作面板有智能体问答页签。涉及智能体时仍先阅读 docs/agent_integration.md，区分契约预设与已注册路由的实际行为。
+- MobilityDB/PostGIS 派生能力 P0–P4 已有实现，P5 部分实现（data-health 已接入，主回放尚未切换 simplified 派生层）。TimescaleDB 已安装，业务未使用时序表。
+- 智能体 v3 已实现：POST /agent/analyze、四个只读工具、多轮 history 和回答内地图定位；受限 Text-to-SQL 尚未实现，暂不引入 LangChain/LangGraph。当前契约见 docs/agent_integration.md，下一步任务见 docs/agent_development_plan.md。
 
 ## 修改与协作
 
@@ -21,6 +21,25 @@
 - 不执行破坏性 Git 操作或未经授权的文件清理，不覆盖无关工作。
 - 提交前排除密钥、本机配置、数据库备份与临时输出。数据库内容不通过 Git 自动共享。
 - 接口变更同步维护 schemas、前端类型、文档与验证；不把规划接口写成已实现功能。
+
+## 每轮任务结束必须同步文档
+
+- 每轮任务结束前，必须核对并同步修正受影响文档中的当前进度描述，包括 README.md、对应模块说明和任务计划；文档同步是任务完成条件，不能留给后续会话补做。
+- 明确区分「待开始 / 进行中 / 已实现待验证 / 已验证 / 阻塞」。实现存在、测试通过、本地提交、远端推送和部署是不同状态，不得混用。
+- 验证记录注明日期、范围、命令或证据路径、未验证项。历史数量与历史验收必须标明当时批次，不得改日期后冒充本轮重新验证。
+- 同一功能更新所有相关摘要和限制，避免 README 写已完成而模块文档写未实现；详细任务仅在 docs/agent_development_plan.md 维护，README 保留摘要及入口。
+- 历史报告保留当时事实，并在顶部标注历史范围及当前入口。删除临时文档前先读内容、查引用和 git status，确认不是其他会话的在途任务或唯一验收证据。
+- 若文档正由其他会话编辑，先交接该文件所有权；无法取得所有权时在自己的任务记录中列出精确待同步段落和原因，状态保持「待文档整合」，不得宣称已完成。
+
+## 多会话分支与工作区隔离
+
+- 后续新开发任务必须使用独立分支和独立 Git worktree，一项任务一个工作目录。Codex 默认 codex/<task>，Kimi 可用 kimi/<task>。仅创建不同分支但共用目录不能隔离并发编辑。
+- 开始前检查 git status --short、git branch --show-current、git worktree list，记录基线 commit、任务负责人及允许修改的文件；协作流程见 docs/collaboration.md。
+- 不在其他会话使用的目录执行 switch/checkout、stash、reset、clean、merge、rebase，或批量暂存/提交。main 作为整合分支，由指定整合者在相关会话停止写入后处理。
+- 新 worktree 不包含另一个目录的未提交修改；依赖其功能时等待可用提交，不复制整个脏工作区、不假定 HEAD 包含在途实现。
+- README、AGENTS.md、依赖清单、API 类型、runner.py 等共享文件同一时刻只允许一个负责人整合。提交只含本任务路径或经审查的 hunks，禁止 git add . 混入他人修改。
+- worktree 不隔离数据库、服务端口和外部资源。各任务记录端口和数据库目标；涉及迁移/重建使用独立测试库。不得停止其他会话服务或擅自改变 API/CORS 来绕过端口冲突。
+- 2026-09-21 用户确认 Kimi 已结束，本次允许在主目录 main 整合已有成果；这不是后续开发例外。下一项开发必须使用独立分支和独立 worktree；main 仅由指定整合者合入已交接成果。
 
 ## 数据与智能体边界
 

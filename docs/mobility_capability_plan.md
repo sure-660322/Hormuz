@@ -1,15 +1,15 @@
 # MobilityDB 时空数据能力底座技术方案
 
-> 状态：**P0–P2 已实施（2026-09-19），P3–P5 未实施**。本文描述方案；已实施部分以代码、`backend/sql/009_ship_tracks.sql`、`backend/sql/010_event_ship_links.sql`、构建/核对脚本及 `sim_ais_demo/output_news_aligned/` 下对应报告为准。
+> 2026-09-21 静态核对：**P0–P4 已有实现，P5 部分实现**（data-health 已接入，主回放切换 simplified 和特征保留规则未完成）。2026-09-19/20 数量及测试为历史记录，本轮未重跑数据库/浏览器验收。以对应 SQL、构建/核对脚本和报告为实施依据；文中的真实数据接入、空间查询扩展和压测仍为规划。
 >
 > 目标：以 MobilityDB 为核心建立可复用的时空数据能力层，支撑 AIS 船舶轨迹 + 海事事件 + GIS 地图 + 后续真实数据接入。当前使用模拟数据，但本方案以真实生产数据能够直接承接为设计目标，不因模拟数据做临时实现。
 
 ## 设计总则
 
-1. **插值与时空语义只存在于数据库层**。Python 和前端拿到的永远是"已完成时空计算"的结果，不做二次推导。
+1. **派生分析优先下沉数据库**。P0–P4 使用 MobilityDB/PostGIS/SQL；既有海峡通行工具仍在 Python 判定，前端本地半径查询也仍存在，不能把本原则当作全项目已完成的架构约束。
 2. **四张源表是事实源，永不改写**（ships / ship_positions / events / news）；一切时空产物都是可重建派生表。
 3. **派生表显式重建 + 版本留痕**：每次重建写入 manifest（行数、校验和、built_at），API 暴露新鲜度。
-4. **模拟与真实共用同一条管线**：差别只在接入层写入 `data_source`（字段已存在），下游模型、计算、API 完全无感。
+4. **模拟与真实共用管线是后续目标**：`data_source` 字段已存在；真实接入、身份映射、质量校验、参数适配与隔离仍需验证，不能承诺下游完全无感。
 5. 所有 Repository 层 SQL 参数化、只读——智能体工具也只允许触碰这一层。
 
 ## 1. 整体后端架构
@@ -42,9 +42,9 @@ RealAisAdapter ─→│ ships / ship_positions  │        │             回�
   - `recorded_at` BRIN——大批量真实数据为追加型时序，BRIN 极小且快；
   - `(data_source)` 或部分索引——模拟/真实分析隔离与并行期过滤。
 
-### 2.2 派生表（009+ 迁移，DDL 用裸 SQL，不走 ORM——`tgeompoint` 无法被 SQLAlchemy 建模，沿用 007 的惯例）
+### 2.2 派生表（009+ 迁移，当前用 SQL 定义扩展类型，未实现 SQLAlchemy 自定义类型映射）
 
-**`ship_tracks`（泛化版 `mobility_demo_segments`，替代它）**
+**`ship_tracks`（泛化派生表；当前与 `mobility_demo_segments` 并存，尚未替代旧试验）**
 
 | 列 | 类型 | 说明 |
 | --- | --- | --- |
@@ -54,7 +54,7 @@ RealAisAdapter ─→│ ships / ship_positions  │        │             回�
 | point_count, t_start, t_end | | 便于过滤与统计 |
 | built_at | timestamptz | 重建留痕 |
 
-GiST(track) 索引。**为什么加 `speed tfloat`**：速度着色的业务语义是"AIS 实测速度"，几何插值反推的速度在长报位间隔下是假信号；tfloat 与 tgeompoint 时间基对齐，`speedAtTimestamp` 语义天然同步。
+GiST(track) 索引。`speed tfloat` 保存源报位 speed 字段的 step 插值，避免用几何反推速度；当前源报位是模拟数据，不能称为真实 AIS 实测速度。实际查询函数以 Repository SQL 为准。
 
 **`ship_dwell`（锚地/等待识别结果）**
 
@@ -71,7 +71,7 @@ GiST(track) 索引。**为什么加 `speed tfloat`**：速度着色的业务语�
 | --- | --- |
 | ship_a_id, ship_b_id | 船舶对 |
 | period | `tstzspan`，接近发生的时间区间 |
-| min_distance_m, closest_geom | `nearestApproachDistance` 结果 |
+| min_distance_m, closest_point | 对齐采样时刻的 geography 最小距离及最近接近点；采样近似，不是连续时间精确最小值 |
 | params jsonb | 本次判定用的距离/时间阈值快照 |
 
 **`event_ship_links`（事件—船舶关联，区分两种语义）**
@@ -87,7 +87,7 @@ GiST(track) 索引。**为什么加 `speed tfloat`**：速度着色的业务语�
 
 **`track_build_manifest`**：每次重建一行（表名、行数、sha256、built_at、参数快照：gap 阈值、投影 SRID、源批次）。API 用它回答"数据有多新、按什么参数算的"。
 
-## 3. 核心时空计算方案（全部在 MobilityDB 内）
+## 3. 核心时空计算方案（MobilityDB、PostGIS 与 SQL）
 
 **轨迹构建（重建任务）**：源表按 `ship_id, recorded_at` 顺序取点 → 投影到 UTM 40N（EPSG:32640，与 007 一致）→ `tgeompoint` 线性插值组装 → 超过 `gap_minutes`（默认 90，可配）断开为新 segment → `speed` 列以 step 插值并行组装 → 单事务重建 + manifest。这套语义已在 007/验证脚本里被 Python 独立核对过（差异 <0.36s），直接沿用其正确性验收方法。
 
@@ -103,9 +103,14 @@ GiST(track) 索引。**为什么加 `speed tfloat`**：速度着色的业务语�
 | `ever` / `always` + 时空关系 | "某船是否曾进入区域""是否始终在限速区"类谓词 |
 | 时间跨度比较（`&&` 等） | 事件时间窗与轨迹覆盖判定 |
 
-**轨迹查询**：按船 + 时间窗（`atTime`）、按船 + 空间范围（`atGeometry`）、按区域找船（GiST(track) 索引 + `intersects`）三类主查询，全部由索引支撑，不走全表扫描。
+当前轨迹 API 提供按船和时间窗查询。按空间范围/区域找船是扩展方向；存在 GiST 索引不保证查询计划一定用索引，需用真实 EXPLAIN 验证，不能承诺没有全表扫描。
 
 > 实施陷阱（2026-09-19 实测）：`tstzspan` 的文本形式**经参数绑定传入会被 MobilityDB 静默错解析**（`atTime` 不报错但不裁剪），字面量内嵌则正常。所有参数化 SQL 必须用 `span(CAST(:a AS timestamptz), CAST(:b AS timestamptz))` 构造时间跨度。`scripts/verify_event_ship_links.py` 的逐条独立重算曾捕获此问题。
+>
+> 实施陷阱（2026-09-20 P4 实测，三条都写在 `build_encounters.py` 注释里）：
+> 1. `tgeompoint` 的 `&&`（stbox 相交）**不是保守空间粗筛**——真实距离 700 m 的两段轨迹因时间基不重叠/外包盒构造方式返回 false，会漏候选；粗筛只能用时间重叠 + 采样外包盒，禁用 `&&` 做空间过滤。
+> 2. `nearestApproachDistance(t, t)` 只在两条轨迹的**离散时刻并集**上求值，比真实同步最小距离系统性高估（实测 5351 m vs 独立重算 4115 m，偏差约 30–50%），不能作为权威距离；P4 最终方案是对候选对做等时长重采样对齐后逐时刻用 `geography` 距离取最小。
+> 3. **EPSG:32640 跨 UTM 带失真**：作业海域 51–57.3°E 跨 39N/40N 两个带，54°E 以西平面距离失真 >20%（51.5°E 处 683 m vs 真实 554 m）。所有度量距离一律走 `geography`（WGS84 米），32640 只用于插值几何。**遗留说明**：010（`event_ship_links`）的距离与缓冲判定在 32640 下计算，同样受跨带失真影响（50 km 尺度下相对偏差约百分之几，事件级展示可接受）；本次未改动 010，真实数据接入前应迁移到 geography 并重跑核对。
 
 ## 4. 预计算派生层原则
 
@@ -118,6 +123,8 @@ GiST(track) 索引。**为什么加 `speed tfloat`**：速度着色的业务语�
 
 - **Repository 层**（`backend/app/repositories/`）：只有参数化的 `text()` SQL 与行→dict 映射。禁止在这里拼字符串 SQL、禁止写操作。**所有路由和智能体工具共用这一层**，天然满足"智能体只读、受限、参数化"的红线。
 - **Service 层**（`backend/app/services/`）：阈值与参数默认值、结果装配（GeoJSON/响应模型）、新鲜度检查（对比 manifest 与源表 max(recorded_at)，过期则响应带 `stale: true`）、模拟/真实数据过滤策略。
+
+当前新鲜度限制：built_at 与 max(recorded_at) 的比较只是时间启发式，无法检测历史船位修改/删除或未推进最大时间的补录。完整源版本/指纹失效检测尚未实现；模拟/真实并行过滤也不能仅凭字段存在认定已验收。
 - **Router 层**：参数校验、HTTP 语义、错误体（沿用现有 422 统一格式）。
 - **前端**：渲染与着色（按后端给的速度值做色带映射）、回放动画、图表。**不做任何插值、距离、时长计算**。
 
@@ -159,11 +166,13 @@ GET /api/data-health
 
 1. **速度着色轨迹**：`track` + `speed tfloat` 同步输出；前端收到逐顶点速度，按固定色带（如 <3 / 3–8 / 8–12 / >12 kn）渐变。**简化参数化**：`level=simplified` 时由数据库做时间桶抽稀，速度取桶内代表值。
 2. **事件—船舶关联**：关联计算离线跑（事件时间±窗 × 事件位置缓冲区内轨迹 `atGeometry`），写 `event_ship_links`；`mentioned` 类由现有 `mentioned_vessels` 迁移生成。地图上高亮 = 前端拿 `observed` 关联的 ship_id 调 `/api/tracks`。**保留红线**：模拟船的 observed 关联在展示与智能体回答中标注"演示，不构成真实因果"。
-3. **锚地/等待识别**：MobilityDB 侧 `speedAtTimestamp` 逐段扫描找 `speed < threshold` 连续区间（`duration` 计长、`atGeometry` 校验位置稳定），形态特征（漂移 vs 锚泊）用位移半径区分；结果落 `ship_dwell`，前端纯展示。阈值可配、入快照。
-4. **相遇分析**：候选对 = 时间窗重叠且外包盒相交（GiST 粗筛）→ `tdwithin(track_a, track_b, d)` + `nearestApproachDistance` 细算 → `overlap_min` 过滤 → 落 `encounters`。距离/时间阈值 API 参数可配。
-5. **回放抽稀**：**原始层不动**；`level=simplified` 走另一输出：时间桶抽稀（如 30s/桶取中位点）+ 三条保留规则——桶跨 gap 不合并、速度低于阈值的密集点保留（锚泊形态不能丢）、转向率高的区段加密保留。这保证抽稀不破坏停留/相遇特征。前端回放永远消费 simplified 层，全量层仅供下载/深入分析。
+3. **锚地/等待识别（已实现）**：build_ship_dwell.py 对原始 ship_positions 按速度档和 gap 分组，再按时长和位移半径区分 at_anchor/drift/slow_transit；参数入 manifest。不是调用 speedAtTimestamp 扫描 MobilityDB 轨迹。
+4. **相遇分析（已实现）**：同来源轨迹段的时间重叠和 geography 轨迹距离粗筛 → 对齐时间网格采样 → geography 距离取最小 → 按构建阈值聚合到船对。实际 SQL 以 build_encounters.py 为准，未使用旧设计中的外包盒交集及 nearestApproachDistance 作为权威距离。period 是合格重叠区间的外包范围，不代表整段一直在距离阈值内；按窗口读取也不重算子窗口最小距离。
+5. **回放抽稀（部分实现）**：/api/tracks 已提供 simplified 时间桶输出。主回放 usePlayback.ts 仍调用原始船位接口；切换主链路及 gap/低速/转向特征保留规则待实现与验证，不能保证当前抽稀保留全部分析特征。
 
 ## 8. 模拟与真实数据的接入
+
+本节为后续设计，不是已注册 Adapter 或已完成真实 AIS 接入的说明。
 
 - **统一目标表**：两个 Adapter 都把数据写成 `ships` + `ship_positions`，`data_source` 分别打 `sim_batch_xx` / 真实供应商名。下游零感知。
 - **SimBatchAdapter**：读 `sim_ais_demo/output_news_aligned/`（handoff jsonl），即现有导入流程的包装。
@@ -172,6 +181,8 @@ GET /api/data-health
 - **身份纪律**：真实船与模拟船永不合并；`event_ship_links` 中跨来源的 observed 关联默认不生成，除非未来明确允许。
 
 ## 9. 性能与索引提前量
+
+本节为后续优化/验收目标；目前并非所有列表都强制时间窗，且未完成所述大规模压测。
 
 - 索引清单见 2.1/2.2；真实数据量上来后 `ship_positions` 可按月分区（TimescaleDB 已装，可作为选项，不强制）。
 - 所有列表型 API 强制时间窗参数；GeoJSON 输出在 Service 层截断 `max_points` 并提示降级到 simplified。
@@ -185,9 +196,9 @@ GET /api/data-health
 | P0 ✅ | 009 迁移（ship_tracks 泛化表+索引+manifest）、参数化重建任务、独立 Python 核对 | 底座先立；替代 demo 表，验证管线与规模。已验收：009 建表+索引；重建 30 船 289 段（gap 90 分钟，32640）；manifest id 1 留痕；独立核对 segmentation 全一致、41 组采样插值误差 0 m、速度 0 不符 |
 | P1 ✅ | `/api/tracks` + speed 输出 + 速度着色前端 | 展示冲击力最强，打通"派生→API→地图"全链路。已实施：GET /api/tracks/{ship_id}（full=整段几何+对齐 [[epoch,kn]] 速度序列，simplified=时间桶抽稀）；ShipInspector「速度着色」按回放窗口（15 分钟量化）取派生层，四档色带渲染；显示范围超过后端 24h 单窗上限时按 ≤24h 分片并行取回、按 segment_no 去重合并，覆盖整条显示轨迹，另可切换为仅最近 24h 着色；三分支验证与 build/check:workbench 通过（2026-09-19，分片合并 2026-09-20） |
 | P2 ✅ | `event_ship_links` 模型 + 事件/船舶双向 API + 高亮 | 项目核心叙事（事件×船）。已实施：010 迁移（mentioned/observed 分列，mentioned ship_id 恒空）；构建脚本（50 km 半径时空邻近，阈值入 manifest）；双向 API（/api/events/{id}/ships、/api/ships/{id}/events）；事件面板关联区（observed 可定位船）；独立核对逐条重算距离 ≤2 m（2026-09-19） |
-| P3 | dwell 识别 + 等待区图层 | 复用 P0 管线，纯增量 |
-| P4 | encounters 分析与查询 | 组合复杂度最高，放稳态后 |
-| P5 | 回放抽稀层 + data-health 完善 | 真实数据临近时重点强化 |
+| P3 ✅ | dwell 识别 + 等待区图层 | 复用 P0 管线，纯增量。已实施：`011_ship_dwell.sql`（kind at_anchor/drift/slow_transit、enter/leave_at、duration_min、geom 4326、displacement_radius_m）；`build_ship_dwell.py`（速度档 run + 90 分钟 gap 断开 + 时长过滤 + 位移半径分类，阈值入 manifest，默认锚泊 <3 kn/30 min、慢速 <8 kn/60 min、位移半径 926 m）；GET `/api/dwell?kind=&from=&to=`；前端图层开关「停留识别」按需加载打点（kind 配色 + tooltip）；独立核对 `verify_ship_dwell.py` 纯 Python 重算 231 行全一致（位移容忍 max(60 m, 1%)）。当前库 231 行（199 锚泊 / 21 漂航 / 11 慢速）（2026-09-20） |
+| P4 ✅ | encounters 分析与查询 | 组合复杂度最高，放稳态后。已实施：`012_encounters.sql`（一船对一行：period tstzspan、min_distance_m、closest_point 4326、overlap_minutes 累计、params 快照）；`build_encounters.py`（候选对时间重叠粗筛 → 等时长重采样对齐 → 逐时刻 geography 距离，默认 3 NM / 30 min / 60 s）；GET `/api/encounters?max_distance_nm=` + POST `/api/encounters/analyze`（受控同步重建）；前端概览「相遇分析」列表（最近距离排序、点击地图定位 + 最小距离虚线圈）与「按默认参数重新分析」按钮。独立核对 `verify_encounters.py`：136 对、最近距离最大差 19 m。当前库 136 行（默认参数 manifest id 12）（2026-09-20） |
+| P5 部分完成 | 回放抽稀层 + data-health 完善 | data-health API 和前端区块已实现；/api/tracks 的 simplified 输出已由 P1 提供，但主回放未切换，三条特征保留规则尚未实现。stale 启发式限制见 §5；真实数据接入前补强 |
 | 全程 | 每个迁移 `ON_ERROR_STOP`、HTTP 三分支验证、文档同步 | 项目既有验收纪律 |
 
 **为什么不先做相遇/锚地**：它们都站在 P0 的派生表之上，底座没立之前做任何一个都是临时实现。

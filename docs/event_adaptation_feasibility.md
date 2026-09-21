@@ -1,5 +1,7 @@
 # 旧事件功能适配：可行性研究与验证
 
+> 历史研究记录（2026-09-09），其中接口 500、150 船和时段不重叠是适配前状态，不代表当前系统。后续分类说明曾追加到本文；当前能力以 [README](../README.md) 为准，基础适配见 [阶段记录](event_adaptation_phase1.md)，后续演示关联见 [时空能力方案](mobility_capability_plan.md)。
+
 验证日期：2026-09-09。结论依据当前数据库、工作区代码、实际HTTP请求和只读原型，不以历史说明代替当前事实。
 
 ## 结论
@@ -56,7 +58,7 @@ cd D:\my_project\Hormuz
 | 功能 | 现有依赖 | 建议适配 | 可行性 |
 | --- | --- | --- | --- |
 | 事件列表/搜索 | 旧字段、强制时间 | 使用中文标题摘要；容纳全部65条；无时间显示原始文字或“时间未明确” | 高 |
-| 分类 | conflict等旧枚举 | 改为attack/blockade/passage/market/analysis/other，提供中文标签 | 高；不要顺带推断风险等级 |
+| 分类 | conflict等旧枚举 | 2026-09-21 起改为八类：military/passage/energy/freight/finance/diplomacy/civil/other（对应 Logo/ 01-08 设计），提供中文标签与图标；迁移脚本 `backend/sql/009_reclassify_event_types.sql` | 高；不要顺带推断风险等级 |
 | 时间排序 | Date.parse(occurred_at) | 明确按报道日期排序；发生时间为空单独处理，不把发布日期伪装成发生时间 | 高 |
 | 事件详情/来源 | source_name/source_url | 展示coverage_count、视角、逐篇新闻标题、媒体、日期、canonical_url | 高 |
 | 地图事件 | 每条都有坐标；仅已发生可显示 | 先绘制40个代表点；无坐标事件保留列表，禁用定位；说明代表点性质 | 高 |
