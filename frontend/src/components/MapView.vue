@@ -507,7 +507,8 @@ onMounted(() => {
     clearTimeout(harbourTimer)
     if (props.layers.harbours) harbourTimer = setTimeout(loadHarbours, 350)
   })
-  map.on('zoomend', () => { scheduleShips(); scheduleEvents() })
+  map.on('zoomend', () => { eventManager.setZoom(map!.getZoom()); scheduleShips(); scheduleEvents() })
+  map.on('popupclose', () => { eventManager.onPopupClosed(); scheduleEvents() })
   map.on('click', (e: L.LeafletMouseEvent) => {
     if (props.picking)
       emit('pickCenter', { latitude: e.latlng.lat, longitude: e.latlng.lng })

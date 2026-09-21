@@ -12,6 +12,7 @@ import {
   type ViewBounds,
 } from './domain/maritime'
 import { localWorkbench } from './services/workbench'
+import logoUrl from './assets/logo.png'
 import MapView from './components/MapView.vue'
 import EventPanel from './components/EventPanel.vue'
 import AgentPanel from './components/AgentPanel.vue'
@@ -466,10 +467,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   <main class="workbench" :class="{ 'panel-collapsed': !panelOpen }">
     <header class="topbar">
       <div class="brand">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M4 25 16 4l12 21-12-6Z" />
-          <path d="M16 4v15M4 29h24" />
-        </svg>
+        <img class="brand-logo" :src="logoUrl" alt="" aria-hidden="true" />
         <div>
           <h1>霍尔木兹<span>海事态势分析</span></h1>
         </div>

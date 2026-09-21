@@ -1,6 +1,7 @@
 # 海事态势工作台
 
 2026-09-21 整合：P3 停留图层、P4 相遇面板和 P5 数据健康区块已有代码。用户确认 Kimi 地图渲染优化已结束；本轮重新运行 build 与 check:workbench 均通过，未重跑浏览器性能测量。优化历史测量见 [性能报告](docs/map_rendering_optimization.md)，交接边界见 [协作说明](docs/collaboration.md)。
+2026-09-21 UI 优化：顶栏接入项目 Logo（Logo/项目logo.png 压缩副本 frontend/src/assets/logo.png）；事件图标改为半透明毛玻璃圆底（去除纯白底板），屏幕显示尺寸基本固定、极端缩放级别仅 ±20% 微调；点击事件图标改为在图标附近弹出轻量信息卡（类型/标题/时间/摘要 + 查看详情），点击空白处关闭、切换事件即切换卡片，「查看详情」再打开右侧侧边栏。范围仅限前端展示与地图交互，未改数据契约。
 
 文档核对：2026-09-20，按当前前端代码核对，本次未重跑构建或浏览器验收；2026-09-19 增补 P1/P2 派生层前端能力（速度着色、事件×船舶关联）。全项目状态见 [README](README.md)，智能体契约与接入记录见 [智能体接入](docs/agent_integration.md)。
 
@@ -13,6 +14,7 @@
 | 回放 | 多日数据分窗加载，单窗最多24小时；5分钟展示步长，使用当前时刻之前最近报位，不插值；支持暂停、倍速和跳转 |
 | 时间与主题 | 默认 UTC，可切换 UTC+8；深浅主题；分享 URL 保存视图、选择和回放等状态，不上传数据库 |
 | 新闻事件 | 按类型和报道日期浏览，查看关联报道和来源；有代表点时定位，缺坐标时保持列表可读 |
+| 品牌与事件交互 | 顶栏项目 Logo；事件图标半透明毛玻璃圆底（无纯白底板）、屏幕尺寸基本固定（极端缩放 ±20% 微调）；点击事件图标在图标附近弹出信息卡（类型、标题、时间、摘要 + 查看详情），点空白处关闭、点其他事件切换，查看详情再开右侧侧边栏 |
 | 区域查询 | 浏览器球面距离近似，海里为单位，仅查询当前模拟船舶快照；不是后端 PostGIS 结果 |
 | 模拟围栏 | 查询圆可显示回放步进间的进入/离开提示，仅本次会话有效，不检测两个采样之间的真实穿越 |
 | 停留试验入口 | 打开独立 MobilityDB 页面，固定区域及前后窗口；不是主地图双屏分析 |
@@ -41,7 +43,7 @@
 | frontend/src/App.vue | 选择、面板、回放、图层、分享与区域状态 |
 | frontend/src/api.ts | 后端请求、响应类型、事件展示字段适配 |
 | frontend/src/composables/usePlayback.ts | 时间范围加载及最近报位回放 |
-| frontend/src/components/MapView.vue | 地图对象、船位、轨迹（含派生层速度着色渲染）、事件代表点和参考图层 |
+| frontend/src/components/MapView.vue | 地图对象、船位、轨迹（含派生层速度着色渲染）、事件代表点、就地信息卡与参考图层 |
 | frontend/src/components/EventPanel.vue | 事件筛选、详情、关联报道与事件×船舶关联区 |
 | frontend/src/components/ShipInspector.vue | 船舶详情、航速曲线与派生层速度着色开关 |
 | frontend/src/components/WorkspaceTools.vue | 图层与本地区域查询 |
@@ -67,4 +69,4 @@ npm run build
 npm run check:workbench
 ```
 
-智能体历史验收记录（原标注日期晚于本次文档核对日，实际验收日期待核对；不代表本次重新验证）：本地提交前以上两项已通过。契约 v3：npm run build 与 npm run check:workbench 通过；浏览器端到端联调通过（多轮追问渲染两轮、事件结果与定位按钮渲染、定位后选中船、控制台无未处理错误）；历史浏览器记录见 sim_ais_demo/output_news_aligned/api_startup_report.json，不等于完整端到端覆盖。2026-09-19 P1/P2：npm run build 与 npm run check:workbench 通过；无头 Chrome 端到端验证通过——事件关联区渲染（observed/mentioned 分列）、关联船定位选中、速度着色轨迹与图例渲染均正常，控制台无错误；截图为本地临时产物（screenshots/，不入库）。
+2026-09-21 UI 优化（品牌 Logo、事件图标半透明化与屏幕固定尺寸、事件就地信息卡）：npm run build 与 npm run check:workbench 通过；无头 Chrome 端到端验证通过——Logo 渲染、点击事件图标就地弹出信息卡（类型/标题/时间/摘要/查看详情）、「查看详情」打开右侧事件面板并关闭信息卡、选中高亮正常，控制台无错误；截图为本地临时产物（screenshots/，不入库）。智能体历史验收记录（原标注日期晚于本次文档核对日，实际验收日期待核对；不代表本次重新验证）：本地提交前以上两项已通过。契约 v3：npm run build 与 npm run check:workbench 通过；浏览器端到端联调通过（多轮追问渲染两轮、事件结果与定位按钮渲染、定位后选中船、控制台无未处理错误）；历史浏览器记录见 sim_ais_demo/output_news_aligned/api_startup_report.json，不等于完整端到端覆盖。2026-09-19 P1/P2：npm run build 与 npm run check:workbench 通过；无头 Chrome 端到端验证通过——事件关联区渲染（observed/mentioned 分列）、关联船定位选中、速度着色轨迹与图例渲染均正常，控制台无错误；截图为本地临时产物（screenshots/，不入库）。
