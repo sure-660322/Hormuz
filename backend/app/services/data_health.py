@@ -27,7 +27,9 @@ def get_data_health(db: Session) -> dict:
             "table": row["table_name"],
             "rows": row["row_count"],
             "built_at": row["built_at"],
-            "stale": latest_source_end is not None and row["built_at"] < latest_source_end,
+            # 无源报位时间基准时 stale 不可判定，必须为 None；
+            # 缺数据不能回答成「未过期」（stale=false）
+            "stale": None if latest_source_end is None else row["built_at"] < latest_source_end,
             "params": params,
         })
     built_tables = {row["table"] for row in derived}
