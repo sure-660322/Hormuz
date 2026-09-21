@@ -1,6 +1,6 @@
 # query_analytics 受限 Text-to-SQL 契约（SQL-01）
 
-> 文档状态：**SQL-01 已完成最终安全评审**（2026-09-21，分支 `kimi/ag01-sql01-contract`；R-01～R-39 见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)）。**query_analytics 尚未实现，本文只冻结契约，不含任何实现代码。** 实现任务为 SQL-02～SQL-06，见 [agent_development_plan.md](agent_development_plan.md)；实现完成前不得把 query_analytics 写成已注册能力。
+> 文档状态：**SQL-01 已完成最终安全评审**（2026-09-21，分支 `kimi/ag01-sql01-contract`；R-01～R-39 见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)）。SQL-02 数据库边界与 SQL-03 离线 AST 校验器已验证，但 SQL-04 执行器和 SQL-05 工具注册尚未实现；**query_analytics 仍不可用且默认关闭。** 实现进度见 [agent_development_plan.md](agent_development_plan.md)，SQL-03 证据见 [query_analytics_sql03.md](query_analytics_sql03.md)。
 > 问题样例见 [agent_question_matrix.md](agent_question_matrix.md)；当前 v3 运行契约见 [agent_integration.md](agent_integration.md)。
 
 ## 1. 目标与非目标
@@ -74,7 +74,7 @@
 ### 2.3 参数与规范化执行规则（评审冻结，R-27 强化）
 
 - 模型只允许提交命名绑定参数，不允许提交已插值的 SQL。
-- **固定解析器（冻结）**：SQL 解析器、其版本与 PostgreSQL 方言在 SQL-03 启动时锁定（候选 SQLGlot，最终库与版本号写入实现文档并与本契约互相引用），并与数据库主版本匹配；解析器不兼容的语法默认拒绝，不得为通过查询临时换解析器。
+- **固定解析器（冻结）**：SQL-03 已锁定 SQLGlot `30.18.0`、`postgres` 方言，目标数据库主版本为 PostgreSQL 17；版本不一致或解析器不兼容的语法默认拒绝，不得为通过查询临时换解析器。实现与离线验证见 [SQL-03 说明](query_analytics_sql03.md)。
 - **禁止手写字符串替换式 tokenizer**：不得用正则或字符串替换预处理 SQL（识别 `:name`、剥离注释、改写字面量等一律禁止）。参数占位符由上述固定解析器的词法/语法阶段识别为占位符节点，词法门与参数校验在同一解析产物上进行。
 - **校验与执行的唯一对应（冻结）**：校验链为「模型 SQL → 固定解析器解析（失败=可纠错一次的语法错误）→ 参数绑定校验 → AST 全树校验 → **从已通过校验的 AST 序列化生成规范化 SQL** → 执行器只执行这份规范化 SQL」。校验对象与执行对象是同一份 AST 产物，不存在「校验的是 A、数据库执行的是 B」；任何参数标记规范化、语法修复、LIMIT 注入或其他改写完成后，都视为一条**新的 SQL**，必须重新通过完整校验链（词法门 → 参数 → AST → 权限 → 限额）才能执行。
 
