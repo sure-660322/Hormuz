@@ -13,6 +13,7 @@ from typing import Any, Callable
 from openai import APITimeoutError
 from sqlalchemy.orm import Session
 
+from backend.app.services import data_health as health_service
 from backend.app.services.agent.config import (
     DEFAULT_CLOSURE_AT,
     DEFAULT_CLOSURE_SOURCE,
@@ -44,6 +45,15 @@ PASSAGE_RULE = (
     "口径出处 sim_ais_demo/tools/verify_news_alignment.py"
 )
 BATCH_DESCRIPTION = "当前教学模拟批次 sim_ais_demo/output_news_aligned（ship_data_source=simulation）"
+
+# get_data_health 随结果返回的固定限制（AG-02）：stale 只是时间启发式，
+# 不能包装成完整数据一致性证明；来源缺失不等于真实数量为零；工具只读。
+DATA_HEALTH_LIMITATIONS = [
+    "stale 仅为时间启发式（派生层 built_at 早于最新源报位），不检测历史数据更正或删除",
+    "stale=false 不证明历史数据未被修改",
+    "来源列表未包含的来源表示该来源未导入或无记录，不能解释为真实数量为零",
+    "本工具只读：不触发迁移、数据导入或派生层重建",
+]
 
 
 class AgentTimeoutError(RuntimeError):
@@ -131,6 +141,14 @@ def _run_event_context(db: Session, args: dict, closure_at: datetime, end_at: da
         start_at=closure_at,
         end_at=end_at,
     )
+
+
+def _run_data_health(db: Session, args: dict, closure_at: datetime, end_at: datetime):
+    if args:
+        raise ValueError("get_data_health 不接受参数")
+    # 复用 P5 /api/data-health 的服务与 repository，不重写数据健康算法
+    result = health_service.get_data_health(db)
+    return {**result, "limitations": list(DATA_HEALTH_LIMITATIONS)}
 
 
 TOOL_REGISTRY: dict[str, AgentTool] = {
@@ -255,6 +273,18 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
             windowed=True,
             execute=_run_event_context,
         ),
+        AgentTool(
+            name="get_data_health",
+            description=(
+                "只读查询数据健康：各 data_source 的报位数/船数/覆盖区间/中位间隔，"
+                "以及 ship_tracks/ship_dwell/encounters/event_ship_links 四张派生表的"
+                "行数、构建时间、构建参数和 stale 状态（stale 仅为时间启发式）；"
+                "不触发迁移、导入或派生层重建"
+            ),
+            parameters={"type": "object", "properties": {}},
+            windowed=False,
+            execute=_run_data_health,
+        ),
     ]
 }
 
@@ -283,6 +313,10 @@ SYSTEM_PROMPT = f"""你是霍尔木兹海峡船舶回放教学项目的问答助
    - get_ship_track：查询指定船 ID 在窗口内的轨迹报位。轨迹问题先用 search_ships 拿 ship_id 再调用。
    - get_event_context：按事件 ID 或关键字查询新闻事件及关联真实报道。任何新闻/事件问题必须调用它；
      回答事件时保留报道来源与链接，不补充报道没有的结论。
+   - get_data_health：无参数，查询数据健康（各来源覆盖统计与四张派生表的构建状态/stale）。
+     数据健康、覆盖范围、派生层新旧类问题必须调用它。stale 只是时间启发式：
+     stale=true 表示派生层早于最新源报位、需要重建；stale=false 不证明历史数据未被修改；
+     来源列表缺失表示该来源未导入，不能答成真实数量为零；该工具只读，不触发任何重建。
 3. 工作方式（必须遵守）：回答任何数据问题前必须先调用相应工具；回答必须完全基于工具返回的
    结果（船只 ID、名称、数量、证据编号 P1…、事件 ID、story_id），不自行计算或编造。
    不得仅凭对话历史中的信息回答数据问题——即使之前的回答里给过船 ID 或事件结论，

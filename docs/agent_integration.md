@@ -60,6 +60,14 @@ history 可选，为此前对话的消息列表（role 限 user/assistant，cont
 | get_ship_track | ship_id（必填）, start_at, end_at | 单船窗口内全部轨迹报位（时间/经纬度/航速/航向）；时间缺省用默认封锁窗口 |
 | get_event_context | event_id 或 keyword（二选一）, start_at, end_at | 新闻聚合事件及关联真实报道；事件是真实新闻数据，与模拟船相互独立，不得按船名关联 |
 
+2026-09-21（分支 `kimi/agent-data-health`）新增第五个只读工具 `get_data_health`（AG-02，无参数）：
+
+| 工具 | 参数 | 说明 |
+| --- | --- | --- |
+| get_data_health | 无 | 复用 P5 /api/data-health 服务：各 data_source 报位数/船数/覆盖区间/中位间隔 + 四张派生表行数/built_at/params/stale（含未构建标记）；stale 仅为时间启发式，stale=false 不证明历史数据未被修改；来源缺失表示未导入，不得解释为真实数量为零；工具只读，不触发迁移、导入或派生层重建。派生层无源时间基准时 stale 返回 null（不可判定），不报 false |
+
+AG-02 离线自动测试 7 项通过（backend/tests/test_agent_data_health.py：正常、来源缺数据、派生层未构建、查询失败映射 DATA_QUERY_FAILED、模型选择工具、工具结果进入最终响应、全流程无数据库写入）；真实模型联调尚未重跑，状态为「已实现待验证」。服务侧同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。
+
 时间窗语义：请求显式提供 closure_at/end_at 时以请求为准（模型自拟时间参数忽略）；否则用模型在工具参数里给的时间，缺省回退默认封锁时刻 + 24 小时窗口。search_ships 不带时间窗。
 
 ```text
