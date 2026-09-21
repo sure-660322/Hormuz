@@ -1,6 +1,6 @@
 # 智能体下一阶段开发任务
 
-更新：2026-09-21。本文是后续任务的统一计划入口；当前实现契约见 [agent_integration.md](agent_integration.md)，全项目摘要见 [README](../README.md)，多会话操作见 [collaboration.md](collaboration.md)。本文新增的工具和 SQL 链路均未实现。
+更新：2026-09-21。本文是后续任务的统一计划入口；当前实现契约见 [agent_integration.md](agent_integration.md)，全项目摘要见 [README](../README.md)，多会话操作见 [collaboration.md](collaboration.md)。本文新增的工具和 SQL 链路均未实现；AG-01 / SQL-01 的需求与契约文档已交付待评审（见下表），不等于工具已实现。
 
 ## 已确定的方向与当前基线
 
@@ -20,12 +20,12 @@ Kimi/ChatGPT 可整理脱敏材料、案例和评审意见；具备本地仓库�
 | 编号 | 交付范围 | 建议负责人 | 依赖 / 当前状态 |
 | --- | --- | --- | --- |
 | AG-00 | 基线归属、文档整理、分组验收与提交交接 | Codex + 各在途负责人 | 进行中：Kimi 已结束，成果整理及有限回归完成；交接包重新导出与独立空库验收仍阻塞 |
-| AG-01 | 问题—能力矩阵，正常/澄清/拒绝/无数据案例 | Kimi 或 ChatGPT；整合者核对 | 基于已知契约可先整理；待开始 |
+| AG-01 | 问题—能力矩阵，正常/澄清/拒绝/无数据案例 | Kimi 或 ChatGPT；整合者核对 | **已实现待评审**（2026-09-21，Kimi，worktree `D:/my_project/Hormuz-kimi-ag01`，分支 `kimi/ag01-sql01-contract`，基线 d49a606，交付 4d64755）：[agent_question_matrix.md](agent_question_matrix.md) 共 56 条例、覆盖六分类与全部必覆盖边界；纯文档无代码，静态自检（数量、分类、链接）通过，未跑业务测试；待项目负责人评审与整合者核对 |
 | AG-02 | get_data_health 只读工具 | Kimi Code 或 Codex | AG-00/01；待开始 |
 | AG-03 | query_ship_dwell，只读查询既有派生结果 | Kimi Code 或 Codex | AG-00/01；待开始 |
 | AG-04 | query_encounters，只读，保留参数和覆盖限制 | Kimi Code 或 Codex | AG-00/01；待开始 |
 | AG-05 | 事件—船舶关联工具，mentioned/observed 分列 | Kimi 草拟语义，Codex 整合 | AG-00/01；待开始 |
-| SQL-01 | 固定输入输出、目录、白名单和错误/澄清契约 | Kimi/ChatGPT 草拟，Codex 核对 | AG-01；待开始 |
+| SQL-01 | 固定输入输出、目录、白名单和错误/澄清契约 | Kimi/ChatGPT 草拟，Codex 核对 | **已实现待评审**（2026-09-21，Kimi，同上 worktree/分支，基线 d49a606，交付 4d64755）：[query_analytics_contract.md](query_analytics_contract.md) 冻结输入结构、参数白名单、首批 agent_data 视图目录、返回结构（columns/rows/returned_row_count/truncated/source/limitations/query_id）、七态状态机、行/字节/超时限额、纠错一次+重校验、安全拒绝不重试、关闭即关不降级等条款；纯契约未实现代码，静态自检通过；待 Codex 核对与项目负责人决定限额初值、首批 JOIN 白名单 |
 | SQL-02 | 语义视图、独立只读角色、配置示例和独立库验收 | Codex | SQL-01；待开始 |
 | SQL-03 | AST 策略校验器和离线攻击用例 | Codex；Kimi 补充测试样例 | SQL-01；待开始 |
 | SQL-04 | 独立只读执行器、超时、结果限制及审计 | Codex | SQL-02/03；待开始 |
