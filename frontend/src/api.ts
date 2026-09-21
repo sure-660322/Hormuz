@@ -371,10 +371,43 @@ export interface AgentToolShipTrackResult {
   coverage_end: string | null
 }
 
+// AG-03 query_ship_dwell 的结构化结果（字段见 docs/agent_tool_dwell.md）
+export interface AgentToolDwellEntry {
+  ship_id: number
+  ship_name: string
+  mmsi: string
+  ship_type: string
+  dwell_no: number
+  kind: string  // at_anchor / drift / slow_transit
+  enter_at: string
+  leave_at: string
+  duration_min: number
+  displacement_radius_m: number
+  max_speed_kn: number
+  point_count: number
+  center: { lng: number | null; lat: number | null }
+  is_simulated: boolean
+}
+
+export interface AgentToolDwellResult {
+  status: string  // ok / no_data / not_built
+  kind: string | null
+  window: [string, string] | null
+  dwells: AgentToolDwellEntry[]
+  returned_count: number
+  matched_count: number
+  truncated: boolean
+  params: Record<string, unknown> | null
+  built_at: string | null
+  stale: boolean | null
+  limitations: string[]
+}
+
 export type AgentToolResult =
   | AgentToolEventContextResult
   | AgentToolShipSearchResult
   | AgentToolShipTrackResult
+  | AgentToolDwellResult
   | Record<string, unknown>
 
 export interface AgentErrorDetail {
