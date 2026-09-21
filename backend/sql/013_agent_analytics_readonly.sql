@@ -120,13 +120,20 @@ COMMENT ON VIEW agent_data.v_news IS
 
 RESET ROLE;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA agent_data FROM PUBLIC;
+-- Close privileges on every current object before granting the catalog views.
+-- This also removes stale direct grants left by an earlier deployment.
+REVOKE ALL ON ALL TABLES IN SCHEMA agent_data
+    FROM PUBLIC, agent_reader, agent_reader_login;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA agent_data
+    FROM PUBLIC, agent_reader, agent_reader_login;
 GRANT SELECT ON agent_data.v_ships, agent_data.v_events, agent_data.v_news
     TO agent_reader;
 
 -- Future objects remain closed until a reviewed migration grants them.
 ALTER DEFAULT PRIVILEGES FOR ROLE agent_view_owner IN SCHEMA agent_data
     REVOKE ALL ON TABLES FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE agent_view_owner IN SCHEMA agent_data
+    REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 COMMIT;
 

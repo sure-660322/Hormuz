@@ -6,7 +6,7 @@
 
 - `backend/sql/013_agent_analytics_readonly.sql`：创建 `agent_data.v_ships`、`agent_data.v_events`、`agent_data.v_news`，以及 `agent_view_owner`、`agent_reader`、`agent_reader_login` 三个最小权限角色。
 - `backend/app/query_analytics_catalog_v1.json`：catalog v1，记录字段顺序、PostgreSQL 类型、nullable、语义说明、数据范围、限制、单视图行数上限、时间条件要求、允许 JOIN 和三个视图定义哈希。
-- `scripts/verify_agent_analytics_readonly.ps1`：自动创建无主机端口的一次性 PostgreSQL 17，加载 008 中四张源表的实际定义及固定 fixture，重复执行 013，并完成允许/拒绝、角色和 catalog 一致性验证；结束后自动删除容器。
+- `scripts/verify_agent_analytics_readonly.ps1`：自动创建无主机端口的一次性 PostgreSQL 17，加载 008 中四张源表的实际定义及固定 fixture，重复执行 013，并完成允许/拒绝、角色、catalog 一致性及额外对象漂移验证；结束后自动删除容器。
 - `.env.example`：只提供独立只读连接的占位配置，功能开关保持 `AGENT_QUERY_ENABLED=false`；密码不进入 Git，迁移也不设置密码。
 
 `agent_reader_login` 通过唯一成员关系继承 `agent_reader` 的读取权限，默认事务只读，`search_path=pg_catalog`，连接上限 4，`statement_timeout=5s`、`lock_timeout=1s`、`idle_in_transaction_session_timeout=5s`。视图由不可登录的 `agent_view_owner` 持有；读取角色不拥有视图或业务表。
@@ -31,6 +31,7 @@ PostgreSQL 的数据库 TEMP 和 `public` schema 权限可通过 `PUBLIC` 继承
 - 从 `PUBLIC` 撤销 `public` schema 的全部权限；
 - 只向 `agent_view_owner` 明确授予 `public` schema USAGE 和底表必要字段的 SELECT；
 - 只向 `agent_reader` 授予 `agent_data` USAGE 和三个批准视图的 SELECT。
+- 每次执行先撤销 `agent_data` 所有现存表和函数对 `PUBLIC`、`agent_reader`、`agent_reader_login` 的权限，再授权三个批准视图；同时关闭视图 owner 新建函数的默认 PUBLIC EXECUTE。
 
 这是目标数据库范围的权限变化。部署到既有数据库前，DBA 必须盘点其他业务角色是否依赖这些默认权限；如确有需要，只向明确角色恢复最小权限，不能恢复给 `PUBLIC`。本轮没有对任何共享或当前项目数据库执行 013。
 
@@ -44,7 +45,7 @@ PostgreSQL 的数据库 TEMP 和 `public` schema 权限可通过 `PUBLIC` 继承
 
 验证环境为脚本新建的一次性容器和数据库 `hormuz_sql02_verify`，使用官方 `postgres:17` 镜像 digest `sha256:f4c66b820c6f974249089d3d16d86a3698eae11e8746eb6644b2271031e91232`。容器未映射主机端口；测试结构直接截取受版本控制的 008 四张源表定义，跳过与 SQL-02 无关的 PostGIS/MobilityDB 派生部分；fixture 为 1 艘模拟船、1 条模拟船位、1 个事件和 1 条新闻。
 
-结果：`PASS: SQL-02 isolated verification completed (48 checks).`
+结果：`PASS: SQL-02 isolated verification completed (56 checks).`
 
 已验证：
 
@@ -56,6 +57,7 @@ PostgreSQL 的数据库 TEMP 和 `public` schema 权限可通过 `PUBLIC` 继承
 - `SET ROLE agent_view_owner` 和切换到管理员角色均被拒绝；
 - 登录角色有且仅有 `agent_data` schema USAGE，无 `public` USAGE 和数据库 TEMP；
 - catalog 的视图存在性、owner、字段顺序、类型、nullable 和定义哈希均与数据库一致；人为篡改一个哈希时验证器能够检测漂移并失败。
+- 注入额外表和函数并授予旧权限后，重复执行 013 会清除读取角色的访问；catalog 验证器同时拒绝额外 relation/function 对象。
 
 ## 仍未实现或未验证
 

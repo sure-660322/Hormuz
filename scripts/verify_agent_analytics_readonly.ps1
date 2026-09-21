@@ -49,6 +49,32 @@ function Get-ViewHash([string]$ViewName) {
 
 function Compare-Catalog($Catalog) {
     $errors = [System.Collections.Generic.List[string]]::new()
+    $expectedViews = @($Catalog.views | ForEach-Object { $_.name } | Sort-Object)
+    $relationResult = Invoke-Psql $admin @"
+SELECT n.nspname || '.' || c.relname
+FROM pg_class AS c
+JOIN pg_namespace AS n ON n.oid = c.relnamespace
+WHERE n.nspname = 'agent_data'
+  AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+ORDER BY 1;
+"@
+    if ($relationResult.ExitCode -ne 0) {
+        $errors.Add('agent_data: could not read relation inventory')
+    }
+    elseif ((@($relationResult.Output) -join "`n") -ne ($expectedViews -join "`n")) {
+        $errors.Add("agent_data: relation inventory is not exactly the three catalog views")
+    }
+
+    $functionResult = Invoke-Psql $admin @"
+SELECT count(*)
+FROM pg_proc AS p
+JOIN pg_namespace AS n ON n.oid = p.pronamespace
+WHERE n.nspname = 'agent_data';
+"@
+    if ($functionResult.ExitCode -ne 0 -or (@($functionResult.Output) -join '').Trim() -ne '0') {
+        $errors.Add('agent_data: custom functions are not allowed in catalog v1')
+    }
+
     foreach ($view in $Catalog.views) {
         $ownerResult = Invoke-Psql $admin "SELECT pg_get_userbyid(c.relowner) FROM pg_class c WHERE c.oid = '$($view.name)'::regclass;"
         if ($ownerResult.ExitCode -ne 0 -or ($ownerResult.Output -join '').Trim() -ne $view.owner) {
@@ -227,6 +253,22 @@ SELECT has_schema_privilege('agent_reader_login', 'agent_data', 'USAGE'),
     $driftCatalog.views[0].definition_sha256 = '0' * 64
     $driftErrors = @(Compare-Catalog $driftCatalog)
     Assert-True ($driftErrors.Count -gt 0) 'catalog validator detects a definition-hash drift'
+
+    $extraObjectSql = @"
+CREATE TABLE agent_data.extra_secret (value text);
+INSERT INTO agent_data.extra_secret VALUES ('blocked');
+GRANT SELECT ON agent_data.extra_secret TO agent_reader;
+CREATE FUNCTION agent_data.extra_function() RETURNS text
+LANGUAGE sql AS 'SELECT ''blocked''::text';
+"@
+    Assert-PsqlSuccess $admin $extraObjectSql 'extra relation and function drift fixture created' | Out-Null
+    $migrationOutput = Get-Content -Raw -LiteralPath $migrationFile | & docker exec -i $container psql -X -v ON_ERROR_STOP=1 -U $admin -d $database 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "FAIL: migration 013 closes drift-object privileges`n$($migrationOutput -join [Environment]::NewLine)" }
+    $checks.Add('migration 013 closes privileges on pre-existing agent_data objects')
+    Assert-PsqlDenied 'SELECT value FROM agent_data.extra_secret;' 'reader cannot retain a direct grant on an extra agent_data relation'
+    Assert-PsqlDenied 'SELECT agent_data.extra_function();' 'reader cannot execute an extra agent_data function through PUBLIC'
+    $objectDriftErrors = @(Compare-Catalog $catalog)
+    Assert-True ($objectDriftErrors.Count -ge 2) 'catalog validator rejects extra relations and functions'
 
     Write-Host "PASS: SQL-02 isolated verification completed ($($checks.Count) checks)."
     Write-Host "Container: $container (no host port; isolated database $database)"
