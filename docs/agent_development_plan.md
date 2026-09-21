@@ -4,10 +4,10 @@
 
 ## 已确定的方向与当前基线
 
-- 保留现有四个工具：query_strait_passages、search_ships、get_ship_track、get_event_context。
+- 保留原有四个工具：query_strait_passages、search_ships、get_ship_track、get_event_context；AG-02 已新增第五个只读工具 get_data_health。
 - 沿用现有模型 API 和工具循环，暂不引入 LangChain/LangGraph。运行时仍使用当前 DeepSeek；Kimi、ChatGPT、Codex 是开发协作者，无需作为多个模型接入应用。
 - 一个模型选择 query_analytics 并生成 SQL/参数，后端确定性校验和只读执行，同一模型根据结果回答。
-- 后端已有 data-health、dwell、encounters、event links 业务能力，尚未注册为智能体工具。相遇 POST /api/encounters/analyze 会写入派生表，禁止接入只读智能体。
+- 后端已有 data-health、dwell、encounters、event links 业务能力；data-health 已通过 AG-02 注册为智能体只读工具，后三者仍未注册。相遇 POST /api/encounters/analyze 会写入派生表，禁止接入只读智能体。
 - 当前 v3 的 history、结果结构和默认封锁窗口偏向通行查询。新增统计工具前要设计独立查询范围，不能给所有新闻统计强加封锁后 24 小时；新增查询澄清不能伪装成零结果。
 - 保留「模拟船位 / 真实报道 / 模拟假设」边界。来源标识、结果 ID、覆盖/截断说明由后端提供。
 
@@ -21,7 +21,7 @@ Kimi/ChatGPT 可整理脱敏材料、案例和评审意见；具备本地仓库�
 | --- | --- | --- | --- |
 | AG-00 | 基线归属、文档整理、分组验收与提交交接 | Codex + 各在途负责人 | 进行中：Kimi 已结束，成果整理及有限回归完成；交接包重新导出与独立空库验收仍阻塞 |
 | AG-01 | 问题—能力矩阵，正常/澄清/拒绝/无数据案例 | Kimi 或 ChatGPT；整合者核对 | **已评审通过**（2026-09-21，分支 `kimi/ag01-sql01-contract`）：[agent_question_matrix.md](agent_question_matrix.md) 共 56 条例（existing_tool 8 / new_deterministic_tool 11 / text_to_sql 9 / clarification 8 / refuse 7 / non_data_question 8 / deferred 5）；R-01～R-39 评审闭环见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)。这是需求与验收基线，不表示对应工具均已注册。 |
-| AG-02 | get_data_health 只读工具 | Kimi Code 或 Codex | AG-00/01；待开始 |
+| AG-02 | get_data_health 只读工具 | Kimi Code 或 Codex | **已实现待真实模型验证**（2026-09-21，提交 `1c98c7f`）：复用 data_health 服务，无参数、只读、不触发重建；正常、来源缺失、未构建、查询失败、工具选择、响应契约和无写入共 7 项离线测试通过。真实模型联调未重跑。 |
 | AG-03 | query_ship_dwell，只读查询既有派生结果 | Kimi Code 或 Codex | AG-00/01；待开始 |
 | AG-04 | query_encounters，只读，保留参数和覆盖限制 | Kimi Code 或 Codex | AG-00/01；待开始 |
 | AG-05 | 事件—船舶关联工具，mentioned/observed 分列 | Kimi 草拟语义，Codex 整合 | AG-00/01；待开始 |

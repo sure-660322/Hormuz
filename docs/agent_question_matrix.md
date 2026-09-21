@@ -11,7 +11,7 @@
 > - 统计数量以数据库实际查询为准，不由模型编造；批次快照数字（如 30 艘船、9,354 条报位）仅为当前批次参考，回答中须注明批次。
 > - 分类取值：existing_tool / new_deterministic_tool / text_to_sql / clarification / refuse / non_data_question / deferred。
 
-## 一、existing_tool（现有四个工具可直接回答）
+## 一、existing_tool（原有四个工具可直接回答）
 
 分类：existing_tool。收录标准：无需先澄清、无需新增能力、可由当前四个已注册确定性工具完整回答；需拆窗、补条件、依赖未注册工具或当前数据源无法回答的问题不得归入本分类。能力口径以 [agent_integration.md](agent_integration.md)「已实现接口与工具」及 `backend/app/services/agent/runner.py` 工具 schema 为准。
 
@@ -26,21 +26,21 @@
 | 7 | 3 月 1 日 23:00 到 3 月 2 日 02:00 这 3 个小时内有船通过海峡吗？ | query_strait_passages | closure_at=2026-03-01T23:00:00Z、end_at=2026-03-02T02:00:00Z | closure_at 在工具内为窗口起点语义（runner 兼容 start_at 别名），窗口与"封锁时刻"语义解耦；≤24h 合法 | 同 #1 | 同 #1 | 无（时间明确） | 无 | 同 #1 |
 | 8 | SIM V2 化学品船 019 是哪艘船？MMSI 是多少？ | search_ships | keyword="SIM V2 化学品船 019" | 船舶静态属性检索，无时间语义 | ship_id、MMSI/IMO/船型/船旗 | 无命中=库内无该模拟船 | 无 | 无 | 不得声称 MMSI 是真实注册信息 |
 
-## 二、new_deterministic_tool（底层能力已实现并验收，尚未注册为智能体工具）
+## 二、new_deterministic_tool（AG-02 已注册；AG-03～05 尚未注册）
 
-分类：new_deterministic_tool。对应 AG-02～AG-05。仓库核验结论：data-health、dwell、encounters、事件关联的底层 API 与派生表已实现并有 2026-09-19/20 验收记录（[mobility_capability_plan.md](mobility_capability_plan.md)、README）；**尚未注册为智能体工具**，注册前此类问题现状为 capability_unavailable，不得声称可答。工具语义以派生层口径为准，禁止模型重定义阈值。
+分类：new_deterministic_tool。对应 AG-02～AG-05。仓库核验结论：data-health、dwell、encounters、事件关联的底层 API 与派生表已实现并有 2026-09-19/20 验收记录（[mobility_capability_plan.md](mobility_capability_plan.md)、README）；其中 `get_data_health` 已由 AG-02 注册并通过离线测试，真实模型联调尚未重跑；AG-03～05 注册前仍为 capability_unavailable，不得声称可答。工具语义以派生层口径为准，禁止模型重定义阈值。
 
 | # | 用户问题 | 应调用的能力 | 所需参数 | 业务口径 | 结果证据 | 空结果解释 | 澄清条件 | 拒绝条件 | 禁止推导的结论 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 9 | 事件 evt_001 附近当时有哪些模拟船？ | query_event_ship_links（AG-05，observed；当前未注册） | event_id、link_type="observed" | observed=模拟轨迹时空邻近演示（50 km 半径口径，EPSG:32640 有跨带失真）；**工具注册前现状为不可答** | 工具注册后：ship_id、evidence、投影误差说明 | 仅当事件有时间+代表坐标、轨迹覆盖充分、关联已构建时，0 条才是有效零结果；否则 no_data/partial | 事件无坐标/时间时先说明无法计算关联 | 无 | 演示级邻近不构成真实因果；缺输入条件时不得报「附近没有模拟船」 |
-| 10 | 数据健康吗？各来源有多少报位？ | get_data_health（AG-02） | 无 | 按 data_source 的报位数/船数/覆盖区间/中位 gap + 四张派生表行数+built_at+stale | data-health 结构化结果、manifest built_at | 某来源无数据=该来源未导入；stale=true 只表示时间启发式过期 | 无 | 无 | stale 启发式不能包装成完整数据一致性证明 |
+| 10 | 数据健康吗？各来源有多少报位？ | get_data_health（AG-02，已注册） | 无 | 按 data_source 的报位数/船数/覆盖区间/中位 gap + 四张派生表行数+built_at+stale | data-health 结构化结果、manifest built_at | 某来源无数据=该来源未导入；stale=true 只表示时间启发式过期 | 无 | 无 | stale 启发式不能包装成完整数据一致性证明 |
 | 11 | 哪些船在锚地抛锚过？ | query_ship_dwell（AG-03） | kind="at_anchor"、from、to | 复用 ship_dwell 派生层（阈值入 manifest：默认 <3 kn/30 min）；不实时重算 | dwell 段（中心点/时长/位移半径/最大速度）、阈值快照、stale | 零段=派生层内无锚泊（真实零结果）；表未构建=stale/未构建需说明 | 无时间范围时默认全批次并声明 | 无 | 不得把漂移/慢速段说成锚泊；阈值由构建参数决定 |
 | 12 | 3 月 2 日那天有没有船漂航？ | query_ship_dwell（AG-03） | kind="drift"、from、to（≤24h 或分窗） | 同 #11，kind=drift | 同 #11 | 同 #11 | 「那天」按 UTC 还是本地时区不明确时澄清 | 无 | 同 #11 |
 | 13 | 这段时间内哪些船相遇过？最近有多近？ | query_encounters（AG-04） | from、to、max_distance_nm | 只读预计算 encounters；一船对一行；**max_distance_nm 只能 ≤ manifest 构建阈值（默认 3 NM）**，查询层只能缩小不能扩大覆盖 | 船对、period、min_distance_m/NM、closest_point、params 快照 | 零对=构建阈值内无相遇；请求阈值>构建阈值=能力不支持（不得返回 0） | 无 | 拒绝自动重建（重建是 POST 写操作，不接入只读智能体） | 采样近似≠连续时间精确最小值；接近≠实际交互 |
 | 14 | evt_001 事件被哪些报道提到过船名？ | query_event_ship_links（AG-05，mentioned） | event_id、link_type="mentioned" | mentioned=原文船名文本证据，ship_id 恒为空 | event_id、报道标识、船名文本 | 零条=无报道提及船名（真实零结果） | 无 | 无 | 船名提及≠该真实船与模拟船是同一实体 |
 | 15 | evt_001 事件时空上邻近哪些模拟船？ | query_event_ship_links（AG-05，observed） | event_id、link_type="observed" | 同 #9 口径 | 同 #9 | 同 #9（受数据充分性约束） | 无 | 无 | 同 #9 |
 | 16 | 反向查：SIM V2 油轮 004 被哪些事件 observed 关联？ | query_event_ship_links（AG-05，反向） | ship_id、link_type="observed"、from、to | 反向查询；mentioned 类不指向模拟船，不参与反向 | 事件列表+link_type 标注 | 仅数据充分时 0 条才是有效零结果 | 船名歧义先 search_ships 定 ID | 无 | 同 #9 |
-| 17 | 现在派生数据是不是最新的？ | get_data_health（AG-02） | 无 | 对比 built_at 与源表 max(recorded_at) 的 stale 启发式 | stale 布尔、built_at、源最大时间 | — | 无 | 无 | stale=false 不证明无历史更正/删除（启发式限制须随结果返回） |
+| 17 | 现在派生数据是不是最新的？ | get_data_health（AG-02，已注册） | 无 | 对比 built_at 与源表 max(recorded_at) 的 stale 启发式 | stale 布尔、built_at、源最大时间 | — | 无 | 无 | stale=false 不证明无历史更正/删除（启发式限制须随结果返回） |
 | 18 | 相遇分析用的什么参数？ | query_encounters（AG-04） | 无（读 params 快照） | 阈值快照入表（默认 3 NM/30 min/60 s） | params jsonb、manifest | — | 无 | 无 | 不得把构建参数说成可在查询层调整 |
 | 19 | 现在相遇表里有哪些结果？ | query_encounters（AG-04） | 无（或仅窗口过滤） | 只读查询现有预计算结果，不触发任何重建 | 现有船对列表 | 零对=现有构建参数下无相遇 | 无 | 无 | 接近≠实际交互 |
 
@@ -101,7 +101,7 @@
 | 47 | 怎么用命令行启动后端？ | 无（直接回答） | — | 以 README「本地运行」为准引用命令 | 无 | — | 无 | 无 | 不得给出未验证的新命令 |
 | 48 | 你们用了 LangChain 吗？ | 无（直接回答） | — | 未引入；为大模型 API+自定义只读工具；SQL 链路也不引入 | 无 | — | 无 | 无 | 不得暗示框架迁移已定 |
 | 49 | 现在有哪些接口可以用？ | 无（直接回答） | — | 以 README「已注册接口」表为准；遗留 nearby-events 未适配，不算可用能力 | 无 | — | 无 | 无 | 未注册/遗留路由不得列入可用能力 |
-| 50 | 这次模拟从什么时候开始、什么时候结束？ | 无（直接引用批次说明） | — | 当前批次 2026-02-26T02:43:10Z 至 2026-03-04T23:59:14Z（UTC）；无智能体工具返回全批次覆盖范围，/simulation/meta 是 HTTP 路由非智能体工具 | 无 | — | 无 | 无 | 不得把模拟时间说成真实历史时间 |
+| 50 | 这次模拟从什么时候开始、什么时候结束？ | 无（可直接引用批次说明；需核对当前数据库时可用 get_data_health） | — | 当前批次说明为 2026-02-26T02:43:10Z 至 2026-03-04T23:59:14Z（UTC）；get_data_health 可返回当前数据库各 data_source 覆盖范围，/simulation/meta 是 HTTP 路由 | 批次说明；需要实时核对时使用 data-health 结构化结果 | — | 无 | 无 | 不得把模拟时间说成真实历史时间 |
 | 51 | 现在海上有多少艘船？（指实时） | 无（直接回答） | — | 数据库为历史模拟批次，无实时数据；可改问批次最后时刻快照 | 无 | — | 澄清：「实时」不可得，可改问批次末帧 | 无 | 不得把模拟末帧说成当前真实海上态势 |
 
 ## 七、deferred（能力/catalog 未开放，不属于安全拒绝）
