@@ -1,6 +1,6 @@
 # 智能体下一阶段开发任务
 
-更新：2026-09-21。本文是后续任务的统一计划入口；当前实现契约见 [agent_integration.md](agent_integration.md)，全项目摘要见 [README](../README.md)，多会话操作见 [collaboration.md](collaboration.md)。SQL-02 的数据库边界已经实现并完成隔离验证，但 `query_analytics` 工具链仍未实现或注册；AG-01 / SQL-01 的需求与契约文档已完成最终评审（见下表），不等于工具已实现。
+更新：2026-09-21。本文是后续任务的统一计划入口；当前实现契约见 [agent_integration.md](agent_integration.md)，全项目摘要见 [README](../README.md)，多会话操作见 [collaboration.md](collaboration.md)。SQL-02 的数据库边界和 SQL-03 的离线 AST 策略校验器已经验证，但 SQL-04 执行器与 SQL-05 工具注册尚未实现，`query_analytics` 继续保持关闭；AG-01 / SQL-01 的需求与契约文档已完成最终评审（见下表），不等于工具已可用。
 
 ## 已确定的方向与当前基线
 
@@ -27,7 +27,7 @@ Kimi/ChatGPT 可整理脱敏材料、案例和评审意见；具备本地仓库�
 | AG-05 | 事件—船舶关联工具，mentioned/observed 分列 | Kimi 草拟语义，Codex 整合 | AG-00/01；待开始 |
 | SQL-01 | 固定输入输出、目录、白名单和错误/澄清契约 | Kimi/ChatGPT 草拟，Codex 核对 | **已评审通过**（2026-09-21，分支 `kimi/ag01-sql01-contract`）：[query_analytics_contract.md](query_analytics_contract.md) 已冻结输入、正向白名单、校验与执行唯一对应、语义视图目录、只读角色、资源与并发限制、失败映射及验收边界；R-01～R-39 已闭环。纯契约无实现代码，`query_analytics` 仍未注册且默认关闭；允许进入 SQL-02，SQL-03 启动时锁定并实测解析器版本。 |
 | SQL-02 | 语义视图、独立只读角色、配置示例和独立库验收 | Codex | **已验证**（2026-09-21，worktree `D:/my_project/Hormuz-codex-sql02`，分支 `codex/sql02-agent-reader`，接续基线 `260678b`）：三视图、最小权限角色、catalog v1、`pg_get_viewdef` SHA-256 绑定和自动验证脚本已交付；在无主机端口的一次性 PostgreSQL 17 中通过 56 项允许/拒绝、角色、结构、哈希及额外对象漂移检查。未连接共享数据库；`query_analytics` 仍未实现或注册。见 [SQL-02 说明](query_analytics_sql02.md)。 |
-| SQL-03 | AST 策略校验器和离线攻击用例 | Codex；Kimi 补充测试样例 | SQL-01；待开始 |
+| SQL-03 | AST 策略校验器和离线攻击用例 | Codex；Kimi 补充测试样例 | **已验证**（2026-09-21，分支 `codex/sql03-ast-validator`，基线 `3d51a5a`）：锁定 SQLGlot 30.18.0 / `postgres`，实现 catalog v1 全树正向白名单、参数/类型/函数/JOIN/聚合/复杂度校验和同 AST 规范化；58 条允许、62 条拒绝及 9 项边界检查均通过，完整后端回归 136 项通过。纯离线，未连接数据库；SQL-04 尚未开始。见 [SQL-03 说明](query_analytics_sql03.md)。 |
 | SQL-04 | 独立只读执行器、超时、结果限制及审计 | Codex | SQL-02/03；待开始 |
 | SQL-05 | 注册 query_analytics、更新契约/前端类型和最小展示 | Codex | SQL-04；待开始 |
 | SQL-06 | 旧工具回归、SQL 正确性/安全/错误/页面验收 | Kimi 提供案例，Codex 实测 | SQL-05；待开始 |
@@ -53,7 +53,7 @@ Kimi/ChatGPT 可整理脱敏材料、案例和评审意见；具备本地仓库�
 
 **SQL-02：数据库权限先落地。** 在 backend/sql/ 选择实施时尚未占用的递增编号，建立 agent_data 视图和独立 agent_reader。不复用应用管理员连接；核对对象所有者、角色继承、PUBLIC 权限、CREATE/TEMP、函数执行权限和 search_path。角色不拥有业务对象。配置示例只含占位值。不得修改共享数据库权限影响 Kimi，先在独立测试库验收允许的读取和拒绝的写入。
 
-**SQL-03：解析成功不等于安全。** 候选 SQLGlot，固定经测试的 PostgreSQL 方言/版本；解析器不兼容的语法默认拒绝。递归检查整棵 AST，校验单语句、只读节点、视图/字段/函数/类型白名单、别名与 CTE 作用域、参数、复杂度。禁止写操作、多语句、SELECT INTO、锁、系统目录、递归及副作用函数。先做纯离线测试；建议覆盖至少 50 个允许和 50 个拒绝用例，强调攻击类别和真实预期，不凑重复数量。安全拒绝不能进入放宽策略的修复循环。
+**SQL-03：解析成功不等于安全。** 已锁定 SQLGlot 30.18.0 与 `postgres` 方言；解析器不兼容的语法默认拒绝。校验器递归检查整棵 AST，校验单语句、只读节点、视图/字段/函数/类型白名单、参数、批准 JOIN、聚合语义与复杂度，并从同一已验证 AST 生成规范化 SQL。2026-09-21 的纯离线集合覆盖 58 条允许、62 条拒绝及 9 项边界检查；未连接数据库，实际绑定与 PostgreSQL 17 执行属于 SQL-04。安全拒绝不能进入放宽策略的修复循环。
 
 **SQL-04：执行器是强制关口。** 任何入口都必须校验；执行的 SQL 必须是最终已校验版本，改写后重新校验。只读连接/事务、绑定参数、数据库 statement_timeout、较短 lock_timeout、并发限额、最大行数和字节数；LIMIT 不代表低计算成本。异常回滚并确保服务器查询取消；配置缺失时关闭 SQL 能力，不能回退管理员连接。记录请求/查询 ID、脱敏摘要或哈希、耗时、返回量和拒绝原因，不记录凭据。结果为零、截断、超时、权限失败分别表示；不把返回行数当作数据库总数。可选 EXPLAIN 只能在安全检查后执行且不带 ANALYZE，不能充当安全保证。
 
