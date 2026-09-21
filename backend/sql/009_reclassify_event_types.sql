@@ -1,0 +1,195 @@
+-- 009_reclassify_event_types.sql
+-- 按 Logo/ 八类设计（01-08）重新划分事件类别：
+--   military 军事行动与安全事件 / passage 海峡通行与航运动态 /
+--   energy 能源生产与供应 / freight 运费与航运保险 /
+--   finance 金融市场与经济影响 / diplomacy 政治外交与政策表态 /
+--   civil 民生影响与人员撤离 / other 其他
+-- 事件为逐个语义归类；已关联报道继承事件类别，未关联报道按标题关键词归类。
+-- 备份：data/db_backups/pre_category_reclass_20260921_083447/（含 rollback SQL）
+
+BEGIN;
+
+UPDATE events SET event_type = CASE event_id
+    WHEN 'evt_001' THEN 'military'
+    WHEN 'evt_002' THEN 'military'
+    WHEN 'evt_003' THEN 'military'
+    WHEN 'evt_004' THEN 'finance'
+    WHEN 'evt_005' THEN 'civil'
+    WHEN 'evt_006' THEN 'diplomacy'
+    WHEN 'evt_007' THEN 'passage'
+    WHEN 'evt_008' THEN 'military'
+    WHEN 'evt_009' THEN 'military'
+    WHEN 'evt_010' THEN 'diplomacy'
+    WHEN 'evt_011' THEN 'civil'
+    WHEN 'evt_012' THEN 'finance'
+    WHEN 'evt_013' THEN 'diplomacy'
+    WHEN 'evt_014' THEN 'military'
+    WHEN 'evt_015' THEN 'military'
+    WHEN 'evt_016' THEN 'energy'
+    WHEN 'evt_017' THEN 'energy'
+    WHEN 'evt_018' THEN 'military'
+    WHEN 'evt_019' THEN 'military'
+    WHEN 'evt_020' THEN 'finance'
+    WHEN 'evt_021' THEN 'energy'
+    WHEN 'evt_022' THEN 'diplomacy'
+    WHEN 'evt_023' THEN 'military'
+    WHEN 'evt_024' THEN 'finance'
+    WHEN 'evt_025' THEN 'military'
+    WHEN 'evt_026' THEN 'civil'
+    WHEN 'evt_027' THEN 'freight'
+    WHEN 'evt_028' THEN 'military'
+    WHEN 'evt_029' THEN 'finance'
+    WHEN 'evt_030' THEN 'diplomacy'
+    WHEN 'evt_031' THEN 'military'
+    WHEN 'evt_032' THEN 'civil'
+    WHEN 'evt_033' THEN 'finance'
+    WHEN 'evt_034' THEN 'diplomacy'
+    WHEN 'evt_035' THEN 'civil'
+    WHEN 'evt_036' THEN 'military'
+    WHEN 'evt_037' THEN 'military'
+    WHEN 'evt_038' THEN 'energy'
+    WHEN 'evt_039' THEN 'diplomacy'
+    WHEN 'evt_040' THEN 'passage'
+    WHEN 'evt_041' THEN 'military'
+    WHEN 'evt_042' THEN 'finance'
+    WHEN 'evt_043' THEN 'finance'
+    WHEN 'evt_044' THEN 'energy'
+    WHEN 'evt_045' THEN 'military'
+    WHEN 'evt_046' THEN 'military'
+    WHEN 'evt_047' THEN 'civil'
+    WHEN 'evt_048' THEN 'other'
+    WHEN 'evt_049' THEN 'freight'
+    WHEN 'evt_050' THEN 'diplomacy'
+    WHEN 'evt_051' THEN 'finance'
+    WHEN 'evt_052' THEN 'energy'
+    WHEN 'evt_053' THEN 'diplomacy'
+    WHEN 'evt_054' THEN 'military'
+    WHEN 'evt_055' THEN 'finance'
+    WHEN 'evt_056' THEN 'finance'
+    WHEN 'evt_057' THEN 'military'
+    WHEN 'evt_058' THEN 'finance'
+    WHEN 'evt_059' THEN 'diplomacy'
+    WHEN 'evt_060' THEN 'military'
+    WHEN 'evt_061' THEN 'civil'
+    WHEN 'evt_062' THEN 'civil'
+    WHEN 'evt_063' THEN 'civil'
+    WHEN 'evt_064' THEN 'military'
+    WHEN 'evt_065' THEN 'passage'
+  END
+WHERE event_id IN ('evt_001', 'evt_002', 'evt_003', 'evt_004', 'evt_005', 'evt_006', 'evt_007', 'evt_008', 'evt_009', 'evt_010', 'evt_011', 'evt_012', 'evt_013', 'evt_014', 'evt_015', 'evt_016', 'evt_017', 'evt_018', 'evt_019', 'evt_020', 'evt_021', 'evt_022', 'evt_023', 'evt_024', 'evt_025', 'evt_026', 'evt_027', 'evt_028', 'evt_029', 'evt_030', 'evt_031', 'evt_032', 'evt_033', 'evt_034', 'evt_035', 'evt_036', 'evt_037', 'evt_038', 'evt_039', 'evt_040', 'evt_041', 'evt_042', 'evt_043', 'evt_044', 'evt_045', 'evt_046', 'evt_047', 'evt_048', 'evt_049', 'evt_050', 'evt_051', 'evt_052', 'evt_053', 'evt_054', 'evt_055', 'evt_056', 'evt_057', 'evt_058', 'evt_059', 'evt_060', 'evt_061', 'evt_062', 'evt_063', 'evt_064', 'evt_065');
+
+-- 已关联报道继承所属事件的新类别
+UPDATE news n SET event_type = e.event_type
+  FROM events e WHERE n.event_id = e.id;
+
+-- 未关联报道按标题关键词归类（默认 other）
+UPDATE news SET event_type = CASE
+    WHEN story_id = '02ee40e3e03956780bd0f6c1bc18d2db81091d13f67dfcdc048263726d019e2f' THEN 'military'
+    WHEN story_id = '44ff69154df5b5cdaf043b61a8e7ee831d7d720f75db8f36326a9ff6d0718398' THEN 'military'
+    WHEN story_id = '512de6074beaa7ee9d8b358484cb3a33689349b8f9d1abed4ba9257a5732a2ca' THEN 'military'
+    WHEN story_id = '5b1e48d5b55e8f01e2f7b6fa8ddb09a790d361494ef151bcd780fc65af1aad01' THEN 'military'
+    WHEN story_id = '61db1c8af82f8169a4018514f07bd3fa788409248f3c2c951cca431eafa63b83' THEN 'military'
+    WHEN story_id = '6f36cfaca21bd5d24bb15894915f10cd59e6cc9b3308f903edfce7797615569c' THEN 'military'
+    WHEN story_id = '9075541d7b06cc17b4331b71322131ec63c8286721d0450bd6a2215657487211' THEN 'military'
+    WHEN story_id = 'b80b6d11da96bc22d9916b260124fa1bd52240a8ebd26f87903f36bd08c962af' THEN 'military'
+    WHEN story_id = 'bf224f77678b8918dbe1e9cc0f751b7f81fd848c7530dab2eefb80fbd1144623' THEN 'military'
+    WHEN story_id = 'e76102fef128169b828dc8685bda744f732a0308eab04adc1d790b41a0df9414' THEN 'military'
+    WHEN story_id = 'fa87661364fd3a1ad6d3d38ead4c6533d1430e66a9e88e1791cff7ba0ae57b3b' THEN 'military'
+    WHEN story_id = '11f1111759d620f9eca2c71dde52cd7711229008f82c10d5748db1b971ecae9a' THEN 'passage'
+    WHEN story_id = '3093701203668c6aaad2a9179363d1d6833a9bffa15a90b104f1bef2d614fa40' THEN 'passage'
+    WHEN story_id = '3dc8db4fd9cbbb7332f1cc7d873c8a51fc1ae8ac66b9bbd32dcf2e424a96e1f9' THEN 'passage'
+    WHEN story_id = '445f20a36beba56724da79d4428f1ea552d1dd89b59e3837981e3715ff045c9d' THEN 'passage'
+    WHEN story_id = '82ce88d454111dbef88111a510d9b8116a552dab41c70d45c1fc94e16c242ea7' THEN 'passage'
+    WHEN story_id = '921c8be279d6c9e8211c9881087d6f5f05a5789259dd918c5f02e89d859f872f' THEN 'passage'
+    WHEN story_id = 'c374fdd3059699680487e814455094471e842f2bd6dacb001dbf8d4b7ad41ddb' THEN 'passage'
+    WHEN story_id = 'e692db39f9e04fb6f8003b5cb3cc9086011b57877abf29a7777699d00623567f' THEN 'passage'
+    WHEN story_id = '68c53ea7e3d03c280d14c095475d81fb5daca528ac4742a1024716e55cdd998e' THEN 'finance'
+    WHEN story_id = 'd387e05d85daa6e14d915ac0e98b1e39df106afd6f77b7487fc68f39f16e9661' THEN 'finance'
+    WHEN story_id = 'eb9b22ae23342d82ff664bcc2437918c078d3db22bf49e1ab4c8065487519780' THEN 'finance'
+    WHEN story_id = '17a82d6e7a9a6011d59345ed1bd6ae803825ff8e0bba4255f6953a09e978d6c5' THEN 'diplomacy'
+    WHEN story_id = 'bc80c047efa4bc6127ac77592aae3ecbbc0a2a00f4a1dd0b221e553196c7dbac' THEN 'diplomacy'
+    WHEN story_id = '59f6010b45f94ceddbd13744c71af4eec1c14168374a4a19ea9cabbfc55482ef' THEN 'civil'
+    WHEN story_id = '0f39e8e36c083481bfa912cac4ad142330f74eb6f6008a76782da6c6dd028fcb' THEN 'other'
+    WHEN story_id = '136b0173ecdf0387545b9abe32c5b6d3382c95f451e57d251e82dc164dc78ba2' THEN 'other'
+    WHEN story_id = '1a03a6135baba5f5757c30e62dbc163eae6f2a5fc5fc66fab06050c7c95b2022' THEN 'other'
+    WHEN story_id = '1e0198d7d009e44a93c9f37c4d91929afb1374af3927805363161b9d755bfbbe' THEN 'other'
+    WHEN story_id = '1f4adefdf90fd5dccbce47ca268ca2fd80bc8672757f62462c609eafb3ce589b' THEN 'other'
+    WHEN story_id = '219eba77286ead05e4ad7e2b40f14c43b6e3f6b9b2b39908cba04579b2e6583e' THEN 'other'
+    WHEN story_id = '23a01abfb7ca55ccafa45d7b8f24149542d23b744790c5666b623af0e908235c' THEN 'other'
+    WHEN story_id = '2a71e49a66886c96ff3f7af9f11a7678e1e92cedcbf1d502b819f8f11043b431' THEN 'other'
+    WHEN story_id = '2b1bad4808e0668a48a3ac32711febb7ff96698fd3b70872285034ab6ea56356' THEN 'other'
+    WHEN story_id = '2f7f8d480fc37fe6dfb93736207d34b997bf11304dba191c4f0e3fb21466e928' THEN 'other'
+    WHEN story_id = '30b1aa88758fe154cd3f84e48c9c1e55f1142e2a216d1b05c024473da53ad651' THEN 'other'
+    WHEN story_id = '39e20eb68da9886a93a08a5c8d938a4b9ad649fdabc021f2346f56bcf172405f' THEN 'other'
+    WHEN story_id = '3aaa745df6ded597e6b14f919b5b6f141810fc56f14f5d8717ea3fdb576c45fb' THEN 'other'
+    WHEN story_id = '445dfd96f4b0b3d7dfcc35dc0a931464a2eb5304a8eb8dc495721f6548effb03' THEN 'other'
+    WHEN story_id = '47484eee98df112c932f68ebf98bd69969b7618139d98c3972f0cd553c84a250' THEN 'other'
+    WHEN story_id = '475a5da83563a7a6e820d04afbc96a7e7599badf90f225df862243d2316832b4' THEN 'other'
+    WHEN story_id = '4b3be4aaa35b33db19f3e76d0f06cc62cb90570255556b8116fed629751004e5' THEN 'other'
+    WHEN story_id = '526908844c32715306be4a02af43545d43da8c2a8465d4912e1b97aa6e9d8b62' THEN 'other'
+    WHEN story_id = '558b122f39b7995714f58b7b62d4e5ec29d45c22ececb1eb350dd42db09dce90' THEN 'other'
+    WHEN story_id = '56fae00a0f989753072584a7f66cc2c636f9d2985dc57a3fb23f0f40913cf1d6' THEN 'other'
+    WHEN story_id = '577b0b6d40a3bccd1967037fa48c49c9b1be53f2c2a55aa6cd87a77fb40fa4d6' THEN 'other'
+    WHEN story_id = '5eb314398b5186afecb099fd7ab2d25faaf7324f62e308639a5f89f3a984462a' THEN 'other'
+    WHEN story_id = '6032d4b6e7cd9e2acad1bf17df8b68c379f1496f3e65e5b254cb4a2a34eda0fa' THEN 'other'
+    WHEN story_id = '60ae58a2edd1cebdf636ac53242043d9ba9f507b21090287edc9aec577c1134d' THEN 'other'
+    WHEN story_id = '6298823e38b5992c11d49b85426ab63ea275d3d09ba2ffe7505f253c74d4cc7d' THEN 'other'
+    WHEN story_id = '68281e4a373ddc3d56433fced01e4d94c19aa0d462f6051c765e3def92fc073d' THEN 'other'
+    WHEN story_id = '6fbcdb5d7edfc66eb1ec22bb2310989e2a081c151b5e43247f822c839b1673ca' THEN 'other'
+    WHEN story_id = '7226ab274ee508e0a7dcfff1f4fe5c66558d5b142a46ef00c3708c9b2a9127af' THEN 'other'
+    WHEN story_id = '809977d2d0784b702adc7a544a0e9dfe634998dddefce6ec3ffa85351bfb0825' THEN 'other'
+    WHEN story_id = '87a6c95200b5d021815c36f1212f14ce1cf931c86a8847161af7c54cfc5d5e17' THEN 'other'
+    WHEN story_id = '8d8ab92dfb6d316f764c16cee56aebdd8d4f360907450fd1d0b7566c62d3d279' THEN 'other'
+    WHEN story_id = '944509dc6e65e5b62e3d39c6bad92a456c34dd77ae7838c7a091c07a30074247' THEN 'other'
+    WHEN story_id = '9620e5f540952738e759183146391d76a5ee106b4bde9f348d2375f064a4b9e1' THEN 'other'
+    WHEN story_id = '99d8c6fbdad9907f9485d1c1094f86cbdb3d1d56d811f4d6af7f264b28582830' THEN 'other'
+    WHEN story_id = 'a4c33ea98cfcfb1242d26f4a3f0df815fbce42bde9c2855034a53e54bc71abcf' THEN 'other'
+    WHEN story_id = 'a5e42b3f9fb29155c4fa7c6e625eecef8d37e9251c4ca8f9c2de244e44bf24a0' THEN 'other'
+    WHEN story_id = 'a934e4d89de96bdbbb2091b9d725742345c8deba4faa6d417af977817d0f3954' THEN 'other'
+    WHEN story_id = 'a9f8dfbb488661e286c87b026728001226076dd15f02a3401e9a24d5ff5cb641' THEN 'other'
+    WHEN story_id = 'aaa361de693ffc60901f9c98617cd5f0e3c21b7e8b777328a3c5a93f16da72f8' THEN 'other'
+    WHEN story_id = 'ac9c18e879652ce968330d6d46527b799dcd71dca30e4a2a310a3aba8362efaf' THEN 'other'
+    WHEN story_id = 'b35df739875436475187a8b0a380d4117c0e231c84555ab062d2680ed59a6fd5' THEN 'other'
+    WHEN story_id = 'b42fee35708d01bc0706115e1814bb8b3193610ebf6be885fded27eb144611c3' THEN 'other'
+    WHEN story_id = 'b80a681ee163cbc7478148c87415fbe0a3859caa63f1dc2c92b50bb16d308c40' THEN 'other'
+    WHEN story_id = 'ba4bd7bc896698d2352251d468f5887bdad6b20e5544554fa38960a0c4493977' THEN 'other'
+    WHEN story_id = 'bbf4e51f079edbdef7067b7290d59c56183cf19e38c79c61c46f07a0c34ef943' THEN 'other'
+    WHEN story_id = 'bbf6ada798778e1596fbe29e6c1ffe2468eb0378c25de057c844f548e25e8492' THEN 'other'
+    WHEN story_id = 'bed885906aac5bdef7bea700bbfbd3b929c8fb49dc96580e5a63585935cdf5a3' THEN 'other'
+    WHEN story_id = 'c1d3ed9bf9537b56fbdc8ce480c2ae721d94e2fbf9bd447f77bf756af1031c27' THEN 'other'
+    WHEN story_id = 'c316f652ac8ad8bc95c810f008cb764bcc79ff37439e800f9ab9a3931c7ef5d2' THEN 'other'
+    WHEN story_id = 'c425d925a9ee11fe5356a9ce6b77ed66d58ea2a4013a174345c004ffdddbf9ec' THEN 'other'
+    WHEN story_id = 'c78d165401988c5f4910b156725bad2f620e60ef630b000d6d77ae653bf04681' THEN 'other'
+    WHEN story_id = 'cdda9614fb70a99603af190941e0a2beef21570fb8eef40c94ad8f72882810ba' THEN 'other'
+    WHEN story_id = 'cf6f1819af9331e1a99646e793dfe60db7c1001474f479722448e0ab96220605' THEN 'other'
+    WHEN story_id = 'cf770d9c2e771844bf0a490d804bca04691446e62945b5217cff16dca8407169' THEN 'other'
+    WHEN story_id = 'd2a16e38e017c1242e07a7d91bc3ab8e9d72dc23d0ba716095df0c01f841f798' THEN 'other'
+    WHEN story_id = 'd560f33512df2afe7a13099b29f2f8aee39ea6b46cadfb2b860c800389680ccd' THEN 'other'
+    WHEN story_id = 'd9b62221ee087b5ea01bc10850a90801850b799a8b7b07fb7d68734fa2182c0e' THEN 'other'
+    WHEN story_id = 'da6dd09efec845fa95fa1d1674d3bc78c629caf9a7bcf1efae63c8e56e6cb25e' THEN 'other'
+    WHEN story_id = 'db294da0e87a011f6e030791f9ad031ad6fbac2bb015974b49f33d314963c4e8' THEN 'other'
+    WHEN story_id = 'db40bda06f69ae5dcdd0be43d139e36dcf97add0b1c3a53fd2d09c589ef36f45' THEN 'other'
+    WHEN story_id = 'df58a9584219e6b1ab5f96f53ca736460d93bba4a6c45bf4b35e218cdbfb8cf1' THEN 'other'
+    WHEN story_id = 'e66deceda6cf3a391e330bba02e624f3d2c31ec181d6244fe1bd1f56f3e1b902' THEN 'other'
+    WHEN story_id = 'e84e83a09e663a6048489cad6d4d2d6296bcd42d261f94d55a58f93c5fcde17c' THEN 'other'
+    WHEN story_id = 'f01d2072b807fa7d716dfd6f327992f88ade552d90468a32bc2e159d59ccbb4d' THEN 'other'
+    WHEN story_id = 'f3f7c1eb3eea1f80aad6812ae92c8a1b0053c7d0cc2f127f797eb372bbbfe723' THEN 'other'
+    WHEN story_id = 'f66a6d286240ef33f90938953f4d7659d0078bafa59ddd342ca97163b17ead4b' THEN 'other'
+    WHEN story_id = 'fea16716ac3ec5771ca47ff4c1790bdebf8886b25d9516d31c1741b6f8b4919e' THEN 'other'
+  END
+WHERE event_id IS NULL;
+
+-- 核对：期望值 events 65 行、news 290 行均命中新类别
+DO $$
+DECLARE bad_events INT; bad_news INT;
+BEGIN
+  SELECT count(*) INTO bad_events FROM events
+    WHERE event_type NOT IN ('military','passage','energy','freight','finance','diplomacy','civil','other');
+  SELECT count(*) INTO bad_news FROM news
+    WHERE event_type NOT IN ('military','passage','energy','freight','finance','diplomacy','civil','other');
+  IF bad_events > 0 OR bad_news > 0 THEN
+    RAISE EXCEPTION '仍有未归类记录: events=%, news=%', bad_events, bad_news;
+  END IF;
+END $$;
+
+COMMIT;

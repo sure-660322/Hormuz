@@ -1,5 +1,7 @@
 # 数据库与环境交接
 
+> 2026-09-21 工作区审计：ships / ship_positions 的 SHA-256 与 manifest 一致；events / news 行数仍为 65 / 290，但 SHA-256 不匹配，当前工作区交接包不可直接导入。应由数据负责人确认新闻变更后，经批准重新导出完整快照并在独立空库验收；不得只修改 manifest 哈希、关闭校验或覆盖在途数据。下文 2026-09-14 是历史成功演练，不代表当前未提交快照再次通过。多会话期间不在 Kimi 使用的 main 目录 pull 或切分支，见 [协作流程](collaboration.md)。
+
 状态：2026-09-14。现在提供独立 Docker Compose、四张当前源表的 JSONL 交接数据、空库建表导入脚本和验证脚本。已在维护者机器的新容器、新数据卷上演练；不是直接连接维护者的数据库。Git 不会同步运行中的数据库，接手者必须执行导入。
 
 ## 仓库提供哪些数据
@@ -112,9 +114,11 @@ docker compose --env-file deploy/handoff.env -f compose.handoff.yaml stop
 - 001–007 是历史演进，不能无条件顺序执行；006 会重建新闻表。
 - 009_ship_tracks.sql 是 P0 泛化派生层（ship_tracks、track_build_manifest、源表 BRIN/data_source 索引），全部由 backend/build_ship_tracks.py 以幂等 DDL 执行并负责重建与 manifest 留痕；不进交接包，新库首次重建时自动建立。
 - 010_event_ship_links.sql 是 P2 事件×船舶关联派生表，由 backend/build_event_ship_links.py 幂等执行与重建（mentioned 恒不指向模拟船）；同样不进交接包。
+- 011_ship_dwell.sql 是 P3 停留识别派生表（at_anchor/drift/slow_transit），由 backend/build_ship_dwell.py 幂等执行与重建，阈值入 manifest；同样不进交接包。
+- 012_encounters.sql 是 P4 相遇分析派生表（一船对一行 + params 快照），由 backend/build_encounters.py 幂等执行与重建；POST /api/encounters/analyze 是受控同步重建入口；同样不进交接包。
 - create_tables.py 只补 ORM 表，不准备全部扩展、空间结构和索引。
 - migrate_real_news.py 仍是维护者历史迁移工具，依赖仓库外源路径；新成员使用本页的导入入口。
 - seed_data.py、generate_demo_data.py 使用旧事件语义，不作为当前初始化入口。
 - 数据库恢复备份继续留在本地，不提交 Git。本数据包不替代完整灾备。
 
-智能体接入见 [agent_integration.md](agent_integration.md)。当前提供可查询数据与环境，智能体尚未实现。
+智能体接入见 [agent_integration.md](agent_integration.md)。智能体 v3 已实现并接入前端，使用模型 API 与四个自定义只读查询工具；模型配置需在后端环境单独准备，数据导入不会自动配置模型服务。本页的历史交接验收不包含智能体联调。
