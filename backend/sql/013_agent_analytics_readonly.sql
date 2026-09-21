@@ -40,12 +40,13 @@ ALTER ROLE agent_reader_login SET idle_in_transaction_session_timeout = '5s';
 -- from agent_reader alone would not remove that inherited privilege. Validate
 -- this database-wide change in an isolated database before shared deployment.
 REVOKE TEMPORARY ON DATABASE :"DBNAME" FROM PUBLIC;
-REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
 
 CREATE SCHEMA IF NOT EXISTS agent_data AUTHORIZATION agent_view_owner;
 ALTER SCHEMA agent_data OWNER TO agent_view_owner;
 REVOKE ALL ON SCHEMA agent_data FROM PUBLIC;
 REVOKE ALL ON SCHEMA public FROM agent_reader, agent_reader_login;
+GRANT USAGE ON SCHEMA public TO agent_view_owner;
 GRANT USAGE ON SCHEMA agent_data TO agent_reader;
 
 REVOKE ALL ON TABLE public.ships, public.ship_positions, public.events, public.news

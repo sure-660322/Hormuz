@@ -1,46 +1,64 @@
 # SQL-02 语义视图与只读角色
 
-状态：进行中（2026-09-21，分支 `codex/sql02-agent-reader`，基线 `9336543`）。迁移已在一次性 PostgreSQL 16 隔离容器完成首轮权限验证；catalog 实物定义哈希和完整验证脚本尚未完成。本阶段只建设并验证数据库读取边界；`query_analytics` 仍未实现、未注册且默认关闭。
+状态：**已完成并通过隔离验证**（2026-09-21，分支 `codex/sql02-agent-reader`，本轮接续基线 `260678b`）。本阶段只建设数据库读取边界和 catalog v1；`query_analytics` 执行器仍未实现、未注册且默认关闭。
 
-## 当前交付范围
+## 交付内容
 
-- `backend/sql/013_agent_analytics_readonly.sql`：创建 `agent_data` 三个 catalog v1 视图，以及 `agent_view_owner`、`agent_reader`、`agent_reader_login` 最小权限角色。
-- 密码不进入 Git。迁移只创建无密码登录角色，凭据由受保护的 DBA 操作另行配置。
-- 首批仅开放 `v_ships`、`v_events`、`v_news`；不开放船位、停留、相遇、源表或写接口。
-- `agent_reader_login` 默认事务只读、`search_path=pg_catalog`、连接上限 4；运行时权限来自无登录组角色 `agent_reader`。
+- `backend/sql/013_agent_analytics_readonly.sql`：创建 `agent_data.v_ships`、`agent_data.v_events`、`agent_data.v_news`，以及 `agent_view_owner`、`agent_reader`、`agent_reader_login` 三个最小权限角色。
+- `backend/app/query_analytics_catalog_v1.json`：catalog v1，记录字段顺序、PostgreSQL 类型、nullable、语义说明、数据范围、限制、单视图行数上限、时间条件要求、允许 JOIN 和三个视图定义哈希。
+- `scripts/verify_agent_analytics_readonly.ps1`：自动创建无主机端口的一次性 PostgreSQL 17，加载 008 中四张源表的实际定义及固定 fixture，重复执行 013，并完成允许/拒绝、角色和 catalog 一致性验证；结束后自动删除容器。
+- `.env.example`：只提供独立只读连接的占位配置，功能开关保持 `AGENT_QUERY_ENABLED=false`；密码不进入 Git，迁移也不设置密码。
 
-## 重要部署影响
+`agent_reader_login` 通过唯一成员关系继承 `agent_reader` 的读取权限，默认事务只读，`search_path=pg_catalog`，连接上限 4，`statement_timeout=5s`、`lock_timeout=1s`、`idle_in_transaction_session_timeout=5s`。视图由不可登录的 `agent_view_owner` 持有；读取角色不拥有视图或业务表。
 
-PostgreSQL 默认通过 `PUBLIC` 授予数据库 TEMP 权限，部分版本/既有数据库还可能允许 `PUBLIC` 在 public schema 创建对象，无法只对单个角色做负向覆盖。因此迁移会在目标数据库撤销 `PUBLIC` 的 TEMP 和 public schema CREATE。这是数据库级变更，必须先在独立测试数据库验证，并确认其他业务角色不依赖这些默认权限；如确有依赖，应由 DBA 仅向明确角色恢复，不能恢复给 PUBLIC。
+## catalog v1 与哈希绑定
 
-## 完成门槛
+catalog 版本为 `1.0`，目标数据库主版本为 PostgreSQL 17。定义指纹固定为：读取 `pg_get_viewdef(regclass, false)` 的原始 UTF-8 字节并计算 SHA-256；不能用迁移编号代替定义指纹。
 
-SQL-02 目前不能标记完成。后续必须在独立测试数据库执行并保存以下证据：
+| 视图 | `pg_get_viewdef` SHA-256 |
+| --- | --- |
+| `agent_data.v_ships` | `99c96b138697e6cecd01e6e99afdfda1180f53d639b3099fef01e2b8b1b11f62` |
+| `agent_data.v_events` | `c159d8ffee1d11aee401e908da08ebff184fba0dff9356c9bf123824302a3abc` |
+| `agent_data.v_news` | `640a13434f3084c06111f29c1cae10547c591f70e282ccf5ca84550b57f8f274` |
 
-1. 三个视图字段、类型、nullable、owner 与规范化 `pg_get_viewdef` 哈希。
-2. `agent_reader_login` 能读取三个视图，不能读取 public 源表。
-3. INSERT/UPDATE/DELETE/DDL、CREATE、TEMP、SET ROLE 到 owner、访问其他 schema 均失败。
-4. `transaction_read_only=on`，`search_path=pg_catalog`，角色无高权限属性或额外角色成员关系。
-5. catalog JSON 与数据库实物一致；任一漂移时验证失败并保持功能关闭。
-6. 在未配置认证与限流前，不把 query_analytics 开放到远端环境。
+视图定义、字段、类型、nullable、owner 或 PostgreSQL 主版本变化时，必须评审语义变更、递增 catalog 版本、从目标版本数据库重新生成三个哈希并完整复跑验证。禁止只修改 JSON 哈希来绕过漂移。SQL-04 加载 catalog 时仍须执行同一套实物核验，任一不一致即 fail closed。
 
-本文件记录当前设计与未验证范围，不代表迁移已在任何共享数据库执行。
+## 数据库级部署影响
 
-## 2026-09-21 隔离验证记录
+PostgreSQL 的数据库 TEMP 和 `public` schema 权限可通过 `PUBLIC` 继承，单独对读取角色执行 `REVOKE` 不能形成负向覆盖。013 因而会：
 
-目标为本轮新建的一次性 `postgres:16` 容器和独立数据库 `aisdb_sql02`，没有连接项目当前数据库。使用 008 中四张源表的字段定义建立最小 fixture，插入 1 艘模拟船、1 条模拟船位、1 个事件和 1 条新闻后执行 013。
+- 从 `PUBLIC` 撤销目标数据库 TEMP；
+- 从 `PUBLIC` 撤销 `public` schema 的全部权限；
+- 只向 `agent_view_owner` 明确授予 `public` schema USAGE 和底表必要字段的 SELECT；
+- 只向 `agent_reader` 授予 `agent_data` USAGE 和三个批准视图的 SELECT。
+
+这是目标数据库范围的权限变化。部署到既有数据库前，DBA 必须盘点其他业务角色是否依赖这些默认权限；如确有需要，只向明确角色恢复最小权限，不能恢复给 `PUBLIC`。本轮没有对任何共享或当前项目数据库执行 013。
+
+## 2026-09-21 完整隔离验证
+
+执行命令：
+
+```powershell
+.\scripts\verify_agent_analytics_readonly.ps1
+```
+
+验证环境为脚本新建的一次性容器和数据库 `hormuz_sql02_verify`，使用官方 `postgres:17` 镜像 digest `sha256:f4c66b820c6f974249089d3d16d86a3698eae11e8746eb6644b2271031e91232`。容器未映射主机端口；测试结构直接截取受版本控制的 008 四张源表定义，跳过与 SQL-02 无关的 PostGIS/MobilityDB 派生部分；fixture 为 1 艘模拟船、1 条模拟船位、1 个事件和 1 条新闻。
+
+结果：`PASS: SQL-02 isolated verification completed (48 checks).`
 
 已验证：
 
-- 013 首次执行成功，第二次重复执行成功；第二次未重置已单独配置的测试密码。
-- `agent_reader_login` 的 `transaction_read_only=on`、`search_path=pg_catalog`。
-- 三个视图各返回 1 行；视图 owner 均为 `agent_view_owner`。
-- 登录角色只有 `agent_reader` 成员关系，连接上限为 4；三个角色均非 superuser/createdb/createrole/replication/bypassrls。
-- 登录角色对三个 agent_data 视图有 SELECT，对 public.ships/events/news 无 SELECT。
-- 读取源表、DELETE/UPDATE 视图、CREATE TEMP、在 public 创建表、SET ROLE agent_view_owner 均被拒绝。
+- 013 首次执行和重复执行均成功；
+- 三个角色的 LOGIN/INHERIT、连接上限及 superuser、createdb、createrole、replication、bypassrls 属性符合冻结值，登录角色只有 `agent_reader` 一个成员关系；
+- 登录角色的只读事务、固定 search_path 和三项超时生效；
+- 三个语义视图均可读取固定 fixture，四张 `public` 源表均拒绝读取；
+- INSERT、UPDATE、DELETE、TRUNCATE、建表、建 schema、删视图、TEMP 均被拒绝；
+- `SET ROLE agent_view_owner` 和切换到管理员角色均被拒绝；
+- 登录角色有且仅有 `agent_data` schema USAGE，无 `public` USAGE 和数据库 TEMP；
+- catalog 的视图存在性、owner、字段顺序、类型、nullable 和定义哈希均与数据库一致；人为篡改一个哈希时验证器能够检测漂移并失败。
 
-未验证：
+## 仍未实现或未验证
 
-- 尚未生成并提交 catalog JSON，也未比对规范化 `pg_get_viewdef` SHA-256。
-- 尚未在包含全部扩展、真实约束和当前数据量的独立完整副本验证查询结果。
-- 尚未建立 SQL-04 专用连接池；模型和 query_analytics 均未接入。
+- SQL-04 的专用连接池、运行时 catalog 加载审计和只读执行器尚未实现；不能仅凭本次迁移开启功能。
+- 未在当前共享数据库或远端环境部署，也未使用当前业务数据验证统计结果；本轮只证明 SQL-02 固定 fixture 下的结构和权限边界。
+- 未配置认证与限流前，`query_analytics` 不得在远端可访问环境启用。
