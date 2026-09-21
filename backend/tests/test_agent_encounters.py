@@ -142,7 +142,7 @@ def test_normal_result(patched_repo):
     assert outcome["status"] == "ok"
     assert outcome["tools_used"] == ["query_encounters"]
 
-    enc = outcome["results"]["query_encounters"]
+    enc = outcome["results"]["call_001"]
     assert enc["status"] == "ok"
     assert enc["window"] == ["2026-03-01T00:00:00+00:00", "2026-03-02T00:00:00+00:00"]
     assert enc["max_distance_nm_filter"] == 2.0
@@ -173,7 +173,7 @@ def test_normal_result(patched_repo):
 # --------------------------------------- 2. 省略阈值时默认取构建阈值不过滤
 def test_default_filter_uses_build_threshold(patched_repo):
     outcome = _run_encounters_question(_FakeClient(_encounters_script()))
-    enc = outcome["results"]["query_encounters"]
+    enc = outcome["results"]["call_001"]
 
     assert enc["status"] == "ok"
     assert enc["requested_max_distance_nm"] is None
@@ -188,7 +188,7 @@ def test_empty_result_is_valid_zero(patched_repo, monkeypatch):
     outcome = _run_encounters_question(
         _FakeClient(_encounters_script(arguments='{"max_distance_nm":1.0}'))
     )
-    enc = outcome["results"]["query_encounters"]
+    enc = outcome["results"]["call_001"]
 
     assert enc["status"] == "no_data"
     assert enc["encounters"] == []
@@ -201,7 +201,7 @@ def test_not_built(patched_repo, monkeypatch):
     monkeypatch.setattr(enc_repo, "fetch_manifest", lambda db: None)
 
     outcome = _run_encounters_question(_FakeClient(_encounters_script()))
-    enc = outcome["results"]["query_encounters"]
+    enc = outcome["results"]["call_001"]
 
     assert enc["status"] == "not_built"
     assert "尚未重建" in enc["message"]
@@ -243,7 +243,7 @@ def test_truncation_keeps_matched_count(patched_repo, monkeypatch):
     outcome = _run_encounters_question(
         _FakeClient(_encounters_script(arguments='{"limit":10}'))
     )
-    enc = outcome["results"]["query_encounters"]
+    enc = outcome["results"]["call_001"]
 
     assert enc["returned_count"] == 10
     assert enc["matched_count"] == 60
@@ -275,7 +275,7 @@ def test_tool_result_reaches_final_response(patched_repo):
     outcome = _run_encounters_question(_FakeClient(_encounters_script()))
 
     assert outcome["answer"] == FINAL_ANSWER
-    enc = outcome["results"]["query_encounters"]
+    enc = outcome["results"]["call_001"]
     assert enc["encounters"][0]["period_start"] == "2026-03-01T10:00:00+00:00"
 
     payload = runner._jsonable(outcome)
@@ -370,6 +370,6 @@ def test_full_flow_performs_no_db_writes():
         assert sql.lstrip().lower().startswith("select"), sql
         assert not _WRITE_RE.search(sql), sql
 
-    enc = outcome["results"]["query_encounters"]
+    enc = outcome["results"]["call_001"]
     assert enc["returned_count"] == 1
     assert enc["matched_count"] == 1

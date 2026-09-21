@@ -1,6 +1,6 @@
 # SQL-03 AST 策略校验器
 
-状态：**已验证**（2026-09-21，worktree `D:/my_project/Hormuz-codex-sql03`，分支 `codex/sql03-ast-validator`，基线 `3d51a5a`）。本任务只实现离线 SQL 解析和策略校验；后续 SQL-04 已通过隔离执行验证，但仍未注册 `query_analytics`。
+状态：**已验证**（2026-09-21，worktree `D:/my_project/Hormuz-codex-sql03`，分支 `codex/sql03-ast-validator`，基线 `3d51a5a`）。本任务只实现离线 SQL 解析和策略校验；后续 SQL-04 已通过隔离执行验证，SQL-05 已注册 `query_analytics`（默认关闭）。
 
 ## 固定解析器
 

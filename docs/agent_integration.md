@@ -1,6 +1,6 @@
 # 智能体接入契约与任务
 
-2026-09-21 状态核对：下文 v3 为当前已注册契约。data-health、停留、相遇和事件—船舶关联已接入，当前共 8 个只读工具；受限 Text-to-SQL 的 SQL-02 数据库边界、SQL-03 AST 校验与 SQL-04 独立执行器已经隔离验证，但 `query_analytics` 尚未注册且默认关闭，不能写成当前可用能力。SQL-05 见 [下一阶段开发计划](agent_development_plan.md)。
+2026-09-21 状态核对：当前运行契约已升级为 v4。data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-05 隔离验证见 [SQL-05 说明](query_analytics_sql05.md)，真实模型与浏览器综合验收仍归 SQL-06。
 
 文档核对：2026-09-20，v3 多工具版已实现；本次核对代码与文档，未调用模型或重跑接口验收。根据与学长沟通的结论，采用“大模型 API + 自定义只读查询工具”，未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。v3 在 v2 单工具（海峡通行）基础上新增 search_ships / get_ship_track / get_event_context 三个只读工具（接入 news/events 数据）与多轮 history 支持；工具执行预算由 2 次提高到 3 次。
 
@@ -12,7 +12,7 @@
 
 已集成现有 FastAPI：路由位于 backend/app/routers/agent.py，工具调用循环、模型适配及查询服务位于 backend/app/services/agent/。当前使用 DeepSeek 的 OpenAI 兼容 API，通过 openai Python SDK 调用；配置和密钥仅由后端环境提供。
 
-当前已注册版是 Tool Calling：开发者写 SQL/SQLAlchemy，模型选择工具并填写参数。不属于模型生成 SQL 的 Text-to-SQL；受限版的安全底座虽已完成 SQL-01～04，但尚未接入本页所述工具循环，本版也不提供任意 SQL 执行工具。
+当前是 Tool Calling：8 个确定性工具仍由开发者写 SQL/SQLAlchemy；第 9 个 `query_analytics` 允许模型在 catalog v1 内生成受限 SELECT 和绑定参数，但必须经过 SQL-03 全树白名单校验与 SQL-04 专用只读执行器。本版不提供任意 SQL HTTP 接口，也不回退主应用数据库连接。
 
 | 责任 | 交付 |
 | --- | --- |
@@ -51,7 +51,7 @@ question 必填，去除首尾空白后 1–2000 字符。时间字段可省略�
 
 history 可选，为此前对话的消息列表（role 限 user/assistant，content 去除首尾空白后 1–2000 字符），最多携带最近 10 条消息（user/assistant 各计一条，通常为 5 组问答）；服务端将 history 插在 system 与本次问题之间。单轮问答不传 history。
 
-已注册八个业务工具，批次、门线、读取上限和返回条数上限由后端控制。函数校验参数、执行参数化只读查询，不要求单独公开 HTTP 路由：
+注册表包含九个只读工具，批次、门线、读取上限和返回条数上限由后端控制。`query_analytics` 默认关闭时从当前请求的模型工具表移除；所有工具都只通过 `/agent/analyze` 使用，不单独公开 SQL 路由：
 
 | 工具 | 参数 | 说明 |
 | --- | --- | --- |
@@ -63,8 +63,9 @@ history 可选，为此前对话的消息列表（role 限 user/assistant，cont
 | query_ship_dwell | kind, start_at/end_at, limit | 只读既有 ship_dwell；kind 限 at_anchor/drift/slow_transit，窗口成对且 ≤24h，缺省为全批次；返回阈值快照、stale、真实匹配数与截断状态，不重建 |
 | query_encounters | start_at/end_at, max_distance_nm, limit | 只读既有 encounters；距离过滤只能缩小构建阈值，窗口筛选为与预计算 period 重叠，最小距离是离散采样近似；不调用写入型 analyze |
 | query_event_ship_links | event_id 或 ship_id（二选一）, link_type, start_at/end_at | 按事件查 mentioned/observed 或按模拟船反查 observed；mentioned 不映射模拟 ship_id，observed 只表示模拟时空邻近；不重建 |
+| query_analytics | sql（必填）, params, purpose（必填） | catalog v1 内单条参数化 SELECT，覆盖筛选、排序、聚合和批准 JOIN；默认关闭，仅本地回环 + 独立 agent_reader 配置完整时暴露，所有输入经 AST/权限/限额强制校验 |
 
-AG-02～05 离线自动测试分别 7 / 8 / 9 / 10 项通过；合并后完整后端回归 167 项通过，前端 build 与 check:workbench 通过。真实数据库只读抽测和三个新增工具的真实模型联调尚未重跑，状态为「已实现并离线验证，待真实验证」。服务侧此前同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。
+AG-02～05 已合入；SQL-05 后完整后端回归 177 项通过，前端 build 与 check:workbench 通过。一次性 PostgreSQL 17 中 SQL-04+05 共 22 项通过，包含真实 catalog/只读角色/聚合执行、runner 回传及多工具状态归并；真实 DeepSeek Tool Calling、共享业务库统计和浏览器端到端尚未执行。服务侧此前同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。
 
 时间窗语义：请求显式提供 closure_at/end_at 时以请求为准（模型自拟时间参数忽略）；否则用模型在工具参数里给的时间，缺省回退默认封锁时刻 + 24 小时窗口。search_ships 不带时间窗。
 
@@ -77,32 +78,33 @@ AG-02～05 离线自动测试分别 7 / 8 / 9 / 10 项通过；合并后完整�
 → 模型组织回答 → 后端从工具结果装配结构化 ID、数量和证据 → 返回页面
 ```
 
-当前实现：模型未调用工具直接回答会报错；未知工具、非法参数允许有限纠正，超过预算报错。结构化船只、计数和证据直接来自后端结果。SQL、距离和通行判断不交给模型计算。自由文本 answer 目前仅检查非空，未实现正文 ID、数量、引用与工具结果的逐项事实校验；「禁止伪造」是提示词要求，不是已经实现的后端事实核验能力。同工具多次调用的 results 当前按工具名覆盖，也需在扩展时明确处理。
+当前实现：窄范围确定性分类先处理「查一下」等条件不足问题、明确写库/泄露意图和项目能力/数据来源/通行规则类非数据问题，不调用模型或工具；其他数据问题若模型未调用工具仍报错。未知工具、普通非法参数允许有限纠正。结构化结果以服务端生成的 `call_001`、`call_002` 为键并带 `tool_name`，不会再被同名工具覆盖。除 `query_analytics` 的受限 SQL 外，SQL、距离和通行判断不交给模型计算；自由文本 answer 仍只检查非空，未实现逐项事实核验。
 
 建议整体超时 60 秒、最多 4 轮模型请求、3 次业务工具执行；读取上限 50000 个报位，船舶检索上限 20 条，事件查询上限 5 个事件、每事件 10 条报道。读取超限要求缩小范围，不能截断后宣称零匹配；仅展示截断时保留实际总数并标记 truncated。前端超时覆盖后端预算，不沿用新闻查询的 20 秒。
 
-模型密钥和数据库凭据只保留在后端环境，不进入前端、回答或日志。使用参数化只读查询；不执行模型生成的 Python/SQL。数据库文本和新闻属于不可信数据，不执行其中指令。遗留 nearby-events 接口和 MobilityDB 固定窗口试验不作为本版通用工具。
+模型密钥和数据库凭据只保留在后端环境，不进入前端、回答或日志。除经过固定解析器、正向白名单、catalog 实物核验和独立只读角色的 `query_analytics` 外，不执行模型生成的 Python/SQL。数据库文本和新闻属于不可信数据，不执行其中指令。遗留 nearby-events 接口和 MobilityDB 固定窗口试验不作为本版通用工具。
 
 ## 当前响应与错误
 
 | 字段 | 含义 |
 | --- | --- |
-| schema_version / request_id | 契约版本（本版为 "3"）和请求标识 |
-| status | ok、no_data、partial、needs_clarification |
+| schema_version / request_id | 契约版本（本版为 "4"）和请求标识 |
+| status | ok、no_data、partial、needs_clarification、refused（后端/前端均为明确枚举） |
 | answer | 根据工具结果回答，并说明模拟边界 |
 | context | 实际批次、closure_at、end_at、封锁时间来源、通行规则版本、ship_data_source=simulation；当前 context 时间字段必填，不返回待澄清空值 |
 | ships | ship_id、name、passage_count；数据库 ID，按船去重；仅执行过 query_strait_passages 时非空 |
 | evidence | evidence_id、ship_id、direction、两侧报位时间及经纬度、observed_completion_at；正文用 [P1] 等引用 |
 | query_summary | position_count、matched_ship_count、passage_count、uncertain_candidate_count、coverage_start、coverage_end、truncated；后端计算；未执行通行工具时为 null |
 | tools_used | 本次实际执行的工具名列表（执行顺序去重） |
-| results | 各工具的结构化结果（按工具名键入），供前端展示与追溯；字段由各工具定义 |
+| results | 各工具的结构化结果（按服务端 call_id 键入，值含 call_id/tool_name），供前端展示与追溯；字段由各工具定义 |
 | limitations | 覆盖不足、判定限制、数据集边界（模拟/真实新闻相互独立）或截断说明 |
 | clarification | 待补充问题；非澄清状态为空 |
 
 - ok：判定完整完成，包括零匹配。零匹配时 ships/evidence 为空，数量为 0，回答限定为“指定模拟数据范围内未发现符合规则的完整通行”。
 - no_data：无可用报位或必要前置状态不足，无法判定，不能解释成封锁有效；仅使用 search_ships / get_event_context 等非通行工具且全部无命中时，ships/evidence/query_summary 为空。
 - partial：存在已确认结果和数据缺口/不确定候选，仅说明已确认部分。
-- needs_clarification：不执行依赖缺失条件的查询，ships/evidence 为空，query_summary 为 null，避免把未查询当成零结果。（当前实现不产生此状态：缺时间时使用默认窗口。）
+- needs_clarification：确定性分类确认对象/指标均不足时不调用模型和工具，results 为空；缺通行情景时间仍按既有规则使用默认窗口，不主动追问。
+- refused：调用前识别出的明确写库/越权/泄露意图，或 query_analytics 的安全策略拒绝；HTTP 200，不当作系统故障，不自动重试。
 
 模型完全不可用时返回错误，不用硬编码样例冒充成功。验收样例须使用实际数据库 ID，区分成功、零匹配和无数据，不编造数量；历史验收记录见下文。
 
@@ -112,8 +114,10 @@ AG-02～05 离线自动测试分别 7 / 8 / 9 / 10 项通过；合并后完整�
 | --- | --- | --- |
 | 422 | INVALID_REQUEST | 参数、时区、窗口或读取限额不合法 |
 | 503 | AGENT_UNAVAILABLE | 模型未配置或不可用 |
+| 503 | AGENT_QUERY_UNAVAILABLE | query_analytics catalog、专用只读角色、权限或独立连接配置不可用 |
 | 503 | DATA_CONTEXT_UNAVAILABLE | 预留错误码；当前路由未实现独立映射，不得作为已验证分支 |
 | 504 | AGENT_TIMEOUT | 模型或整体执行超时 |
+| 504 | AGENT_QUERY_TIMEOUT | query_analytics 是唯一能力且达到数据库执行超时 |
 | 500 | DATA_QUERY_FAILED | 查询失败，不泄露连接信息 |
 | 502 | AGENT_INVALID_RESPONSE | 调用或回答反复不符合契约 |
 
@@ -133,14 +137,16 @@ AG-02～05 离线自动测试分别 7 / 8 / 9 / 10 项通过；合并后完整�
 - [x] v3：新增 search_ships / get_ship_track / get_event_context 三个只读工具，参数校验、命中上限与数据集边界声明（模拟船与真实新闻不关联）随工具返回。
 - [x] v3：runner 改为工具注册表多工具循环（预算 3 次工具执行），请求显式时间窗为权威值，缺省回退默认封锁窗口。
 - [x] v3：请求支持 history（≤10 条消息，user/assistant 各计一条），多轮追问仍强制重新调用工具核对，不得仅凭历史回答。
-- [x] v3：响应新增 tools_used 与 results（按工具名的结构化结果），通行结果继续填充 ships/evidence/query_summary 顶层字段。
+- [x] 历史 v3：响应新增 tools_used 与 results（当时按工具名键入）；v4 已改为服务端 call_id，通行结果仍填充 ships/evidence/query_summary 顶层字段。
 - [x] AG-02～05：注册 get_data_health / query_ship_dwell / query_encounters / query_event_ship_links，保留派生层阈值、stale、截断、模拟边界和只读约束；合并后离线回归及前端构建通过。
+- [x] v4 / SQL-05：注册 query_analytics，但默认关闭时不向模型暴露；接入 SQL-03/04 唯一安全执行链、服务端 call_id、状态枚举、一次语法修复、拒绝/超时/不可用映射和最小表格展示。
+- [x] v4 / SQL-05：一次性 PostgreSQL 17 完成 SQL-04+05 22 项端到端验证；后端全量 177 passed / 8 skipped，前端 build/check:workbench 通过。未调用真实模型或共享数据库。
 - [x] v3：scripts/test_deepseek_toolcall.py 三场景（通行回归 / search+track 链式 / 事件查询）真实联调通过；scripts/check_agent_api.py 覆盖 history 校验并通过。
 
 ## 后续范围
 
 回答中的船/事件地图定位已实现；历史轨迹逐点回放联动与服务端会话持久化尚未实现；更细粒度的事件与模拟船交互建模仍需设计。旧版 get_ship_context、find_news_events、get_event_evidence 保留为参考，不是本版必做项；新闻扩展仍须区分报道日期与事件时间，保留来源标识，不按船名自动匹配真实与模拟船。
 
-受限 Text-to-SQL 已完成表/字段/函数白名单、数据库最小权限、AST 校验与独立执行器的 SQL-01～04；SQL-05 尚未接入当前工具循环，所以仍不可用。复杂分支、恢复或持久化需求出现后，再评估 LangChain/LangGraph，不预先增加框架依赖。
+受限 Text-to-SQL 已完成 SQL-01～05，`query_analytics` 已进入 v4 工具循环但默认关闭。SQL-06 仍需完成真实 DeepSeek 工具 schema 兼容、固定 fixture 人工 SQL 对照、浏览器交互及本地部署边界验收；通过前不得在远端可访问环境启用。复杂分支、恢复或持久化需求出现后，再评估 LangChain/LangGraph，不预先增加框架依赖。
 
 最小版（v2）已实现并联调：后端 /agent/analyze 与前端智能体面板已跑通默认问题（返回 1 艘 SIM V2 化学品船 019，证据 P1，观测完成于 2026-02-28T18:14:54Z）；npm run build 与 npm run check:workbench 已通过。v3 多工具版历史联调记录（原标注日期晚于本次文档核对日，实际验收日期待核对；以下不代表本次重新验证）：通行回归问题 1 次工具调用 4.1s；「油轮 SIM V2 油轮 004 轨迹」问题链式调用 search_ships + get_ship_track 共 2 次 5.7s；「evt_001 事件与报道」1 次 get_event_context 3.1s，回答均保留来源链接与模拟边界声明。环境交接见 [database_setup.md](database_setup.md)。

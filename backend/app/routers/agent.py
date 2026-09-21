@@ -1,4 +1,4 @@
-"""POST /agent/analyze：智能体问答接口（契约 v3）。
+"""POST /agent/analyze：智能体问答接口（契约 v4）。
 
 错误体统一为 detail 对象 {code, message, request_id}，对齐契约「预设响应与错误」。
 """
@@ -18,8 +18,10 @@ from backend.app.services.agent.runner import (
     AgentInvalidResponseError,
     AgentTimeoutError,
     _jsonable,
+    is_preflight_question,
     run_agent,
 )
+from backend.app.services.agent.query_analytics_executor import QueryExecutionError
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +50,12 @@ def analyze(
     if end_at - closure_at > MAX_WINDOW:
         _error(422, "INVALID_REQUEST", "查询窗口不能超过 24 小时", request_id)
 
-    try:
-        client = build_client()
-    except AgentConfigError as exc:
-        _error(503, "AGENT_UNAVAILABLE", str(exc), request_id)
+    client = None
+    if not is_preflight_question(request.question):
+        try:
+            client = build_client()
+        except AgentConfigError as exc:
+            _error(503, "AGENT_UNAVAILABLE", str(exc), request_id)
 
     try:
         outcome = run_agent(
@@ -61,6 +65,7 @@ def analyze(
             closure_at=request.closure_at,
             end_at=request.end_at,
             history=[turn.model_dump() for turn in request.history] if request.history else None,
+            request_id=request_id,
         )
     except AgentTimeoutError as exc:
         _error(504, "AGENT_TIMEOUT", str(exc), request_id)
@@ -68,6 +73,8 @@ def analyze(
         _error(502, "AGENT_INVALID_RESPONSE", str(exc), request_id)
     except ValueError as exc:
         _error(422, "INVALID_REQUEST", str(exc), request_id)
+    except QueryExecutionError as exc:
+        _error(exc.http_status, exc.code, exc.public_message, request_id)
     except SQLAlchemyError:
         logger.exception("agent query failed request_id=%s", request_id)
         _error(500, "DATA_QUERY_FAILED", "数据查询失败", request_id)

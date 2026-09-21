@@ -1,7 +1,7 @@
 # query_analytics 受限 Text-to-SQL 契约（SQL-01）
 
-> 文档状态：**SQL-01 已完成最终安全评审**（2026-09-21，分支 `kimi/ag01-sql01-contract`；R-01～R-39 见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)）。SQL-02 数据库边界、SQL-03 离线 AST 校验器和 SQL-04 独立只读执行器均已验证，但 SQL-05 工具注册尚未实现；**query_analytics 仍不可用且默认关闭。** 实现进度见 [agent_development_plan.md](agent_development_plan.md)，执行器证据见 [query_analytics_sql04.md](query_analytics_sql04.md)。
-> 问题样例见 [agent_question_matrix.md](agent_question_matrix.md)；当前 v3 运行契约见 [agent_integration.md](agent_integration.md)。
+> 文档状态：**SQL-01 已完成最终安全评审，SQL-02～05 已按本契约实现并隔离验证**（2026-09-21）。`query_analytics` 已注册进 v4 工具循环，但功能开关仍默认关闭；真实模型和浏览器综合验收属于 SQL-06。实现证据见 [SQL-04](query_analytics_sql04.md)、[SQL-05](query_analytics_sql05.md) 与 [开发计划](agent_development_plan.md)。
+> 问题样例见 [agent_question_matrix.md](agent_question_matrix.md)；当前 v4 运行契约见 [agent_integration.md](agent_integration.md)。
 
 ## 1. 目标与非目标
 
@@ -110,7 +110,7 @@ JSON catalog 只是声明，不证明数据库对象仍与其一致。功能启�
 
 ## 4. 返回结构
 
-成功执行后，工具结果以调用 ID 为键进入 `results`（见 §7，解决当前「按工具名覆盖同工具多次结果」的问题）：
+成功执行后，工具结果以调用 ID 为键进入 `results`（见 §7；SQL-05 已解决原有「按工具名覆盖同工具多次结果」的问题）：
 
 ```json
 {
@@ -152,7 +152,7 @@ JSON catalog 只是声明，不证明数据库对象仍与其一致。功能启�
 
 以下状态**不属于 query_analytics 工具**，由 /agent/analyze 编排层产生或映射：
 
-- 顶层 `status` 为**明确枚举**（冻结）：`ok` / `no_data` / `partial` / `needs_clarification` / `refused`。当前 schemas_agent.py 的 status 为自由字符串，SQL-05 时收紧为上述枚举并同步前端类型；`refused` 为新增取值。
+- 顶层 `status` 为**明确枚举**（冻结）：`ok` / `no_data` / `partial` / `needs_clarification` / `refused`。SQL-05 已在 schemas_agent.py 与前端类型中收紧为该枚举；`refused` 为 v4 新增取值。
 - `needs_clarification`：自然语言条件不足，编排层在工具调用**前**产生，不调用任何工具。
 - `no_data`：顶层既有状态（数据不可用/覆盖不足）；编排层将工具的 `source_unavailable` 映射为顶层 `no_data`。
 - `refused`（顶层）：编排层将工具安全拒绝或调用前识别出的写库/泄露意图映射为该状态。
@@ -222,7 +222,7 @@ LIMIT 不代表低计算成本：校验器须限制无 WHERE 的全表聚合成�
 
 ## 7. 与现有循环的衔接（SQL-05 的输入条件）
 
-当前 runner.py 在「没有工具结果」时直接报错，与本契约的澄清/拒绝/非数据分支矛盾，SQL-05 必须改造编排层。冻结以下行为：
+SQL-05 已改造 runner.py；以下冻结行为均已落地，并由离线测试与一次性 PostgreSQL 17 端到端测试覆盖：
 
 - results 键从工具名改为调用 ID；`call_id` 由编排层生成，格式由 SQL-05 定义，本契约只要求唯一且可追溯。
 - **调用前澄清**：自然语言条件不足 → 顶层 `status=needs_clarification`，`tools_used=[]`、`results={}`，**不产生 call_id**，不进入工具循环。

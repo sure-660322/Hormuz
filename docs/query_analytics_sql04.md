@@ -1,6 +1,6 @@
 # SQL-04 独立只读执行器
 
-状态：**已验证**（2026-09-21，worktree `D:/my_project/Hormuz-codex-sql04`，分支 `codex/sql04-executor`，共同基线 `af888e9`）。本阶段完成执行安全边界，但没有修改 `runner.py`、`schemas_agent.py` 或前端类型，没有注册 `query_analytics`，功能开关仍默认关闭。
+状态：**已验证**（2026-09-21，worktree `D:/my_project/Hormuz-codex-sql04`，分支 `codex/sql04-executor`，共同基线 `af888e9`）。本阶段完成执行安全边界；后续 SQL-05 已接入 runner/schema/前端，但功能开关仍默认关闭。
 
 ## 交付内容
 
@@ -59,8 +59,7 @@ PostgreSQL 17 实测表明，`pg_get_viewdef(regclass, false)` 会根据调用�
 
 ## 仍未实现或未验证
 
-- `query_analytics` 尚未注册，实际 `/agent/analyze` 请求仍不能调用它；AG-03～05 后续已合入 main，共享文件已移交 Codex，SQL-05 前置条件已满足。
-- 没有修改 `runner.py`、`schemas_agent.py` 或前端类型，没有真实模型调用、HTTP/前端验收或共享业务数据统计。
+- SQL-05 后续已注册 `query_analytics` 并完成 HTTP/前端类型及最小展示接入；真实模型、浏览器交互和共享业务数据统计仍未验证。
 - SQL-05 必须把实际服务绑定地址传入并保持本地限制；本模块只能校验其配置值，不能独立证明外层 uvicorn 未被其他参数绑定到远端地址。
 - 多进程边界已在真实 PostgreSQL 中用 4 个全局锁槽验证“满时立即拒绝”；未做多 worker 长时间压力测试。
 

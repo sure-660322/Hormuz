@@ -134,7 +134,7 @@ def test_normal_result(patched_repo):
     assert outcome["status"] == "ok"
     assert outcome["tools_used"] == ["get_data_health"]
 
-    health = outcome["results"]["get_data_health"]
+    health = outcome["results"]["call_001"]
     assert health["source"]["by_data_source"][0]["data_source"] == "simulation"
     assert health["source"]["by_data_source"][0]["position_count"] == 9354
     assert health["source"]["totals"]["news"] == 247
@@ -152,7 +152,7 @@ def test_missing_source_is_not_zero(patched_repo, monkeypatch):
     monkeypatch.setattr(health_repo, "fetch_source_counts", lambda db: [])
 
     outcome = _run_health_question(_FakeClient(_health_script()))
-    health = outcome["results"]["get_data_health"]
+    health = outcome["results"]["call_001"]
 
     # 来源列表为空：只能表示未导入/无记录，不能解释为真实数量为零
     assert health["source"]["by_data_source"] == []
@@ -167,7 +167,7 @@ def test_derived_not_built(patched_repo, monkeypatch):
     monkeypatch.setattr(health_repo, "fetch_derived_manifests", lambda db: [])
 
     outcome = _run_health_question(_FakeClient(_health_script()))
-    health = outcome["results"]["get_data_health"]
+    health = outcome["results"]["call_001"]
     derived = {row["table"]: row for row in health["derived"]}
 
     assert set(derived) == set(health_repo.DERIVED_TABLES)
@@ -234,7 +234,7 @@ def test_tool_result_reaches_final_response(patched_repo):
     outcome = _run_health_question(_FakeClient(_health_script()))
 
     assert outcome["answer"] == FINAL_ANSWER
-    health = outcome["results"]["get_data_health"]
+    health = outcome["results"]["call_001"]
     assert health["status"] == "ok"
     # 工具结果经 _jsonable 序列化：datetime 为 ISO 字符串
     assert health["derived"][0]["built_at"] == "2026-09-20T12:00:00+00:00"
@@ -318,6 +318,6 @@ def test_full_flow_performs_no_db_writes():
         assert sql.lstrip().lower().startswith("select"), sql
         assert not _WRITE_RE.search(sql), sql
 
-    health = outcome["results"]["get_data_health"]
+    health = outcome["results"]["call_001"]
     assert health["source"]["totals"]["positions"] == 9354
     assert {row["table"] for row in health["derived"]} == set(health_repo.DERIVED_TABLES)

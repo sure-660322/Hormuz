@@ -148,7 +148,7 @@ def test_normal_result(patched_repo):
     assert outcome["status"] == "ok"
     assert outcome["tools_used"] == ["query_ship_dwell"]
 
-    dwell = outcome["results"]["query_ship_dwell"]
+    dwell = outcome["results"]["call_001"]
     assert dwell["status"] == "ok"
     assert dwell["kind"] == "at_anchor"
     # 带时区窗口原样下推到 repository 层
@@ -176,7 +176,7 @@ def test_empty_result_is_valid_zero(patched_repo, monkeypatch):
     monkeypatch.setattr(dwell_repo, "fetch_dwells", lambda db, kind, start, end, limit: [])
 
     outcome = _run_dwell_question(_FakeClient(_dwell_script(arguments='{"kind":"drift"}')))
-    dwell = outcome["results"]["query_ship_dwell"]
+    dwell = outcome["results"]["call_001"]
 
     assert dwell["status"] == "no_data"
     assert dwell["dwells"] == []
@@ -190,7 +190,7 @@ def test_not_built(patched_repo, monkeypatch):
     monkeypatch.setattr(dwell_repo, "fetch_manifest", lambda db: None)
 
     outcome = _run_dwell_question(_FakeClient(_dwell_script()))
-    dwell = outcome["results"]["query_ship_dwell"]
+    dwell = outcome["results"]["call_001"]
 
     assert dwell["status"] == "not_built"
     assert dwell["dwells"] == []
@@ -239,7 +239,7 @@ def test_truncation_keeps_matched_count(patched_repo, monkeypatch):
     monkeypatch.setattr(dwell_repo, "fetch_dwells", lambda db, kind, start, end, limit: many)
 
     outcome = _run_dwell_question(_FakeClient(_dwell_script(arguments='{"limit":10}')))
-    dwell = outcome["results"]["query_ship_dwell"]
+    dwell = outcome["results"]["call_001"]
 
     assert dwell["returned_count"] == 10
     assert dwell["matched_count"] == 60
@@ -271,7 +271,7 @@ def test_tool_result_reaches_final_response(patched_repo):
     outcome = _run_dwell_question(_FakeClient(_dwell_script()))
 
     assert outcome["answer"] == FINAL_ANSWER
-    dwell = outcome["results"]["query_ship_dwell"]
+    dwell = outcome["results"]["call_001"]
     # datetime 经 _jsonable 序列化为 ISO 字符串
     assert dwell["dwells"][0]["enter_at"] == "2026-03-01T02:00:00+00:00"
 
@@ -367,6 +367,6 @@ def test_full_flow_performs_no_db_writes():
         assert sql.lstrip().lower().startswith("select"), sql
         assert not _WRITE_RE.search(sql), sql
 
-    dwell = outcome["results"]["query_ship_dwell"]
+    dwell = outcome["results"]["call_001"]
     assert dwell["returned_count"] == 1
     assert dwell["matched_count"] == 1

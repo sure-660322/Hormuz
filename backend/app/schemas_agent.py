@@ -1,5 +1,5 @@
 # schemas_agent.py：智能体 /agent/analyze 的请求与响应模型
-# 字段对齐 docs/agent_integration.md「预设响应与错误」一节（契约 v3）。
+# 字段对齐 docs/agent_integration.md「预设响应与错误」一节（契约 v4）。
 # 与 schemas.py 分离：该文件随智能体契约演进，不动现有接口模型。
 from datetime import datetime
 from typing import Any, Literal
@@ -100,14 +100,14 @@ class AgentQuerySummary(BaseModel):
 class AgentAnalyzeResponse(BaseModel):
     schema_version: str
     request_id: str
-    status: str  # ok / no_data / partial / needs_clarification
+    status: Literal["ok", "no_data", "partial", "needs_clarification", "refused"]
     answer: str
     context: AgentContext
     ships: list[AgentShip]
     evidence: list[AgentEvidence]
     query_summary: AgentQuerySummary | None  # needs_clarification 或非通行工具时为 null
     tools_used: list[str]  # 本次实际执行的工具名（执行顺序去重）
-    results: dict[str, Any]  # 各工具的结构化结果（按工具名），供前端展示与追溯
+    results: dict[str, Any]  # 各工具的结构化结果（按服务端 call_id），供前端展示与追溯
     limitations: list[str]
     clarification: str | None  # 非澄清状态为空
 

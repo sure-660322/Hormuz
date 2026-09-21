@@ -2,6 +2,9 @@
 param(
     [string]$Image = 'postgres:17@sha256:f4c66b820c6f974249089d3d16d86a3698eae11e8746eb6644b2271031e91232',
     [string]$Python = '',
+    [ValidateSet('SQL-04', 'SQL-05')]
+    [string]$Stage = 'SQL-04',
+    [string[]]$AdditionalTestTarget = @(),
     [switch]$KeepContainer
 )
 
@@ -9,8 +12,9 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $schemaFile = Join-Path $repoRoot 'backend/sql/008_fresh_handoff_schema.sql'
 $migrationFile = Join-Path $repoRoot 'backend/sql/013_agent_analytics_readonly.sql'
-$container = 'hormuz-sql04-' + $PID + '-' + (Get-Random -Minimum 1000 -Maximum 9999)
-$database = 'hormuz_sql04_verify'
+$stageSlug = $Stage.ToLowerInvariant().Replace('-', '')
+$container = "hormuz-$stageSlug-" + $PID + '-' + (Get-Random -Minimum 1000 -Maximum 9999)
+$database = "hormuz_${stageSlug}_verify"
 $admin = 'sql04_admin'
 $adminPassword = [guid]::NewGuid().ToString('N')
 $readerPassword = [guid]::NewGuid().ToString('N')
@@ -118,9 +122,10 @@ FROM generate_series(1, 601) AS value;
     $env:AGENT_DB_PORT = [string]$port
     $env:AGENT_DB_NAME = $database
 
-    & $Python -m pytest backend/tests/test_query_analytics_executor.py -q
-    if ($LASTEXITCODE -ne 0) { throw 'SQL-04 executor pytest verification failed.' }
-    Write-Host 'PASS: SQL-04 isolated PostgreSQL 17 executor verification completed.'
+    $testTargets = @('backend/tests/test_query_analytics_executor.py') + $AdditionalTestTarget
+    & $Python -m pytest @testTargets -q
+    if ($LASTEXITCODE -ne 0) { throw "$Stage query analytics pytest verification failed." }
+    Write-Host "PASS: $Stage isolated PostgreSQL 17 query analytics verification completed."
     Write-Host "Container: $container (temporary loopback port; isolated database $database)"
 }
 finally {

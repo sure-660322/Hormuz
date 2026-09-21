@@ -250,7 +250,7 @@ export async function fetchEventShips(eventId: string): Promise<ApiEventShipsRes
   return response.json()
 }
 
-// 智能体 POST /agent/analyze 的请求与响应类型，字段对齐 backend/app/schemas_agent.py（契约 v3）。
+// 智能体 POST /agent/analyze 的请求与响应类型，字段对齐 backend/app/schemas_agent.py（契约 v4）。
 export interface AgentTurn {
   role: 'user' | 'assistant'
   content: string
@@ -307,19 +307,25 @@ export interface AgentQuerySummary {
 export interface AgentAnalyzeResponse {
   schema_version: string
   request_id: string
-  status: string  // ok / no_data / partial / needs_clarification
+  status: 'ok' | 'no_data' | 'partial' | 'needs_clarification' | 'refused'
   answer: string
   context: AgentContext
   ships: AgentShip[]
   evidence: AgentEvidence[]
   query_summary: AgentQuerySummary | null
   tools_used: string[]  // 本次实际执行的工具名（执行顺序去重）
-  results: Record<string, AgentToolResult>  // 各工具结构化结果，按工具名
+  results: Record<string, AgentToolResult>  // 各工具结构化结果，按服务端 call_id
   limitations: string[]
   clarification: string | null
 }
 
 // 非通行工具的结构化结果（字段定义见 docs/agent_integration.md 与后端工具模块）
+export interface AgentToolEnvelope {
+  call_id: string
+  tool_name: string
+  status: string
+}
+
 export interface AgentToolEventNews {
   story_id: string
   media_name: string
@@ -346,14 +352,14 @@ export interface AgentToolEvent {
   news: AgentToolEventNews[]
 }
 
-export interface AgentToolEventContextResult {
+export interface AgentToolEventContextResult extends AgentToolEnvelope {
   status: string
   returned_event_count: number
   truncated: boolean
   events: AgentToolEvent[]
 }
 
-export interface AgentToolShipSearchResult {
+export interface AgentToolShipSearchResult extends AgentToolEnvelope {
   status: string
   keyword: string
   returned_count: number
@@ -362,7 +368,7 @@ export interface AgentToolShipSearchResult {
   matches: { ship_id: number; name: string; mmsi: string; ship_type: string; flag: string | null }[]
 }
 
-export interface AgentToolShipTrackResult {
+export interface AgentToolShipTrackResult extends AgentToolEnvelope {
   status: string
   ship_id: number
   ship_name: string
@@ -389,7 +395,7 @@ export interface AgentToolDwellEntry {
   is_simulated: boolean
 }
 
-export interface AgentToolDwellResult {
+export interface AgentToolDwellResult extends AgentToolEnvelope {
   status: string  // ok / no_data / not_built
   kind: string | null
   window: [string, string] | null
@@ -416,7 +422,7 @@ export interface AgentToolEncounterPair {
   is_simulated: boolean
 }
 
-export interface AgentToolEncountersResult {
+export interface AgentToolEncountersResult extends AgentToolEnvelope {
   status: string  // ok / no_data / not_built
   window: [string, string] | null
   max_distance_nm_filter: number | null
@@ -457,7 +463,7 @@ export interface AgentToolEventShipEvent {
   note: string
 }
 
-export interface AgentToolEventShipLinksResult {
+export interface AgentToolEventShipLinksResult extends AgentToolEnvelope {
   status: string  // ok / no_data
   direction: string  // by_event / by_ship
   event_id?: string
@@ -474,6 +480,22 @@ export interface AgentToolEventShipLinksResult {
   limitations: string[]
 }
 
+export interface AgentToolAnalyticsResult extends AgentToolEnvelope {
+  query_id: string
+  columns: string[]
+  rows: unknown[][]
+  returned_row_count: number
+  truncated: boolean
+  source: {
+    catalog_version: string
+    views: string[]
+    data_scope: Record<string, unknown>
+  }
+  limitations: string[]
+  code?: string
+  message?: string
+}
+
 export type AgentToolResult =
   | AgentToolEventContextResult
   | AgentToolShipSearchResult
@@ -481,6 +503,7 @@ export type AgentToolResult =
   | AgentToolDwellResult
   | AgentToolEncountersResult
   | AgentToolEventShipLinksResult
+  | AgentToolAnalyticsResult
   | Record<string, unknown>
 
 export interface AgentErrorDetail {

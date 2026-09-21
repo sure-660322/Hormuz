@@ -178,7 +178,7 @@ def test_observed_by_event(patched_repo):
 
     assert outcome["status"] == "ok"
     assert outcome["tools_used"] == ["query_event_ship_links"]
-    result = outcome["results"]["query_event_ship_links"]
+    result = outcome["results"]["call_001"]
     assert result["direction"] == "by_event"
     assert result["event_id"] == "evt_001"
     assert result["link_type"] == "observed"
@@ -204,7 +204,7 @@ def test_mentioned_by_event(patched_repo):
     outcome = run_agent(None, _FakeClient(_links_script(args, FINAL_ANSWER_MENTIONED)),
                         question="evt_001 事件被哪些报道提到过船名？", trace=[])
 
-    result = outcome["results"]["query_event_ship_links"]
+    result = outcome["results"]["call_001"]
     assert result["link_type"] == "mentioned"
     assert result["returned_count"] == 1
     link = result["links"][0]
@@ -223,7 +223,7 @@ def test_reverse_by_ship(patched_repo):
     outcome = run_agent(None, _FakeClient(_links_script(args, FINAL_ANSWER_OBSERVED)),
                         question="SIM V2 油轮 004 被哪些事件 observed 关联？", trace=[])
 
-    result = outcome["results"]["query_event_ship_links"]
+    result = outcome["results"]["call_001"]
     assert result["direction"] == "by_ship"
     assert result["ship_id"] == 4
     assert result["ship_name"] == "SIM V2 油轮 004"
@@ -317,7 +317,7 @@ def test_empty_result_is_valid_zero(patched_repo, monkeypatch):
                                   "该事件在派生层内没有 observed 关联。")),
         question="evt_001 附近有哪些模拟船？", trace=[],
     )
-    result = outcome["results"]["query_event_ship_links"]
+    result = outcome["results"]["call_001"]
     assert result["status"] == "no_data"
     assert result["links"] == []
     assert result["built_at"] is not None  # 零条≠未构建
@@ -379,7 +379,7 @@ def test_tool_result_reaches_final_response(patched_repo):
                         question="evt_001 附近有哪些模拟船？", trace=[])
 
     assert outcome["answer"] == FINAL_ANSWER_OBSERVED
-    result = outcome["results"]["query_event_ship_links"]
+    result = outcome["results"]["call_001"]
     assert result["links"][0]["ship"]["name"] == "SIM V2 油轮 004"
 
     payload = runner._jsonable(outcome)
@@ -481,5 +481,5 @@ def test_full_flow_performs_no_db_writes():
         assert sql.lstrip().lower().startswith("select"), sql
         assert not _WRITE_RE.search(sql), sql
 
-    result = outcome["results"]["query_event_ship_links"]
+    result = outcome["results"]["call_001"]
     assert result["returned_count"] == 1

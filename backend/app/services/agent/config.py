@@ -5,8 +5,9 @@ sim_ais_demo/tools/verify_news_alignment.py（门线判定参考实现）。
 """
 from datetime import datetime, timedelta, timezone
 
-# 智能体契约版本（docs/agent_integration.md）；v3 起支持多工具与多轮 history
-SCHEMA_VERSION = "3"
+# 智能体契约版本（docs/agent_integration.md）；v4 起 results 按 call_id 键入，
+# 并加入受功能开关保护的 query_analytics 及 refused 状态。
+SCHEMA_VERSION = "4"
 
 # ---- 门线定义（与 sim_ais_demo/tools/verify_news_alignment.py 完全一致）----
 # 判定纬度带：仅在该纬度带内的报位参与侧别判定

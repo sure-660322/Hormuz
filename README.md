@@ -115,9 +115,9 @@ npm run dev -- --port 5174
 
 历史验收记录：默认问题曾返回 1 艘 SIM V2 化学品船 019（证据 P1，观测完成于 2026-02-28T18:14:54Z）；v3 三场景联调记录见 [当前契约](docs/agent_integration.md)。本轮未重新调用模型，不能把历史数量当作当前查询结果；自由回答正文尚无逐项事实核验器。
 
-后续再做：地图定位当前指向回放快照位置，历史轨迹逐点回放联动尚未实现；服务端会话持久化未做（history 由客户端逐请求携带）。当前已注册工具的 SQL 仍由开发者编写，不是 Text-to-SQL；受限版已完成 SQL-01～04，但要到 SQL-05 接入后才成为可用能力。事件—船舶关联工具已接入，但 mentioned 文本提及与 observed 模拟邻近严格分列，查询不证明真实因果，零结果必须与数据不足或派生层未构建区分。
+后续再做：地图定位当前指向回放快照位置，历史轨迹逐点回放联动尚未实现；服务端会话持久化未做（history 由客户端逐请求携带）。受限 Text-to-SQL 已完成 SQL-01～05 并注册为 `query_analytics`，但功能开关默认关闭；只有本地回环绑定、独立只读身份和完整安全配置同时满足时才向模型暴露，不能视为远端可用能力。事件—船舶关联工具已接入，但 mentioned 文本提及与 observed 模拟邻近严格分列，查询不证明真实因果，零结果必须与数据不足或派生层未构建区分。
 
-下一阶段：AG-01 / SQL-01 需求与安全契约已完成评审；SQL-02 已交付三个语义视图、独立只读角色、catalog v1 及自动验证脚本，并于 2026-09-21 在一次性 PostgreSQL 17 中通过 56 项结构、权限与对象漂移检查，详见 [SQL-02 说明](docs/query_analytics_sql02.md)。SQL-03 已锁定 SQLGlot 30.18.0 / `postgres` 并实现离线 AST 正向白名单校验，58 条允许、62 条拒绝及 9 项边界检查通过，详见 [SQL-03 说明](docs/query_analytics_sql03.md)。SQL-04 已实现不依赖主应用连接的专用只读执行器、运行时 catalog/权限核验、2/4 非排队并发门、5s/1s 超时、500 行/256 KiB 流式截断、取消、审计和稳定错误映射；一次性 PostgreSQL 17 专项 11 项通过，详见 [SQL-04 说明](docs/query_analytics_sql04.md)。验证中将视图哈希统一为固定 `search_path=pg_catalog` 后可复现，视图 SQL 未改变，SQL-02 56 项已复跑通过。AG-02～05 已全部合入本地 main，当前共注册 8 个只读工具；AG-03/04/05 各自 8/9/10 项离线测试及合并后后端全量 167 项、前端 build/check:workbench 均通过。三个新增业务工具的真实库只读抽测和真实模型联调尚未重跑。这仍不表示 Text-to-SQL 已可用：`query_analytics` 尚未注册且默认关闭；共享文件所有权现已移交 Codex，SQL-05 可以在新的独立 worktree 开始。任务编号、依赖、分工和验收标准见 [开发任务](docs/agent_development_plan.md)。
+下一阶段：AG-01 / SQL-01 需求与安全契约已完成评审；SQL-02 已交付三个语义视图、独立只读角色、catalog v1 及自动验证脚本，并于 2026-09-21 在一次性 PostgreSQL 17 中通过 56 项结构、权限与对象漂移检查，详见 [SQL-02 说明](docs/query_analytics_sql02.md)。SQL-03 已锁定 SQLGlot 30.18.0 / `postgres` 并实现离线 AST 正向白名单校验，58 条允许、62 条拒绝及 9 项边界检查通过，详见 [SQL-03 说明](docs/query_analytics_sql03.md)。SQL-04 已实现专用只读执行器及强制安全边界，详见 [SQL-04 说明](docs/query_analytics_sql04.md)。SQL-05 已把 `query_analytics` 接入同一模型循环，契约升级为 v4：结果按服务端 `call_id` 保存，顶层状态收紧，澄清/拒绝/非数据问题可在调用模型前确定性处理，前端提供最小表格展示；后端全量 177 项通过，前端 build/check:workbench 通过，一次性 PostgreSQL 17 的 SQL-04+05 端到端 22 项通过，详见 [SQL-05 说明](docs/query_analytics_sql05.md)。当前注册表共 9 个只读工具，但 `query_analytics` 默认不向模型暴露；真实 DeepSeek 工具模式、共享业务库统计和浏览器端到端仍待 SQL-06 验收。任务编号、依赖、分工和验收标准见 [开发任务](docs/agent_development_plan.md)。
 
 ## MobilityDB 时空能力底座：P0–P5 进度
 
@@ -141,7 +141,7 @@ npm run dev -- --port 5174
 ## 尚未实现与限制
 
 - 真实 AIS 接入、实时推送、自动刷新、认证授权和正式部署。
-- 智能体为 v3 多工具版：8 个已注册只读工具、多轮 history（由客户端逐请求携带，无服务端会话持久化）、仅 DeepSeek 一家模型；`query_analytics` 执行器虽已隔离验证但未注册；三个新业务工具的真实模型调用、模型主动澄清、无密钥 503 等路径未实测。
+- 智能体契约为 v4：注册表含 9 个只读工具，多轮 history 仍由客户端逐请求携带；`query_analytics` 默认关闭且仅允许本地教学环境启用，其他 8 个工具不受开关影响。真实 DeepSeek 对新增工具 schema 的调用、共享业务库统计、浏览器端到端和无密钥 503 仍未实测。
 - 新闻事件与模拟船舶的自动因果关联、事件多点完整展示。事件面板现提供演示级 observed 关联（模拟数据时空邻近，明确标注不构成真实因果）与 mentioned 原文船名，二者严格分列。
 - 通用双地图对比、AIS 密度分析；MobilityDB 底座 P0–P4 已实现、P5 部分实现，回放主链路切换 simplified 抽稀层及特征保留规则未实施，见 [技术方案](docs/mobility_capability_plan.md)。
 - 派生层 stale 当前只比较 built_at 与源报位最大时间，不能识别所有历史更正/删除；事件关联仍有 EPSG:32640 距离误差限制，相遇分析已使用 geography 采样距离。上述限制不能在智能体中省略。
@@ -158,7 +158,7 @@ npm run build
 npm run check:workbench
 ```
 
-后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-21 本地 main 整合 SQL-04 与 AG-03～05：`python -m pytest backend/tests -q` 为 167 passed / 7 skipped，`npm run build` 与 `npm run check:workbench` 通过；一次性 PostgreSQL 17 中 SQL-04 专项 11 项、SQL-02 权限/catalog 56 项通过并自动删除容器。未连接或修改共享数据库，未执行迁移、真实模型调用、浏览器端到端或全量业务接口验收；`query_analytics` 仍未注册且默认关闭。
+后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-21 SQL-05 worktree：`python -m pytest backend/tests -q` 为 177 passed / 8 skipped，`npm run build` 与 `npm run check:workbench` 通过；一次性 PostgreSQL 17 中 SQL-04+05 端到端 22 项通过并自动删除容器。验证覆盖默认关闭、专用执行器真实执行、调用 ID、防覆盖、一次语法修复、安全拒绝终止、504/503 稳定映射、多工具状态归并和最小前端类型/展示。未连接或修改共享数据库，未执行迁移、真实模型调用或浏览器端到端；`query_analytics` 已注册但仍默认关闭。
 
 <details>
 <summary>历史验证记录（2026-09-14 至 2026-09-20，不代表当前在途版本已通过）</summary>

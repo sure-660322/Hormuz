@@ -10,12 +10,13 @@ import {
   type AgentToolEventContextResult,
   type AgentToolShipSearchResult,
   type AgentToolShipTrackResult,
+  type AgentToolAnalyticsResult,
 } from '../api'
 import { eventKind } from '../domain/maritime'
 
 // 智能体问答是独立异步请求：不放入 computed，由本组件管理加载/取消/超时/错误状态。
 // 前端 75 秒超时覆盖后端 60 秒预算，与新闻查询的 20 秒惯例无关（见 api.ts fetchAgentAnalyze）。
-// 多轮：已完成轮次保留在 turns 中，提交时携带最近 10 轮 history（契约 v3）。
+// 多轮：已完成轮次保留在 turns 中，提交时携带最近 10 轮 history（契约 v4）。
 const emit = defineEmits<{
   'locate-ship': [shipId: number]
   'locate-event': [eventId: string]
@@ -43,6 +44,7 @@ const statusMeta: Record<string, { label: string; tone: 'ok' | 'warn' | 'info' }
   partial: { label: '部分数据', tone: 'ok' },
   no_data: { label: '无可用数据', tone: 'warn' },
   needs_clarification: { label: '待澄清', tone: 'info' },
+  refused: { label: '已拒绝', tone: 'warn' },
 }
 
 const toolLabels: Record<string, string> = {
@@ -50,6 +52,11 @@ const toolLabels: Record<string, string> = {
   search_ships: '船舶检索',
   get_ship_track: '单船轨迹',
   get_event_context: '新闻事件',
+  get_data_health: '数据健康',
+  query_ship_dwell: '停留识别',
+  query_encounters: '相遇分析',
+  query_event_ship_links: '事件—船舶关联',
+  query_analytics: '受限分析',
 }
 
 function agentErrorMessage(e: unknown): string {
@@ -60,6 +67,8 @@ function agentErrorMessage(e: unknown): string {
       AGENT_TIMEOUT: '智能体处理超时，请缩小问题范围或稍后重试。',
       AGENT_INVALID_RESPONSE: '智能体回答不符合契约，请重试。',
       DATA_QUERY_FAILED: '数据查询失败，请稍后重试。',
+      AGENT_QUERY_TIMEOUT: '受限分析查询超时，请缩小范围后重新提问。',
+      AGENT_QUERY_UNAVAILABLE: '受限分析的只读数据源或安全配置当前不可用。',
     }
     return friendly[e.code] ?? e.message
   }
@@ -144,19 +153,34 @@ function formatUtc(value: string): string {
   return value.replace('T', ' ').replace('Z', ' UTC')
 }
 
+function toolResult(response: AgentAnalyzeResponse, toolName: string) {
+  return Object.values(response.results ?? {}).find((item) => item.tool_name === toolName)
+}
+
 function eventResult(response: AgentAnalyzeResponse): AgentToolEventContextResult | null {
-  const result = response.results?.get_event_context
+  const result = toolResult(response, 'get_event_context')
   return result && 'events' in result ? (result as AgentToolEventContextResult) : null
 }
 
 function searchResult(response: AgentAnalyzeResponse): AgentToolShipSearchResult | null {
-  const result = response.results?.search_ships
+  const result = toolResult(response, 'search_ships')
   return result && 'matches' in result ? (result as AgentToolShipSearchResult) : null
 }
 
 function trackResult(response: AgentAnalyzeResponse): AgentToolShipTrackResult | null {
-  const result = response.results?.get_ship_track
+  const result = toolResult(response, 'get_ship_track')
   return result && 'fix_count' in result ? (result as AgentToolShipTrackResult) : null
+}
+
+function analyticsResult(response: AgentAnalyzeResponse): AgentToolAnalyticsResult | null {
+  const result = toolResult(response, 'query_analytics')
+  return result && 'columns' in result ? (result as AgentToolAnalyticsResult) : null
+}
+
+function cellText(value: unknown): string {
+  if (value === null) return 'null'
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
 }
 
 onBeforeUnmount(() => request?.abort())
@@ -226,6 +250,28 @@ onBeforeUnmount(() => request?.abort())
         <section v-if="turn.response.answer" class="answer-block">
           <h3>回答</h3>
           <p class="answer-text">{{ turn.response.answer }}</p>
+        </section>
+
+        <section v-if="analyticsResult(turn.response)" class="facts-block analytics-block">
+          <h3>受限分析结果</h3>
+          <p class="summary-line">
+            {{ analyticsResult(turn.response)!.returned_row_count }} 行
+            · catalog {{ analyticsResult(turn.response)!.source.catalog_version }}
+            · 视图 {{ analyticsResult(turn.response)!.source.views.join('、') }}
+            <template v-if="analyticsResult(turn.response)!.truncated"> · 结果已截断</template>
+          </p>
+          <div v-if="analyticsResult(turn.response)!.rows.length" class="analytics-table-wrap">
+            <table class="analytics-table">
+              <thead><tr><th v-for="column in analyticsResult(turn.response)!.columns" :key="column">{{ column }}</th></tr></thead>
+              <tbody>
+                <tr v-for="(row, rowIndex) in analyticsResult(turn.response)!.rows" :key="rowIndex">
+                  <td v-for="(cell, cellIndex) in row" :key="cellIndex">{{ cellText(cell) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else class="caption">查询成功，明确范围内返回 0 行。</p>
+          <p class="request-id">查询标识：{{ analyticsResult(turn.response)!.query_id }}</p>
         </section>
 
         <section class="facts-block">
@@ -450,6 +496,26 @@ onBeforeUnmount(() => request?.abort())
   font-size: 14px;
   font-weight: 650;
   padding-bottom: 4px;
+}
+.analytics-table-wrap {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+.analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.analytics-table th,
+.analytics-table td {
+  padding: 5px 7px;
+  border: 1px solid var(--line, #26405a);
+  text-align: left;
+  white-space: nowrap;
+}
+.analytics-table th {
+  color: var(--muted, #9fc2e0);
+  font-weight: 650;
 }
 .answer-text {
   white-space: pre-wrap;
