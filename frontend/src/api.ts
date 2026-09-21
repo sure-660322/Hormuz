@@ -371,10 +371,39 @@ export interface AgentToolShipTrackResult {
   coverage_end: string | null
 }
 
+// AG-04 query_encounters 的结构化结果（字段见 docs/agent_tool_encounters.md）
+export interface AgentToolEncounterPair {
+  ship_a: { id: number; name: string; mmsi: string; ship_type: string }
+  ship_b: { id: number; name: string; mmsi: string; ship_type: string }
+  min_distance_m: number
+  min_distance_nm: number
+  overlap_minutes: number
+  period_start: string
+  period_end: string
+  closest_point: { type: string; coordinates: number[] } | null
+  is_simulated: boolean
+}
+
+export interface AgentToolEncountersResult {
+  status: string  // ok / no_data / not_built
+  window: [string, string] | null
+  max_distance_nm_filter: number | null
+  requested_max_distance_nm: number | null
+  encounters: AgentToolEncounterPair[]
+  returned_count: number
+  matched_count: number
+  truncated: boolean
+  params: Record<string, unknown> | null
+  built_at: string | null
+  stale: boolean | null
+  limitations: string[]
+}
+
 export type AgentToolResult =
   | AgentToolEventContextResult
   | AgentToolShipSearchResult
   | AgentToolShipTrackResult
+  | AgentToolEncountersResult
   | Record<string, unknown>
 
 export interface AgentErrorDetail {
