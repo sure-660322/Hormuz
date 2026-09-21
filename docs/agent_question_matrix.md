@@ -1,6 +1,6 @@
 # 智能体问题—能力矩阵（AG-01）
 
-> 文档状态：AG-01 需求矩阵草案已完成，待独立评审（2026-09-21，分支 `kimi/ag01-sql01-contract`，评审核对见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)）。本文仅冻结问题分类、业务口径和验收意图，**不代表对应能力已经实现或注册**。
+> 文档状态：**AG-01 已完成最终评审**（2026-09-21，分支 `kimi/ag01-sql01-contract`，R-01～R-39 见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)）。本文仅冻结问题分类、业务口径和验收意图，**不代表对应能力已经实现或注册**。
 > 已确认注册的四个智能体工具：query_strait_passages / search_ships / get_ship_track / get_event_context（[agent_integration.md](agent_integration.md)）。其余能力的底层实现状态见各节标注；`query_analytics` 尚未实现。
 >
 > 通用约定（适用于全部条目）：

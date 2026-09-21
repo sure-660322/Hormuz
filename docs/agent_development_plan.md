@@ -1,6 +1,6 @@
 # 智能体下一阶段开发任务
 
-更新：2026-09-21。本文是后续任务的统一计划入口；当前实现契约见 [agent_integration.md](agent_integration.md)，全项目摘要见 [README](../README.md)，多会话操作见 [collaboration.md](collaboration.md)。本文新增的工具和 SQL 链路均未实现；AG-01 / SQL-01 的需求与契约文档已交付待评审（见下表），不等于工具已实现。
+更新：2026-09-21。本文是后续任务的统一计划入口；当前实现契约见 [agent_integration.md](agent_integration.md)，全项目摘要见 [README](../README.md)，多会话操作见 [collaboration.md](collaboration.md)。本文新增的工具和 SQL 链路均未实现；AG-01 / SQL-01 的需求与契约文档已完成最终评审（见下表），不等于工具已实现。
 
 ## 已确定的方向与当前基线
 
@@ -20,12 +20,12 @@ Kimi/ChatGPT 可整理脱敏材料、案例和评审意见；具备本地仓库�
 | 编号 | 交付范围 | 建议负责人 | 依赖 / 当前状态 |
 | --- | --- | --- | --- |
 | AG-00 | 基线归属、文档整理、分组验收与提交交接 | Codex + 各在途负责人 | 进行中：Kimi 已结束，成果整理及有限回归完成；交接包重新导出与独立空库验收仍阻塞 |
-| AG-01 | 问题—能力矩阵，正常/澄清/拒绝/无数据案例 | Kimi 或 ChatGPT；整合者核对 | **已实现待评审**（2026-09-21，Kimi，worktree `D:/my_project/Hormuz-kimi-ag01`，分支 `kimi/ag01-sql01-contract`，基线 d49a606，交付 4d64755 + 评审修订轮）：[agent_question_matrix.md](agent_question_matrix.md) 共 56 条例（existing_tool 8 / new_deterministic_tool 11 / text_to_sql 9 / clarification 8 / refuse 7 / non_data_question 8 / deferred 5），已按独立评审完成分类修正与仓库核验（评采纳决议见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)）；纯文档无代码，静态自检通过，未跑业务测试；待项目负责人批准 |
+| AG-01 | 问题—能力矩阵，正常/澄清/拒绝/无数据案例 | Kimi 或 ChatGPT；整合者核对 | **已评审通过**（2026-09-21，分支 `kimi/ag01-sql01-contract`）：[agent_question_matrix.md](agent_question_matrix.md) 共 56 条例（existing_tool 8 / new_deterministic_tool 11 / text_to_sql 9 / clarification 8 / refuse 7 / non_data_question 8 / deferred 5）；R-01～R-39 评审闭环见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)。这是需求与验收基线，不表示对应工具均已注册。 |
 | AG-02 | get_data_health 只读工具 | Kimi Code 或 Codex | AG-00/01；待开始 |
 | AG-03 | query_ship_dwell，只读查询既有派生结果 | Kimi Code 或 Codex | AG-00/01；待开始 |
 | AG-04 | query_encounters，只读，保留参数和覆盖限制 | Kimi Code 或 Codex | AG-00/01；待开始 |
 | AG-05 | 事件—船舶关联工具，mentioned/observed 分列 | Kimi 草拟语义，Codex 整合 | AG-00/01；待开始 |
-| SQL-01 | 固定输入输出、目录、白名单和错误/澄清契约 | Kimi/ChatGPT 草拟，Codex 核对 | **已实现待评审**（2026-09-21，Kimi，同上 worktree/分支，基线 d49a606，交付 4d64755 + 评审修订轮）：[query_analytics_contract.md](query_analytics_contract.md) 冻结输入结构、参数/函数/操作符/CAST 正向白名单、词法门与全树 AST 校验、首批 agent_data 视图目录与 JOIN 白名单、返回结构与可信字段服务端生成责任、状态语义（ok/refused/timeout/permission_failed/source_unavailable，澄清与 no_data 归编排层）、行/字节/超时限额与增量读取、纠错一次+完整重校验、安全拒绝不重试、agent_reader 权限、关闭即关不降级；产品参数按推荐方案处理（500 行/256 KB/5 s/2 次调用、首批禁 CTE/子查询、dwell/encounters/船位不开放）；纯契约未实现代码；**Codex 最终安全审查（1 P0 + 6 P1，R-27～R-33）已逐项完整接受并冻结**：校验-执行唯一对应（固定解析器、禁手写 tokenizer、AST 生成规范化 SQL）、search_path 与 agent_reader 角色属性、字面量/SELECT */别名/歧义列规则、catalog-数据库一致性 fail closed、工具结果提示注入边界、编排状态与 runner 衔接（status 枚举、tools_used/call_id/results 规则、non_data 判定责任）、复杂度/并发/取消回滚/连接池/仅本地教学环境启用（评采纳决议见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md) 第二轮）；待 Codex 复核与项目负责人批准 |
+| SQL-01 | 固定输入输出、目录、白名单和错误/澄清契约 | Kimi/ChatGPT 草拟，Codex 核对 | **已评审通过**（2026-09-21，分支 `kimi/ag01-sql01-contract`）：[query_analytics_contract.md](query_analytics_contract.md) 已冻结输入、正向白名单、校验与执行唯一对应、语义视图目录、只读角色、资源与并发限制、失败映射及验收边界；R-01～R-39 已闭环。纯契约无实现代码，`query_analytics` 仍未注册且默认关闭；允许进入 SQL-02，SQL-03 启动时锁定并实测解析器版本。 |
 | SQL-02 | 语义视图、独立只读角色、配置示例和独立库验收 | Codex | SQL-01；待开始 |
 | SQL-03 | AST 策略校验器和离线攻击用例 | Codex；Kimi 补充测试样例 | SQL-01；待开始 |
 | SQL-04 | 独立只读执行器、超时、结果限制及审计 | Codex | SQL-02/03；待开始 |
