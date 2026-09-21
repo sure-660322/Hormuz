@@ -1,0 +1,24 @@
+{
+  "manifest": {
+    "id": 12,
+    "params": {
+      "data_source": null,
+      "distance_nm": 3.0,
+      "overlap_min": 30,
+      "sample_seconds": 60,
+      "candidate_segment_pairs": 999,
+      "qualifying_segment_pairs": 323
+    }
+  },
+  "source_tables_unchanged": true,
+  "manifest_sha256_verified": true,
+  "structure_ok": true,
+  "stored_rows": 136,
+  "candidate_segment_pairs_checked": 1148,
+  "close_pairs_sampled": 137,
+  "strictly_within_pairs": 136,
+  "boundary_shell_pairs": 1,
+  "boundary_shell_stored": 0,
+  "pair_set_match": true,
+  "max_abs_distance_diff_m": 19.12157138312068
+}

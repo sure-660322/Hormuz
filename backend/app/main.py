@@ -10,6 +10,9 @@ from backend.app.routers.mobility import router as mobility_router
 from backend.app.routers.agent import router as agent_router
 from backend.app.routers.tracks import router as tracks_router
 from backend.app.routers.event_links import router as event_links_router
+from backend.app.routers.dwell import router as dwell_router
+from backend.app.routers.encounters import router as encounters_router
+from backend.app.routers.data_health import router as data_health_router
 
 app = FastAPI()
 #添加中间件
@@ -41,6 +44,9 @@ app.include_router(mobility_router)
 app.include_router(agent_router)
 app.include_router(tracks_router)
 app.include_router(event_links_router)
+app.include_router(dwell_router)
+app.include_router(encounters_router)
+app.include_router(data_health_router)
 
 @app.get("/health")
 def health_check():

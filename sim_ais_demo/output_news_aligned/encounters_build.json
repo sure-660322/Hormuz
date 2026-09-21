@@ -1,0 +1,29 @@
+{
+  "manifest_id": 12,
+  "sha256": "ebcf177e55810ceb035a2436584c6cd61f8a6b230209dc4096799a1adbaff636",
+  "summary": {
+    "rows": 136,
+    "ships": 26,
+    "min_distance_m": 51.0,
+    "max_distance_m": 5464.0
+  },
+  "source_tables_unchanged": true,
+  "source_fingerprints": {
+    "ships": {
+      "count": 30,
+      "digest": "f56e295b21ece07e484cf437fced2b03"
+    },
+    "ship_positions": {
+      "count": 9354,
+      "digest": "878af76adb69bbc78f60cf62f7dac56b"
+    },
+    "events": {
+      "count": 65,
+      "digest": "ab34b169b3a9e50827295d4e5d936e50"
+    },
+    "news": {
+      "count": 290,
+      "digest": "3b4192935a2a3279b5a4f84275b3c1f3"
+    }
+  }
+}

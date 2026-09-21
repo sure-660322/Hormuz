@@ -1,0 +1,43 @@
+{
+  "manifest_id": 9,
+  "sha256": "79f3224c1c432cb501a435e1ddafc7242b8ec752ffdec1647c1a188bc8120958",
+  "summary": [
+    {
+      "kind": "at_anchor",
+      "rows": 199,
+      "ships": 21,
+      "total_minutes": 87879.0
+    },
+    {
+      "kind": "drift",
+      "rows": 21,
+      "ships": 18,
+      "total_minutes": 11980.0
+    },
+    {
+      "kind": "slow_transit",
+      "rows": 11,
+      "ships": 7,
+      "total_minutes": 16273.0
+    }
+  ],
+  "source_tables_unchanged": true,
+  "source_fingerprints": {
+    "ships": {
+      "count": 30,
+      "digest": "f56e295b21ece07e484cf437fced2b03"
+    },
+    "ship_positions": {
+      "count": 9354,
+      "digest": "878af76adb69bbc78f60cf62f7dac56b"
+    },
+    "events": {
+      "count": 65,
+      "digest": "ab34b169b3a9e50827295d4e5d936e50"
+    },
+    "news": {
+      "count": 290,
+      "digest": "3b4192935a2a3279b5a4f84275b3c1f3"
+    }
+  }
+}

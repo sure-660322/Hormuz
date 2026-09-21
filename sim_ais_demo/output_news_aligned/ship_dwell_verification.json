@@ -1,0 +1,20 @@
+{
+  "manifest": {
+    "id": 9,
+    "params": {
+      "scope": "full",
+      "data_source": null,
+      "gap_minutes": 90,
+      "anchor_radius_m": 926.0,
+      "anchor_speed_kn": 3.0,
+      "transit_speed_kn": 8.0,
+      "anchor_min_duration_min": 30,
+      "transit_min_duration_min": 60
+    }
+  },
+  "source_tables_unchanged": true,
+  "manifest_sha256_verified": true,
+  "structure_ok": true,
+  "rows_match": 231,
+  "max_displacement_error_m": 1670.9288926997688
+}
