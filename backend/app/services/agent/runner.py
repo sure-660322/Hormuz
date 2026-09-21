@@ -20,6 +20,7 @@ from backend.app.services.agent.config import (
     DEFAULT_WINDOW,
     SCHEMA_VERSION,
 )
+from backend.app.services.agent.dwell_query import run_dwell_query
 from backend.app.services.agent.event_context import get_event_context
 from backend.app.services.agent.model_client import default_model
 from backend.app.services.agent.ship_search import (
@@ -149,6 +150,11 @@ def _run_data_health(db: Session, args: dict, closure_at: datetime, end_at: date
     # 复用 P5 /api/data-health 的服务与 repository，不重写数据健康算法
     result = health_service.get_data_health(db)
     return {**result, "limitations": list(DATA_HEALTH_LIMITATIONS)}
+
+
+def _run_ship_dwell(db: Session, args: dict, closure_at: datetime, end_at: datetime):
+    # AG-03：只读 ship_dwell 派生层；时间窗缺省为整个已构建批次（见 dwell_query）
+    return run_dwell_query(db, args)
 
 
 TOOL_REGISTRY: dict[str, AgentTool] = {
@@ -285,6 +291,45 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
             windowed=False,
             execute=_run_data_health,
         ),
+        AgentTool(
+            name="query_ship_dwell",
+            description=(
+                "只读查询停留派生层（ship_dwell）的预计算停留段：哪些模拟船在何时"
+                "锚泊/漂航/慢速航行及持续时长；阈值由构建参数决定，查询层不可调整，"
+                "不触发任何重建"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": ["at_anchor", "drift", "slow_transit"],
+                        "description": (
+                            "停留类型：at_anchor=锚泊、drift=漂航、slow_transit=慢速航行；"
+                            "省略时返回全部类型"
+                        ),
+                    },
+                    "start_at": {
+                        "type": "string",
+                        "description": (
+                            "可选窗口开始，ISO 8601，必须带时区（统一 UTC）；"
+                            "与 end_at 成对提供，窗口最长 24 小时；"
+                            "省略时返回整个已构建批次"
+                        ),
+                    },
+                    "end_at": {
+                        "type": "string",
+                        "description": "可选窗口结束，ISO 8601，必须带时区（统一 UTC）",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "返回条数上限，默认 50，最大 500；超出的匹配保留计数并标记 truncated",
+                    },
+                },
+            },
+            windowed=False,
+            execute=_run_ship_dwell,
+        ),
     ]
 }
 
@@ -317,6 +362,12 @@ SYSTEM_PROMPT = f"""你是霍尔木兹海峡船舶回放教学项目的问答助
      数据健康、覆盖范围、派生层新旧类问题必须调用它。stale 只是时间启发式：
      stale=true 表示派生层早于最新源报位、需要重建；stale=false 不证明历史数据未被修改；
      来源列表缺失表示该来源未导入，不能答成真实数量为零；该工具只读，不触发任何重建。
+   - query_ship_dwell：查询停留派生层的预计算停留段（锚泊/漂航/慢速航行）。回答「哪些船
+     抛锚/漂航/慢速航行过、停了多久」类问题必须调用它；kind 只能是 at_anchor/drift/
+     slow_transit，省略时查全部类型。时间窗省略时返回整个已构建批次并说明，不提供时间
+     时不要编造窗口。停留判定阈值由构建参数快照决定（结果里的 params），查询层不能调整；
+     返回零段是「派生层内无该类型停留」的有效零结果；status=not_built 时表示派生层尚未
+     构建，如实说明，不能答成没有停留。
 3. 工作方式（必须遵守）：回答任何数据问题前必须先调用相应工具；回答必须完全基于工具返回的
    结果（船只 ID、名称、数量、证据编号 P1…、事件 ID、story_id），不自行计算或编造。
    不得仅凭对话历史中的信息回答数据问题——即使之前的回答里给过船 ID 或事件结论，
