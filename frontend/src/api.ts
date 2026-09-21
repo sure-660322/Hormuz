@@ -425,3 +425,142 @@ export function describeApiError(error: unknown, fallback: string): string {
   if (error instanceof TypeError && /fetch|network/i.test(error.message)) return '无法连接数据服务，请确认后端与访问地址后重试。'
   return error instanceof Error ? error.message : fallback
 }
+
+// P3 停留识别派生层：/api/dwell（GeoJSON FeatureCollection，属性含 kind/时长/位移半径）。
+export interface ApiDwellFeatureProperties {
+  ship_id: number
+  ship_name: string
+  mmsi: string
+  ship_type: string
+  dwell_no: number
+  kind: 'at_anchor' | 'drift' | 'slow_transit'
+  enter_at: string
+  leave_at: string
+  duration_min: number
+  displacement_radius_m: number
+  max_speed_kn: number
+  point_count: number
+  is_simulated: boolean
+}
+
+export interface ApiDwellResponse {
+  status: string
+  type: 'FeatureCollection'
+  features: {
+    type: 'Feature'
+    geometry: { type: 'Point'; coordinates: [number, number] }
+    properties: ApiDwellFeatureProperties
+  }[]
+  feature_count: number
+  truncated: boolean
+  params: Record<string, unknown> | null
+  built_at: string | null
+  stale: boolean
+  is_simulated: boolean | null
+  note: string
+}
+
+export async function fetchDwell(kind?: string): Promise<ApiDwellResponse> {
+  const query = kind ? `?kind=${encodeURIComponent(kind)}` : ''
+  const response = await fetch(`${API_BASE_URL}/api/dwell${query}`, {
+    signal: AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) throw new Error(`获取停留识别结果失败：${response.status}`)
+  return response.json()
+}
+
+// P4 相遇分析派生层：GET /api/encounters 读取，POST /api/encounters/analyze 触发重建。
+export interface ApiEncounterShip {
+  id: number
+  name: string
+  mmsi: string
+  ship_type: string
+}
+
+export interface ApiEncounter {
+  ship_a: ApiEncounterShip
+  ship_b: ApiEncounterShip
+  min_distance_m: number
+  min_distance_nm: number
+  overlap_minutes: number
+  period_start: string
+  period_end: string
+  closest_point: { type: 'Point'; coordinates: [number, number] } | null
+  is_simulated: boolean
+}
+
+export interface ApiEncountersResponse {
+  status: string
+  encounters: ApiEncounter[]
+  count: number
+  truncated: boolean
+  params: Record<string, unknown> | null
+  built_at: string | null
+  stale: boolean
+  note: string
+}
+
+export async function fetchEncounters(maxDistanceNm?: number): Promise<ApiEncountersResponse> {
+  const query = maxDistanceNm !== undefined ? `?max_distance_nm=${maxDistanceNm}` : ''
+  const response = await fetch(`${API_BASE_URL}/api/encounters${query}`, {
+    signal: AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) throw new Error(`获取相遇分析结果失败：${response.status}`)
+  return response.json()
+}
+
+export interface ApiEncountersAnalyzeResponse {
+  status: string
+  manifest_id: number
+  summary: { rows: number; ships: number; min_distance_m: number; max_distance_m: number }
+  params: { distance_nm: number; overlap_min: number; sample_seconds: number }
+}
+
+export async function analyzeEncounters(
+  params: { distance_nm: number; overlap_min: number; sample_seconds: number },
+): Promise<ApiEncountersAnalyzeResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/encounters/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    signal: AbortSignal.timeout(120_000),
+  })
+  if (!response.ok) throw new Error(`相遇分析失败：${response.status}`)
+  return response.json()
+}
+
+// P5 数据健康：/api/data-health（源覆盖统计 + 派生层新鲜度）。
+export interface ApiDataHealthDerived {
+  table: string
+  rows: number | null
+  built_at: string | null
+  stale: boolean | null
+  params: Record<string, unknown> | null
+  status?: string
+}
+
+export interface ApiDataHealth {
+  status: string
+  batch: string
+  source: {
+    by_data_source: {
+      data_source: string
+      position_count: number
+      ship_count: number
+      coverage_start: string | null
+      coverage_end: string | null
+      median_gap_minutes: number | null
+    }[]
+    totals: { ships: number; events: number; news: number; positions: number }
+  }
+  derived: ApiDataHealthDerived[]
+  note: string
+}
+
+export async function fetchDataHealth(): Promise<ApiDataHealth> {
+  const response = await fetch(`${API_BASE_URL}/api/data-health`, {
+    signal: AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) throw new Error(`获取数据健康状态失败：${response.status}`)
+  return response.json()
+}

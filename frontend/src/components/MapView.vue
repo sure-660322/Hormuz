@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { createCountryLayer } from '../services/countryLayer'
-import { hasEventLocation, eventLocationLabel, type LocatedEvent } from '../domain/maritime'
+import { hasEventLocation, type LocatedEvent } from '../domain/maritime'
 import type { ApiTrackSegment } from '../api'
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { ApiEvent, ApiMapShip, ApiShipPosition } from '../api'
+import type { ApiEvent, ApiMapShip, ApiShipPosition, ApiDwellResponse, ApiEncounter } from '../api'
 import {
-  eventKind,
-  formatTime,
-  displayZone, riskColors, shipShape, shipStatus, projectPosition, eventPriority,
+  displayZone,
   type GeoPoint,
   type LayerState,
   type ViewBounds,
 } from '../domain/maritime'
+import { RenderScheduler } from '../services/map/renderScheduler'
+import { ShipLayerManager } from '../services/map/shipLayer'
+import { EventLayerManager } from '../services/map/eventLayer'
+import { TrackLayerManager } from '../services/map/trackLayer'
 const props = defineProps<{
   ships: ApiMapShip[]
   events: LocatedEvent[]
@@ -36,6 +38,9 @@ const props = defineProps<{
   trackRecent24h: boolean
   shareRequest: number
   sharedView: { lat: number; lon: number; zoom: number } | null
+  dwell: ApiDwellResponse | null
+  encounters: ApiEncounter[] | null
+  selectedEncounter: ApiEncounter | null
 }>()
 const emit = defineEmits<{
   selectShip: [ship: ApiMapShip]
@@ -46,6 +51,7 @@ const emit = defineEmits<{
   countryStatus: [status: string]
   clearSelection: []
   shareView: [view: { lat: number; lon: number; zoom: number }]
+  selectEncounter: [encounter: ApiEncounter]
 }>()
 const container = ref<HTMLElement | null>(null)
 const tileError = ref(false)
@@ -56,11 +62,17 @@ let shipLayer: L.LayerGroup,
   eventLayer: L.LayerGroup,
   trackLayer: L.LayerGroup,
   areaLayer: L.LayerGroup,
-  harbourLayer: L.LayerGroup
+  harbourLayer: L.LayerGroup,
+  dwellLayer: L.LayerGroup,
+  encounterLayer: L.LayerGroup
 let seamarks: L.TileLayer
-let vectorLayer: L.LayerGroup, linkLayer: L.LayerGroup, clusterLayer: L.LayerGroup
+let vectorLayer: L.LayerGroup, clusterLayer: L.LayerGroup
 let canvas: L.Canvas
-const markers = new Map<number, L.Marker>()
+let shipManager: ShipLayerManager
+let eventManager: EventLayerManager
+let trackManager: TrackLayerManager
+// 统一渲染调度：watcher 只入队最新状态，实际渲染按浏览器帧批量执行（latest-state-wins）
+const scheduler = new RenderScheduler()
 let initialFitDone = false
 let harbourRequest: AbortController | null = null
 let harbourTimer: ReturnType<typeof setTimeout> | undefined
@@ -70,269 +82,175 @@ const safeText = (value: string) => {
   el.textContent = value
   return el
 }
-function shipIcon(ship: ApiMapShip) {
-  const selected = ship.id === props.selectedShipId
-  const nearby = props.nearbyShipIds.includes(ship.id)
-  const color = selected || nearby ? riskColors.selected : shipStatus(ship, props.time).color
-  const validHeading = ship.heading !== null && ship.heading >= 0 && ship.heading < 360
-  const angle = validHeading ? ship.heading! : ship.course
-  const complete = selected || (map?.getZoom() ?? 0) >= 10
-  const shape = shipShape(ship.ship_type)
-  const path = complete || shape === '△' ? 'M14 3 20 23 14 19 8 23Z' : shape === '■' ? 'M8 8H20V20H8Z' : shape === '▶' ? 'M14 5 22 22H6Z' : 'M14 5 22 14 14 23 6 14Z'
-  const dimmed = props.selectedShipId !== null && !selected
-  return L.divIcon({
-    className: `vessel-marker${selected ? ' selected' : ''}${dimmed ? ' muted' : ''}`,
-    html: `<svg viewBox="0 0 28 28" aria-hidden="true"><g transform="rotate(${complete ? angle : ship.course} 14 14)"><path d="${path}" fill="${color}" stroke="#EAF1F8" stroke-width="1"/>${!complete ? `<path d="M14 5V-2" stroke="${color}" stroke-width="2"/>` : ''}</g>${selected ? '<path d="M1 8V1H8M20 1H27V8M27 20V27H20M8 27H1V20" fill="none" stroke="#38BDF8" stroke-width="1.5"/>' : ''}</svg>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+// ---- 渲染任务：每次执行时读取最新 props，只提交增量差异到 Leaflet ----
+function scheduleShips() {
+  scheduler.schedule('ships', () => {
+    shipManager.update({
+      ships: props.ships,
+      selectedShipId: props.selectedShipId,
+      nearbyShipIds: props.nearbyShipIds,
+      selectedEvent: props.selectedEvent,
+      layers: props.layers,
+      isolated: props.isolated,
+      time: props.time,
+      vectorMinutes: props.vectorMinutes,
+      picking: props.picking,
+    })
+    if (!initialFitDone && props.ships.length) {
+      initialFitDone = true
+      globalView()
+    }
   })
 }
-function renderShips() {
-  if (!map) return
-  clusterLayer.clearLayers()
-  vectorLayer.clearLayers()
-  const groupedIds = new Set<number>()
-  if ((map.getZoom() < 8 || props.ships.length > 500) && props.layers.ships && !props.isolated) {
-    const groups = new Map<string, ApiMapShip[]>()
-    for (const ship of props.ships) {
-      if (ship.id === props.selectedShipId || props.nearbyShipIds.includes(ship.id)) continue
-      const p = map.project([ship.latitude, ship.longitude])
-      const key = `${Math.floor(p.x / 44)}:${Math.floor(p.y / 44)}`
-      const group = groups.get(key) ?? []; group.push(ship); groups.set(key, group)
-    }
-    for (const group of groups.values()) {
-      if (group.length < 2) continue
-      group.forEach(s => groupedIds.add(s.id))
-      const lat = group.reduce((sum, s) => sum + s.latitude, 0) / group.length
-      const lon = group.reduce((sum, s) => sum + s.longitude, 0) / group.length
-      L.marker([lat, lon], { icon: L.divIcon({ className: `ship-cluster${props.selectedEvent ? ' muted' : ''}`, html: `<span>${group.length}</span>`, iconSize: [34, 34] }), title: `${group.length} 艘模拟船，点击放大`, bubblingMouseEvents: false })
-        .on('click', () => { if (!props.picking) map?.setView([lat, lon], Math.min(19, map.getZoom() + 2)) }).addTo(clusterLayer)
-    }
-  }
-  const ids = new Set(props.ships.map((s) => s.id))
-  for (const [id, marker] of markers)
-    if (!ids.has(id)) {
-      shipLayer.removeLayer(marker)
-      markers.delete(id)
-    }
-  for (const ship of props.ships) {
-    if (groupedIds.has(ship.id)) { const old = markers.get(ship.id); if (old) { shipLayer.removeLayer(old); markers.delete(ship.id) } continue }
-    let marker = markers.get(ship.id)
-    if (!marker) {
-      marker = L.marker([ship.latitude, ship.longitude], {
-        icon: shipIcon(ship),
-        title: ship.name,
-        alt: ship.name,
-        bubblingMouseEvents: false,
-      })
-      marker.bindTooltip(
-        safeText(`${ship.name} · ${ship.speed.toFixed(1)} kn`),
-        { direction: 'top' },
-      )
-      marker.on('click', () => {
-        const current = props.ships.find((s) => s.id === ship.id)
-        if (current && !props.picking) emit('selectShip', current)
-      })
-      markers.set(ship.id, marker)
-    }
-    marker.setLatLng([ship.latitude, ship.longitude]).setIcon(shipIcon(ship))
-    marker.setTooltipContent(
-      safeText(`${ship.name} · ${ship.speed.toFixed(1)} kn`),
-    )
-    marker.setZIndexOffset(ship.id === props.selectedShipId ? 1000 : 0)
-    if (
-      props.layers.ships &&
-      (!props.isolated || props.selectedShipId === ship.id)
-    ) {
-      if (!shipLayer.hasLayer(marker)) marker.addTo(shipLayer)
-      const active = ship.id === props.selectedShipId || map.getZoom() >= 10
-      if (active && shipStatus(ship, props.time).rank === 0) {
-        const color = ship.id === props.selectedShipId || props.nearbyShipIds.includes(ship.id) ? riskColors.selected : riskColors.normal
-        const opacity = (props.selectedEvent && !props.nearbyShipIds.includes(ship.id)) || (props.selectedShipId !== null && props.selectedShipId !== ship.id) ? 0.4 : 0.9
-        if (ship.heading !== null && ship.heading >= 0 && ship.heading < 360) {
-          const p = map.latLngToLayerPoint([ship.latitude, ship.longitude]), angle = ship.heading * Math.PI / 180
-          const head = map.layerPointToLatLng(L.point(p.x + Math.sin(angle) * 52, p.y - Math.cos(angle) * 52))
-          const bow = map.layerPointToLatLng(L.point(p.x + Math.sin(angle) * 11, p.y - Math.cos(angle) * 11))
-          L.polyline([bow, head], { renderer: canvas, color, weight: 1, opacity, interactive: false }).addTo(vectorLayer)
-        }
-        const end = projectPosition(ship, ship.course, ship.speed * props.vectorMinutes / 60)
-        L.polyline([[ship.latitude, ship.longitude], [end.latitude, end.longitude]], { renderer: canvas, color, weight: 2, dashArray: '4 4', opacity, interactive: false }).addTo(vectorLayer)
-        for (let minute = 1; minute <= props.vectorMinutes; minute++) {
-          const tick = projectPosition(ship, ship.course, ship.speed * minute / 60)
-          L.circleMarker([tick.latitude, tick.longitude], { renderer: canvas, radius: minute === props.vectorMinutes ? 3 : 1.5, color, weight: 1, opacity, fillOpacity: opacity, interactive: false }).addTo(vectorLayer)
-        }
-      }
-    } else shipLayer.removeLayer(marker)
-  }
-  renderLinks()
-  if (!initialFitDone && props.ships.length) {
-    initialFitDone = true
-    globalView()
-  }
-}
-function renderLinks() {
-  if (!linkLayer) return
-  linkLayer.clearLayers()
-  // Cross-period news-to-ship links are intentionally disabled.
-
-}
-function globalView() {
-  if (props.ships.length)
-    map?.fitBounds(
-      L.latLngBounds(
-        props.ships.map((s) => [s.latitude, s.longitude] as L.LatLngTuple),
-      ),
-      {
-        paddingTopLeft: [65, 85],
-        paddingBottomRight: [60, 105],
-        maxZoom: 8,
-        animate: false,
-      },
-    )
-  else map?.setView(center, 8, { animate: false })
-}
-function renderEvents() {
-  if (!map) return
-  eventLayer.clearLayers()
-  renderLinks()
-  if (!props.layers.events || props.isolated) return
-  const groups = new Map<string, LocatedEvent[]>()
-  for (const event of props.events) {
-    // Only co-located records share a marker; nearby coordinates must not move.
-    const key = `${event.latitude},${event.longitude}`
-    const group = groups.get(key) ?? []; group.push(event); groups.set(key, group)
-  }
-  for (const group of groups.values()) {
-    const event = group.find(item => item.id === props.selectedEvent?.id) ?? group[0]!
-    const kind = eventKind(event.event_type)
-    const selected = props.selectedEvent?.id === event.id
-    const locationLabel = eventLocationLabel(event)
-    const markerTitle = group.length > 1 ? `${group.length} 条同坐标事件（点击展开）` : `${kind.label} · ${locationLabel} · ${event.title}`
-    const icon = L.divIcon({
-      className: `incident-marker${selected ? ' selected' : ''}${props.selectedEvent && !selected ? ' muted' : ''}${selected && eventPriority(event.event_type) !== 'normal' ? ' urgent' : ''}`,
-      html: `<div class="incident-symbol" style="--risk:${kind.color}">${selected ? '<i class="incident-halo"></i><i class="selection-corners"></i>' : ''}<span class="incident-core">${kind.symbol}</span>${group.length > 1 ? `<b class="incident-count">${group.length}</b>` : ''}${selected ? `<span class="incident-label"><b>●</b> ${locationLabel} · 报道 ${event.publish_date_min ?? '日期未明'}</span>` : ''}</div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+function scheduleEvents() {
+  scheduler.schedule('events', () => {
+    eventManager.update({
+      events: props.events,
+      selectedEvent: props.selectedEvent,
+      layers: props.layers,
+      isolated: props.isolated,
+      picking: props.picking,
     })
-    const marker = L.marker([event.latitude, event.longitude], {
-      icon,
-      title: markerTitle,
-      bubblingMouseEvents: false,
+  })
+}
+function scheduleTrack() {
+  scheduler.schedule('tracks', () => {
+    // 默认展示全部已回放报位点；开启“只看最近 24h”时按回放时刻前溯过滤。
+    const cutoff = props.trackRecent24h && props.time
+      ? Date.parse(props.time) - 24 * 60 * 60 * 1000
+      : null
+    const track = cutoff === null
+      ? props.track
+      : props.track.filter((p) => Date.parse(p.recorded_at) >= cutoff)
+    trackManager.update({
+      track,
+      visible: props.trackVisible,
+      layersTracks: props.layers.tracks,
+      speedSegments: props.speedSegments,
     })
-      .bindTooltip(safeText(`${markerTitle} · ${event.latitude.toFixed(4)}, ${event.longitude.toFixed(4)}`))
-      .on('click', () => {
-        if (props.picking) return
-        if (group.length === 1) emit('selectEvent', event)
-        else {
-          const list = document.createElement('div'); list.className = 'cluster-list'
-          for (const item of group) {
-            const button = document.createElement('button'); button.textContent = `${eventKind(item.event_type).label} · ${eventLocationLabel(item)} · ${item.title}`
-            button.onclick = () => { map?.closePopup(); emit('selectEvent', item) }; list.append(button)
-          }
-          L.popup().setLatLng([event.latitude, event.longitude]).setContent(list).openOn(map!)
-        }
-      })
-      .addTo(eventLayer)
-    marker
-      .getElement()
-      ?.setAttribute('aria-label', markerTitle)
-    const element = marker.getElement()
-    if (element) {
-      element.dataset.eventIds = group.map(item => item.event_id).join(',')
-      element.dataset.latitude = String(event.latitude)
-      element.dataset.longitude = String(event.longitude)
-    }
-    marker.setZIndexOffset(selected ? 2000 : 300)
-  }
+  })
 }
-function speedBucketColor(v: number): string {
-  return v < 3 ? '#8a97a3' : v < 8 ? '#2e9e5b' : v < 12 ? '#e6a23c' : '#d64f4f'
+const dwellKindMeta: Record<string, { label: string; color: string }> = {
+  at_anchor: { label: '锚泊', color: '#2E9E6B' },
+  drift: { label: '漂航', color: '#EF9F27' },
+  slow_transit: { label: '慢速航行', color: '#7A8FA6' },
 }
-// 后端契约：segment.geometry 顶点与 segment.speed 序列一一对应，speed[i] = [epoch 秒, kn]。
-// 后端按“整条相交 segment”返回；App.vue 已把显示范围按 ≤24h 分片取回并去重合并，
-// 这里再按顶点时间戳裁剪到当前显示的轨迹范围 [tFirst, tLast]，保证着色不多余延伸。
-function renderSpeedSegments(tFirst: number, tLast: number) {
-  if (!props.speedSegments?.length) return
-  for (const segment of props.speedSegments) {
-    const coords = segment.geometry.coordinates
-    const keptCoords: [number, number][] = []
-    const keptSpeed: number[] = []
-    for (let i = 0; i < coords.length; i++) {
-      const t = (segment.speed[i]?.[0] ?? NaN) * 1000
-      if (Number.isFinite(t) && t >= tFirst && t <= tLast) {
-        keptCoords.push(coords[i]!)
-        keptSpeed.push(segment.speed[i]![1] ?? 0)
-      }
-    }
-    let group: L.LatLngTuple[] = []
-    let currentColor = ''
-    const flush = () => {
-      if (group.length > 1)
-        L.polyline(group, {
-          renderer: canvas,
-          color: currentColor,
-          weight: 3,
-          opacity: 0.9,
-          interactive: false,
-        }).addTo(trackLayer)
-    }
-    for (let i = 0; i < keptCoords.length - 1; i++) {
-      const color = speedBucketColor(keptSpeed[i] ?? 0)
-      if (color !== currentColor && group.length) {
-        flush()
-        group = []
-      }
-      currentColor = color
-      if (!group.length) group.push([keptCoords[i]![1], keptCoords[i]![0]])
-      group.push([keptCoords[i + 1]![1], keptCoords[i + 1]![0]])
-    }
-    flush()
-  }
+// 停留识别图层：按 (ship_id, dwell_no) 稳定建点，数据变化只做增量增删
+const dwellMarkers = new Map<string, L.CircleMarker>()
+// 相遇图层：按 (ship_a, ship_b, period_start, 最近距离) 稳定建点，选中态变化只 setStyle
+const encounterMarkers = new Map<string, { circle: L.CircleMarker; signature: string }>()
+let encounterSelectionCircle: L.Circle | null = null
+function scheduleDerived() {
+  scheduler.schedule('derived', () => {
+    renderDwell()
+    renderEncounters()
+  })
 }
-function renderTrack() {
+function renderDwell() {
   if (!map) return
-  trackLayer.clearLayers()
-  if (!props.trackVisible || !props.layers.tracks) return
-  // 默认展示全部已回放报位点；开启“只看最近 24h”时按回放时刻前溯过滤。
-  const cutoff = props.trackRecent24h && props.time
-    ? Date.parse(props.time) - 24 * 60 * 60 * 1000
-    : null
-  const track = cutoff === null
-    ? props.track
-    : props.track.filter(p => Date.parse(p.recorded_at) >= cutoff)
-  const points = track.map((p): L.LatLngTuple => [
-    p.latitude,
-    p.longitude,
-  ])
-  // 基础轨迹线始终绘制；速度着色作为叠加层画在其上，避免完全盖住轨迹。
-  if (points.length > 1)
-    L.polyline(points, {
-      renderer: canvas,
-      color: riskColors.selected,
-      weight: 2,
-      opacity: 0.8,
-      interactive: false,
-    }).addTo(trackLayer)
-  // 着色范围 = 当前显示轨迹的首末报位点，不多余显示。
-  const tFirst = track.length ? Date.parse(track[0]!.recorded_at) : 0
-  const tLast = track.length ? Date.parse(track[track.length - 1]!.recorded_at) : Number.POSITIVE_INFINITY
-  renderSpeedSegments(tFirst, tLast)
-  for (const point of track.slice(0, -1)) {
-    // 用默认 SVG 渲染而非 canvas：canvas 路径的 hover tooltip 不可靠。
-    L.circleMarker([point.latitude, point.longitude], {
-      radius: 3,
-      color: riskColors.selected,
-      weight: 1,
-      fillColor: '#f5fafb',
-      fillOpacity: 1,
-    })
-      .bindTooltip(
+  const show = props.layers.dwell && !props.isolated && props.dwell
+  const keys = new Set<string>()
+  if (show && props.dwell) {
+    for (const feature of props.dwell.features) {
+      const [lng, lat] = feature.geometry.coordinates
+      const p = feature.properties
+      const key = `${p.ship_id}:${p.dwell_no}`
+      keys.add(key)
+      if (dwellMarkers.has(key)) continue
+      const meta = dwellKindMeta[p.kind] ?? dwellKindMeta.slow_transit!
+      const marker = L.circleMarker([lat, lng], {
+        radius: 5,
+        color: meta.color,
+        weight: 1.5,
+        fillColor: meta.color,
+        fillOpacity: 0.55,
+      }).bindTooltip(
         safeText(
-          `报位 ${formatTime(point.recorded_at, true)} · ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ${point.speed.toFixed(1)} kn · 航向 ${point.course.toFixed(0)}°（教学模拟采样）`,
+          `${p.ship_name} · ${meta.label} ${(p.duration_min / 60).toFixed(1)} 小时 · ` +
+          `位移半径 ${Math.round(p.displacement_radius_m)} m · 最大 ${p.max_speed_kn.toFixed(1)} kn` +
+          `（教学模拟识别）`,
         ),
         { direction: 'top' },
       )
-      .addTo(trackLayer)
+      dwellMarkers.set(key, marker)
+      marker.addTo(dwellLayer)
+    }
+  }
+  for (const [key, marker] of dwellMarkers) {
+    if (keys.has(key)) continue
+    dwellLayer.removeLayer(marker)
+    dwellMarkers.delete(key)
+  }
+}
+function renderEncounters() {
+  if (!map) return
+  const show = !props.isolated && props.encounters !== null && props.layers.encounters
+  const selected = props.selectedEncounter
+  const keys = new Set<string>()
+  if (show && props.encounters) {
+    for (const enc of props.encounters) {
+      if (!enc.closest_point) continue
+      const [lng, lat] = enc.closest_point.coordinates
+      const isSel = selected === enc
+      // min_distance_m 进 key：受控重建后闭包携带的是旧对象，重建避免选中高亮失效
+      const key = `${enc.ship_a.id}:${enc.ship_b.id}:${enc.period_start}:${Math.round(enc.min_distance_m)}`
+      keys.add(key)
+      let entry = encounterMarkers.get(key)
+      if (!entry) {
+        const circle = L.circleMarker([lat, lng], { bubblingMouseEvents: false })
+          .on('click', () => {
+            if (!props.picking) emit('selectEncounter', enc)
+          })
+        entry = { circle, signature: '' }
+        encounterMarkers.set(key, entry)
+      }
+      const signature = JSON.stringify([isSel, enc.min_distance_nm, enc.overlap_minutes])
+      if (entry.signature !== signature) {
+        entry.signature = signature
+        const radius = Math.max(4, Math.min(10, 10 - enc.min_distance_nm))
+        entry.circle.setStyle({
+          radius: isSel ? radius + 3 : radius,
+          color: isSel ? '#38BDF8' : '#9588A7',
+          weight: isSel ? 2.5 : 1.5,
+          fillColor: '#9588A7',
+          fillOpacity: isSel ? 0.85 : 0.5,
+        })
+        entry.circle.bindTooltip(
+          safeText(
+            `${enc.ship_a.name} × ${enc.ship_b.name} · 最近 ${enc.min_distance_nm.toFixed(2)} NM` +
+            ` · 时间重叠 ${(enc.overlap_minutes / 60).toFixed(1)} 小时（模拟时空邻近）`,
+          ),
+          { direction: 'top' },
+        )
+      }
+      if (!encounterLayer.hasLayer(entry.circle)) entry.circle.addTo(encounterLayer)
+    }
+  }
+  for (const [key, entry] of encounterMarkers) {
+    if (keys.has(key)) continue
+    encounterLayer.removeLayer(entry.circle)
+    encounterMarkers.delete(key)
+  }
+  if (selected?.closest_point && show) {
+    const [lng, lat] = selected.closest_point.coordinates
+    const radius = Math.max(selected.min_distance_m, 150)
+    if (!encounterSelectionCircle) {
+      encounterSelectionCircle = L.circle([lat, lng], {
+        radius,
+        color: '#38BDF8',
+        weight: 1.5,
+        dashArray: '4 4',
+        fillOpacity: 0.05,
+        interactive: false,
+      }).addTo(encounterLayer)
+    } else {
+      encounterSelectionCircle.setLatLng([lat, lng])
+      encounterSelectionCircle.setRadius(radius)
+      if (!encounterLayer.hasLayer(encounterSelectionCircle)) encounterSelectionCircle.addTo(encounterLayer)
+    }
+  } else if (encounterSelectionCircle) {
+    encounterLayer.removeLayer(encounterSelectionCircle)
+    encounterSelectionCircle = null
   }
 }
 function renderArea() {
@@ -454,17 +372,25 @@ function syncLayers() {
     harbourRequest = null
     harbourLayer.remove()
   }
-  renderShips()
-  renderEvents()
-  renderTrack()
+  scheduleShips()
+  scheduleEvents()
+  scheduleTrack()
+  scheduleDerived()
 }
 watch(
   () => [props.ships, props.selectedShipId, props.nearbyShipIds, props.selectedEvent, props.vectorMinutes],
-  renderShips,
+  scheduleShips,
 )
-watch(() => [props.events, props.selectedEvent, displayZone.value], renderEvents)
-watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, displayZone.value], renderTrack)
+watch(() => [props.events, props.selectedEvent, props.time, displayZone.value], scheduleEvents)
+watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, displayZone.value], scheduleTrack)
 watch(() => props.shareRequest, () => { if (map) { const c = map.getCenter(); emit('shareView', { lat: c.lat, lon: c.lng, zoom: map.getZoom() }) } })
+watch(() => [props.dwell, props.encounters, props.selectedEncounter, props.isolated], scheduleDerived)
+// 从概览面板选中相遇时，地图飞到最近接近点并保证相遇图层可见。
+watch(() => props.selectedEncounter, (enc) => {
+  if (!map || !enc?.closest_point) return
+  const [lng, lat] = enc.closest_point.coordinates
+  map.flyTo([lat, lng], Math.max(map.getZoom(), 9), { duration: 0.6 })
+})
 watch(() => props.sharedView, view => { if (view) map?.setView([view.lat, view.lon], view.zoom, { animate: false }) }, { flush: 'post' })
 watch(() => [props.layers, props.isolated], syncLayers, { deep: true })
 watch(() => [props.areaCenter, props.radiusNm], renderArea)
@@ -473,7 +399,9 @@ watch(
   () => props.picking,
   (active) => {
     if (active) {
-      markers.forEach((marker) => marker.closeTooltip())
+      shipLayer.eachLayer((layer) => {
+        if (layer instanceof L.Marker) layer.closeTooltip()
+      })
       container.value?.focus()
     }
   },
@@ -497,6 +425,21 @@ watch(
       )
   },
 )
+function globalView() {
+  if (props.ships.length)
+    map?.fitBounds(
+      L.latLngBounds(
+        props.ships.map((s) => [s.latitude, s.longitude] as L.LatLngTuple),
+      ),
+      {
+        paddingTopLeft: [65, 85],
+        paddingBottomRight: [60, 105],
+        maxZoom: 8,
+        animate: false,
+      },
+    )
+  else map?.setView(center, 8, { animate: false })
+}
 onMounted(() => {
   if (!container.value) return
   map = L.map(container.value, { zoomControl: false, minZoom: 3, preferCanvas: true, keyboard: false }).setView(
@@ -537,19 +480,34 @@ onMounted(() => {
   countryLayer = createCountryLayer(map, status => emit('countryStatus', status))
   canvas = L.canvas({ padding: 0.5 })
   vectorLayer = L.layerGroup().addTo(map)
-  linkLayer = L.layerGroup().addTo(map)
   clusterLayer = L.layerGroup().addTo(map)
   trackLayer = L.layerGroup().addTo(map)
   areaLayer = L.layerGroup().addTo(map)
   shipLayer = L.layerGroup().addTo(map)
   eventLayer = L.layerGroup().addTo(map)
   harbourLayer = L.layerGroup()
+  dwellLayer = L.layerGroup().addTo(map)
+  encounterLayer = L.layerGroup().addTo(map)
+  shipManager = new ShipLayerManager({
+    shipLayer,
+    clusterLayer,
+    vectorLayer,
+    canvas,
+    getMap: () => map,
+    onSelectShip: (ship) => { if (!props.picking) emit('selectShip', ship) },
+  })
+  eventManager = new EventLayerManager({
+    eventLayer,
+    getMap: () => map,
+    onSelectEvent: (event) => emit('selectEvent', event),
+  })
+  trackManager = new TrackLayerManager({ trackLayer, canvas })
   map.on('moveend', () => {
     emitBounds()
     clearTimeout(harbourTimer)
     if (props.layers.harbours) harbourTimer = setTimeout(loadHarbours, 350)
   })
-  map.on('zoomend', () => { renderShips(); renderEvents() })
+  map.on('zoomend', () => { scheduleShips(); scheduleEvents() })
   map.on('click', (e: L.LeafletMouseEvent) => {
     if (props.picking)
       emit('pickCenter', { latitude: e.latlng.lat, longitude: e.latlng.lng })
@@ -565,13 +523,18 @@ onMounted(() => {
   emitBounds()
 })
 onBeforeUnmount(() => {
+  scheduler.cancel()
+  shipManager?.clear()
+  eventManager?.clear()
+  trackManager?.clear()
+  dwellMarkers.clear()
+  encounterMarkers.clear()
   observer?.disconnect()
   harbourRequest?.abort()
   clearTimeout(harbourTimer)
   countryLayer?.destroy()
   map?.remove()
   map = undefined
-  markers.clear()
 })
 </script>
 <template>

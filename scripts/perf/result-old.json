@@ -1,0 +1,26 @@
+{
+  "OLD play-1x 6s": {
+    "longtaskCount": 5,
+    "medianMs": 156,
+    "maxMs": 162,
+    "totalMs": 780,
+    "vesselMarkers": 2,
+    "incidentMarkers": 2
+  },
+  "OLD fast-scrub 40 jumps + 1s settle": {
+    "longtaskCount": 0,
+    "medianMs": 0,
+    "maxMs": 0,
+    "totalMs": 0,
+    "vesselMarkers": 30,
+    "incidentMarkers": 20
+  },
+  "OLD play-1x selected+track 6s": {
+    "longtaskCount": 5,
+    "medianMs": 471,
+    "maxMs": 547,
+    "totalMs": 2434,
+    "vesselMarkers": 30,
+    "incidentMarkers": 20
+  }
+}

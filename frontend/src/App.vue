@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { fetchEvents, fetchShipTracks, describeApiError, type ApiEvent, type ApiMapShip, type ApiTrackSegment } from './api'
+import { fetchEvents, fetchShipTracks, fetchDwell, fetchEncounters, analyzeEncounters, fetchDataHealth, describeApiError, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiDwellResponse, type ApiEncounter, type ApiDataHealth } from './api'
 import { usePlayback } from './composables/usePlayback'
 import {
   inBounds,
   formatTime,
-  displayZone, zoneLabel, hasEventLocation, eventTimeText, eventCoordinates,
+  displayZone, zoneLabel, hasEventLocation, eventTimeText, eventCoordinates, eventRevealTime, eventKinds,
   type GeoPoint,
   type LayerState,
   type Panel,
@@ -75,6 +75,8 @@ const layers = ref<LayerState>({
   events: true,
   seamarks: true,
   harbours: false,
+  dwell: false,
+  encounters: false,
 })
 const selectedShip = computed(
   () =>
@@ -96,7 +98,18 @@ const filteredEvents = computed(() =>
       return (left.localeCompare(right) || a.event_id.localeCompare(b.event_id)) * (eventSort.value === 'asc' ? 1 : -1)
     }),
 )
-const mapEvents = computed(() => filteredEvents.value.filter(hasEventLocation))
+// 地图事件随回放时刻逐步呈现：呈现时刻不晚于当前回放时刻才标注到地图，
+// 反映事件先后发生顺序。回放时间未就绪时不做门控，避免空数据状态下地图无事件。
+// 没有可用时间（发生日期与报道日期皆无）的事件不按时间补造，暂不标注。
+const mapEvents = computed(() => {
+  const located = filteredEvents.value.filter(hasEventLocation)
+  if (!time.value) return located
+  const at = Date.parse(time.value)
+  return located.filter((e) => {
+    const reveal = eventRevealTime(e)
+    return reveal !== null && reveal <= at
+  })
+})
 // 仅传入 occurred_at 非空的事件：报道无明确发生时刻时不补造时间，不进时间轴。
 const timelineEvents = computed(
   () =>
@@ -153,7 +166,7 @@ async function shareView(view: { lat: number; lon: number; zoom: number }) {
   catch { notice.value = '视图状态已写入地址栏，可复制地址分享。' }
 }
 async function initialize() {
-  await Promise.all([load(), loadEvents()])
+  await Promise.all([load(), loadEvents(), loadEncounters(), loadHealth()])
   const state = new URLSearchParams(location.hash.slice(1))
   if (state.get('theme') === 'light') theme.value = 'light'
   if (state.get('zone') === 'Asia/Shanghai') displayZone.value = 'Asia/Shanghai'
@@ -177,6 +190,64 @@ async function loadEvents() {
     eventsError.value = describeApiError(e, '事件加载失败')
   } finally {
     eventsLoading.value = false
+  }
+}
+// P3/P4/P5：MobilityDB 派生层。相遇与健康随初始化加载；停留图层按需加载一次。
+const dwellData = ref<ApiDwellResponse | null>(null)
+const encounterList = ref<ApiEncounter[]>([])
+const selectedEncounter = ref<ApiEncounter | null>(null)
+const health = ref<ApiDataHealth | null>(null)
+const encountersLoading = ref(true)
+const encounterError = ref('')
+
+async function loadEncounters() {
+  encountersLoading.value = true
+  encounterError.value = ''
+  try {
+    const data = await fetchEncounters()
+    encounterList.value = data.encounters
+  } catch (e) {
+    encounterError.value = describeApiError(e, '相遇分析加载失败')
+  } finally {
+    encountersLoading.value = false
+  }
+}
+async function loadHealth() {
+  try {
+    health.value = await fetchDataHealth()
+  } catch {
+    health.value = null
+  }
+}
+async function loadDwellOnce() {
+  if (dwellData.value) return
+  try {
+    dwellData.value = await fetchDwell()
+  } catch (e) {
+    notice.value = describeApiError(e, '停留识别加载失败')
+  }
+}
+watch(() => layers.value.dwell, (on) => {
+  if (on) void loadDwellOnce()
+})
+// 选中相遇：高亮该对并在地图定位；接近不等于实际交互，仅模拟时空邻近。
+function chooseEncounter(enc: ApiEncounter) {
+  selectedEncounter.value = enc
+  layers.value.encounters = true
+}
+// 按默认参数（3 NM / 30 分钟重叠 / 60 秒采样）受控重建相遇派生层，随后刷新列表与健康状态。
+async function reanalyzeEncounters() {
+  encountersLoading.value = true
+  encounterError.value = ''
+  try {
+    const result = await analyzeEncounters({ distance_nm: 3, overlap_min: 30, sample_seconds: 60 })
+    notice.value = `相遇分析重建完成：${result.summary.rows} 对（阈值 ${result.params.distance_nm} NM / 重叠 ${result.params.overlap_min} 分钟）。`
+    await loadEncounters()
+    void loadHealth()
+  } catch (e) {
+    encounterError.value = describeApiError(e, '相遇分析重建失败')
+  } finally {
+    encountersLoading.value = false
   }
 }
 function chooseShip(ship: ApiMapShip) {
@@ -206,6 +277,12 @@ function chooseEvent(event: ApiEvent) {
   panel.value = 'events'
   panelOpen.value = true
   layers.value.events = true
+  // 地图按回放时刻逐步呈现事件：选中尚未到呈现时刻（或无可排序时间）的事件时如实提示。
+  const reveal = eventRevealTime(event)
+  if (reveal === null)
+    notice.value = '该事件缺少发生日期与报道日期，无法放入时间序列，地图暂不标注。'
+  else if (time.value && reveal > Date.parse(time.value))
+    notice.value = `该事件记录时间晚于当前回放时刻，地图暂不标注；回放推进到 ${formatTime(new Date(reveal).toISOString(), true)} 后显示。`
 }
 // 智能体回答中的「地图定位」：定位的是地图当前回放时刻的位置；
 // 目标不在当前回放快照或缺少位置时如实提示，不伪造。
@@ -460,10 +537,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :track-recent-24h="trackRecent24h"
         :share-request="shareRequest"
         :shared-view="sharedView"
+        :dwell="dwellData"
+        :encounters="encounterList"
+        :selected-encounter="selectedEncounter"
         @share-view="shareView"
         @clear-selection="selectedEvent = null; clearShip()"
         @select-ship="chooseShip"
         @select-event="chooseEvent"
+        @select-encounter="chooseEncounter"
         @bounds-change="bounds = $event"
         @pick-center="chooseCenter"
         @harbour-status="harbourStatus = $event"
@@ -496,7 +577,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <span
           ><strong>{{ viewShips.length }}</strong> 船</span
         ><span
-          ><strong>{{ viewEvents.length }}</strong> 事件</span
+          ><strong>{{ viewEvents.length }}</strong> 已呈现事件</span
         ><span class="hud-speed"
           >均速 <strong>{{ averageSpeed }}</strong> kn</span
         >
@@ -511,9 +592,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         ⓘ
       </button>
       <div v-if="legendOpen" class="map-legend">
+        <div class="legend-events">
+          <span v-for="(kind, key) in eventKinds" :key="key" class="legend-event"
+            ><img :src="kind.icon" alt="">{{ kind.label }}</span
+          >
+        </div>
         <span><b class="vessel-key">▲</b> 当前船位</span
         ><span><b class="track-key">─•─</b> 已航行轨迹</span
-        ><span>船位为教学模拟；事件为代表点，非精确事发位置</span>
+        ><span>船位为教学模拟；事件为代表点，非精确事发位置</span
+        ><span>事件随回放时刻按记录时间先后逐步呈现</span>
       </div>
       <div v-if="loading || error" class="map-data-status" role="status">
         {{ error || '正在载入船舶与历史采样…'
@@ -562,8 +649,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :total-events="events.length"
         :average-speed="averageSpeed"
         :events-loading="eventsLoading"
+        :encounters="encounterList"
+        :health="health"
+        :encounters-loading="encountersLoading"
+        :encounter-error="encounterError"
         @select-ship="chooseShip"
         @select-event="chooseEvent"
+        @select-encounter="chooseEncounter"
+        @reanalyze-encounters="reanalyzeEncounters"
         @open-events="togglePanel('events')"
         @open-ships="togglePanel('ships')"
       />
@@ -630,7 +723,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </aside>
     <section class="print-report">
       <h2>霍尔木兹海峡 · 船位与新闻概览</h2><p>{{ formatTime(time, true) }} {{ zoneLabel() }} · 船位为教学模拟，新闻事件为独立历史资料</p>
-      <p>当前视野 {{ viewShips.length }} 艘船舶、{{ viewEvents.length }} 条新闻事件。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
+      <p>当前视野 {{ viewShips.length }} 艘船舶、{{ viewEvents.length }} 条已呈现新闻事件（随回放时刻逐步出现）。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
       <table><thead><tr><th>事件时间文字</th><th>事件</th><th>经纬度</th></tr></thead><tbody><tr v-for="e in viewEvents" :key="e.id"><td>{{ eventTimeText(e) }}</td><td>{{ e.title }}</td><td>{{ eventCoordinates(e) }}</td></tr></tbody></table>
     </section>
   </main>

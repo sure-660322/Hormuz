@@ -133,7 +133,7 @@ onBeforeUnmount(() => request?.abort())
         <li v-for="event in events" :key="event.event_id">
           <button class="event-row" :class="{ selected: selected?.event_id === event.event_id }" :data-event-id="event.event_id" @click="emit('select', event)">
             <time>{{ event.publish_date_min?.slice(5) || '—' }}</time>
-            <span class="event-dot" :style="{ color: eventKind(event.event_type).color }">{{ eventKind(event.event_type).symbol }}</span>
+            <span class="event-dot" :style="{ color: eventKind(event.event_type).color }"><img :src="eventKind(event.event_type).icon" alt=""></span>
             <span class="event-row-title">{{ event.title }}</span>
             <small class="event-row-count">{{ event.coverage_count }} 篇</small>
           </button>

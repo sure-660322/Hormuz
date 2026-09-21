@@ -38,6 +38,16 @@ const layerOptions: {
     description: 'OpenSeaMap 在线海事图层',
   },
   { key: 'harbours', label: '港口', description: 'OpenSeaMap 在线港口服务' },
+  {
+    key: 'dwell',
+    label: '停留识别（锚泊/漂航/慢速）',
+    description: 'MobilityDB 派生层：低速区间的识别结果，教学模拟数据',
+  },
+  {
+    key: 'encounters',
+    label: '相遇分析',
+    description: 'MobilityDB 派生层：船舶对时空邻近，接近不等于有交互',
+  },
 ]
 </script>
 <template>

@@ -1,0 +1,10 @@
+{
+  "name": "hormuz-perf-probe",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "地图回放渲染性能实测脚本（开发环境一次性测量，不属于前端运行时依赖）",
+  "dependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}

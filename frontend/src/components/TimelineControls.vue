@@ -328,8 +328,7 @@ onBeforeUnmount(() => {
                 :title="`${formatTime(group.time)} ${group.events.map((e) => e.title).join(' / ')}${group.events.length > 1 ? '（重复点击切换）' : ''}`"
                 @click="selectGroup(group.events)"
               >
-                {{ lane.kind.symbol
-                }}<sup v-if="group.events.length > 1">{{
+                <img class="lane-icon" :src="lane.kind.icon" alt=""><sup v-if="group.events.length > 1">{{
                   group.events.length
                 }}</sup>
               </button>
@@ -338,7 +337,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="timeline-caption">
-        <span>空格播放 / 暂停 · ← → 逐帧 · 新闻事件不参与回放</span
+        <span>空格播放 / 暂停 · ← → 逐帧 · 地图事件按记录时间随回放逐步呈现</span
         ><span>1× 每秒推进一帧 · 仅显示载入时段</span>
       </div>
       <details class="time-range-accessible" @toggle="rangeOpen = ($event.target as HTMLDetailsElement).open"><summary>精确选择时间范围</summary><label>开始 <select :value="zoomStart" @change="stop(); zoomStart = Math.min(rangeEnd, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label><label>结束 <select :value="rangeEnd" @change="stop(); zoomEnd = Math.max(zoomStart, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label></details>

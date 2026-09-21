@@ -6,7 +6,7 @@ export const zoneLabel = () => displayZone.value === 'UTC' ? 'UTC' : 'UTC+8'
 export const riskColors = { high: '#E24B4A', warning: '#EF9F27', selected: '#38BDF8', normal: '#2E9E6B', stale: '#7A8FA6' }
 // Presentation priority for teaching events, not an upstream severity assessment.
 export function eventPriority(type: string) {
-  return type === 'conflict' ? 'high' : ['bad_weather', 'equipment_failure', 'navigation_control'].includes(type) ? 'warning' : 'normal'
+  return ['military', 'civil'].includes(type) ? 'high' : ['passage', 'energy', 'freight'].includes(type) ? 'warning' : 'normal'
 }
 export function sampleAge(ship: ApiMapShip, at: string | null) {
   return at ? Math.max(0, (Date.parse(at) - Date.parse(ship.recorded_at)) / 60000) : 0
@@ -26,20 +26,24 @@ export function projectPosition(point: GeoPoint, bearing: number, nauticalMiles:
   return { latitude: nextLat / rad, longitude: ((nextLon / rad + 540) % 360) - 180 }
 }
 
+// 事件类别与 Logo/ 八类设计图对应（01-08）；颜色取自各设计图主色。
+// 图标置于 public/event-kinds/，以根路径引用（避免 workbench 裸 tsc/require 检查引入资源导入）。
 export const eventKinds: Record<
   string,
-  { label: string; color: string; symbol: string }
+  { label: string; color: string; symbol: string; icon: string }
 > = {
-  attack: { label: '袭击', color: '#B66A60', symbol: '!' },
-  blockade: { label: '封锁', color: '#AA8753', symbol: '⊘' },
-  passage: { label: '通航', color: '#5F927D', symbol: '↗' },
-  market: { label: '市场', color: '#7791A7', symbol: '≋' },
-  analysis: { label: '分析', color: '#9588A7', symbol: '◇' },
-  other: { label: '其他', color: '#687681', symbol: '●' },
+  military: { label: '军事行动与安全事件', color: '#B06860', symbol: '盾', icon: '/event-kinds/military.png' },
+  passage: { label: '海峡通行与航运动态', color: '#609080', symbol: '舶', icon: '/event-kinds/passage.png' },
+  energy: { label: '能源生产与供应', color: '#C09040', symbol: '燃', icon: '/event-kinds/energy.png' },
+  freight: { label: '运费与航运保险', color: '#6088A8', symbol: '险', icon: '/event-kinds/freight.png' },
+  finance: { label: '金融市场与经济影响', color: '#7880B0', symbol: '市', icon: '/event-kinds/finance.png' },
+  diplomacy: { label: '政治外交与政策表态', color: '#9080A0', symbol: '交', icon: '/event-kinds/diplomacy.png' },
+  civil: { label: '民生影响与人员撤离', color: '#C88848', symbol: '民', icon: '/event-kinds/civil.png' },
+  other: { label: '其他', color: '#788890', symbol: '他', icon: '/event-kinds/other.png' },
 }
 export function eventKind(type: string) {
   return (
-    eventKinds[type] ?? { label: '其他事件', color: '#687681', symbol: '●' }
+    eventKinds[type] ?? { label: '其他', color: '#788890', symbol: '他', icon: '/event-kinds/other.png' }
   )
 }
 export function shipType(type: string) {
@@ -98,6 +102,8 @@ export interface LayerState {
   events: boolean
   seamarks: boolean
   harbours: boolean
+  dwell: boolean
+  encounters: boolean
 }
 export type Panel = 'overview' | 'events' | 'ships' | 'agent' | 'analysis'
 export function distanceNm(a: GeoPoint, b: GeoPoint) {
@@ -127,6 +133,14 @@ export function hasEventLocation(e: ApiEvent): e is LocatedEvent {
 }
 export function eventTimeText(e: ApiEvent) {
   return e.event_time_text || (e.event_datetime ? `${e.event_datetime.slice(0, 10)}（日期记录）` : '时间未明确')
+}
+// 事件在地图上开始呈现的时刻（epoch 毫秒）：优先事件发生日期，缺失时退化为最早报道日期
+//（事件不可能早于首次报道被知晓，作为呈现下限而非发生时刻）；两者皆无返回 null，不按时间补造。
+export function eventRevealTime(e: ApiEvent): number | null {
+  const occurred = e.occurred_at ? Date.parse(e.occurred_at) : NaN
+  if (Number.isFinite(occurred)) return occurred
+  const published = e.publish_date_min ? Date.parse(e.publish_date_min) : NaN
+  return Number.isFinite(published) ? published : null
 }
 export function eventCoordinates(e: ApiEvent) {
   return hasEventLocation(e) ? `${e.latitude.toFixed(4)}, ${e.longitude.toFixed(4)}` : '暂无可定位坐标'

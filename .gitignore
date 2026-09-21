@@ -26,6 +26,12 @@ htmlcov/
 frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
+# Local dependencies of the performance harness (keep scripts/lockfiles).
+/scripts/perf/node_modules/
+# Recoverable one-off scratch files, not project source.
+/local-archive/
+/scripts/perf/result.json
+/scripts/perf/vite.pid
 *.tsbuildinfo
 
 # Logs

@@ -69,8 +69,9 @@ async function main() {
   assert.equal(hasEventLocation({ latitude: 26, longitude: null }), false)
   assert.equal(eventTimeText(unknownEvent), '时间未明确')
   assert.equal(eventTimeText({ event_time_text: '3月初' }), '3月初')
-  assert.equal(eventKind('attack').label, '袭击')
-  assert.equal(eventKind('blockade').label, '封锁')
+  assert.equal(eventKind('military').label, '军事行动与安全事件')
+  assert.equal(eventKind('passage').label, '海峡通行与航运动态')
+  assert.equal(eventKind('freight').label, '运费与航运保险')
   assert.equal(safeNewsUrl('javascript:alert(1)'), undefined)
   assert.equal(safeNewsUrl('https://example.com/news'), 'https://example.com/news')
   assert.match(api.describeApiError(new TypeError('Failed to fetch'), '失败'), /无法连接数据服务/)
@@ -159,7 +160,7 @@ async function main() {
   )
   assert.equal(shipType('集装箱船'), '集装箱船')
   assert.equal(shipType('container_ship'), '集装箱船')
-  assert.equal(eventKind('unknown_value').label, '其他事件')
+  assert.equal(eventKind('unknown_value').label, '其他')
   const first = {
     id: 700,
     ship_id: 7,

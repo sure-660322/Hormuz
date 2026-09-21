@@ -11,6 +11,7 @@ import {
   type AgentToolShipSearchResult,
   type AgentToolShipTrackResult,
 } from '../api'
+import { eventKind } from '../domain/maritime'
 
 // 智能体问答是独立异步请求：不放入 computed，由本组件管理加载/取消/超时/错误状态。
 // 前端 75 秒超时覆盖后端 60 秒预算，与新闻查询的 20 秒惯例无关（见 api.ts fetchAgentAnalyze）。
@@ -300,7 +301,7 @@ onBeforeUnmount(() => request?.abort())
                 <button type="button" class="locate-btn" @click="emit('locate-event', event.event_id)">地图定位</button>
               </div>
               <p class="summary-line">
-                类型 {{ event.event_type }}
+                类型 {{ eventKind(event.event_type).label }}
                 · 时间 {{ event.event_datetime ? formatUtc(event.event_datetime) : (event.event_time_text ?? '未知') }}
                 <template v-if="event.event_location_text"> · 位置 {{ event.event_location_text }}</template>
               </p>

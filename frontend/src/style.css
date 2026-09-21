@@ -780,8 +780,16 @@ button.primary:hover {
   font-variant-numeric: tabular-nums;
 }
 .event-dot {
-  font-size: 10px;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #F4F8FB;
+  border: 1px solid currentColor;
 }
+.event-dot img { width: 14px; height: 14px; object-fit: contain; display: block; }
 .event-row-title {
   min-width: 0;
   overflow: hidden;
@@ -1335,6 +1343,16 @@ button.primary:hover {
   right: -2px;
   font-size: 8px;
 }
+.timeline-event .lane-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+  margin: 1px auto 0;
+  border-radius: 50%;
+  background: #F4F8FB;
+  border: 1px solid currentColor;
+}
 .playhead {
   position: absolute;
   top: -4px;
@@ -1594,6 +1612,9 @@ button.primary:hover {
 .top-status { gap: 9px; }
 .top-status button { font-size: 11px; white-space: nowrap; }
 .map-legend { background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--line); }
+.legend-events { display: grid; grid-template-columns: repeat(2, auto); gap: 4px 14px; }
+.legend-event { display: inline-flex; align-items: center; gap: 5px; }
+.legend-event img { width: 15px; height: 15px; object-fit: contain; border-radius: 50%; background: #F4F8FB; border: 1px solid var(--line); }
 .vessel-key { color: var(--green); }
 .track-key { color: var(--blue); }
 .maritime-map.leaflet-container { background: #B9D5E0; }
@@ -1603,9 +1624,9 @@ button.primary:hover {
 .vessel-marker.selected { background: transparent; box-shadow: none; }
 .vessel-marker.muted, .incident-marker.muted, .ship-cluster.muted { opacity: .4; }
 .incident-marker, .incident-marker.selected { background: transparent; border: 0; box-shadow: none; text-shadow: none; }
-.incident-symbol { position: relative; width: 24px; height: 24px; display: grid; place-items: center; color: var(--risk); }
-.incident-core { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 4px; background: var(--risk); color: #081521; font: 800 17px/1 'Segoe UI Symbol', sans-serif; border: 1px solid #EAF1F8; }
-.incident-marker.selected .incident-core { color: #fff; text-shadow: 0 1px 2px #071422; }
+.incident-symbol { position: relative; width: 28px; height: 28px; display: grid; place-items: center; color: var(--risk); }
+.incident-core { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: #F4F8FB; border: 1.5px solid var(--risk); box-shadow: 0 1px 4px #0006; }
+.incident-icon { width: 20px; height: 20px; object-fit: contain; display: block; }
 .selection-corners { position: absolute; inset: -8px; background: linear-gradient(currentColor,currentColor) left top / 9px 2px no-repeat, linear-gradient(currentColor,currentColor) left top / 2px 9px no-repeat, linear-gradient(currentColor,currentColor) right top / 9px 2px no-repeat, linear-gradient(currentColor,currentColor) right top / 2px 9px no-repeat, linear-gradient(currentColor,currentColor) left bottom / 9px 2px no-repeat, linear-gradient(currentColor,currentColor) left bottom / 2px 9px no-repeat, linear-gradient(currentColor,currentColor) right bottom / 9px 2px no-repeat, linear-gradient(currentColor,currentColor) right bottom / 2px 9px no-repeat; }
 .incident-halo { position: absolute; inset: -18px; border: 1px dashed currentColor; border-radius: 50%; pointer-events: none; }
 .incident-halo::after { content: ''; position: absolute; inset: 5px; border: 1px solid currentColor; border-radius: 50%; }

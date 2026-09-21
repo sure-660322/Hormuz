@@ -1,0 +1,212 @@
+{
+  "scenarios": {
+    "play-1x-no-selection": {
+      "longtaskCount": 9,
+      "longtaskMedianMs": 204,
+      "longtaskMaxMs": 488,
+      "longtaskTotalMs": 2496,
+      "probe": {
+        "ships": {
+          "count": 6,
+          "medianMs": 0.20000004768371582,
+          "maxMs": 0.2999999523162842,
+          "p95Ms": 0.2999999523162842
+        },
+        "events": {
+          "count": 6,
+          "medianMs": 0.09999990463256836,
+          "maxMs": 0.10000014305114746,
+          "p95Ms": 0.10000014305114746
+        },
+        "tracks": {
+          "count": 6,
+          "medianMs": 0,
+          "maxMs": 0.10000014305114746,
+          "p95Ms": 0.10000014305114746
+        }
+      },
+      "vesselMarkers": 2,
+      "incidentMarkers": 2,
+      "trackPointMarkers": 4
+    },
+    "fast-scrub-no-selection": {
+      "longtaskCount": 152,
+      "longtaskMedianMs": 463,
+      "longtaskMaxMs": 694,
+      "longtaskTotalMs": 70460,
+      "probe": {
+        "ships": {
+          "count": 150,
+          "medianMs": 1.9000000953674316,
+          "maxMs": 5.099999904632568,
+          "p95Ms": 3.5999999046325684
+        },
+        "events": {
+          "count": 150,
+          "medianMs": 1.0999999046325684,
+          "maxMs": 70.10000014305115,
+          "p95Ms": 8.299999952316284
+        },
+        "tracks": {
+          "count": 150,
+          "medianMs": 0,
+          "maxMs": 0.20000004768371582,
+          "p95Ms": 0.10000014305114746
+        }
+      },
+      "vesselMarkers": 30,
+      "incidentMarkers": 20,
+      "trackPointMarkers": 50
+    },
+    "play-1x-selected-track": {
+      "longtaskCount": 8,
+      "longtaskMedianMs": 486,
+      "longtaskMaxMs": 913,
+      "longtaskTotalMs": 4236,
+      "probe": {
+        "ships": {
+          "count": 6,
+          "medianMs": 0.7000000476837158,
+          "maxMs": 1.3999998569488525,
+          "p95Ms": 1.3999998569488525
+        },
+        "events": {
+          "count": 6,
+          "medianMs": 0.20000004768371582,
+          "maxMs": 0.40000009536743164,
+          "p95Ms": 0.40000009536743164
+        },
+        "tracks": {
+          "count": 6,
+          "medianMs": 0.20000004768371582,
+          "maxMs": 0.7999999523162842,
+          "p95Ms": 0.7999999523162842
+        }
+      },
+      "vesselMarkers": 30,
+      "incidentMarkers": 20,
+      "trackPointMarkers": 50,
+      "trackToggled": true
+    },
+    "play-1x-speed-color": {
+      "longtaskCount": 8,
+      "longtaskMedianMs": 457,
+      "longtaskMaxMs": 481,
+      "longtaskTotalMs": 3623,
+      "probe": {
+        "ships": {
+          "count": 6,
+          "medianMs": 1,
+          "maxMs": 1.6000001430511475,
+          "p95Ms": 1.6000001430511475
+        },
+        "events": {
+          "count": 6,
+          "medianMs": 0.20000004768371582,
+          "maxMs": 0.2999999523162842,
+          "p95Ms": 0.2999999523162842
+        },
+        "tracks": {
+          "count": 12,
+          "medianMs": 1,
+          "maxMs": 1.6000001430511475,
+          "p95Ms": 1.6000001430511475
+        }
+      },
+      "vesselMarkers": 30,
+      "incidentMarkers": 20,
+      "trackPointMarkers": 50
+    },
+    "fast-scrub-selected-track-color": {
+      "longtaskCount": 169,
+      "longtaskMedianMs": 473,
+      "longtaskMaxMs": 587,
+      "longtaskTotalMs": 73347,
+      "probe": {
+        "ships": {
+          "count": 150,
+          "medianMs": 2.200000047683716,
+          "maxMs": 4.700000047683716,
+          "p95Ms": 3.700000047683716
+        },
+        "events": {
+          "count": 150,
+          "medianMs": 1.1000001430511475,
+          "maxMs": 12.600000143051147,
+          "p95Ms": 7.700000047683716
+        },
+        "tracks": {
+          "count": 154,
+          "medianMs": 14.700000047683716,
+          "maxMs": 100.20000004768372,
+          "p95Ms": 48.90000009536743
+        }
+      },
+      "vesselMarkers": 30,
+      "incidentMarkers": 3,
+      "trackPointMarkers": 33
+    },
+    "play-2x": {
+      "longtaskCount": 13,
+      "longtaskMedianMs": 414,
+      "longtaskMaxMs": 441,
+      "longtaskTotalMs": 5403,
+      "probe": {
+        "ships": {
+          "count": 11,
+          "medianMs": 0.8000001907348633,
+          "maxMs": 1.2000000476837158,
+          "p95Ms": 1.2000000476837158
+        },
+        "events": {
+          "count": 11,
+          "medianMs": 0.09999990463256836,
+          "maxMs": 1.4000000953674316,
+          "p95Ms": 1.4000000953674316
+        },
+        "tracks": {
+          "count": 21,
+          "medianMs": 0.6999998092651367,
+          "maxMs": 1.1000001430511475,
+          "p95Ms": 1.0999999046325684
+        }
+      },
+      "vesselMarkers": 30,
+      "incidentMarkers": 10,
+      "trackPointMarkers": 40
+    },
+    "play-4x": {
+      "longtaskCount": 31,
+      "longtaskMedianMs": 410,
+      "longtaskMaxMs": 459,
+      "longtaskTotalMs": 12687,
+      "probe": {
+        "ships": {
+          "count": 29,
+          "medianMs": 0.6000001430511475,
+          "maxMs": 1.2999999523162842,
+          "p95Ms": 1.1000001430511475
+        },
+        "events": {
+          "count": 29,
+          "medianMs": 0.09999990463256836,
+          "maxMs": 0.20000004768371582,
+          "p95Ms": 0.20000004768371582
+        },
+        "tracks": {
+          "count": 36,
+          "medianMs": 0.5999999046325684,
+          "maxMs": 1.3999998569488525,
+          "p95Ms": 1.2999999523162842
+        }
+      },
+      "vesselMarkers": 30,
+      "incidentMarkers": 10,
+      "trackPointMarkers": 40
+    }
+  },
+  "meta": {
+    "url": "http://localhost:5174/?perf=1",
+    "userAgent": "Chrome/152.0.7977.65"
+  }
+}
