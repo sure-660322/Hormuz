@@ -21,6 +21,7 @@ from backend.app.services.agent.config import (
     SCHEMA_VERSION,
 )
 from backend.app.services.agent.dwell_query import run_dwell_query
+from backend.app.services.agent.encounters_query import run_encounters_query
 from backend.app.services.agent.event_context import get_event_context
 from backend.app.services.agent.model_client import default_model
 from backend.app.services.agent.ship_search import (
@@ -155,6 +156,11 @@ def _run_data_health(db: Session, args: dict, closure_at: datetime, end_at: date
 def _run_ship_dwell(db: Session, args: dict, closure_at: datetime, end_at: datetime):
     # AG-03：只读 ship_dwell 派生层；时间窗缺省为整个已构建批次（见 dwell_query）
     return run_dwell_query(db, args)
+
+
+def _run_encounters(db: Session, args: dict, closure_at: datetime, end_at: datetime):
+    # AG-04：只读 encounters 派生层；绝不调用 analyze_encounters 重建写路径
+    return run_encounters_query(db, args)
 
 
 TOOL_REGISTRY: dict[str, AgentTool] = {
@@ -330,6 +336,42 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
             windowed=False,
             execute=_run_ship_dwell,
         ),
+        AgentTool(
+            name="query_encounters",
+            description=(
+                "只读查询相遇派生层（encounters）的预计算船对：哪些模拟船在何时段内"
+                "时空接近、最近距离多少；接近不等于有交互；只读，绝不触发相遇重建"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "start_at": {
+                        "type": "string",
+                        "description": (
+                            "可选窗口开始，ISO 8601，必须带时区（统一 UTC）；"
+                            "与 end_at 成对提供，窗口最长 24 小时；省略时返回全部已构建船对"
+                        ),
+                    },
+                    "end_at": {
+                        "type": "string",
+                        "description": "可选窗口结束，ISO 8601，必须带时区（统一 UTC）",
+                    },
+                    "max_distance_nm": {
+                        "type": "number",
+                        "description": (
+                            "按最小距离过滤（海里）；只能小于等于构建阈值（params.distance_nm），"
+                            "超过会被拒绝而不是返回零结果；省略时按构建阈值不过滤"
+                        ),
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "返回条数上限，默认 50，最大 500；超出的匹配保留计数并标记 truncated",
+                    },
+                },
+            },
+            windowed=False,
+            execute=_run_encounters,
+        ),
     ]
 }
 
@@ -368,6 +410,11 @@ SYSTEM_PROMPT = f"""你是霍尔木兹海峡船舶回放教学项目的问答助
      时不要编造窗口。停留判定阈值由构建参数快照决定（结果里的 params），查询层不能调整；
      返回零段是「派生层内无该类型停留」的有效零结果；status=not_built 时表示派生层尚未
      构建，如实说明，不能答成没有停留。
+   - query_encounters：查询相遇派生层的预计算船对（哪些模拟船在何时段内接近、最近多近）。
+     回答「哪些船相遇过/最近距离」类问题必须调用它。max_distance_nm 只能小于等于构建
+     阈值（结果里的 params.distance_nm），超过会被拒绝、绝不是零结果；时间窗省略时返回
+     全部已构建船对。最小距离是离散采样近似，接近不等于实际交互；禁止要求重建
+     （重建是写操作，本工具绝不执行）；status=not_built 时如实说明派生层未构建。
 3. 工作方式（必须遵守）：回答任何数据问题前必须先调用相应工具；回答必须完全基于工具返回的
    结果（船只 ID、名称、数量、证据编号 P1…、事件 ID、story_id），不自行计算或编造。
    不得仅凭对话历史中的信息回答数据问题——即使之前的回答里给过船 ID 或事件结论，
