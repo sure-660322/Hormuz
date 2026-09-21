@@ -1,6 +1,6 @@
 # 智能体接入契约与任务
 
-2026-09-21 静态审计：下文 v3 为当前已实现契约，历史验收未在本轮重跑。新增确定性工具和受限 Text-to-SQL 均为待开发任务，统一见 [下一阶段开发计划](agent_development_plan.md)；本页不将规划工具写成已注册能力。
+2026-09-21 状态核对：下文 v3 为当前已注册契约。data-health 已作为第五个只读工具接入；受限 Text-to-SQL 的 SQL-02 数据库边界、SQL-03 AST 校验与 SQL-04 独立执行器已经隔离验证，但 `query_analytics` 尚未注册且默认关闭，不能写成当前可用能力。AG-03～05 与 SQL-05 见 [下一阶段开发计划](agent_development_plan.md)。
 
 文档核对：2026-09-20，v3 多工具版已实现；本次核对代码与文档，未调用模型或重跑接口验收。根据与学长沟通的结论，采用“大模型 API + 自定义只读查询工具”，未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。v3 在 v2 单工具（海峡通行）基础上新增 search_ships / get_ship_track / get_event_context 三个只读工具（接入 news/events 数据）与多轮 history 支持；工具执行预算由 2 次提高到 3 次。
 
@@ -12,7 +12,7 @@
 
 已集成现有 FastAPI：路由位于 backend/app/routers/agent.py，工具调用循环、模型适配及查询服务位于 backend/app/services/agent/。当前使用 DeepSeek 的 OpenAI 兼容 API，通过 openai Python SDK 调用；配置和密钥仅由后端环境提供。
 
-本版是 Tool Calling：开发者写 SQL/SQLAlchemy，模型选择工具并填写参数。不属于模型生成 SQL 的 Text-to-SQL；后者另行设计，本版不提供任意 SQL 执行工具。
+当前已注册版是 Tool Calling：开发者写 SQL/SQLAlchemy，模型选择工具并填写参数。不属于模型生成 SQL 的 Text-to-SQL；受限版的安全底座虽已完成 SQL-01～04，但尚未接入本页所述工具循环，本版也不提供任意 SQL 执行工具。
 
 | 责任 | 交付 |
 | --- | --- |
@@ -142,6 +142,6 @@ AG-02 离线自动测试 7 项通过（backend/tests/test_agent_data_health.py�
 
 回答中的船/事件地图定位已实现；历史轨迹逐点回放联动与服务端会话持久化尚未实现；更细粒度的事件与模拟船交互建模仍需设计。旧版 get_ship_context、find_news_events、get_event_evidence 保留为参考，不是本版必做项；新闻扩展仍须区分报道日期与事件时间，保留来源标识，不按船名自动匹配真实与模拟船。
 
-受限 Text-to-SQL 另行设计表/字段/函数白名单、SQL 校验和数据库权限。复杂分支、恢复或持久化需求出现后，再评估 LangChain/LangGraph，不预先增加框架依赖。
+受限 Text-to-SQL 已完成表/字段/函数白名单、数据库最小权限、AST 校验与独立执行器的 SQL-01～04；SQL-05 尚未接入当前工具循环，所以仍不可用。复杂分支、恢复或持久化需求出现后，再评估 LangChain/LangGraph，不预先增加框架依赖。
 
 最小版（v2）已实现并联调：后端 /agent/analyze 与前端智能体面板已跑通默认问题（返回 1 艘 SIM V2 化学品船 019，证据 P1，观测完成于 2026-02-28T18:14:54Z）；npm run build 与 npm run check:workbench 已通过。v3 多工具版历史联调记录（原标注日期晚于本次文档核对日，实际验收日期待核对；以下不代表本次重新验证）：通行回归问题 1 次工具调用 4.1s；「油轮 SIM V2 油轮 004 轨迹」问题链式调用 search_ships + get_ship_track 共 2 次 5.7s；「evt_001 事件与报道」1 次 get_event_context 3.1s，回答均保留来源链接与模拟边界声明。环境交接见 [database_setup.md](database_setup.md)。

@@ -40,7 +40,10 @@ function Assert-PsqlDenied([string]$Sql, [string]$Message) {
 }
 
 function Get-ViewHash([string]$ViewName) {
-    $encoded = Assert-PsqlSuccess $admin "SELECT encode(convert_to(pg_get_viewdef('$ViewName'::regclass, false), 'UTF8'), 'base64');" "read normalized definition for $ViewName"
+    $output = & docker exec $container psql -X -qAt -v ON_ERROR_STOP=1 -U $admin -d $database -c "BEGIN; SET LOCAL search_path = pg_catalog; SELECT encode(convert_to(pg_get_viewdef('$ViewName'::regclass, false), 'UTF8'), 'base64'); COMMIT;" 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "FAIL: read normalized definition for $ViewName`n$($output -join [Environment]::NewLine)" }
+    $script:checks.Add("read normalized definition for $ViewName")
+    $encoded = @($output)
     $bytes = [Convert]::FromBase64String((($encoded -join '') -replace '\s', ''))
     $sha = [Security.Cryptography.SHA256]::Create()
     try { ([Convert]::ToHexString($sha.ComputeHash($bytes))).ToLowerInvariant() }
@@ -146,10 +149,12 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Could not start isolated PostgreSQL container.' }
 
     $ready = $false
-    for ($attempt = 0; $attempt -lt 60; $attempt++) {
+    $consecutiveReady = 0
+    for ($attempt = 0; $attempt -lt 120; $attempt++) {
         & docker exec $container pg_isready -U $admin -d $database *> $null
-        if ($LASTEXITCODE -eq 0) { $ready = $true; break }
-        Start-Sleep -Seconds 1
+        if ($LASTEXITCODE -eq 0) { $consecutiveReady++ } else { $consecutiveReady = 0 }
+        if ($consecutiveReady -ge 3) { $ready = $true; break }
+        Start-Sleep -Milliseconds 500
     }
     Assert-True $ready 'isolated PostgreSQL is ready'
 
