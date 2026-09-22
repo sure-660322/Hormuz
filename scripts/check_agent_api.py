@@ -1,4 +1,4 @@
-"""只读 HTTP 检查：POST /agent/analyze（智能体契约 v3）。
+"""只读 HTTP 检查：POST /agent/analyze（智能体契约 v4）。
 
 假设服务已在 8000 端口运行（uvicorn backend.app.main:app --port 8000）。
 从仓库根目录运行：
@@ -31,6 +31,16 @@ def post_json(base, path, payload):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", default="http://127.0.0.1:8000")
+    parser.add_argument(
+        "--expect-default-ship-count",
+        type=int,
+        help="仅对已知固定 fixture 使用；省略时不硬编码共享数据库数量",
+    )
+    parser.add_argument(
+        "--expect-zero-window",
+        action="store_true",
+        help="仅对已核验固定 fixture 使用；省略时只检查窗口请求结构",
+    )
     args = parser.parse_args()
 
     # CORS 预检：POST 必须被允许
@@ -47,33 +57,37 @@ def main():
         assert "POST" in response.headers["Access-Control-Allow-Methods"]
     print("PASS: CORS 预检允许 POST")
 
-    # 正常提问：默认封锁时刻（警告响应起点 2026-02-28T15:00Z）起 24h，预期 1 艘 SIM V2 船
+    # 正常提问：默认窗口的实际数量取决于当前批次，不在通用检查中硬编码。
     status, headers, body = post_json(
         args.base, "/agent/analyze", {"question": "封锁后有哪些船还通过了海峡？"}
     )
     assert status == 200, f"预期 200，实际 {status}: {body}"
     assert headers["Access-Control-Allow-Origin"] == "http://localhost:5174"
-    assert body["schema_version"] == "3"
+    assert body["schema_version"] == "4"
     assert body["status"] == "ok", f"status={body['status']}"
     assert body["request_id"]
     assert body["tools_used"] == ["query_strait_passages"]
-    assert set(body["results"].keys()) == {"query_strait_passages"}
-    assert body["query_summary"]["matched_ship_count"] == 1
-    assert body["query_summary"]["passage_count"] == 1
-    assert len(body["ships"]) == 1 and body["ships"][0]["name"].startswith("SIM V2")
-    assert body["ships"][0]["ship_id"] == body["evidence"][0]["ship_id"]
-    assert body["evidence"][0]["evidence_id"] == "P1"
+    assert len(body["results"]) == 1
+    call_id, result = next(iter(body["results"].items()))
+    assert call_id.startswith("call_")
+    assert result["call_id"] == call_id
+    assert result["tool_name"] == "query_strait_passages"
+    assert body["query_summary"]["matched_ship_count"] == len(body["ships"])
+    if args.expect_default_ship_count is not None:
+        assert body["query_summary"]["matched_ship_count"] == args.expect_default_ship_count
+    if body["evidence"]:
+        assert body["evidence"][0]["evidence_id"] == "P1"
     assert body["context"]["ship_data_source"] == "simulation"
     assert body["context"]["closure_at"].startswith("2026-02-28T15:00:00")
     assert body["context"]["closure_source"]
     assert body["answer"].strip()
     assert body["clarification"] is None
     print(
-        f"PASS: 正常提问 status=ok，matched=1（{body['ships'][0]['name']}），"
+        f"PASS: 正常提问 status=ok，matched={body['query_summary']['matched_ship_count']}，"
         f"closure_source={body['context']['closure_source'][:30]}…"
     )
 
-    # 零匹配窗口：宣告封锁锚点 2026-03-01T00:00Z 起 24h，预期 0（对照批次验收结论）
+    # 显式窗口：只有传入 --expect-zero-window 时才把它当固定 fixture 的零结果断言。
     status, _, body = post_json(
         args.base,
         "/agent/analyze",
@@ -85,9 +99,15 @@ def main():
     )
     assert status == 200, f"预期 200，实际 {status}: {body}"
     assert body["status"] == "ok"
-    assert body["query_summary"]["matched_ship_count"] == 0
-    assert body["ships"] == [] and body["evidence"] == []
-    print("PASS: 零匹配窗口 status=ok 且数量为 0")
+    if args.expect_zero_window:
+        assert body["query_summary"]["matched_ship_count"] == 0
+        assert body["ships"] == [] and body["evidence"] == []
+        print("PASS: 固定 fixture 零匹配窗口 status=ok 且数量为 0")
+    else:
+        print(
+            "PASS: 显式窗口请求结构有效；未声明固定 fixture，"
+            f"不硬编码数量（matched={body['query_summary']['matched_ship_count']}）"
+        )
 
     # 超 24h 窗口：422 INVALID_REQUEST
     status, _, body = post_json(

@@ -1,7 +1,7 @@
 # 智能体问题—能力矩阵（AG-01）
 
 > 文档状态：**AG-01 已完成最终评审**（2026-09-21，分支 `kimi/ag01-sql01-contract`，R-01～R-39 见 [query_analytics_review_resolution.md](query_analytics_review_resolution.md)）。本文仅冻结问题分类、业务口径和验收意图，**不代表对应能力已经实现或注册**。
-> 已确认注册的四个智能体工具：query_strait_passages / search_ships / get_ship_track / get_event_context（[agent_integration.md](agent_integration.md)）。其余能力的底层实现状态见各节标注；`query_analytics` 尚未实现。
+> 当前已注册 9 个只读工具（8 个确定性工具 + `query_analytics`，详见 [agent_integration.md](agent_integration.md)）。`query_analytics` 已完成 SQL-02～06 隔离综合验收，但开关仍默认关闭；本文分类保留 AG-01 冻结时的验收意图，能力状态以当前实现文档为准。
 >
 > 通用约定（适用于全部条目）：
 > - 模拟船位与真实新闻相互独立；船名相同不得认定为同一实体，空间邻近不得推导真实因果。
@@ -11,7 +11,7 @@
 > - 统计数量以数据库实际查询为准，不由模型编造；批次快照数字（如 30 艘船、9,354 条报位）仅为当前批次参考，回答中须注明批次。
 > - 分类取值：existing_tool / new_deterministic_tool / text_to_sql / clarification / refuse / non_data_question / deferred。
 
-## 一、existing_tool（原有四个工具可直接回答）
+## 一、existing_tool（原有四个确定性工具可直接回答）
 
 分类：existing_tool。收录标准：无需先澄清、无需新增能力、可由当前四个已注册确定性工具完整回答；需拆窗、补条件、依赖未注册工具或当前数据源无法回答的问题不得归入本分类。能力口径以 [agent_integration.md](agent_integration.md)「已实现接口与工具」及 `backend/app/services/agent/runner.py` 工具 schema 为准。
 
@@ -26,13 +26,13 @@
 | 7 | 3 月 1 日 23:00 到 3 月 2 日 02:00 这 3 个小时内有船通过海峡吗？ | query_strait_passages | closure_at=2026-03-01T23:00:00Z、end_at=2026-03-02T02:00:00Z | closure_at 在工具内为窗口起点语义（runner 兼容 start_at 别名），窗口与"封锁时刻"语义解耦；≤24h 合法 | 同 #1 | 同 #1 | 无（时间明确） | 无 | 同 #1 |
 | 8 | SIM V2 化学品船 019 是哪艘船？MMSI 是多少？ | search_ships | keyword="SIM V2 化学品船 019" | 船舶静态属性检索，无时间语义 | ship_id、MMSI/IMO/船型/船旗 | 无命中=库内无该模拟船 | 无 | 无 | 不得声称 MMSI 是真实注册信息 |
 
-## 二、new_deterministic_tool（AG-02 已注册；AG-03～05 尚未注册）
+## 二、new_deterministic_tool（AG-02～05 均已注册）
 
-分类：new_deterministic_tool。对应 AG-02～AG-05。仓库核验结论：data-health、dwell、encounters、事件关联的底层 API 与派生表已实现并有 2026-09-19/20 验收记录（[mobility_capability_plan.md](mobility_capability_plan.md)、README）；其中 `get_data_health` 已由 AG-02 注册并通过离线测试，真实模型联调尚未重跑；AG-03～05 注册前仍为 capability_unavailable，不得声称可答。工具语义以派生层口径为准，禁止模型重定义阈值。
+分类：new_deterministic_tool。对应 AG-02～AG-05。data-health、dwell、encounters、事件关联的底层 API、派生表和四个只读工具均已实现并完成自动测试（[mobility_capability_plan.md](mobility_capability_plan.md)、README）。工具只读取现有结果，不触发重建；语义以派生层口径为准，禁止模型重定义阈值。
 
 | # | 用户问题 | 应调用的能力 | 所需参数 | 业务口径 | 结果证据 | 空结果解释 | 澄清条件 | 拒绝条件 | 禁止推导的结论 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 9 | 事件 evt_001 附近当时有哪些模拟船？ | query_event_ship_links（AG-05，observed；当前未注册） | event_id、link_type="observed" | observed=模拟轨迹时空邻近演示（50 km 半径口径，EPSG:32640 有跨带失真）；**工具注册前现状为不可答** | 工具注册后：ship_id、evidence、投影误差说明 | 仅当事件有时间+代表坐标、轨迹覆盖充分、关联已构建时，0 条才是有效零结果；否则 no_data/partial | 事件无坐标/时间时先说明无法计算关联 | 无 | 演示级邻近不构成真实因果；缺输入条件时不得报「附近没有模拟船」 |
+| 9 | 事件 evt_001 附近当时有哪些模拟船？ | query_event_ship_links（AG-05，observed） | event_id、link_type="observed" | observed=模拟轨迹时空邻近演示（50 km 半径口径，EPSG:32640 有跨带失真）；只读现有派生结果 | ship_id、evidence、投影误差说明 | 仅当事件有时间+代表坐标、轨迹覆盖充分、关联已构建时，0 条才是有效零结果；否则 no_data/partial | 事件无坐标/时间时先说明无法计算关联 | 无 | 演示级邻近不构成真实因果；缺输入条件时不得报「附近没有模拟船」 |
 | 10 | 数据健康吗？各来源有多少报位？ | get_data_health（AG-02，已注册） | 无 | 按 data_source 的报位数/船数/覆盖区间/中位 gap + 四张派生表行数+built_at+stale | data-health 结构化结果、manifest built_at | 某来源无数据=该来源未导入；stale=true 只表示时间启发式过期 | 无 | 无 | stale 启发式不能包装成完整数据一致性证明 |
 | 11 | 哪些船在锚地抛锚过？ | query_ship_dwell（AG-03） | kind="at_anchor"、from、to | 复用 ship_dwell 派生层（阈值入 manifest：默认 <3 kn/30 min）；不实时重算 | dwell 段（中心点/时长/位移半径/最大速度）、阈值快照、stale | 零段=派生层内无锚泊（真实零结果）；表未构建=stale/未构建需说明 | 无时间范围时默认全批次并声明 | 无 | 不得把漂移/慢速段说成锚泊；阈值由构建参数决定 |
 | 12 | 3 月 2 日那天有没有船漂航？ | query_ship_dwell（AG-03） | kind="drift"、from、to（≤24h 或分窗） | 同 #11，kind=drift | 同 #11 | 同 #11 | 「那天」按 UTC 还是本地时区不明确时澄清 | 无 | 同 #11 |
@@ -46,7 +46,7 @@
 
 ## 三、text_to_sql（受限 Text-to-SQL，query_analytics 实现后可用）
 
-分类：text_to_sql。契约见 [query_analytics_contract.md](query_analytics_contract.md)；**query_analytics 尚未实现**。首批 catalog v1 仅开放 v_ships / v_events / v_news 及批准的 events-news JOIN；本节只收录 catalog v1 可回答的正向用例。
+分类：text_to_sql。契约见 [query_analytics_contract.md](query_analytics_contract.md)；`query_analytics` 已完成 SQL-02～06 实现与隔离综合验收，但功能开关默认关闭。首批 catalog v1 仅开放 v_ships / v_events / v_news 及批准的 events-news JOIN；本节只收录 catalog v1 可回答的正向用例。
 
 | # | 用户问题 | 应调用的能力 | 所需参数 | 业务口径 | 结果证据 | 空结果解释 | 澄清条件 | 拒绝条件 | 禁止推导的结论 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

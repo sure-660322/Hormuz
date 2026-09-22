@@ -1,4 +1,4 @@
-"""联调：真实 DeepSeek 工具调用 + 后端只读查询工具（契约 v3）。
+"""联调：真实 DeepSeek 工具调用 + 后端只读查询工具（契约 v4）。
 
 覆盖三个场景：
 1. 通行问题（v2 回归：query_strait_passages）；
@@ -48,8 +48,11 @@ def run_case(client, question: str) -> bool:
     for ship in outcome["ships"]:
         print(f"  ship_id={ship['ship_id']} name={ship['name']} passage_count={ship['passage_count']}")
     if not outcome["ships"] and not outcome["evidence"]:
-        for name, result in outcome["results"].items():
-            print(f"  结果[{name}]: status={result.get('status')}")
+        for call_id, result in outcome["results"].items():
+            print(
+                f"  结果[{call_id}/{result.get('tool_name')}]: "
+                f"status={result.get('status')}"
+            )
     print(f"模型回答（前 500 字符）:\n{outcome['answer'][:500]}")
     print(f"耗时: {elapsed:.1f}s")
     ok = bool(outcome["tools_used"]) and bool(outcome["answer"].strip())

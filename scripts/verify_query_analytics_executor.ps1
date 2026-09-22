@@ -2,7 +2,7 @@
 param(
     [string]$Image = 'postgres:17@sha256:f4c66b820c6f974249089d3d16d86a3698eae11e8746eb6644b2271031e91232',
     [string]$Python = '',
-    [ValidateSet('SQL-04', 'SQL-05')]
+    [ValidateSet('SQL-04', 'SQL-05', 'SQL-06')]
     [string]$Stage = 'SQL-04',
     [string[]]$AdditionalTestTarget = @(),
     [switch]$KeepContainer

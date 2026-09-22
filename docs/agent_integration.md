@@ -1,6 +1,6 @@
 # 智能体接入契约与任务
 
-2026-09-21 状态核对：当前运行契约已升级为 v4。data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-05 隔离验证见 [SQL-05 说明](query_analytics_sql05.md)，真实模型与浏览器综合验收仍归 SQL-06。
+2026-09-22 状态核对：当前运行契约为 v4。data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](query_analytics_sql06.md)。
 
 文档核对：2026-09-20，v3 多工具版已实现；本次核对代码与文档，未调用模型或重跑接口验收。根据与学长沟通的结论，采用“大模型 API + 自定义只读查询工具”，未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。v3 在 v2 单工具（海峡通行）基础上新增 search_ships / get_ship_track / get_event_context 三个只读工具（接入 news/events 数据）与多轮 history 支持；工具执行预算由 2 次提高到 3 次。
 
@@ -65,7 +65,7 @@ history 可选，为此前对话的消息列表（role 限 user/assistant，cont
 | query_event_ship_links | event_id 或 ship_id（二选一）, link_type, start_at/end_at | 按事件查 mentioned/observed 或按模拟船反查 observed；mentioned 不映射模拟 ship_id，observed 只表示模拟时空邻近；不重建 |
 | query_analytics | sql（必填）, params, purpose（必填） | catalog v1 内单条参数化 SELECT，覆盖筛选、排序、聚合和批准 JOIN；默认关闭，仅本地回环 + 独立 agent_reader 配置完整时暴露，所有输入经 AST/权限/限额强制校验 |
 
-AG-02～05 已合入；SQL-05 后完整后端回归 177 项通过，前端 build 与 check:workbench 通过。一次性 PostgreSQL 17 中 SQL-04+05 共 22 项通过，包含真实 catalog/只读角色/聚合执行、runner 回传及多工具状态归并；真实 DeepSeek Tool Calling、共享业务库统计和浏览器端到端尚未执行。服务侧此前同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。
+AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，前端 build 与 check:workbench 通过；一次性 PostgreSQL 17 + 真实 DeepSeek 共 57 项通过，浏览器成功表格、待澄清、已拒绝三状态通过且控制台无错误。共享业务库统计未执行，固定 fixture 数量不能视为当前业务数据。服务侧此前同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。
 
 时间窗语义：请求显式提供 closure_at/end_at 时以请求为准（模型自拟时间参数忽略）；否则用模型在工具参数里给的时间，缺省回退默认封锁时刻 + 24 小时窗口。search_ships 不带时间窗。
 
@@ -78,7 +78,7 @@ AG-02～05 已合入；SQL-05 后完整后端回归 177 项通过，前端 build
 → 模型组织回答 → 后端从工具结果装配结构化 ID、数量和证据 → 返回页面
 ```
 
-当前实现：窄范围确定性分类先处理「查一下」等条件不足问题、明确写库/泄露意图和项目能力/数据来源/通行规则类非数据问题，不调用模型或工具；其他数据问题若模型未调用工具仍报错。未知工具、普通非法参数允许有限纠正。结构化结果以服务端生成的 `call_001`、`call_002` 为键并带 `tool_name`，不会再被同名工具覆盖。除 `query_analytics` 的受限 SQL 外，SQL、距离和通行判断不交给模型计算；自由文本 answer 仍只检查非空，未实现逐项事实核验。
+当前实现：确定性分类先处理 AG-01 中条件不足、明确写库/泄露意图、项目能力/数据来源/通行规则类非数据问题，以及 catalog v1 尚不支持的船位/停留聚合，不调用模型或工具；其他数据问题若模型未调用工具仍报错。未知工具、普通非法参数允许有限纠正。结构化结果以服务端生成的 `call_001`、`call_002` 为键并带 `tool_name`，不会再被同名工具覆盖。除 `query_analytics` 的受限 SQL 外，SQL、距离和通行判断不交给模型计算。自由回答仍未逐项事实核验；SQL-06 增加疑似外部指令文本防回显门，命中时隐藏整段自由回答并保留结构化结果和限制说明。
 
 建议整体超时 60 秒、最多 4 轮模型请求、3 次业务工具执行；读取上限 50000 个报位，船舶检索上限 20 条，事件查询上限 5 个事件、每事件 10 条报道。读取超限要求缩小范围，不能截断后宣称零匹配；仅展示截断时保留实际总数并标记 truncated。前端超时覆盖后端预算，不沿用新闻查询的 20 秒。
 
@@ -147,6 +147,6 @@ AG-02～05 已合入；SQL-05 后完整后端回归 177 项通过，前端 build
 
 回答中的船/事件地图定位已实现；历史轨迹逐点回放联动与服务端会话持久化尚未实现；更细粒度的事件与模拟船交互建模仍需设计。旧版 get_ship_context、find_news_events、get_event_evidence 保留为参考，不是本版必做项；新闻扩展仍须区分报道日期与事件时间，保留来源标识，不按船名自动匹配真实与模拟船。
 
-受限 Text-to-SQL 已完成 SQL-01～05，`query_analytics` 已进入 v4 工具循环但默认关闭。SQL-06 仍需完成真实 DeepSeek 工具 schema 兼容、固定 fixture 人工 SQL 对照、浏览器交互及本地部署边界验收；通过前不得在远端可访问环境启用。复杂分支、恢复或持久化需求出现后，再评估 LangChain/LangGraph，不预先增加框架依赖。
+受限 Text-to-SQL 已完成 SQL-01～06，`query_analytics` 已进入 v4 工具循环但默认关闭。SQL-06 已验证真实 DeepSeek 工具 schema、固定 fixture 人工 SQL 对照、浏览器交互及本地部署边界；这不包含共享业务库统计、认证限流或正式部署，因此仍不得在远端可访问环境启用。复杂分支、恢复或持久化需求出现后，再评估 LangChain/LangGraph，不预先增加框架依赖。
 
 最小版（v2）已实现并联调：后端 /agent/analyze 与前端智能体面板已跑通默认问题（返回 1 艘 SIM V2 化学品船 019，证据 P1，观测完成于 2026-02-28T18:14:54Z）；npm run build 与 npm run check:workbench 已通过。v3 多工具版历史联调记录（原标注日期晚于本次文档核对日，实际验收日期待核对；以下不代表本次重新验证）：通行回归问题 1 次工具调用 4.1s；「油轮 SIM V2 油轮 004 轨迹」问题链式调用 search_ships + get_ship_track 共 2 次 5.7s；「evt_001 事件与报道」1 次 get_event_context 3.1s，回答均保留来源链接与模拟边界声明。环境交接见 [database_setup.md](database_setup.md)。

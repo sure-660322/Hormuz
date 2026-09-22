@@ -1,6 +1,6 @@
 # 智能体下一阶段开发任务
 
-更新：2026-09-21。本文是后续任务的统一计划入口；当前实现契约见 [agent_integration.md](agent_integration.md)，全项目摘要见 [README](../README.md)，多会话操作见 [collaboration.md](collaboration.md)。SQL-02 数据库边界、SQL-03 离线 AST 策略校验器、SQL-04 独立只读执行器与 SQL-05 工具循环接入均已完成隔离验证；`query_analytics` 已注册但功能开关继续默认关闭，下一阶段进入 SQL-06 综合验收。
+更新：2026-09-22。本文是后续任务的统一计划入口；当前实现契约见 [agent_integration.md](agent_integration.md)，全项目摘要见 [README](../README.md)，多会话操作见 [collaboration.md](collaboration.md)。SQL-01～06 主链已完成，其中 SQL-06 已通过一次性 PostgreSQL 17、真实 DeepSeek 和浏览器综合验收；`query_analytics` 已注册但功能开关继续默认关闭。下一阶段应先解决认证、限流与部署边界，或另行评审 catalog v2，不因本地验收自动开放远端能力。
 
 ## 已确定的方向与当前基线
 
@@ -30,7 +30,7 @@ Kimi/ChatGPT 可整理脱敏材料、案例和评审意见；具备本地仓库�
 | SQL-03 | AST 策略校验器和离线攻击用例 | Codex；Kimi 补充测试样例 | **已验证**（2026-09-21，分支 `codex/sql03-ast-validator`，基线 `3d51a5a`）：锁定 SQLGlot 30.18.0 / `postgres`，实现 catalog v1 全树正向白名单、参数/类型/函数/JOIN/聚合/复杂度校验和同 AST 规范化；58 条允许、62 条拒绝及 9 项边界检查均通过，当时完整后端回归 136 项通过。SQL-03 本身为纯离线；其规范化输出已在后续 SQL-04 的 PostgreSQL 17 验证中真实执行。见 [SQL-03 说明](query_analytics_sql03.md)。 |
 | SQL-04 | 独立只读执行器、超时、结果限制及审计 | Codex | **已验证**（2026-09-21，分支 `codex/sql04-executor`，共同基线 `af888e9`）：专用只读池、每次 catalog 实物核验、只读事务、5s/1s 超时、2/4 非排队并发门、500 行/256 KiB 流式截断、取消、稳定错误映射和无敏感正文审计已实现；一次性 PostgreSQL 17 专项 11 项通过，后端回归 140 项通过/7 项集成默认跳过；未连接共享数据库、未注册工具。见 [SQL-04 说明](query_analytics_sql04.md)。 |
 | SQL-05 | 注册 query_analytics、更新契约/前端类型和最小展示 | Codex | **已验证**（2026-09-21，分支 `codex/sql05-integration`，基线 `c866af4`）：注册表加入第 9 个只读工具，默认关闭时不向模型暴露；响应升级 v4，results 按服务端 `call_id` 键入，状态枚举/澄清/拒绝/非数据分支、有限语法修复、稳定 HTTP 映射和前端表格已接入。后端 177 passed / 8 skipped、前端 build/check:workbench、一次性 PostgreSQL 17 的 SQL-04+05 22 项通过；未连接共享数据库或调用真实模型。见 [SQL-05 说明](query_analytics_sql05.md)。 |
-| SQL-06 | 旧工具回归、SQL 正确性/安全/错误/页面验收 | Kimi 提供案例，Codex 实测 | **准备就绪**：需在独立 worktree 做固定 fixture 对照、少量真实 DeepSeek Tool Calling、浏览器交互和部署边界复核；在通过前 `AGENT_QUERY_ENABLED` 保持默认 false。 |
+| SQL-06 | 旧工具回归、SQL 正确性/安全/错误/页面验收 | Kimi 提供案例，Codex 实测 | **已验证**（2026-09-22，分支 `codex/sql06-validation`，基线 `6b46d64`）：全量后端 207 passed / 13 skipped；一次性 PostgreSQL 17 + 真实 DeepSeek 57 passed；前端 build/check:workbench 及浏览器成功表格、待澄清、已拒绝三状态通过。补齐 catalog 提示、28 个矩阵前置分支和恶意外部指令防回显；未连接共享数据库，开关继续默认 false。见 [SQL-06 说明](query_analytics_sql06.md)。 |
 
 每项任务在领取时记录工作目录、分支、基线 commit、文件所有权及验收输出；完成一轮即更新本表和受影响文档。不得将未提交的当前目录自动当成其他 worktree 的基线。
 
@@ -57,9 +57,9 @@ Kimi/ChatGPT 可整理脱敏材料、案例和评审意见；具备本地仓库�
 
 **SQL-04：执行器是强制关口（已验证）。** 任何入口都先经 SQL-03；只执行同一 AST 产生的规范化 SQL。专用 `agent_reader_login` 池、事务内 read-only/search_path/超时、每进程 2 + 全局 4 非排队并发门、500 行/256 KiB 服务端游标增量读取、请求取消、显式回滚和无正文审计均已实现。每次执行前以当前只读连接核验角色、权限、对象、字段及固定 `search_path=pg_catalog` 的视图定义哈希，失败即 503 fail closed，不回退管理员连接。一次性 PostgreSQL 17 证据见 [SQL-04 说明](query_analytics_sql04.md)；这仍不代表工具已注册。
 
-**SQL-05：已接入现有循环。** 同一模型选择工具并生成 SQL + 参数，结果由 SQL-04 执行器返回同一模型；没有增加 SQL 专用模型或公开任意 SQL HTTP 接口。功能开关默认关闭，旧工具继续可用。普通语法错误只允许在首次 SQL 未执行时修复一次；拒绝、超时和权限失败不放宽策略重试。响应 v4 使用 `call_001` 形式的服务端调用 ID，避免同工具多次结果覆盖；结构化数据与自由回答正文仍分别校验，不声称正文已有事实核查器。真实模型与浏览器验收归 SQL-06。
+**SQL-05：已接入现有循环。** 同一模型选择工具并生成 SQL + 参数，结果由 SQL-04 执行器返回同一模型；没有增加 SQL 专用模型或公开任意 SQL HTTP 接口。功能开关默认关闭，旧工具继续可用。普通语法错误只允许在首次 SQL 未执行时修复一次；拒绝、超时和权限失败不放宽策略重试。响应 v4 使用 `call_001` 形式的服务端调用 ID，避免同工具多次结果覆盖；后续 SQL-06 已完成真实模型与浏览器验收，并增加疑似外部指令文本防回显，但自由回答仍不是逐事实核验。
 
-**SQL-06：证明正确再开放。** 先离线模拟模型响应测试，再在独立库对照人工 SQL/固定 fixture 核对，最后少量真实模型调用。覆盖四个旧工具、正常查询、空结果、数据不足、澄清、拒绝、提示注入、写 CTE、注释/引号、多语句、函数绕过、大结果及超时。恶意用例证明执行器未调用 DB；数据库权限用独立库测试。校验 /health、/docs、相关接口、前端 build/check:workbench 与浏览器交互。当前 check_agent_api.py 硬编码默认窗口一艘船，应注明 fixture/批次前提，不能为通过测试改源数据。
+**SQL-06：已完成综合验收，但不自动开放。** 离线回归、独立库人工 SQL/固定 fixture 对照及少量真实模型调用已依次通过，覆盖正常查询、真实零结果、数据不足、澄清、拒绝、提示注入、写 CTE、注释/引号、多语句、函数绕过、大结果、超时、权限和错误映射。`/health`、`/docs`、v4 接口、前端 build/check:workbench 与浏览器三状态均已验证。`check_agent_api.py` 已移除默认硬编码批次数量，只有显式 fixture 参数才断言具体值。未验证共享业务库统计、认证限流、正式部署或长时间多 worker 压测；`AGENT_QUERY_ENABLED` 因此仍默认 false。
 
 ## 完成标准
 
