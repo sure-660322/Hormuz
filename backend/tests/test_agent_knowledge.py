@@ -91,11 +91,11 @@ def test_pronoun_followup_continues_with_history_and_tool():
 def test_knowledge_result_is_json_serializable():
     import json
 
-    from backend.app.services.agent.runner import _jsonable
+    from backend.app.services.agent.serialization import to_jsonable
 
     llm = ScriptedFakeLLM(script=[
         _tool_call("search_project_knowledge", {"query": "通行规则"}),
         "完整通行按门线口径判定。",
     ])
     outcome = run_lc_agent(None, "怎么判定通过海峡？", llm=llm)
-    json.dumps(_jsonable(outcome), ensure_ascii=False)
+    json.dumps(to_jsonable(outcome), ensure_ascii=False)

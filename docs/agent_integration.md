@@ -1,8 +1,10 @@
 # 智能体接入契约与任务
 
-> 本文描述当前仍在运行的 **v4 响应契约**。编排实现已于 LC-01（2026-09-22，分支 kimi/agent-lc01）切换为 LangChain `create_agent` 单智能体（`backend/app/services/agent/langchain_runner.py`），响应字段与本契约保持一致；契约层面的字段语义仍以本文为准，直至 LC-04 收敛状态枚举。目标架构、代码去留和验收见 [LangChain 业务智能体第一版方案](langchain_agent_v1_plan.md)。
+> 本文描述当前仍在运行的 **v4 响应契约**。编排实现已于 LC-01（2026-09-22，分支 kimi/agent-lc01）切换为 LangChain `create_agent` 单智能体（`backend/app/services/agent/langchain_runner.py`），响应字段与本契约保持一致；契约层面的字段语义仍以本文为准，直至 LC-04 收敛状态枚举。目标架构、代码去留和验收见 [LangChain 业务智能体第一版方案](langchain_agent_v1_plan.md)。LC-04（2026-09-22，分支 kimi/agent-lc04）起 8 个只读业务服务为原生 LangChain Tools（`business_tools.py`），旧 `runner.py` 手写工具循环已删除，本文中「当前实现」段落的自定义循环描述仅作契约背景保留。
 
-2026-09-22 LC-03 状态核对：受限 SQL 工具（`get_database_schema` / `check_sql` / `execute_sql`）已接入，复用 SQL-03/04 策略与独立只读执行器，仅在功能开关完整时向模型暴露；普通筛选/排序/聚合/批准 JOIN 走 schema→check→execute 链路，写入被只读策略拒绝且拒绝后关闭重试。固定短语前置分类已按方案 §7 移除（LC-01/03 完成条件达成），问候、范围外、知识、写库/越权意图和澄清全部交给模型与工具底座处理。LC-02 起已有轻量知识库与 `search_project_knowledge` 工具。统一序列化已修复 `Decimal`（median_gap_minutes）导致的 HTTP 500；工具错误降级为可理解 observation。以下「当前实现」段落中关于自定义工具循环、固定分类与手工 TOOL_REGISTRY 的描述指 LC-01 之前的 v4 实现，旧 `runner.py` 保留至 LC-04 回归通过后清理。
+2026-09-22 LC-04 状态核对：LC-04 已实现待验证——8 个只读业务服务包装为原生 LangChain Tools（复用已验证服务层算法，参数经 Pydantic args_schema 校验，服务层错误降级为 `INVALID_TOOL_ARGS`/`DATABASE_UNAVAILABLE` observation），v4 响应组装迁至 `results.py`（`normalize_status` 增加「已纠正错误豁免」，保持纠正循环顶层状态语义），旧 `runner.py` 及手工 TOOL_REGISTRY/固定短语分类已按计划 §7 移除，固定问句测试由 `test_agent_expressions.py` 多表达矩阵替代。离线回归 231 passed / 12 skipped，前端 build 与 check:workbench 通过。未验证：真实 DeepSeek 问答与工具选择准确率、真实 PG SQL 链路、浏览器端到端（无密钥/无浏览器环境，本轮无法执行）。
+
+2026-09-22 LC-03 状态核对：受限 SQL 工具（`get_database_schema` / `check_sql` / `execute_sql`）已接入，复用 SQL-03/04 策略与独立只读执行器，仅在功能开关完整时向模型暴露；普通筛选/排序/聚合/批准 JOIN 走 schema→check→execute 链路，写入被只读策略拒绝且拒绝后关闭重试。固定短语前置分类已按方案 §7 移除（LC-01/03 完成条件达成），问候、范围外、知识、写库/越权意图和澄清全部交给模型与工具底座处理。LC-02 起已有轻量知识库与 `search_project_knowledge` 工具。统一序列化已修复 `Decimal`（median_gap_minutes）导致的 HTTP 500；工具错误降级为可理解 observation。以下「当前实现」段落中关于自定义工具循环、固定分类与手工 TOOL_REGISTRY 的描述指 LC-01 之前的 v4 实现，旧 `runner.py` 已于 LC-04 清理。
 
 2026-09-22 状态核对（LC-01 之前的事实，保留作契约背景）：data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](query_analytics_sql06.md)。
 

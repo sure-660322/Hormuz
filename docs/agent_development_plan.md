@@ -5,7 +5,7 @@
 ## 当前判断
 
 - SQL-02～06 已完成语义视图、SQLGlot 校验、独立只读执行、工具接入和隔离验收；这些成果作为新 SQL Agent 的安全执行底座保留。
-- 当前 `runner.py` 仍是自定义 Tool Calling 循环，并包含大量固定短语分类；它是现状，不是下一版目标。
+- ~~当前 `runner.py` 仍是自定义 Tool Calling 循环，并包含大量固定短语分类；它是现状，不是下一版目标。~~ LC-04 起该循环与固定短语分类已删除（`runner.py` 移除，`langchain_runner.py` 为唯一编排入口），当前判断以 LC-04 实施记录为准。
 - 下一版确定使用 LangChain 单智能体，让模型基于系统提示、项目知识、Tool 描述和数据库 schema 自主选择自然回答、知识检索、业务 Skill 或 SQL。
 - 第一版不直接编写 LangGraph、不做多智能体和服务端会话持久化。
 - LC-01 已完成基础接入（见下方实施记录）：统一序列化修复了 `median_gap_minutes: Decimal` 导致的 HTTP 500，编排切换到 `create_agent`；范围外与问候由模型自然回答。
@@ -17,7 +17,7 @@
 | LC-01 | LangChain/DeepSeek 基础接入、简洁系统提示、统一序列化和错误降级 | **已实现待验证** | 自然问候；范围外回答；模型/工具错误不产生未处理 500；`Decimal` 可序列化 |
 | LC-02 | 现有 8 个只读业务服务包装为 LangChain Tools；轻量 Markdown 知识库 | **已实现待验证** | 模型能按多种表达自主选择知识或 Skill；多轮代词可用 |
 | LC-03 | `get_database_schema`、`check_sql`、`execute_sql`；本地受限 SQL Agent | **已实现待验证** | 普通筛选/排序/聚合可问答；复杂业务继续走 Skill；写 SQL 被只读底座拒绝 |
-| LC-04 | 前端兼容、旧 runner/固定规则清理、真实模型和浏览器验收 | **待开始** | 不要求固定问法；澄清、故障降级、表格、来源和地图引用正常 |
+| LC-04 | 前端兼容、旧 runner/固定规则清理、真实模型和浏览器验收 | **已实现待验证** | 不要求固定问法；澄清、故障降级、表格、来源和地图引用正常 |
 
 ### LC-01 实施记录（2026-09-22，分支 kimi/agent-lc01）
 
@@ -44,11 +44,20 @@
 - 已验证（2026-09-22，离线，无真实模型/数据库）：后端全量 245 passed / 13 skipped（新增 10 项：schema 返回、合法 SELECT 校验、DELETE/字面量拒绝、execute_sql 经假执行器返回行/列/query_id、拒绝后 SQL 关闭、开关关闭时工具不暴露、写意图经策略拒绝；改写 4 项前置分类依赖测试）。
 - 未验证：真实 PostgreSQL + 真实 DeepSeek 的 SQL 问答链路（本地演示环境启用后验收，随 LC-04 或单独环境验证）；浏览器端到端（LC-04）。
 
+### LC-04 实施记录（2026-09-22，分支 kimi/agent-lc04）
+
+- 新增 `backend/app/services/agent/business_tools.py`：8 个现有只读业务服务包装为**原生 LangChain Tools**（`make_business_tools`），直接复用已验证的服务层算法（strait_passages/ship_search/ship_tracks/event_context/data_health/dwell/encounters/event_ship_links），不重写业务逻辑；参数校验统一经 Pydantic args_schema（枚举/类型），服务层 ValueError 降级为 `INVALID_TOOL_ARGS` observation、数据库错误降级为 `DATABASE_UNAVAILABLE` observation，不再产生未处理 500。
+- 新增 `backend/app/services/agent/results.py`：v4 响应组装从旧 `runner.py` 迁出（build_result/normalize_status/safe_model_answer/parse_time_arg 等）；`normalize_status` 新增「已纠正错误豁免」——同工具后续出现成功 envelope 时，早前的 error envelope 不把顶层状态降为 partial（与 syntax_error 豁免同口径，保持 v4 纠正循环的顶层状态语义）。
+- 删除 `backend/app/services/agent/runner.py`（手写模型工具循环 + TOOL_REGISTRY/TOOL_SCHEMAS）；`langchain_runner.py` 整体改写为 create_agent + business_tools + sql_tools + results，路由 `routers/agent.py` 改经 results/serialization 组装响应，`schemas_agent.py` 注释同步。
+- 测试改造（方案 §7）：dwell/encounters/data_health/event_ship_links 四个 AG 套件迁到 `run_lc_agent` + ScriptedFakeLLM（纠正链路断言改用 `llm.received[i]` 的 ToolMessage；假 OpenAI 客户端类删除）；`test_query_analytics_integration.py` 与 `test_query_analytics_sql06.py` 重写为 HTTP 层 + 执行器层用例（固定问句矩阵删除）；新增 `test_agent_expressions.py` 多表达矩阵（问候/范围外/知识/SQL 统计链/通行技能/澄清/故障降级各 3～4 种表述，共 24 项），固定问句选择准确率的真实验证仍需真实模型。`ScriptedFakeLLM` 增加 `received` 与 `bound_tools` 记录，支撑纠正链路与「模型可见工具 schema」断言。
+- 已验证（2026-09-22，离线，无真实模型/数据库）：后端全量 **231 passed / 12 skipped**（LC-03 基线 245/13，差额为按方案 §7 删除的固定问句矩阵与旧消息循环用例）；前端 `npm run build` 与 `npm run check:workbench` 通过（lc04 worktree 全新 npm install 后验证，AgentPanel 无需改动，v4 响应契约未变）。
+- 未验证：真实 DeepSeek 问答与工具选择准确率（脚本化假模型只验证链路，选择准确率依赖真实模型）；真实 PostgreSQL + 真实模型的受限 SQL 链路（本地演示环境启用后验收）；浏览器端到端三状态（需前后端联调环境）；以上为 LC-04 验收项，因无密钥/无浏览器环境本轮无法执行。
+
 ## 保留与清理边界
 
 保留：现有业务查询服务、`agent_data` 视图、catalog、SQLGlot 策略、独立只读执行器、超时/结果限制、前端 AgentPanel 及结构化展示。
 
-待 LangChain 等价能力通过后移除：`_classify_preflight` 及固定短语表、手工 `TOOL_REGISTRY` schema、手工模型工具循环、重复 `_run_*` 适配层，以及只验证固定句式的测试。精确文件和删除条件见 [第一版方案 §7](langchain_agent_v1_plan.md#7-现有代码去留)。
+LC-04 已按 [第一版方案 §7](langchain_agent_v1_plan.md#7-现有代码去留) 的删除条件完成清理：固定短语前置分类（LC-03）、手工 `TOOL_REGISTRY`/schema、手写模型工具循环（`runner.py`）与重复 `_run_*` 适配层均已移除，只验证固定句式的测试由 `test_agent_expressions.py` 多表达矩阵替代。
 
 不能移除：模拟船/真实新闻边界、新闻文本不可信、数据库只读、禁止写入、超时和结果限制，以及通行/停留/相遇/事件关联的业务语义。
 

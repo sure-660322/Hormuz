@@ -12,7 +12,6 @@ from types import SimpleNamespace
 import pytest
 from pydantic import BaseModel
 
-from backend.app.services.agent import runner
 from backend.app.services.agent.serialization import to_jsonable
 
 UTC = timezone.utc
@@ -73,11 +72,11 @@ def test_to_jsonable_unknown_type_falls_back_to_str():
     assert to_jsonable(object()) .startswith("<object")
 
 
-def test_runner_jsonable_matches_serialization():
-    """旧 runner 的 _jsonable 已委托统一序列化（Decimal 不再 TypeError）。"""
+def test_contract_path_uses_unified_serialization():
+    """契约路径统一走 serialization.to_jsonable（Decimal 不再 TypeError）。"""
     payload = {"median_gap_minutes": Decimal("17.0"), "ok": True}
-    assert runner._jsonable(payload) == {"median_gap_minutes": 17, "ok": True}
-    json.dumps(runner._jsonable(payload), ensure_ascii=False)  # 不抛 TypeError
+    assert to_jsonable(payload) == {"median_gap_minutes": 17, "ok": True}
+    json.dumps(to_jsonable(payload), ensure_ascii=False)  # 不抛 TypeError
 
 
 # ---- Decimal 500 回归：完整响应可 JSON 序列化 ----
@@ -95,5 +94,5 @@ def test_full_outcome_with_decimal_is_json_safe():
             }
         },
     }
-    # 契约路径：先 _jsonable 再 json.dumps（旧实现在此抛 TypeError → HTTP 500）
-    json.dumps(runner._jsonable(outcome), ensure_ascii=False)
+    # 契约路径：先统一序列化再 json.dumps（LC-01 前在此抛 TypeError → HTTP 500）
+    json.dumps(to_jsonable(outcome), ensure_ascii=False)

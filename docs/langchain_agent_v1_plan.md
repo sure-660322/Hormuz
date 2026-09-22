@@ -1,6 +1,6 @@
 # LangChain 业务智能体第一版技术方案
 
-状态：**LC-03 已实现待验证**（2026-09-22，分支 kimi/agent-lc03；离线回归 245 passed / 13 skipped，真实模型、SQL 演示链路与浏览器验收在 LC-04）。编排已切换为 LangChain `create_agent`（依赖锁定 `langchain==1.4.2`、`langchain-openai==1.6.3`），响应保持 v4 契约；业务工具（LC-01）、轻量知识库（LC-02）、受限 SQL 工具（LC-03）已接入，固定短语前置分类已移除；LC-04 按下方阶段表推进。当前线上/本地运行细节仍以 [智能体接入契约](agent_integration.md) 为准。
+状态：**LC-04 已实现待验证**（2026-09-22，分支 kimi/agent-lc04；离线回归 231 passed / 12 skipped，前端 build 与 check:workbench 通过；真实模型、SQL 演示链路与浏览器端到端验收未做，无密钥/无浏览器环境）。编排已切换为 LangChain `create_agent`（依赖锁定 `langchain==1.4.2`、`langchain-openai==1.6.3`），响应保持 v4 契约；业务工具（LC-01）、轻量知识库（LC-02）、受限 SQL 工具（LC-03）已接入，8 个业务服务为原生 LangChain Tools（`business_tools.py`），固定短语前置分类与旧 `runner.py` 手写工具循环已按计划 §7 移除（LC-03/LC-04），固定问句测试由 `test_agent_expressions.py` 多表达矩阵替代。当前线上/本地运行细节仍以 [智能体接入契约](agent_integration.md) 为准。
 
 ## 1. 目标体验
 
@@ -129,18 +129,20 @@ SQL Agent 是主智能体的一组工具，不是另一个模型：
 | `backend/app/query_analytics_catalog_v1.json` | SQL schema 与语义目录基础 |
 | `frontend/src/components/AgentPanel.vue`、`frontend/src/api.ts` | 保留页面和结构化展示，做兼容性调整 |
 
-### LangChain接管后可以移除
+### LangChain接管后可以移除（均已于 LC-03/LC-04 执行）
 
-| 当前代码/规则 | 移除条件与替代方案 |
-| --- | --- |
-| `runner.py::_classify_preflight` | LC-01/03 完成后删除；问候、范围外、澄清和能力判断交给模型 |
-| `clarification_rules`、`deferred_patterns`、`unsafe_requests` 等固定短语表 | 不再为每种中文说法添加关键词；SQL写入由执行边界拒绝，语义澄清由 Agent处理 |
-| 当前超长 `SYSTEM_PROMPT` 中的固定工具优先级和样例句 | 改为简洁身份规则 + Tool 描述 + 按需知识检索 |
-| 手工 `TOOL_REGISTRY` JSON Schema | 业务服务包装为 LangChain `@tool` 后删除 |
-| `run_agent` 的手工四轮 Tool Calling 循环 | LC-04 完成等价回归后由 `create_agent` 替代 |
-| `_run_*` 适配函数 | 对应 LangChain Tool wrapper 稳定后删除；底层服务保留 |
-| `test_query_analytics_sql06.py` 中固定问句分类矩阵 | 替换为问候、范围外、知识、SQL、Skill、澄清和错误降级的多表达测试 |
-| `test_query_analytics_integration.py` 中模拟旧消息循环的测试 | LangChain集成测试稳定后删除；SQL策略/执行器专项测试继续保留 |
+下表移除项已按计划执行完毕（LC-04 等价回归 231 passed / 12 skipped 后），保留作决策记录：
+
+| 当前代码/规则 | 移除条件与替代方案 | 执行 |
+| --- | --- | --- |
+| `runner.py::_classify_preflight` | LC-01/03 完成后删除；问候、范围外、澄清和能力判断交给模型 | LC-03 移除前置分类 |
+| `clarification_rules`、`deferred_patterns`、`unsafe_requests` 等固定短语表 | 不再为每种中文说法添加关键词；SQL写入由执行边界拒绝，语义澄清由 Agent处理 | LC-03/04 移除 |
+| 当前超长 `SYSTEM_PROMPT` 中的固定工具优先级和样例句 | 改为简洁身份规则 + Tool 描述 + 按需知识检索 | LC-01 起为新系统提示 |
+| 手工 `TOOL_REGISTRY` JSON Schema | 业务服务包装为 LangChain `@tool` 后删除 | LC-04 由 `business_tools.py` 替代 |
+| `run_agent` 的手工四轮 Tool Calling 循环 | LC-04 完成等价回归后由 `create_agent` 替代 | LC-04 删除 `runner.py` |
+| `_run_*` 适配函数 | 对应 LangChain Tool wrapper 稳定后删除；底层服务保留 | LC-04 原生 Tools 直接调用服务层 |
+| `test_query_analytics_sql06.py` 中固定问句分类矩阵 | 替换为问候、范围外、知识、SQL、Skill、澄清和错误降级的多表达测试 | LC-04 由 `test_agent_expressions.py` 替代 |
+| `test_query_analytics_integration.py` 中模拟旧消息循环的测试 | LangChain集成测试稳定后删除；SQL策略/执行器专项测试继续保留 | LC-04 重写为 HTTP 层用例 |
 
 ### 不能移除
 

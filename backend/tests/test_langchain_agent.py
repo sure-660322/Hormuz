@@ -17,7 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend.app.repositories import data_health as health_repo
 from backend.app.services.agent import langchain_runner
 from backend.app.services.agent.langchain_runner import run_lc_agent
-from backend.app.services.agent.runner import AgentTimeoutError
+from backend.app.services.agent.results import AgentTimeoutError
 from backend.tests.fake_llm import ScriptedFakeLLM, tool_call as _tool_call
 
 UTC = timezone.utc
@@ -103,10 +103,10 @@ def test_decimal_tool_result_serializes(patched_health_repo):
     assert sources[0]["median_gap_minutes"] == 17  # Decimal 已转 int，可 JSON 序列化
     import json
 
-    from backend.app.services.agent.runner import _jsonable
+    from backend.app.services.agent.serialization import to_jsonable
 
-    # 契约路径：响应先经 _jsonable 再 json.dumps（LC-01 前 Decimal 在此抛 TypeError → 500）
-    json.dumps(_jsonable(outcome), ensure_ascii=False)
+    # 契约路径：响应先经统一序列化再 json.dumps（LC-01 前 Decimal 在此抛 TypeError → 500）
+    json.dumps(to_jsonable(outcome), ensure_ascii=False)
 
 
 # ------------------------------------------------------------ 工具错误降级
@@ -173,17 +173,26 @@ def test_vague_question_gets_natural_clarification():
     assert "请说明" in outcome["answer"]
 
 
-def test_query_analytics_registry_tool_not_exposed():
-    """旧注册表 query_analytics 不再作为业务工具适配；SQL 走 LC-03 专用工具。"""
-    from backend.app.services.agent import runner
+def test_business_tools_do_not_include_sql_tools():
+    """8 个业务工具与 SQL 工具分模块：业务工具集不含任何 SQL/分析工具。"""
+    from backend.app.services.agent.business_tools import make_business_tools
 
-    assert "query_analytics" in langchain_runner._EXCLUDED_TOOLS
-    registry = {
-        name for name in runner.TOOL_REGISTRY
-        if name not in langchain_runner._EXCLUDED_TOOLS
+    state = {"tools_used": [], "results": {}, "tool_executions": 0,
+             "call_sequence": 0, "max_tool_executions": 8}
+    from datetime import datetime, timezone
+
+    tools = make_business_tools(
+        None, datetime(2026, 2, 28, 15, tzinfo=timezone.utc),
+        datetime(2026, 3, 1, 15, tzinfo=timezone.utc), False, state,
+    )
+    names = {tool.name for tool in tools}
+    assert names == {
+        "query_strait_passages", "search_ships", "get_ship_track",
+        "get_event_context", "get_data_health", "query_ship_dwell",
+        "query_encounters", "query_event_ship_links",
     }
-    assert "query_analytics" not in registry
-    assert len(registry) == 8
+    assert "query_analytics" not in names
+    assert "execute_sql" not in names
 
 
 # ------------------------------------------------------------ HTTP 路由层

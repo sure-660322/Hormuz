@@ -16,11 +16,11 @@ from backend.app.schemas_agent import AgentAnalyzeRequest, AgentAnalyzeResponse
 from backend.app.services.agent.config import DEFAULT_CLOSURE_AT, MAX_WINDOW
 from backend.app.services.agent.langchain_runner import run_lc_agent
 from backend.app.services.agent.model_client import AgentConfigError
-from backend.app.services.agent.runner import (
+from backend.app.services.agent.results import (
     AgentInvalidResponseError,
     AgentTimeoutError,
-    _jsonable,
 )
+from backend.app.services.agent.serialization import to_jsonable
 from backend.app.services.agent.query_analytics_executor import QueryExecutionError
 
 logger = logging.getLogger(__name__)
@@ -79,6 +79,6 @@ def analyze(
         logger.warning("model unavailable request_id=%s type=%s", request_id, type(exc).__name__)
         _error(503, "AGENT_UNAVAILABLE", "模型服务当前不可用", request_id)
 
-    payload = _jsonable(outcome)
+    payload = to_jsonable(outcome)
     payload["request_id"] = request_id
     return AgentAnalyzeResponse(**payload)
