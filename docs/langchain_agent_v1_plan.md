@@ -1,6 +1,6 @@
 # LangChain 业务智能体第一版技术方案
 
-状态：**LC-02 已实现待验证**（2026-09-22，分支 kimi/agent-lc02；离线回归 237 passed / 13 skipped，真实模型与浏览器验收在 LC-04）。编排已切换为 LangChain `create_agent`（依赖锁定 `langchain==1.4.2`、`langchain-openai==1.6.3`），响应保持 v4 契约；业务工具（LC-01）与轻量知识库（LC-02）已接入；LC-03～04 按下方阶段表推进。当前线上/本地运行细节仍以 [智能体接入契约](agent_integration.md) 为准。
+状态：**LC-03 已实现待验证**（2026-09-22，分支 kimi/agent-lc03；离线回归 245 passed / 13 skipped，真实模型、SQL 演示链路与浏览器验收在 LC-04）。编排已切换为 LangChain `create_agent`（依赖锁定 `langchain==1.4.2`、`langchain-openai==1.6.3`），响应保持 v4 契约；业务工具（LC-01）、轻量知识库（LC-02）、受限 SQL 工具（LC-03）已接入，固定短语前置分类已移除；LC-04 按下方阶段表推进。当前线上/本地运行细节仍以 [智能体接入契约](agent_integration.md) 为准。
 
 ## 1. 目标体验
 

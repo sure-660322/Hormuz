@@ -2,7 +2,7 @@
 
 > 本文描述当前仍在运行的 **v4 响应契约**。编排实现已于 LC-01（2026-09-22，分支 kimi/agent-lc01）切换为 LangChain `create_agent` 单智能体（`backend/app/services/agent/langchain_runner.py`），响应字段与本契约保持一致；契约层面的字段语义仍以本文为准，直至 LC-04 收敛状态枚举。目标架构、代码去留和验收见 [LangChain 业务智能体第一版方案](langchain_agent_v1_plan.md)。
 
-2026-09-22 LC-02 状态核对：新增轻量知识库（`services/agent/knowledge/*.md` + `knowledge_base.py`）与 `search_project_knowledge` 工具，项目知识类问题由模型自主检索知识库回答；8 个业务工具与知识库工具均以 LangChain Tool 暴露。`query_analytics` 在 LC-03 前不向模型暴露，功能开关默认关闭。问候、范围外问题与项目知识类问题由模型基于简洁系统提示自然回答，不再依赖固定工具优先级说明；固定短语前置分类暂保留拒绝/澄清子集（移除条件见方案 §7）。统一序列化已修复 `Decimal`（median_gap_minutes）导致的 HTTP 500；工具错误降级为可理解 observation，由模型形成诚实回答。以下「当前实现」段落中关于自定义工具循环、固定分类与手工 TOOL_REGISTRY 的描述指 LC-01 之前的 v4 实现，旧 `runner.py` 保留至 LC-04 回归通过后清理。
+2026-09-22 LC-03 状态核对：受限 SQL 工具（`get_database_schema` / `check_sql` / `execute_sql`）已接入，复用 SQL-03/04 策略与独立只读执行器，仅在功能开关完整时向模型暴露；普通筛选/排序/聚合/批准 JOIN 走 schema→check→execute 链路，写入被只读策略拒绝且拒绝后关闭重试。固定短语前置分类已按方案 §7 移除（LC-01/03 完成条件达成），问候、范围外、知识、写库/越权意图和澄清全部交给模型与工具底座处理。LC-02 起已有轻量知识库与 `search_project_knowledge` 工具。统一序列化已修复 `Decimal`（median_gap_minutes）导致的 HTTP 500；工具错误降级为可理解 observation。以下「当前实现」段落中关于自定义工具循环、固定分类与手工 TOOL_REGISTRY 的描述指 LC-01 之前的 v4 实现，旧 `runner.py` 保留至 LC-04 回归通过后清理。
 
 2026-09-22 状态核对（LC-01 之前的事实，保留作契约背景）：data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](query_analytics_sql06.md)。
 

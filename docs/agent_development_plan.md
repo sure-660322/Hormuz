@@ -16,7 +16,7 @@
 | --- | --- | --- | --- |
 | LC-01 | LangChain/DeepSeek 基础接入、简洁系统提示、统一序列化和错误降级 | **已实现待验证** | 自然问候；范围外回答；模型/工具错误不产生未处理 500；`Decimal` 可序列化 |
 | LC-02 | 现有 8 个只读业务服务包装为 LangChain Tools；轻量 Markdown 知识库 | **已实现待验证** | 模型能按多种表达自主选择知识或 Skill；多轮代词可用 |
-| LC-03 | `get_database_schema`、`check_sql`、`execute_sql`；本地受限 SQL Agent | **待开始** | 普通筛选/排序/聚合可问答；复杂业务继续走 Skill；写 SQL 被只读底座拒绝 |
+| LC-03 | `get_database_schema`、`check_sql`、`execute_sql`；本地受限 SQL Agent | **已实现待验证** | 普通筛选/排序/聚合可问答；复杂业务继续走 Skill；写 SQL 被只读底座拒绝 |
 | LC-04 | 前端兼容、旧 runner/固定规则清理、真实模型和浏览器验收 | **待开始** | 不要求固定问法；澄清、故障降级、表格、来源和地图引用正常 |
 
 ### LC-01 实施记录（2026-09-22，分支 kimi/agent-lc01）
@@ -35,6 +35,14 @@
 - `langchain_runner.py` 新增 `search_project_knowledge` 工具（结果计入 results/tools_used，与业务工具同一 envelope 口径）；系统提示规则 2 改为「项目知识优先调用知识库工具」。
 - 已验证（2026-09-22，离线，无真实模型/数据库）：后端全量 237 passed / 13 skipped（新增 8 项：知识检索命中/空结果/上限、知识工具被调用、能力边界回答、多轮指代「它」结合 history 继续调用业务工具、知识结果可序列化）。
 - 未验证：真实模型对知识工具的选择准确率（脚本化假模型只验证链路）；浏览器端到端（LC-04）。
+
+### LC-03 实施记录（2026-09-22，分支 kimi/agent-lc03）
+
+- 新增 `backend/app/services/agent/sql_tools.py`：`get_database_schema`（catalog 视图/字段/批准 JOIN/上限）、`check_sql`（SQLGlot 策略纯校验，不触库）、`execute_sql`（复用 SQL-04 独立只读执行器，SELECT-only、超时、结果上限、query_id）；拒绝/超时/执行失败后关闭后续 execute_sql，仅未执行的普通语法错误可修正一次。
+- 工具仅在功能开关完整（`ExecutorConfig.from_env`）时暴露；系统提示按需追加受限 SQL 工具说明。
+- 按方案 §7 的移除条件（LC-01/03 完成）删除 `langchain_runner` 中的固定短语前置分类：问候、范围外、知识、写库/越权意图、澄清全部交给模型与工具底座（写 SQL 由只读策略拒绝）。旧 `runner.py` 及其测试保留至 LC-04 等价回归后清理。
+- 已验证（2026-09-22，离线，无真实模型/数据库）：后端全量 245 passed / 13 skipped（新增 10 项：schema 返回、合法 SELECT 校验、DELETE/字面量拒绝、execute_sql 经假执行器返回行/列/query_id、拒绝后 SQL 关闭、开关关闭时工具不暴露、写意图经策略拒绝；改写 4 项前置分类依赖测试）。
+- 未验证：真实 PostgreSQL + 真实 DeepSeek 的 SQL 问答链路（本地演示环境启用后验收，随 LC-04 或单独环境验证）；浏览器端到端（LC-04）。
 
 ## 保留与清理边界
 

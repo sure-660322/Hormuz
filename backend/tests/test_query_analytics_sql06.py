@@ -62,7 +62,15 @@ def test_question_matrix_preflight_branches_need_no_model(question, status):
         assert outcome["clarification"]
 
 
-def test_health_docs_and_preflight_http_contract():
+def test_health_docs_and_clarification_http_contract(monkeypatch):
+    """LC-03 起「查一下」到达模型并由其自然追问（固定短语分类已移除）。"""
+    from backend.app.services.agent import langchain_runner
+    from backend.tests.fake_llm import ScriptedFakeLLM
+
+    monkeypatch.setattr(
+        langchain_runner, "build_llm",
+        lambda: ScriptedFakeLLM(script=["请说明要查询的对象、指标或时间范围。"]),
+    )
     client = TestClient(app)
     assert client.get("/health").status_code == 200
     assert client.get("/docs").status_code == 200
@@ -70,7 +78,8 @@ def test_health_docs_and_preflight_http_contract():
     assert response.status_code == 200
     body = response.json()
     assert body["schema_version"] == "4"
-    assert body["status"] == "needs_clarification"
+    assert body["status"] == "ok"
+    assert "请说明" in body["answer"]
     assert body["tools_used"] == []
     assert body["results"] == {}
 

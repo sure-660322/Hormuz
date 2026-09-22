@@ -1,13 +1,15 @@
-"""LC-01：LangChain create_agent 单智能体接入（保持 v4 响应契约）。
+"""LangChain create_agent 单智能体接入（保持 v4 响应契约）。
 
 架构见 docs/langchain_agent_v1_plan.md：
 - DeepSeek 经 langchain-openai 的 ChatOpenAI（OpenAI 兼容接口）接入 create_agent；
 - 8 个现有只读业务服务通过注册表适配为 LangChain Tools，不重写业务算法；
+- 轻量知识库检索工具 search_project_knowledge（LC-02）；
+- 受限 SQL 工具 get_database_schema / check_sql / execute_sql（LC-03），
+  复用 SQL-03/04 策略与独立只读执行器，仅功能开关完整时暴露；
 - 统一序列化（serialization.to_jsonable）保证 Decimal 等结果不再 500；
 - 工具错误降级为可理解的 observation（{status, code, message}），由模型形成最终回答。
 
-LC-01 范围说明：query_analytics（受限 SQL）在 LC-03 接入；固定短语前置分类
-目前保留拒绝/澄清子集（完整移除条件见方案 §7）。旧 runner.py 保留至 LC-04
+LC-01/03 完成后已按方案 §7 移除固定短语前置分类；旧 runner.py 保留至 LC-04
 回归通过后再清理。
 """
 from __future__ import annotations
@@ -35,6 +37,7 @@ from backend.app.services.agent.config import (
     DEFAULT_WINDOW,
 )
 from backend.app.services.agent.knowledge_base import search_knowledge
+from backend.app.services.agent import sql_tools
 from backend.app.services.agent.model_client import (
     MODEL_REQUEST_TIMEOUT,
     MAX_NETWORK_RETRIES,
@@ -63,7 +66,8 @@ SYSTEM_PROMPT = f"""你是霍尔木兹海峡海事态势分析智能体（教学
 3. 条件不足时自然追问；工具失败时诚实说明暂时不可用，不编造数据，
    也不把后端异常伪装成「无法连接」之外的结论。
 4. 专门业务算法（海峡完整通行、停留、相遇、事件—船舶关联、数据健康）
-   优先调用对应工具；普通筛选、排序和聚合类统计在后续阶段由 SQL 工具承担。
+   优先调用对应工具；普通筛选、排序和聚合类统计使用受限 SQL 工具
+   （get_database_schema → check_sql → execute_sql）。
 5. 时间参数必须带时区（统一 UTC）。窗口类工具缺省时间参数时后端自动使用
    默认封锁时刻与 24 小时窗口；多轮对话中可用「它」「刚才那艘船」等指代，
    但新的数据问题仍须调用工具核对。
@@ -72,6 +76,15 @@ SYSTEM_PROMPT = f"""你是霍尔木兹海峡海事态势分析智能体（教学
 
 当前批次：{runner.BATCH_DESCRIPTION}
 默认封锁时刻：{DEFAULT_CLOSURE_AT.isoformat()}（{DEFAULT_CLOSURE_SOURCE}）
+"""
+
+SQL_PROMPT_SECTION = """
+受限 SQL 工具（仅在本地演示环境启用）：
+- 先 get_database_schema 查看允许视图与字段；再按业务问题生成单条 SELECT，
+  所有条件值用 :name 命名参数；先 check_sql 校验，通过后再 execute_sql 执行。
+- 安全拒绝、超时或执行失败后 execute_sql 会关闭，不得换写法重试；
+  只有第一次尚未执行的普通语法错误可修正一次。
+- 业务算法问题（完整通行、停留、相遇等）不要用 SQL 临时重写，走对应业务工具。
 """
 
 # LC-01 不向模型暴露 query_analytics；LC-03 接入 schema/check/execute 后开放
@@ -268,10 +281,12 @@ def run_lc_agent(
     request_id: str | None = None,
     llm: BaseChatModel | None = None,
     budget_seconds: float = OVERALL_BUDGET_SECONDS,
+    sql_enabled: bool | None = None,
 ) -> dict:
     """LangChain create_agent 编排一次完整问答，返回 v4 契约结果字典。
 
-    llm 可注入（测试用脚本化假模型）；budget_seconds 可缩短（测试超时路径）。
+    llm 可注入（测试用脚本化假模型）；budget_seconds 可缩短（测试超时路径）；
+    sql_enabled 为 None 时按功能开关自动检测（本地演示环境启用受限 SQL 工具）。
     """
     forced_window = closure_at is not None and end_at is not None
     if closure_at is None:
@@ -282,18 +297,15 @@ def run_lc_agent(
     if end_at is None:
         end_at = closure_at + DEFAULT_WINDOW
 
-    # 固定短语前置分类（拒绝/澄清子集）在 LC-01 保留；问候、范围外、知识类
-    # 问题不再被固定字符串拦截，交给模型自然回答（方案 §7 的移除条件）
-    preflight = runner._classify_preflight(question)
-    if preflight is not None:
-        status, answer, clarification = preflight
-        return runner._build_result(
-            [], {}, closure_at, end_at, closure_source, answer,
-            status=status, clarification=clarification,
-        )
+    # LC-01/03 完成：固定短语前置分类已按方案 §7 移除。问候、范围外、知识、
+    # 写库/越权意图和澄清全部交给模型与工具底座处理——写 SQL 由只读策略拒绝，
+    # 语义澄清由模型自然追问。
 
     request_id = request_id or f"req_{uuid.uuid4().hex}"
     llm = llm or build_llm()
+
+    if sql_enabled is None:
+        sql_enabled = sql_tools.sql_tools_enabled()
 
     registry = {
         name: tool for name, tool in runner.TOOL_REGISTRY.items()
@@ -304,14 +316,18 @@ def run_lc_agent(
         "results": {},
         "tool_executions": 0,
         "call_sequence": 0,
+        "sql_closed": False,
     }
     tools = [
         _make_tool(db, tool, closure_at, end_at, forced_window, state)
         for tool in registry.values()
     ]
     tools.append(_make_knowledge_tool(state))
+    if sql_enabled:
+        tools.extend(sql_tools.make_sql_tools(request_id=request_id, state=state))
 
-    agent = create_agent(llm, tools, system_prompt=SYSTEM_PROMPT)
+    system_prompt = SYSTEM_PROMPT + (SQL_PROMPT_SECTION if sql_enabled else "")
+    agent = create_agent(llm, tools, system_prompt=system_prompt)
     input_messages = _history_messages(history) + [HumanMessage(content=question)]
 
     pool = ThreadPoolExecutor(max_workers=1)

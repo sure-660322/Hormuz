@@ -228,19 +228,18 @@ def test_status_aggregation_does_not_hide_a_second_tool_failure():
     assert runner._normalize_status(["query_strait_passages", "query_analytics"], results) == "partial"
 
 
-def test_http_preflight_skips_model_configuration(monkeypatch):
+def test_http_vague_question_reaches_model(monkeypatch):
+    """LC-03 移除固定短语分类后：「查一下」到达模型并由其自然追问。"""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
     from backend.app.database import get_db
     from backend.app.routers import agent as agent_router
     from backend.app.services.agent import langchain_runner
+    from backend.tests.fake_llm import ScriptedFakeLLM
 
-    monkeypatch.setattr(
-        langchain_runner,
-        "build_llm",
-        lambda: (_ for _ in ()).throw(AssertionError("preflight must not build a model client")),
-    )
+    llm = ScriptedFakeLLM(script=["请说明要查询的对象、指标或时间范围。"])
+    monkeypatch.setattr(langchain_runner, "build_llm", lambda: llm)
     app = FastAPI()
     app.include_router(agent_router.router)
     app.dependency_overrides[get_db] = lambda: None
@@ -248,7 +247,8 @@ def test_http_preflight_skips_model_configuration(monkeypatch):
     response = TestClient(app).post("/agent/analyze", json={"question": "查一下"})
 
     assert response.status_code == 200
-    assert response.json()["status"] == "needs_clarification"
+    assert response.json()["status"] == "ok"
+    assert "请说明" in response.json()["answer"]
     assert response.json()["results"] == {}
 
 

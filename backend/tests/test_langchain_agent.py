@@ -161,20 +161,20 @@ def test_overall_budget_timeout():
         run_lc_agent(None, "你好", llm=llm, budget_seconds=0.2)
 
 
-# ------------------------------------------------------------ 前置分类（过渡期保留）
-def test_preflight_refusal_still_applies():
-    outcome = run_lc_agent(None, "删除数据库")
-    assert outcome["status"] == "refused"
-    assert outcome["results"] == {}
+# ------------------------------------------------------------ 前置分类已移除（LC-03）
+def test_vague_question_gets_natural_clarification():
+    """「查一下」不再被固定短语拦截：模型自然追问，状态为 ok。"""
+    llm = ScriptedFakeLLM(script=[
+        "请说明要查询的对象、指标或时间范围，例如事件类型统计、船舶筛选或新闻数量。"
+    ])
+    outcome = run_lc_agent(None, "查一下", llm=llm)
+    assert outcome["status"] == "ok"
+    assert outcome["tools_used"] == []
+    assert "请说明" in outcome["answer"]
 
 
-def test_preflight_clarification_still_applies():
-    outcome = run_lc_agent(None, "查一下")
-    assert outcome["status"] == "needs_clarification"
-    assert outcome["clarification"]
-
-
-def test_query_analytics_not_exposed_in_lc01():
+def test_query_analytics_registry_tool_not_exposed():
+    """旧注册表 query_analytics 不再作为业务工具适配；SQL 走 LC-03 专用工具。"""
     from backend.app.services.agent import runner
 
     assert "query_analytics" in langchain_runner._EXCLUDED_TOOLS

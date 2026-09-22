@@ -20,7 +20,7 @@
 | 新闻浏览 | 分类及报道日期排序、关联报道和来源链接、有代表坐标的事件定位；与船舶回放独立 |
 | MobilityDB / PostGIS | **P0–P4 已实现，P5 部分实现**：派生轨迹、速度着色、事件关联、停留和相遇分析、data-health 已有代码；主回放仍读原始船位，未切换 simplified 派生层。旧停留试验仍并存；历史数量与验收见下表 |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
-| 智能体 | **LC-02 已实现待验证**：POST /agent/analyze 由 LangChain `create_agent` 单智能体驱动（分支 kimi/agent-lc02，响应保持 v4 契约），8 个只读业务工具 + 轻量知识库工具（`search_project_knowledge`）已暴露给模型，默认关闭的受限 `query_analytics` 待 LC-03 重新暴露；前端兼容与旧代码清理（LC-04）待做 |
+| 智能体 | **LC-03 已实现待验证**：POST /agent/analyze 由 LangChain `create_agent` 单智能体驱动（分支 kimi/agent-lc03，响应保持 v4 契约），8 个只读业务工具 + 知识库工具 + 受限 SQL 工具（schema/check/execute，仅功能开关完整时暴露）已接入，固定短语前置分类已移除；前端兼容、旧 runner 清理与真实模型/浏览器验收（LC-04）待做 |
 
 当前模拟批次依据同期新闻构造等待等行为，具体船数、响应时刻、航迹及比例属于模拟假设。新闻中的真实船名不能与模拟船自动认定为同一船；时空接近不能作为因果证据。参见[当前批次说明](sim_ais_demo/output_news_aligned/README.md)。
 
@@ -111,7 +111,7 @@ npm run dev -- --port 5174
 
 设计见[智能体接入契约与任务](docs/agent_integration.md)。POST /agent/analyze 已注册，前端右侧工作面板「智能体」页签支持多轮提问，回答带船只/事件引用与「地图定位」按钮，可定位到当前回放快照中的船或事件位置。
 
-> **LC-02 已实现待验证**（2026-09-22，分支 kimi/agent-lc02）：编排为 LangChain `create_agent` 单智能体（DeepSeek OpenAI 兼容接口），8 个现有只读业务工具与轻量知识库工具（`search_project_knowledge`，五份 Markdown 按相关度检索）已暴露给模型，响应仍保持 v4 契约；项目知识类问题（船是否真实 AIS、通行判定、相遇语义、能力边界）由模型检索知识库回答；多轮指代结合 history 继续调用工具。统一序列化修复 `Decimal` 工具结果导致的 HTTP 500；工具错误降级为可理解 observation。离线回归 237 passed / 13 skipped；真实模型与浏览器验收在 LC-04。受限 SQL 工具（LC-03）尚未接入。
+> **LC-03 已实现待验证**（2026-09-22，分支 kimi/agent-lc03）：编排为 LangChain `create_agent` 单智能体（DeepSeek OpenAI 兼容接口），8 个现有只读业务工具、轻量知识库工具（`search_project_knowledge`）与受限 SQL 工具（`get_database_schema`/`check_sql`/`execute_sql`，复用 SQL-03/04 安全底座、仅功能开关完整时暴露）已接入，响应保持 v4 契约；固定短语前置分类已移除，写库/越权意图由只读策略拒绝、语义澄清由模型自然追问。离线回归 245 passed / 13 skipped；真实模型、本地演示环境 SQL 链路与浏览器验收在 LC-04。
 
 当前实现采用 **LangChain `create_agent` + 现有只读业务服务/SQL 安全底座**，集成现有 FastAPI；固定短语前置分类暂保留拒绝/澄清子集，完整移除在 LC-04 回归通过后执行（见[技术方案](docs/langchain_agent_v1_plan.md) §7）。
 
