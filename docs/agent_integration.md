@@ -1,8 +1,10 @@
 # 智能体接入契约与任务
 
+> 本文描述当前仍在运行的 v4 自定义工具循环。下一步已经确定使用 LangChain 单智能体重构，但尚未实施；目标架构、代码去留和验收见 [LangChain 业务智能体第一版方案](langchain_agent_v1_plan.md)。本文在 LC-04 完成前继续作为当前接口事实来源。
+
 2026-09-22 状态核对：当前运行契约为 v4。data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](query_analytics_sql06.md)。
 
-文档核对：2026-09-20，v3 多工具版已实现；本次核对代码与文档，未调用模型或重跑接口验收。根据与学长沟通的结论，采用“大模型 API + 自定义只读查询工具”，未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。v3 在 v2 单工具（海峡通行）基础上新增 search_ships / get_ship_track / get_event_context 三个只读工具（接入 news/events 数据）与多轮 history 支持；工具执行预算由 2 次提高到 3 次。
+历史核对：2026-09-20 的 v3 多工具版采用“大模型 API + 自定义只读查询工具”，当时未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。该段只说明旧版演进背景，不再代表下一步架构决定。
 
 ## 已实现目标与分工
 
@@ -147,6 +149,6 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 
 回答中的船/事件地图定位已实现；历史轨迹逐点回放联动与服务端会话持久化尚未实现；更细粒度的事件与模拟船交互建模仍需设计。旧版 get_ship_context、find_news_events、get_event_evidence 保留为参考，不是本版必做项；新闻扩展仍须区分报道日期与事件时间，保留来源标识，不按船名自动匹配真实与模拟船。
 
-受限 Text-to-SQL 已完成 SQL-01～06，`query_analytics` 已进入 v4 工具循环但默认关闭。SQL-06 已验证真实 DeepSeek 工具 schema、固定 fixture 人工 SQL 对照、浏览器交互及本地部署边界；这不包含共享业务库统计、认证限流或正式部署，因此仍不得在远端可访问环境启用。复杂分支、恢复或持久化需求出现后，再评估 LangChain/LangGraph，不预先增加框架依赖。
+受限 Text-to-SQL 已完成 SQL-01～06，`query_analytics` 已进入当前 v4 工具循环但默认关闭。SQL-06 已验证真实 DeepSeek 工具 schema、固定 fixture 人工 SQL 对照和浏览器交互。下一版已确定引入 LangChain 单智能体并复用这套 SQL 底座；第一版不直接编写 LangGraph，复杂恢复或持久化需求出现后再评估。
 
 最小版（v2）已实现并联调：后端 /agent/analyze 与前端智能体面板已跑通默认问题（返回 1 艘 SIM V2 化学品船 019，证据 P1，观测完成于 2026-02-28T18:14:54Z）；npm run build 与 npm run check:workbench 已通过。v3 多工具版历史联调记录（原标注日期晚于本次文档核对日，实际验收日期待核对；以下不代表本次重新验证）：通行回归问题 1 次工具调用 4.1s；「油轮 SIM V2 油轮 004 轨迹」问题链式调用 search_ships + get_ship_track 共 2 次 5.7s；「evt_001 事件与报道」1 次 get_event_context 3.1s，回答均保留来源链接与模拟边界声明。环境交接见 [database_setup.md](database_setup.md)。

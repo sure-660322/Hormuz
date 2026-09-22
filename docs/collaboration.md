@@ -49,9 +49,9 @@ Git worktree 共享 Git 对象和部分仓库配置，且不隔离数据库、�
 | 对象 | 处理与原因 |
 | --- | --- |
 | README.md | 保留功能摘要、接口和入口；修正 P0–P4 / P5 部分完成状态，历史验收与本轮静态核对分开标注 |
-| docs/agent_integration.md | 描述当前实际契约；明确回答正文未做逐项事实核验、澄清状态未产生及未注册错误分支 |
-| docs/agent_development_plan.md | 新增后续 AG / SQL 任务及验收门槛；计划不能当作已实施能力 |
-| docs/DEVELOPMENT_ROADMAP.md | 保留旧计划，顶部链接当前计划；不把旧 150 船/模拟事件目标当作当前待办 |
+| docs/agent_integration.md | 描述当前实际运行的 v4 契约；在 LangChain 版完成前仍是接口事实来源 |
+| docs/langchain_agent_v1_plan.md | 下一版唯一技术方案入口；明确知识库、Skills、SQL Agent、代码去留和验收 |
+| docs/agent_development_plan.md | 维护 LC-01～04 状态；计划不能当作已实施能力 |
 | 新闻适配、代表点验证、006 迁移记录 | 保留历史证据；适配前接口故障不代表当前接口仍故障 |
 | sim_ais_demo/ACCEPTANCE.md | 标记为旧 output/ 批次验收 |
 | frontend/README.md | 删除未改动的 Vite 默认模板，运行说明已由根 README 覆盖；原内容可从 Git 历史恢复 |

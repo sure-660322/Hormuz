@@ -4,7 +4,7 @@
 
 工作区整合：2026-09-22。SQL-06 已在独立 worktree 完成固定 fixture、一次性 PostgreSQL 17、真实 DeepSeek 和浏览器综合验收；未连接共享业务库，其余业务数量沿用历史核验记录。其他成员的数据库需自行导入，Git 不会同步数据库内容。本地验收不等于远端发布。
 
-当前协作：用户已确认 Kimi 前端优化结束，成果已纳入本轮整理；性能报告见 [地图渲染优化](docs/map_rendering_optimization.md)，性能数值为 Kimi 的历史测量，本轮未重测。后续新工作使用独立分支和 worktree，见 [多会话协作与交接](docs/collaboration.md)。本页维护当前能力摘要，具体智能体任务统一维护在 [智能体下一阶段开发任务](docs/agent_development_plan.md)。
+当前协作：用户已确认 Kimi 前端优化结束，成果已纳入本轮整理；性能报告见 [地图渲染优化](docs/map_rendering_optimization.md)，性能数值为 Kimi 的历史测量，本轮未重测。后续新工作使用独立分支和 worktree，见 [多会话协作与交接](docs/collaboration.md)。本页维护当前能力摘要；下一步确定建设 [LangChain 业务智能体第一版](docs/langchain_agent_v1_plan.md)，实施状态见 [智能体开发任务](docs/agent_development_plan.md)。
 
 交接包注意：本轮文件校验发现 events/news 的 SHA-256 与 manifest 不符，当前工作区快照待重新导出和独立空库验收，不能沿用历史导入成功结论。详见 [数据库交接](docs/database_setup.md)。
 
@@ -20,7 +20,7 @@
 | 新闻浏览 | 分类及报道日期排序、关联报道和来源链接、有代表坐标的事件定位；与船舶回放独立 |
 | MobilityDB / PostGIS | **P0–P4 已实现，P5 部分实现**：派生轨迹、速度着色、事件关联、停留和相遇分析、data-health 已有代码；主回放仍读原始船位，未切换 simplified 派生层。旧停留试验仍并存；历史数量与验收见下表 |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
-| 智能体 | v4 已接入：POST /agent/analyze + 前端「智能体」问答页签；注册表含 8 个确定性只读工具及受限 `query_analytics`，支持多轮对话、结构化分析表格与回答内地图定位；SQL-06 综合验收已通过，但受限分析开关仍默认关闭 |
+| 智能体 | **当前实现**为 v4 自定义工具循环：POST /agent/analyze + 前端问答页签，注册表含 8 个确定性只读工具及默认关闭的受限 `query_analytics`；**下一步目标**是 LangChain 单智能体 + 项目知识库 + 业务 Skills + 受限 SQL Agent，目前尚未实现 |
 
 当前模拟批次依据同期新闻构造等待等行为，具体船数、响应时刻、航迹及比例属于模拟假设。新闻中的真实船名不能与模拟船自动认定为同一船；时空接近不能作为因果证据。参见[当前批次说明](sim_ais_demo/output_news_aligned/README.md)。
 
@@ -111,13 +111,15 @@ npm run dev -- --port 5174
 
 设计见[智能体接入契约与任务](docs/agent_integration.md)。最小版（v2）与 v3 多工具版均已实现并联调：POST /agent/analyze 已注册，前端右侧工作面板「智能体」页签支持多轮提问，回答带船只/事件引用与「地图定位」按钮，可定位到当前回放快照中的船或事件位置。
 
-第一版采用 **大模型 API + 自定义只读查询工具**，集成现有 FastAPI，未引入 LangChain、LangGraph 或扣子平台。
+> **下一步目标（尚未实现）**：使用 LangChain `create_agent` 重构为能够自然处理问候、范围外问题、项目知识、业务 Skill 和普通数据库统计的单智能体。模型根据系统提示、轻量知识库、Tool 描述和数据库 schema 自主选择回答路径，不再依赖固定问句分类。完整设计、代码去留和 LC-01～04 验收见 [LangChain 业务智能体第一版技术方案](docs/langchain_agent_v1_plan.md)。
+
+当前旧实现采用 **大模型 API + 自定义只读查询工具循环**，集成现有 FastAPI，尚未引入 LangChain；下一版将由 LangChain `create_agent` 接管编排，继续复用现有 FastAPI、业务服务和 SQL 安全底座。
 
 历史验收记录：默认问题曾返回 1 艘 SIM V2 化学品船 019（证据 P1，观测完成于 2026-02-28T18:14:54Z）；v3 三场景联调记录见 [当前契约](docs/agent_integration.md)。本轮未重新调用模型，不能把历史数量当作当前查询结果；自由回答正文尚无逐项事实核验器。
 
 后续再做：地图定位当前指向回放快照位置，历史轨迹逐点回放联动尚未实现；服务端会话持久化未做（history 由客户端逐请求携带）。受限 Text-to-SQL 已完成 SQL-01～06 并注册为 `query_analytics`，但功能开关默认关闭；只有本地回环绑定、独立只读身份和完整安全配置同时满足时才向模型暴露，不能视为远端可用能力。事件—船舶关联工具已接入，但 mentioned 文本提及与 observed 模拟邻近严格分列，查询不证明真实因果，零结果必须与数据不足或派生层未构建区分。
 
-受限分析主链 SQL-01～06 已完成。SQL-02～05 的阶段实现分别见 [SQL-02](docs/query_analytics_sql02.md)、[SQL-03](docs/query_analytics_sql03.md)、[SQL-04](docs/query_analytics_sql04.md) 和 [SQL-05](docs/query_analytics_sql05.md)。2026-09-22 SQL-06 在一次性 PostgreSQL 17 中完成 57 项（含真实 DeepSeek）验收，全量后端回归 207 passed / 13 skipped，前端 build/check:workbench 和浏览器三状态展示通过；详见 [SQL-06 综合验收](docs/query_analytics_sql06.md)。当前注册表共 9 个只读工具，`query_analytics` 仍默认不向模型暴露；共享业务库统计、认证限流和正式部署不在本阶段范围。下一阶段任务以 [开发计划](docs/agent_development_plan.md) 为准。
+受限分析主链 SQL-01～06 已完成。SQL-02～06 文档作为现有安全执行底座的历史验收证据继续保留；它们不再定义下一版交互方式。下一阶段按 LC-01～04 逐步引入 LangChain、知识库、现有业务 Skills 和受限 SQL Agent，完成等价回归后移除固定短语分类器和手写模型工具循环。任务状态见 [开发计划](docs/agent_development_plan.md)。
 
 ## MobilityDB 时空能力底座：P0–P5 进度
 
@@ -170,6 +172,7 @@ npm run check:workbench
 - [当前前端工作台](FRONTEND_WORKBENCH.md)
 - [数据库与环境交接](docs/database_setup.md)
 - [智能体接入契约](docs/agent_integration.md)
+- [LangChain 业务智能体第一版技术方案](docs/langchain_agent_v1_plan.md)
 - [MobilityDB 停留试验](docs/mobility_demo.md)
 - [MobilityDB 时空能力底座方案](docs/mobility_capability_plan.md)（P0–P4 已实现、P5 部分实现，含历史验收与限制）
 - [智能体下一阶段任务与验收](docs/agent_development_plan.md)

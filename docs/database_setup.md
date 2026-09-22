@@ -122,4 +122,4 @@ docker compose --env-file deploy/handoff.env -f compose.handoff.yaml stop
 - seed_data.py、generate_demo_data.py 使用旧事件语义，不作为当前初始化入口。
 - 数据库恢复备份继续留在本地，不提交 Git。本数据包不替代完整灾备。
 
-智能体接入见 [agent_integration.md](agent_integration.md)。智能体 v3 已实现并接入前端，使用模型 API 与四个自定义只读查询工具；模型配置需在后端环境单独准备，数据导入不会自动配置模型服务。本页的历史交接验收不包含智能体联调。
+智能体当前接入见 [agent_integration.md](agent_integration.md)：v4 自定义工具循环已接入前端，注册表包含 8 个确定性只读工具和默认关闭的受限分析工具；模型配置需在后端环境单独准备，数据导入不会自动配置模型服务。下一版 LangChain 方案见 [langchain_agent_v1_plan.md](langchain_agent_v1_plan.md)。本页的历史交接验收不包含智能体联调。
