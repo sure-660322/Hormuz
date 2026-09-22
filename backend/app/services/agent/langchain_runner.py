@@ -34,6 +34,7 @@ from backend.app.services.agent.config import (
     DEFAULT_CLOSURE_SOURCE,
     DEFAULT_WINDOW,
 )
+from backend.app.services.agent.knowledge_base import search_knowledge
 from backend.app.services.agent.model_client import (
     MODEL_REQUEST_TIMEOUT,
     MAX_NETWORK_RETRIES,
@@ -56,8 +57,9 @@ SYSTEM_PROMPT = f"""你是霍尔木兹海峡海事态势分析智能体（教学
 1. 船舶与船位是教学模拟数据（ship_data_source=simulation），不是真实 AIS；
    events/news 是真实报道聚合。两个数据集相互独立：不得按船名认定为同一实体，
    不得推导真实因果。
-2. 数据事实必须调用工具获得，不得凭记忆编造数字；普通交流、问候和项目知识
-   可自然回答，项目知识以本说明为准。
+2. 数据事实必须调用工具获得，不得凭记忆编造数字；普通交流、问候可自然回答；
+   项目知识（定位、数据语义、通行/停留/相遇/关联规则、能力边界）优先调用
+   search_project_knowledge 工具检索后回答。
 3. 条件不足时自然追问；工具失败时诚实说明暂时不可用，不编造数据，
    也不把后端异常伪装成「无法连接」之外的结论。
 4. 专门业务算法（海峡完整通行、停留、相遇、事件—船舶关联、数据健康）
@@ -198,6 +200,51 @@ def _make_tool(
     )
 
 
+def _make_knowledge_tool(state: dict) -> StructuredTool:
+    """轻量知识库检索工具（LC-02）：按相关度返回 3～5 个项目知识片段。"""
+
+    class _KnowledgeArgs(BaseModel):
+        query: str = Field(description="检索主题，如「通行判定规则」「数据语义」「智能体能力边界」")
+
+    def _invoke(query: str) -> str:
+        if state["tool_executions"] >= MAX_TOOL_EXECUTIONS:
+            return _error_observation(
+                "TOOL_BUDGET_EXCEEDED",
+                f"工具执行次数超过 {MAX_TOOL_EXECUTIONS} 次预算，请基于已有结果回答。",
+            )
+        state["tool_executions"] += 1
+        state["call_sequence"] += 1
+        call_id = f"call_{state['call_sequence']:03d}"
+        matches = search_knowledge(query)
+        envelope = to_jsonable(
+            {
+                "call_id": call_id,
+                "tool_name": "search_project_knowledge",
+                "status": "ok",
+                "query": query,
+                "count": len(matches),
+                "matches": matches,
+                "note": "片段为项目维护的知识库内容，可直接作为项目事实引用",
+            }
+        )
+        if "search_project_knowledge" not in state["tools_used"]:
+            state["tools_used"].append("search_project_knowledge")
+        state["results"][call_id] = envelope
+        return json.dumps(envelope, ensure_ascii=False)
+
+    return StructuredTool.from_function(
+        func=_invoke,
+        name="search_project_knowledge",
+        description=(
+            "检索项目轻量知识库：项目定位与技术栈、数据语义（模拟船/真实新闻/时间口径）、"
+            "海峡完整通行判定规则、停留/相遇/事件关联限制、智能体能力边界。"
+            "回答项目知识类问题（如「船是真实 AIS 吗」「通行怎么判定」「相遇代表真实接触吗」）"
+            "必须优先调用本工具；具体数据查询改用对应业务工具"
+        ),
+        args_schema=_KnowledgeArgs,
+    )
+
+
 def _history_messages(history: list[dict] | None) -> list[BaseMessage]:
     messages: list[BaseMessage] = []
     for turn in (history or [])[-MAX_HISTORY_TURNS:]:
@@ -262,6 +309,7 @@ def run_lc_agent(
         _make_tool(db, tool, closure_at, end_at, forced_window, state)
         for tool in registry.values()
     ]
+    tools.append(_make_knowledge_tool(state))
 
     agent = create_agent(llm, tools, system_prompt=SYSTEM_PROMPT)
     input_messages = _history_messages(history) + [HumanMessage(content=question)]

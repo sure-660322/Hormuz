@@ -15,7 +15,7 @@
 | 编号 | 范围 | 状态 | 验收重点 |
 | --- | --- | --- | --- |
 | LC-01 | LangChain/DeepSeek 基础接入、简洁系统提示、统一序列化和错误降级 | **已实现待验证** | 自然问候；范围外回答；模型/工具错误不产生未处理 500；`Decimal` 可序列化 |
-| LC-02 | 现有 8 个只读业务服务包装为 LangChain Tools；轻量 Markdown 知识库 | **待开始** | 模型能按多种表达自主选择知识或 Skill；多轮代词可用 |
+| LC-02 | 现有 8 个只读业务服务包装为 LangChain Tools；轻量 Markdown 知识库 | **已实现待验证** | 模型能按多种表达自主选择知识或 Skill；多轮代词可用 |
 | LC-03 | `get_database_schema`、`check_sql`、`execute_sql`；本地受限 SQL Agent | **待开始** | 普通筛选/排序/聚合可问答；复杂业务继续走 Skill；写 SQL 被只读底座拒绝 |
 | LC-04 | 前端兼容、旧 runner/固定规则清理、真实模型和浏览器验收 | **待开始** | 不要求固定问法；澄清、故障降级、表格、来源和地图引用正常 |
 
@@ -27,6 +27,14 @@
 - `routers/agent.py` 内部改调 `run_lc_agent`，**v4 响应契约保持不变**（schema_version 仍为 "4"）。
 - 已验证（2026-09-22，离线，无真实模型/数据库）：后端全量 229 passed / 13 skipped（新增 22 项：序列化、问候/范围外无工具回答、模型不可用 503、Decimal 不再 500、工具错误降级、超时 504、history 透传、路由层往返）；/health、/docs、/openapi.json 冒烟 200。
 - 未验证：真实 DeepSeek 问答与工具选择、浏览器端到端、前端兼容（留 LC-04）；`query_analytics` 在 LC-01 不向模型暴露（LC-03 接入）。
+
+### LC-02 实施记录（2026-09-22，分支 kimi/agent-lc02）
+
+- 新增 `backend/app/services/agent/knowledge/` 轻量知识库：`project_overview`、`data_semantics`、`passage_rules`、`mobility_rules`、`agent_capabilities` 五份 Markdown（第一版不引入向量数据库）。
+- 新增 `backend/app/services/agent/knowledge_base.py`：按章节切分、中文 bigram + 拉丁词切词、标题命中加权的相关度检索，返回 3～5 个片段（单片段 ≤900 字符）。
+- `langchain_runner.py` 新增 `search_project_knowledge` 工具（结果计入 results/tools_used，与业务工具同一 envelope 口径）；系统提示规则 2 改为「项目知识优先调用知识库工具」。
+- 已验证（2026-09-22，离线，无真实模型/数据库）：后端全量 237 passed / 13 skipped（新增 8 项：知识检索命中/空结果/上限、知识工具被调用、能力边界回答、多轮指代「它」结合 history 继续调用业务工具、知识结果可序列化）。
+- 未验证：真实模型对知识工具的选择准确率（脚本化假模型只验证链路）；浏览器端到端（LC-04）。
 
 ## 保留与清理边界
 
