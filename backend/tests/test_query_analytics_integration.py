@@ -234,10 +234,11 @@ def test_http_preflight_skips_model_configuration(monkeypatch):
 
     from backend.app.database import get_db
     from backend.app.routers import agent as agent_router
+    from backend.app.services.agent import langchain_runner
 
     monkeypatch.setattr(
-        agent_router,
-        "build_client",
+        langchain_runner,
+        "build_llm",
         lambda: (_ for _ in ()).throw(AssertionError("preflight must not build a model client")),
     )
     app = FastAPI()
@@ -258,10 +259,9 @@ def test_http_maps_query_timeout_to_stable_error(monkeypatch):
     from backend.app.database import get_db
     from backend.app.routers import agent as agent_router
 
-    monkeypatch.setattr(agent_router, "build_client", lambda: object())
     monkeypatch.setattr(
         agent_router,
-        "run_agent",
+        "run_lc_agent",
         lambda *args, **kwargs: (_ for _ in ()).throw(
             QueryExecutionError(
                 status="timeout",

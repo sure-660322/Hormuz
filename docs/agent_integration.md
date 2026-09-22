@@ -1,8 +1,10 @@
 # 智能体接入契约与任务
 
-> 本文描述当前仍在运行的 v4 自定义工具循环。下一步已经确定使用 LangChain 单智能体重构，但尚未实施；目标架构、代码去留和验收见 [LangChain 业务智能体第一版方案](langchain_agent_v1_plan.md)。本文在 LC-04 完成前继续作为当前接口事实来源。
+> 本文描述当前仍在运行的 **v4 响应契约**。编排实现已于 LC-01（2026-09-22，分支 kimi/agent-lc01）切换为 LangChain `create_agent` 单智能体（`backend/app/services/agent/langchain_runner.py`），响应字段与本契约保持一致；契约层面的字段语义仍以本文为准，直至 LC-04 收敛状态枚举。目标架构、代码去留和验收见 [LangChain 业务智能体第一版方案](langchain_agent_v1_plan.md)。
 
-2026-09-22 状态核对：当前运行契约为 v4。data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](query_analytics_sql06.md)。
+2026-09-22 LC-01 状态核对：`/agent/analyze` 由 LangChain Agent 驱动，8 个只读业务工具（除 `query_analytics`）已包装为 LangChain Tools 暴露给模型；`query_analytics` 在 LC-03 前不向模型暴露，功能开关默认关闭。问候、范围外问题与项目知识类问题由模型基于简洁系统提示自然回答，不再依赖固定工具优先级说明；固定短语前置分类暂保留拒绝/澄清子集（移除条件见方案 §7）。统一序列化已修复 `Decimal`（median_gap_minutes）导致的 HTTP 500；工具错误降级为可理解 observation，由模型形成诚实回答。以下「当前实现」段落中关于自定义工具循环、固定分类与手工 TOOL_REGISTRY 的描述指 LC-01 之前的 v4 实现，旧 `runner.py` 保留至 LC-04 回归通过后清理。
+
+2026-09-22 状态核对（LC-01 之前的事实，保留作契约背景）：data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](query_analytics_sql06.md)。
 
 历史核对：2026-09-20 的 v3 多工具版采用“大模型 API + 自定义只读查询工具”，当时未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。该段只说明旧版演进背景，不再代表下一步架构决定。
 

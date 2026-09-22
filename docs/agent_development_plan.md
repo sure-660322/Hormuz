@@ -8,16 +8,25 @@
 - 当前 `runner.py` 仍是自定义 Tool Calling 循环，并包含大量固定短语分类；它是现状，不是下一版目标。
 - 下一版确定使用 LangChain 单智能体，让模型基于系统提示、项目知识、Tool 描述和数据库 schema 自主选择自然回答、知识检索、业务 Skill 或 SQL。
 - 第一版不直接编写 LangGraph、不做多智能体和服务端会话持久化。
-- 当前已知缺陷：问题“现在海上有几艘船”绕过固定短语后调用 data-health，`Decimal` 工具结果未正确 JSON 化并产生 HTTP 500；LC-01 必须修复。
+- LC-01 已完成基础接入（见下方实施记录）：统一序列化修复了 `median_gap_minutes: Decimal` 导致的 HTTP 500，编排切换到 `create_agent`；范围外与问候由模型自然回答。
 
 ## 实施看板
 
 | 编号 | 范围 | 状态 | 验收重点 |
 | --- | --- | --- | --- |
-| LC-01 | LangChain/DeepSeek 基础接入、简洁系统提示、统一序列化和错误降级 | **待开始** | 自然问候；范围外回答；模型/工具错误不产生未处理 500；`Decimal` 可序列化 |
+| LC-01 | LangChain/DeepSeek 基础接入、简洁系统提示、统一序列化和错误降级 | **已实现待验证** | 自然问候；范围外回答；模型/工具错误不产生未处理 500；`Decimal` 可序列化 |
 | LC-02 | 现有 8 个只读业务服务包装为 LangChain Tools；轻量 Markdown 知识库 | **待开始** | 模型能按多种表达自主选择知识或 Skill；多轮代词可用 |
 | LC-03 | `get_database_schema`、`check_sql`、`execute_sql`；本地受限 SQL Agent | **待开始** | 普通筛选/排序/聚合可问答；复杂业务继续走 Skill；写 SQL 被只读底座拒绝 |
 | LC-04 | 前端兼容、旧 runner/固定规则清理、真实模型和浏览器验收 | **待开始** | 不要求固定问法；澄清、故障降级、表格、来源和地图引用正常 |
+
+### LC-01 实施记录（2026-09-22，分支 kimi/agent-lc01）
+
+- 依赖锁定：`langchain==1.4.2`、`langchain-openai==1.6.3`（独立 worktree 虚拟环境实测 `create_agent` 可用；langchain 1.x 内置工具循环执行基础，项目不直接编写 LangGraph）。
+- 新增 `backend/app/services/agent/serialization.py` 统一序列化（Decimal→int/float、datetime/date、UUID、dataclass、pydantic、SQLAlchemy Row、未知类型 str 兜底），修复 `median_gap_minutes: Decimal` 导致的 HTTP 500；旧 `runner._jsonable` 委托同一实现。
+- 新增 `backend/app/services/agent/langchain_runner.py`：DeepSeek 经 ChatOpenAI 接入 `create_agent`；8 个现有只读业务工具由 v4 注册表适配为 LangChain Tools（业务算法未重写）；简洁系统提示；工具错误降级为 `{status, code, message}` observation；整体 60 秒预算；固定短语前置分类暂保留拒绝/澄清子集。
+- `routers/agent.py` 内部改调 `run_lc_agent`，**v4 响应契约保持不变**（schema_version 仍为 "4"）。
+- 已验证（2026-09-22，离线，无真实模型/数据库）：后端全量 229 passed / 13 skipped（新增 22 项：序列化、问候/范围外无工具回答、模型不可用 503、Decimal 不再 500、工具错误降级、超时 504、history 透传、路由层往返）；/health、/docs、/openapi.json 冒烟 200。
+- 未验证：真实 DeepSeek 问答与工具选择、浏览器端到端、前端兼容（留 LC-04）；`query_analytics` 在 LC-01 不向模型暴露（LC-03 接入）。
 
 ## 保留与清理边界
 

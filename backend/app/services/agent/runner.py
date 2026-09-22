@@ -8,14 +8,15 @@ import json
 import re
 import time
 import uuid
-from dataclasses import asdict, dataclass, is_dataclass
-from datetime import date, datetime
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Callable
 
 from openai import APITimeoutError
 from sqlalchemy.orm import Session
 
 from backend.app.services import data_health as health_service
+from backend.app.services.agent.serialization import to_jsonable
 from backend.app.services.agent.config import (
     DEFAULT_CLOSURE_AT,
     DEFAULT_CLOSURE_SOURCE,
@@ -95,17 +96,8 @@ def _new_request_id() -> str:
 
 
 def _jsonable(value):
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    if is_dataclass(value):
-        return {key: _jsonable(item) for key, item in asdict(value).items()}
-    if isinstance(value, dict):
-        return {key: _jsonable(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_jsonable(item) for item in value]
-    return value
+    """委托统一序列化（LC-01）：修复 Decimal 等类型导致的 HTTP 500。"""
+    return to_jsonable(value)
 
 
 def _parse_time_arg(raw) -> datetime | None:
@@ -822,7 +814,7 @@ def _classify_preflight(question: str) -> tuple[str, str, str | None] | None:
     if "命令行启动后端" in compact:
         return "ok", r"在仓库根目录运行：.\backend\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload", None
     if "langchain" in compact or "langgraph" in compact:
-        return "ok", "当前未引入 LangChain 或 LangGraph，采用模型 API、项目自定义只读工具和确定性安全校验链。", None
+        return "ok", "智能体自 LC-01 起基于 LangChain create_agent 单智能体（DeepSeek OpenAI 兼容接口）编排，不直接编写 LangGraph、不做多智能体；编排见 backend/app/services/agent/langchain_runner.py。", None
     if "哪些接口" in compact or "可用接口" in compact:
         return "ok", "当前主要接口包括 /health、/docs、/ships、/events、/simulation、/api/tracks、/api/dwell、/api/encounters、/api/data-health 与 POST /agent/analyze；遗留 nearby-events 不作为正常能力。", None
     if "模拟从什么时候开始" in compact or "模拟时间范围" in compact:

@@ -179,18 +179,25 @@ def test_derived_not_built(patched_repo, monkeypatch):
 
 
 # ------------------------------------------------------------ 4. 查询失败
-def test_query_failure_maps_to_data_query_failed(patched_repo, monkeypatch):
+def test_query_failure_degrades_to_honest_answer(patched_repo, monkeypatch):
+    """LC-01 起工具内数据库错误降级为 observation（200 + 诚实说明），不再 500。"""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
     from backend.app.database import get_db
     from backend.app.routers import agent as agent_router
+    from backend.app.services.agent import langchain_runner
+    from backend.tests.fake_llm import ScriptedFakeLLM, tool_call as _tool_call
 
     def _boom(db):
         raise SQLAlchemyError("connection lost (测试桩)")
 
     monkeypatch.setattr(health_repo, "fetch_source_counts", _boom)
-    monkeypatch.setattr(agent_router, "build_client", lambda: _FakeClient(_health_script()))
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("get_data_health", {}),
+        "数据库暂时不可用，数据健康查询失败，请稍后重试。",
+    ])
+    monkeypatch.setattr(langchain_runner, "build_llm", lambda: llm)
 
     app = FastAPI()
     app.include_router(agent_router.router)
@@ -198,10 +205,12 @@ def test_query_failure_maps_to_data_query_failed(patched_repo, monkeypatch):
     client = TestClient(app)
 
     response = client.post("/agent/analyze", json={"question": "现在数据健康吗？"})
-    assert response.status_code == 500
-    detail = response.json()["detail"]
-    assert detail["code"] == "DATA_QUERY_FAILED"
-    assert "request_id" in detail
+    assert response.status_code == 200
+    body = response.json()
+    envelope = body["results"]["call_001"]
+    assert envelope["status"] == "error"
+    assert envelope["code"] == "DATABASE_UNAVAILABLE"
+    assert "不可用" in body["answer"]
 
 
 # ------------------------------------------------------------ 5. 模型选择工具

@@ -20,7 +20,7 @@
 | 新闻浏览 | 分类及报道日期排序、关联报道和来源链接、有代表坐标的事件定位；与船舶回放独立 |
 | MobilityDB / PostGIS | **P0–P4 已实现，P5 部分实现**：派生轨迹、速度着色、事件关联、停留和相遇分析、data-health 已有代码；主回放仍读原始船位，未切换 simplified 派生层。旧停留试验仍并存；历史数量与验收见下表 |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
-| 智能体 | **当前实现**为 v4 自定义工具循环：POST /agent/analyze + 前端问答页签，注册表含 8 个确定性只读工具及默认关闭的受限 `query_analytics`；**下一步目标**是 LangChain 单智能体 + 项目知识库 + 业务 Skills + 受限 SQL Agent，目前尚未实现 |
+| 智能体 | **LC-01 已实现待验证**：POST /agent/analyze 由 LangChain `create_agent` 单智能体驱动（分支 kimi/agent-lc01，响应保持 v4 契约），8 个只读业务工具已包装为 LangChain Tools，默认关闭的受限 `query_analytics` 待 LC-03 重新暴露；轻量知识库（LC-02）、前端兼容与旧代码清理（LC-04）待做 |
 
 当前模拟批次依据同期新闻构造等待等行为，具体船数、响应时刻、航迹及比例属于模拟假设。新闻中的真实船名不能与模拟船自动认定为同一船；时空接近不能作为因果证据。参见[当前批次说明](sim_ais_demo/output_news_aligned/README.md)。
 
@@ -109,11 +109,11 @@ npm run dev -- --port 5174
 
 ## 智能体当前能力与后续范围
 
-设计见[智能体接入契约与任务](docs/agent_integration.md)。最小版（v2）与 v3 多工具版均已实现并联调：POST /agent/analyze 已注册，前端右侧工作面板「智能体」页签支持多轮提问，回答带船只/事件引用与「地图定位」按钮，可定位到当前回放快照中的船或事件位置。
+设计见[智能体接入契约与任务](docs/agent_integration.md)。POST /agent/analyze 已注册，前端右侧工作面板「智能体」页签支持多轮提问，回答带船只/事件引用与「地图定位」按钮，可定位到当前回放快照中的船或事件位置。
 
-> **下一步目标（尚未实现）**：使用 LangChain `create_agent` 重构为能够自然处理问候、范围外问题、项目知识、业务 Skill 和普通数据库统计的单智能体。模型根据系统提示、轻量知识库、Tool 描述和数据库 schema 自主选择回答路径，不再依赖固定问句分类。完整设计、代码去留和 LC-01～04 验收见 [LangChain 业务智能体第一版技术方案](docs/langchain_agent_v1_plan.md)。
+> **LC-01 已实现待验证**（2026-09-22，分支 kimi/agent-lc01）：编排已切换为 LangChain `create_agent` 单智能体（DeepSeek OpenAI 兼容接口），8 个现有只读业务工具包装为 LangChain Tools，响应仍保持 v4 契约；问候、范围外问题由模型基于简洁系统提示自然回答；统一序列化修复 `Decimal` 工具结果导致的 HTTP 500；工具错误降级为可理解 observation。离线回归 229 passed / 13 skipped；真实模型与浏览器验收在 LC-04。轻量知识库（LC-02）与受限 SQL 工具（LC-03）尚未接入。
 
-当前旧实现采用 **大模型 API + 自定义只读查询工具循环**，集成现有 FastAPI，尚未引入 LangChain；下一版将由 LangChain `create_agent` 接管编排，继续复用现有 FastAPI、业务服务和 SQL 安全底座。
+当前实现采用 **LangChain `create_agent` + 现有只读业务服务/SQL 安全底座**，集成现有 FastAPI；固定短语前置分类暂保留拒绝/澄清子集，完整移除在 LC-04 回归通过后执行（见[技术方案](docs/langchain_agent_v1_plan.md) §7）。
 
 历史验收记录：默认问题曾返回 1 艘 SIM V2 化学品船 019（证据 P1，观测完成于 2026-02-28T18:14:54Z）；v3 三场景联调记录见 [当前契约](docs/agent_integration.md)。本轮未重新调用模型，不能把历史数量当作当前查询结果；自由回答正文尚无逐项事实核验器。
 

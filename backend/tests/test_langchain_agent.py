@@ -1,0 +1,245 @@
+"""LC-01：LangChain create_agent 智能体的离线自动测试。
+
+不连接真实数据库、不调用真实模型：
+- 模型用脚本化假 ChatModel（ScriptedFakeLLM）模拟「工具调用 → 最终回答」；
+- repository 层按场景打桩；
+- 覆盖 LC-01 验收：自然问候、范围外问题、模型不可用、Decimal 工具结果不再 500、
+  工具错误降级、超时与历史消息。
+"""
+import time
+from datetime import datetime, timezone
+from decimal import Decimal
+
+import pytest
+from langchain_core.messages import AIMessage
+from sqlalchemy.exc import SQLAlchemyError
+
+from backend.app.repositories import data_health as health_repo
+from backend.app.services.agent import langchain_runner
+from backend.app.services.agent.langchain_runner import run_lc_agent
+from backend.app.services.agent.runner import AgentTimeoutError
+from backend.tests.fake_llm import ScriptedFakeLLM, tool_call as _tool_call
+
+UTC = timezone.utc
+
+
+# ---- get_data_health 打桩（结构样例数值，不代表当前批次真实数量） ----
+SOURCE_ROWS_DECIMAL = [
+    {
+        "data_source": "simulation",
+        "position_count": 9354,
+        "ship_count": 30,
+        "coverage_start": datetime(2026, 2, 26, 2, 43, 10, tzinfo=UTC),
+        "coverage_end": datetime(2026, 3, 4, 23, 59, 14, tzinfo=UTC),
+        "median_gap_minutes": Decimal("17.0"),  # ::numeric，Decimal 500 的原始来源
+    }
+]
+GLOBAL_ROWS = [{"ships": 30, "events": 64, "news": 247, "positions": 9354}]
+MANIFEST_ROWS = [
+    {
+        "table_name": "ship_tracks",
+        "row_count": 30,
+        "built_at": datetime(2026, 9, 20, 12, 0, 0, tzinfo=UTC),
+        "params": {"tolerance_seconds": 300},
+    }
+]
+
+
+@pytest.fixture
+def patched_health_repo(monkeypatch):
+    monkeypatch.setattr(
+        health_repo, "fetch_source_counts",
+        lambda db: [dict(r) for r in SOURCE_ROWS_DECIMAL],
+    )
+    monkeypatch.setattr(
+        health_repo, "fetch_global_counts", lambda db: dict(GLOBAL_ROWS[0])
+    )
+    monkeypatch.setattr(
+        health_repo, "fetch_derived_manifests", lambda db: [dict(r) for r in MANIFEST_ROWS]
+    )
+
+
+# ------------------------------------------------------------ 问候与范围外
+def test_greeting_answered_without_tools():
+    llm = ScriptedFakeLLM(script=["你好！我是霍尔木兹海峡海事态势分析智能体，"
+                                  "可以查询模拟船舶通行、轨迹、停留、相遇和新闻事件。"])
+    outcome = run_lc_agent(None, "你好", llm=llm)
+    assert outcome["status"] == "ok"
+    assert outcome["tools_used"] == []
+    assert outcome["results"] == {}
+    assert "智能体" in outcome["answer"]
+
+
+def test_out_of_scope_question_answered_without_tools():
+    llm = ScriptedFakeLLM(script=["我主要负责霍尔木兹海峡海事态势的只读查询，"
+                                  "没有天气工具，无法可靠查询天气。"])
+    outcome = run_lc_agent(None, "今天天气怎么样", llm=llm)
+    assert outcome["status"] == "ok"
+    assert outcome["tools_used"] == []
+    assert "天气" in outcome["answer"]
+
+
+# ------------------------------------------------------------ 模型不可用
+def test_model_unavailable_raises_config_error(monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    from backend.app.services.agent.model_client import AgentConfigError
+
+    with pytest.raises(AgentConfigError):
+        run_lc_agent(None, "你好")
+
+
+# ------------------------------------------------------------ Decimal 不再 500
+def test_decimal_tool_result_serializes(patched_health_repo):
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("get_data_health", {}),
+        "数据健康：当前模拟批次共 30 艘船、9354 条报位，中位报位间隔 17 分钟。",
+    ])
+    outcome = run_lc_agent(None, "现在数据健康吗？", llm=llm)
+    assert outcome["status"] == "ok"
+    assert outcome["tools_used"] == ["get_data_health"]
+    envelope = outcome["results"]["call_001"]
+    assert envelope["tool_name"] == "get_data_health"
+    sources = envelope["source"]["by_data_source"]
+    assert sources[0]["median_gap_minutes"] == 17  # Decimal 已转 int，可 JSON 序列化
+    import json
+
+    from backend.app.services.agent.runner import _jsonable
+
+    # 契约路径：响应先经 _jsonable 再 json.dumps（LC-01 前 Decimal 在此抛 TypeError → 500）
+    json.dumps(_jsonable(outcome), ensure_ascii=False)
+
+
+# ------------------------------------------------------------ 工具错误降级
+def test_tool_database_error_degrades_to_observation(patched_health_repo, monkeypatch):
+    def _boom(db):
+        raise SQLAlchemyError("connection lost (测试桩)")
+
+    monkeypatch.setattr(health_repo, "fetch_source_counts", _boom)
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("get_data_health", {}),
+        "数据库暂时不可用，数据健康查询失败，请稍后重试。",
+    ])
+    outcome = run_lc_agent(None, "现在数据健康吗？", llm=llm)
+    assert outcome["status"] in {"no_data", "partial", "ok"}
+    envelope = outcome["results"]["call_001"]
+    assert envelope["status"] == "error"
+    assert envelope["code"] == "DATABASE_UNAVAILABLE"
+    assert "不可用" in outcome["answer"]
+
+
+def test_tool_invalid_args_degrade_to_observation():
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("search_ships", {"keyword": ""}),
+        "检索关键字不能为空，请提供船名、MMSI、IMO、船型或船旗关键字。",
+    ])
+    outcome = run_lc_agent(None, "帮我找船", llm=llm)
+    envelope = outcome["results"]["call_001"]
+    assert envelope["status"] == "error"
+    assert envelope["code"] == "INVALID_TOOL_ARGS"
+
+
+# ------------------------------------------------------------ 多轮 history
+def test_history_turns_are_passed_to_model():
+    llm = ScriptedFakeLLM(script=["好的，它是 SIM V2 化学品船 019。"])
+    outcome = run_lc_agent(
+        None,
+        "它是什么船型？",
+        history=[
+            {"role": "user", "content": "刚才那艘通过海峡的船叫什么？"},
+            {"role": "assistant", "content": "是 SIM V2 化学品船 019。"},
+        ],
+        llm=llm,
+    )
+    assert outcome["status"] == "ok"
+    assert outcome["tools_used"] == []
+
+
+# ------------------------------------------------------------ 超时
+def test_overall_budget_timeout():
+    llm = ScriptedFakeLLM(script=["不会走到这里"], sleep_seconds=2.0)
+    with pytest.raises(AgentTimeoutError):
+        run_lc_agent(None, "你好", llm=llm, budget_seconds=0.2)
+
+
+# ------------------------------------------------------------ 前置分类（过渡期保留）
+def test_preflight_refusal_still_applies():
+    outcome = run_lc_agent(None, "删除数据库")
+    assert outcome["status"] == "refused"
+    assert outcome["results"] == {}
+
+
+def test_preflight_clarification_still_applies():
+    outcome = run_lc_agent(None, "查一下")
+    assert outcome["status"] == "needs_clarification"
+    assert outcome["clarification"]
+
+
+def test_query_analytics_not_exposed_in_lc01():
+    from backend.app.services.agent import runner
+
+    assert "query_analytics" in langchain_runner._EXCLUDED_TOOLS
+    registry = {
+        name for name in runner.TOOL_REGISTRY
+        if name not in langchain_runner._EXCLUDED_TOOLS
+    }
+    assert "query_analytics" not in registry
+    assert len(registry) == 8
+
+
+# ------------------------------------------------------------ HTTP 路由层
+def _test_app(monkeypatch, llm):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from backend.app.database import get_db
+    from backend.app.routers import agent as agent_router
+
+    monkeypatch.setattr(
+        langchain_runner, "build_llm", lambda: llm
+    )
+    app = FastAPI()
+    app.include_router(agent_router.router)
+    app.dependency_overrides[get_db] = lambda: None
+    return TestClient(app)
+
+
+def test_http_greeting_round_trip(monkeypatch):
+    llm = ScriptedFakeLLM(script=["你好！我可以查询模拟船舶通行、轨迹、停留、相遇和新闻事件。"])
+    client = _test_app(monkeypatch, llm)
+    response = client.post("/agent/analyze", json={"question": "你好"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["tools_used"] == []
+    assert body["schema_version"] == "4"
+    assert body["request_id"]
+
+
+def test_http_model_unavailable_503(monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from backend.app.database import get_db
+    from backend.app.routers import agent as agent_router
+
+    app = FastAPI()
+    app.include_router(agent_router.router)
+    app.dependency_overrides[get_db] = lambda: None
+    client = TestClient(app)
+
+    response = client.post("/agent/analyze", json={"question": "你好"})
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "AGENT_UNAVAILABLE"
+
+
+def test_http_decimal_no_longer_500(monkeypatch, patched_health_repo):
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("get_data_health", {}),
+        "数据健康：30 艘船、9354 条报位，中位间隔 17 分钟。",
+    ])
+    client = _test_app(monkeypatch, llm)
+    response = client.post("/agent/analyze", json={"question": "现在数据健康吗？"})
+    assert response.status_code == 200  # LC-01 前此处为 500
+    body = response.json()
+    assert body["results"]["call_001"]["source"]["by_data_source"][0]["median_gap_minutes"] == 17
