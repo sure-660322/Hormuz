@@ -1,6 +1,6 @@
 # SQL-05 工具循环与最小展示接入
 
-> 历史阶段记录（2026-09-21）；其中 `runner.py` 是当时实现，LC-04 起已删除。当前 LangChain 修复候选与验证状态见 [智能体开发任务](agent_development_plan.md)。
+> 历史阶段记录（2026-09-21）；其中 `runner.py` 是当时实现，LC-04 起已删除。LangChain 第一版、安全修复及本地 main 的验证状态见 [智能体开发任务](agent_development_plan.md)。
 
 状态：**已实现并通过隔离验证**（2026-09-21，worktree `D:/my_project/Hormuz-codex-sql05`，分支 `codex/sql05-integration`，基线 `c866af4`）。`query_analytics` 已注册，但 `AGENT_QUERY_ENABLED=false` 仍是默认值；关闭时不会出现在发送给模型的工具表中。
 

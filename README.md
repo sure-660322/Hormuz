@@ -4,7 +4,7 @@
 
 工作区整合：2026-09-22。SQL-06 已在独立 worktree 完成固定 fixture、一次性 PostgreSQL 17、真实 DeepSeek 和浏览器综合验收；未连接共享业务库，其余业务数量沿用历史核验记录。其他成员的数据库需自行导入，Git 不会同步数据库内容。本地验收不等于远端发布。
 
-当前协作：用户已确认 Kimi 前端优化结束，成果已纳入本轮整理；性能报告见 [地图渲染优化](docs/map_rendering_optimization.md)，性能数值为 Kimi 的历史测量，本轮未重测。后续新工作使用独立分支和 worktree，见 [多会话协作与交接](docs/collaboration.md)。LangChain 第一版及 `codex/lc-safety-fix` 安全修复已合入本地 `main`；`f14eceb` 的候选复核事实和本轮验收见 [智能体开发任务](docs/agent_development_plan.md)。远端尚未推送。
+当前协作：用户已确认 Kimi 前端优化结束，成果已纳入本轮整理；性能报告见 [地图渲染优化](docs/map_rendering_optimization.md)，性能数值为 Kimi 的历史测量，本轮未重测。另一个未合并的回放试验分支 `kimi/replay-positions-at` 已按用户决定放弃，其改动未进入 main；下文回放能力以 main 代码为准。后续新工作使用独立分支和 worktree，见 [多会话协作与交接](docs/collaboration.md)。LangChain 第一版及 `codex/lc-safety-fix` 安全修复已合入本地 `main`；`f14eceb` 的候选复核事实和本轮验收见 [智能体开发任务](docs/agent_development_plan.md)。远端尚未推送。
 
 交接包注意：本轮文件校验发现 events/news 的 SHA-256 与 manifest 不符，当前工作区快照待重新导出和独立空库验收，不能沿用历史导入成功结论。详见 [数据库交接](docs/database_setup.md)。
 

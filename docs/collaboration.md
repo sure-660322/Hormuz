@@ -1,6 +1,8 @@
 # 多会话协作与工作区交接
 
-## 当前整合状态（2026-09-21）
+> 下方整合状态与文档审计是 2026-09-21 的历史记录，不代表当前工作区数量或智能体架构。2026-09-23 LangChain 第一版与安全修复已合入本地 main；现行状态见 [README](../README.md)、[智能体开发任务](agent_development_plan.md) 与 [接入契约](agent_integration.md)。
+
+## 历史整合状态（2026-09-21）
 
 整合起点为 `D:/my_project/Hormuz` / `main` / `2e6adf3`，仅一个 worktree。用户已确认 Kimi 完成并授权整理工作区。本轮将已有实现、资产和文档分组纳入本地提交，不推送远端、不切换共享目录分支、不修改数据库或重启服务。具体提交号以 git log 为准。
 
@@ -49,9 +51,9 @@ Git worktree 共享 Git 对象和部分仓库配置，且不隔离数据库、�
 | 对象 | 处理与原因 |
 | --- | --- |
 | README.md | 保留功能摘要、接口和入口；修正 P0–P4 / P5 部分完成状态，历史验收与本轮静态核对分开标注 |
-| docs/agent_integration.md | 描述当前实际运行的 v4 契约；在 LangChain 版完成前仍是接口事实来源 |
-| docs/langchain_agent_v1_plan.md | 下一版唯一技术方案入口；明确知识库、Skills、SQL Agent、代码去留和验收 |
-| docs/agent_development_plan.md | 维护 LC-01～04 状态；计划不能当作已实施能力 |
+| docs/agent_integration.md | 当时描述 v4 自定义工具循环的接口事实；当前已更新为 LangChain 编排下的 v4 响应契约 |
+| docs/langchain_agent_v1_plan.md | 当时为下一版技术方案入口；当前已同步第一版实际实现和验收边界 |
+| docs/agent_development_plan.md | 当时维护 LC-01～04 计划；当前已记录实施、修复与本地整合状态 |
 | 新闻适配、代表点验证、006 迁移记录 | 保留历史证据；适配前接口故障不代表当前接口仍故障 |
 | sim_ais_demo/ACCEPTANCE.md | 标记为旧 output/ 批次验收 |
 | frontend/README.md | 删除未改动的 Vite 默认模板，运行说明已由根 README 覆盖；原内容可从 Git 历史恢复 |

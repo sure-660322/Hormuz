@@ -97,7 +97,7 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 | 字段 | 含义 |
 | --- | --- |
 | schema_version / request_id | 契约版本（本版为 "4"）和请求标识 |
-| status | ok、no_data、partial、needs_clarification、refused（后端/前端均为明确枚举） |
+| status | ok、no_data、partial、needs_clarification、refused（响应枚举保留；当前编排不会主动生成 needs_clarification） |
 | answer | 根据工具结果回答，并说明模拟边界 |
 | context | 实际批次、closure_at、end_at、封锁时间来源、通行规则版本、ship_data_source=simulation；当前 context 时间字段必填，不返回待澄清空值 |
 | ships | ship_id、name、passage_count；数据库 ID，按船去重；仅执行过 query_strait_passages 时非空 |
@@ -108,11 +108,11 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 | limitations | 覆盖不足、判定限制、数据集边界（模拟/真实新闻相互独立）或截断说明 |
 | clarification | 待补充问题；非澄清状态为空 |
 
-- ok：判定完整完成，包括零匹配。零匹配时 ships/evidence 为空，数量为 0，回答限定为“指定模拟数据范围内未发现符合规则的完整通行”。
-- no_data：无可用报位或必要前置状态不足，无法判定，不能解释成封锁有效；仅使用 search_ships / get_event_context 等非通行工具且全部无命中时，ships/evidence/query_summary 为空。
-- partial：存在已确认结果和数据缺口/不确定候选，仅说明已确认部分。
-- needs_clarification：确定性分类确认对象/指标均不足时不调用模型和工具，results 为空；缺通行情景时间仍按既有规则使用默认窗口，不主动追问。
-- refused：调用前识别出的明确写库/越权/泄露意图，或 query_analytics 的安全策略拒绝；HTTP 200，不当作系统故障，不自动重试。
+- ok：工具结果均为成功，或模型未调用工具而直接回答。通行工具确认零匹配时 ships/evidence 为空，数量为 0，回答须限定为“指定模拟数据范围内未发现符合规则的完整通行”。
+- no_data：工具均未取得成功或部分结果时的顶层状态；无可用报位或必要前置状态不足不能解释成封锁有效。非通行工具的空结果不会生成通行证据。
+- partial：工具成功结果与错误/数据缺口并存，或工具返回部分结果；仅说明已确认部分。
+- needs_clarification：保留在 v4 响应枚举中，当前 LangChain 编排不主动生成此状态；模型可在 answer 中自然追问，此时若没有工具结果，顶层状态为 ok、clarification 为 null。缺通行情景时间使用默认窗口。
+- refused：工具返回结构化 refused observation 时，顶层状态为 refused、HTTP 200，不自动重试。当前没有调用前的固定意图分类；模型直接用文字拒绝且未调用工具时，顶层状态为 ok。
 
 模型完全不可用时返回错误，不用硬编码样例冒充成功。验收样例须使用实际数据库 ID，区分成功、零匹配和无数据，不编造数量；历史验收记录见下文。
 
@@ -122,16 +122,16 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 | --- | --- | --- |
 | 422 | INVALID_REQUEST | 参数、时区、窗口或读取限额不合法 |
 | 503 | AGENT_UNAVAILABLE | 模型未配置或不可用 |
-| 503 | AGENT_QUERY_UNAVAILABLE | query_analytics catalog、专用只读角色、权限或独立连接配置不可用 |
+| 503 | AGENT_QUERY_UNAVAILABLE | 仅当 QueryExecutionError 传播到路由时；当前 SQL 工具通常将 catalog、专用只读角色、权限或独立连接错误收进结构化 results |
 | 503 | DATA_CONTEXT_UNAVAILABLE | 预留错误码；当前路由未实现独立映射，不得作为已验证分支 |
 | 504 | AGENT_TIMEOUT | 模型或整体执行超时 |
-| 504 | AGENT_QUERY_TIMEOUT | query_analytics 是唯一能力且达到数据库执行超时 |
+| 504 | AGENT_QUERY_TIMEOUT | 仅当 QueryExecutionError 传播到路由时；当前 SQL 工具通常将数据库执行超时收进结构化 results，整体超时仍为 AGENT_TIMEOUT |
 | 500 | DATA_QUERY_FAILED | 查询失败，不泄露连接信息 |
 | 502 | AGENT_INVALID_RESPONSE | 调用或回答反复不符合契约 |
 
 ## 实施与验收
 
-下列勾选项保留既有阶段实施/验收记录，不表示本轮重跑全部用例；正文事实校验以本页「当前实现」说明为准。scripts/check_agent_api.py 对默认批次写死一艘船的预期，重跑前需核对 fixture/批次；模型主动澄清当前未实现，无密钥 503 路径在该脚本中仍为 SKIP。
+下列勾选项保留既有阶段实施/验收记录，不表示本轮重跑全部用例；正文事实校验以本页「当前实现」说明为准。scripts/check_agent_api.py 对默认批次写死一艘船的预期，重跑前需核对 fixture/批次；模型可自然追问，但独立的 needs_clarification 状态当前未生成；无密钥 503 路径在该脚本中仍为 SKIP。
 
 - [x] 核对数据库批次、ID 映射、覆盖和封锁时间来源，确定异常间隔阈值及通行规则。
 - [x] 独立实现并验证查询函数，对照人工样例与文件验收脚本，解释差异。
