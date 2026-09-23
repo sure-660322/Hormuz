@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, field_validator
 
 SCHEMA_VERSION = "3"
-# 多轮 history 携带上限，与 backend/app/services/agent/runner.py 的 MAX_HISTORY_TURNS 一致
+# 多轮 history 携带上限，与 backend/app/services/agent/langchain_runner.py 的 MAX_HISTORY_TURNS 一致
 MAX_HISTORY_TURNS = 10
 MAX_TURN_LENGTH = 2000
 

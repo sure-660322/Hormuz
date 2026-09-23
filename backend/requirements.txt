@@ -3,5 +3,7 @@ uvicorn
 sqlalchemy  #用 Python 管理数据库连接、查询和数据表模型
 psycopg[binary]  #让 Python 真正与 PostgreSQL 通信的驱动。
 python-dotenv  #从 .env 文件中加载环境变量
-openai==1.99.1  #智能体模型 API 客户端（工具调用），密钥仅保留在后端运行环境
+openai==3.17.0  #智能体模型 API 客户端（工具调用），密钥仅保留在后端运行环境；LC-01 起版本由 langchain-openai 1.6.3 约束（>=1.116,<4）
 sqlglot==30.18.0  # SQL-03：固定 PostgreSQL 方言 AST 解析与规范化，禁止运行时漂移
+langchain==1.4.2  # LC-01：单智能体 create_agent（内置工具循环执行基础，不直接编写 LangGraph）
+langchain-openai==1.6.3  # LC-01：DeepSeek OpenAI 兼容接口（ChatOpenAI）

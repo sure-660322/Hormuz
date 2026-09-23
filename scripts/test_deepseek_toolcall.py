@@ -8,15 +8,12 @@
 从环境变量读取 DEEPSEEK_API_KEY（不打印密钥）；从仓库根目录运行：
     backend/.venv/Scripts/python.exe scripts/test_deepseek_toolcall.py
 """
+import os
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from backend.app.database import SessionLocal
-from backend.app.services.agent.model_client import AgentConfigError, build_client
-from backend.app.services.agent.runner import run_agent
 
 QUESTIONS = [
     "封锁后有哪些船还通过了海峡？",
@@ -25,17 +22,19 @@ QUESTIONS = [
 ]
 
 
-def run_case(client, question: str) -> bool:
-    trace = []
+def run_case(llm, question: str) -> bool:
+    from backend.app.database import SessionLocal
+    from backend.app.services.agent.langchain_runner import run_lc_agent
+
     started = time.monotonic()
     with SessionLocal() as db:
-        outcome = run_agent(db, client, question, trace=trace)
+        outcome = run_lc_agent(db, question, llm=llm)
     elapsed = time.monotonic() - started
 
     print(f"问题: {question}")
-    print(f"模型工具调用（{len(trace)} 次）:")
-    for call in trace:
-        print(f"  {call['tool']}({call['arguments']})")
+    print(f"工具结果（{len(outcome['results'])} 次）:")
+    for call in outcome["results"].values():
+        print(f"  {call['call_id']}: {call['tool_name']} status={call['status']}")
     print(f"status: {outcome['status']}  tools_used: {outcome['tools_used']}")
     summary = outcome.get("query_summary")
     if summary:
@@ -53,7 +52,7 @@ def run_case(client, question: str) -> bool:
                 f"  结果[{call_id}/{result.get('tool_name')}]: "
                 f"status={result.get('status')}"
             )
-    print(f"模型回答（前 500 字符）:\n{outcome['answer'][:500]}")
+    print(f"回答长度: {len(outcome['answer'])}")
     print(f"耗时: {elapsed:.1f}s")
     ok = bool(outcome["tools_used"]) and bool(outcome["answer"].strip())
     print("PASS" if ok else "FAIL: 缺少工具调用或回答为空")
@@ -61,20 +60,26 @@ def run_case(client, question: str) -> bool:
 
 
 def main():
+    if not os.getenv("DEEPSEEK_API_KEY"):
+        print("SKIP: 未配置 DEEPSEEK_API_KEY")
+        return 0
+    from backend.app.services.agent.langchain_runner import build_llm
+    from backend.app.services.agent.model_client import AgentConfigError
+
     try:
-        client = build_client()
-    except AgentConfigError as exc:
-        print(f"SKIP: {exc}")
+        llm = build_llm()
+    except AgentConfigError:
+        print("SKIP: 模型配置不可用")
         return 0
 
     passed = 0
     for question in QUESTIONS:
         print("=" * 72)
         try:
-            if run_case(client, question):
+            if run_case(llm, question):
                 passed += 1
-        except Exception as exc:  # 联调脚本：打印后继续下一个场景
-            print(f"ERROR: {type(exc).__name__}: {exc}")
+        except Exception as exc:  # 不打印可能包含密钥或连接信息的异常正文
+            print(f"ERROR: {type(exc).__name__}")
         print()
     print(f"共 {passed}/{len(QUESTIONS)} 个场景通过")
     return 0 if passed == len(QUESTIONS) else 1

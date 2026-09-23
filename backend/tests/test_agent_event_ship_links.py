@@ -1,8 +1,8 @@
-"""AG-05：query_event_ship_links 智能体工具的离线自动测试。
+"""AG-05：query_event_ship_links 智能体工具的离线自动测试（LC-04 迁移到 LangChain runner）。
 
 不连接真实数据库、不调用真实模型：
 - repository 层用 monkeypatch 打桩（events / links / manifest / ships / observed 反查）；
-- 模型响应用脚本化假客户端模拟 Tool Calling（含未知 ID 纠正场景）。
+- 模型响应用脚本化假 ChatModel（ScriptedFakeLLM）模拟工具调用（含未知 ID 纠正场景）。
 
 覆盖（对应 AG-05 验收边界）：
 1. 正查 observed（事件方向：证据、置信度、投影误差限制）；
@@ -18,16 +18,17 @@
 """
 import re
 from datetime import date, datetime, timezone
-from types import SimpleNamespace
 
 import pytest
+from langchain_core.messages import ToolMessage
 
 from backend.app.repositories import event_links as links_repo
 from backend.app.repositories import tracks as tracks_repo
 from backend.app.schemas_agent import AgentAnalyzeResponse
-from backend.app.services.agent import runner
 from backend.app.services.agent.event_ship_links_query import run_event_ship_links_query
-from backend.app.services.agent.runner import TOOL_REGISTRY, TOOL_SCHEMAS, run_agent
+from backend.app.services.agent.langchain_runner import run_lc_agent
+from backend.app.services.agent.serialization import to_jsonable
+from backend.tests.fake_llm import ScriptedFakeLLM, tool_call
 
 UTC = timezone.utc
 
@@ -105,46 +106,10 @@ FINAL_ANSWER_MENTIONED = (
 )
 
 
-# ---- 脚本化假模型客户端 ----
-class _FakeToolCall:
-    def __init__(self, call_id, name, arguments="{}"):
-        self.id = call_id
-        self.function = SimpleNamespace(name=name, arguments=arguments)
-
-
-class _FakeMessage:
-    def __init__(self, content=None, tool_calls=None):
-        self.content = content
-        self.tool_calls = tool_calls or []
-
-
-class _FakeCompletion:
-    def __init__(self, message):
-        self.choices = [SimpleNamespace(message=message)]
-
-
-class _FakeCompletions:
-    def __init__(self, script):
-        self._script = list(script)
-        self.calls = []
-
-    def create(self, **kwargs):
-        self.calls.append(kwargs)
-        assert self._script, "模型请求次数超过脚本"
-        return _FakeCompletion(self._script.pop(0))
-
-
-class _FakeClient:
-    def __init__(self, script):
-        self.chat = SimpleNamespace(completions=_FakeCompletions(script))
-
-
-def _links_script(arguments, final_answer):
+def _links_script(args, final_answer):
     return [
-        _FakeMessage(
-            tool_calls=[_FakeToolCall("call_links_1", "query_event_ship_links", arguments)]
-        ),
-        _FakeMessage(content=final_answer),
+        tool_call("query_event_ship_links", args),
+        final_answer,
     ]
 
 
@@ -170,11 +135,17 @@ def patched_repo(monkeypatch):
     return seen
 
 
+def _run_links_question(script, question="evt_001 附近有哪些模拟船？"):
+    return run_lc_agent(None, question, llm=ScriptedFakeLLM(script=script))
+
+
 # ------------------------------------------------------- 1. 正查 observed
 def test_observed_by_event(patched_repo):
-    args = '{"event_id":"evt_001","link_type":"observed"}'
-    outcome = run_agent(None, _FakeClient(_links_script(args, FINAL_ANSWER_OBSERVED)),
-                        question="evt_001 事件时空上邻近哪些模拟船？", trace=[])
+    args = {"event_id": "evt_001", "link_type": "observed"}
+    outcome = _run_links_question(
+        _links_script(args, FINAL_ANSWER_OBSERVED),
+        question="evt_001 事件时空上邻近哪些模拟船？",
+    )
 
     assert outcome["status"] == "ok"
     assert outcome["tools_used"] == ["query_event_ship_links"]
@@ -200,9 +171,11 @@ def test_observed_by_event(patched_repo):
 
 # ------------------------------------------------------- 2. 正查 mentioned
 def test_mentioned_by_event(patched_repo):
-    args = '{"event_id":"evt_001","link_type":"mentioned"}'
-    outcome = run_agent(None, _FakeClient(_links_script(args, FINAL_ANSWER_MENTIONED)),
-                        question="evt_001 事件被哪些报道提到过船名？", trace=[])
+    args = {"event_id": "evt_001", "link_type": "mentioned"}
+    outcome = _run_links_question(
+        _links_script(args, FINAL_ANSWER_MENTIONED),
+        question="evt_001 事件被哪些报道提到过船名？",
+    )
 
     result = outcome["results"]["call_001"]
     assert result["link_type"] == "mentioned"
@@ -216,12 +189,15 @@ def test_mentioned_by_event(patched_repo):
 
 # ------------------------------------------------------- 3. 反查 by_ship
 def test_reverse_by_ship(patched_repo):
-    args = (
-        '{"ship_id":4,'
-        '"start_at":"2026-03-01T00:00:00+00:00","end_at":"2026-03-02T00:00:00+00:00"}'
+    args = {
+        "ship_id": 4,
+        "start_at": "2026-03-01T00:00:00+00:00",
+        "end_at": "2026-03-02T00:00:00+00:00",
+    }
+    outcome = _run_links_question(
+        _links_script(args, FINAL_ANSWER_OBSERVED),
+        question="SIM V2 油轮 004 被哪些事件 observed 关联？",
     )
-    outcome = run_agent(None, _FakeClient(_links_script(args, FINAL_ANSWER_OBSERVED)),
-                        question="SIM V2 油轮 004 被哪些事件 observed 关联？", trace=[])
 
     result = outcome["results"]["call_001"]
     assert result["direction"] == "by_ship"
@@ -246,32 +222,18 @@ def test_unknown_event_id_triggers_correction(patched_repo, monkeypatch):
         links_repo, "fetch_event_by_id",
         lambda db, eid: dict(EVENT_ROW) if eid == "evt_001" else None,
     )
-    script = [
-        _FakeMessage(
-            tool_calls=[_FakeToolCall(
-                "call_links_1", "query_event_ship_links", '{"event_id":"evt_404"}'
-            )]
-        ),
-        _FakeMessage(
-            tool_calls=[_FakeToolCall(
-                "call_links_2", "query_event_ship_links",
-                '{"event_id":"evt_001","link_type":"observed"}'
-            )]
-        ),
-        _FakeMessage(content=FINAL_ANSWER_OBSERVED),
-    ]
-    client = _FakeClient(script)
-    outcome = run_agent(None, client, question="evt_404 附近有哪些模拟船？", trace=[])
+    llm = ScriptedFakeLLM(script=[
+        tool_call("query_event_ship_links", {"event_id": "evt_404"}),
+        tool_call("query_event_ship_links", {"event_id": "evt_001", "link_type": "observed"}),
+        FINAL_ANSWER_OBSERVED,
+    ])
+    outcome = run_lc_agent(None, "evt_404 附近有哪些模拟船？", llm=llm)
 
     assert outcome["status"] == "ok"
-    second_call_messages = client.chat.completions.calls[1]["messages"]
-    correction = [
-        m for m in second_call_messages
-        if isinstance(m, dict) and m.get("role") == "tool"
-    ]
+    correction = [m for m in llm.received[1] if isinstance(m, ToolMessage)]
     # 未知 ID 是纠正分支：提示先用 get_event_context 检索，不得当成零结果
-    assert correction and "evt_404 不存在" in correction[0]["content"]
-    assert "get_event_context" in correction[0]["content"]
+    assert correction and "evt_404 不存在" in correction[0].content
+    assert "get_event_context" in correction[0].content
 
 
 # ---------------------------------------------- 5. 未知 ship_id → 纠正循环
@@ -281,42 +243,27 @@ def test_unknown_ship_id_triggers_correction(patched_repo, monkeypatch):
         tracks_repo, "fetch_ship",
         lambda db, sid: dict(SHIP_ROW) if sid == 4 else None,
     )
-    script = [
-        _FakeMessage(
-            tool_calls=[_FakeToolCall(
-                "call_links_1", "query_event_ship_links", '{"ship_id":999}'
-            )]
-        ),
-        _FakeMessage(
-            tool_calls=[_FakeToolCall(
-                "call_links_2", "query_event_ship_links", '{"ship_id":4}'
-            )]
-        ),
-        _FakeMessage(content=FINAL_ANSWER_OBSERVED),
-    ]
-    client = _FakeClient(script)
-    outcome = run_agent(None, client, question="999 号船被哪些事件关联？", trace=[])
+    llm = ScriptedFakeLLM(script=[
+        tool_call("query_event_ship_links", {"ship_id": 999}),
+        tool_call("query_event_ship_links", {"ship_id": 4}),
+        FINAL_ANSWER_OBSERVED,
+    ])
+    outcome = run_lc_agent(None, "999 号船被哪些事件关联？", llm=llm)
 
     assert outcome["status"] == "ok"
-    second_call_messages = client.chat.completions.calls[1]["messages"]
-    correction = [
-        m for m in second_call_messages
-        if isinstance(m, dict) and m.get("role") == "tool"
-    ]
-    assert correction and "不存在" in correction[0]["content"]
-    assert "search_ships" in correction[0]["content"]
+    correction = [m for m in llm.received[1] if isinstance(m, ToolMessage)]
+    assert correction and "不存在" in correction[0].content
+    assert "search_ships" in correction[0].content
 
 
 # ------------------------------------------------------- 6. 空结果有效零
 def test_empty_result_is_valid_zero(patched_repo, monkeypatch):
     monkeypatch.setattr(links_repo, "fetch_links_for_event", lambda db, pk, eid: [])
 
-    outcome = run_agent(
-        None,
-        _FakeClient(_links_script('{"event_id":"evt_001","link_type":"observed"}',
-                                  "该事件在派生层内没有 observed 关联。")),
-        question="evt_001 附近有哪些模拟船？", trace=[],
-    )
+    outcome = _run_links_question(_links_script(
+        {"event_id": "evt_001", "link_type": "observed"},
+        "该事件在派生层内没有 observed 关联。",
+    ))
     result = outcome["results"]["call_001"]
     assert result["status"] == "no_data"
     assert result["links"] == []
@@ -354,35 +301,36 @@ def test_invalid_params_rejected(patched_repo):
 
 # ------------------------------------------------------- 8. 模型选择工具
 def test_model_can_select_query_event_ship_links(patched_repo):
-    assert "query_event_ship_links" in TOOL_REGISTRY
-    tool = TOOL_REGISTRY["query_event_ship_links"]
-    assert tool.windowed is False
-    assert any(
-        schema["function"]["name"] == "query_event_ship_links" for schema in TOOL_SCHEMAS
-    )
+    from backend.app.services.agent.business_tools import make_business_tools
 
-    client = _FakeClient(_links_script('{"event_id":"evt_001"}', FINAL_ANSWER_OBSERVED))
-    trace = []
-    outcome = run_agent(None, client, question="evt_001 附近有哪些模拟船？", trace=trace)
+    state = {"tools_used": [], "results": {}, "tool_executions": 0,
+             "call_sequence": 0, "max_tool_executions": 8}
+    tools = {tool.name: tool for tool in make_business_tools(
+        None, datetime(2026, 2, 28, 15, tzinfo=UTC),
+        datetime(2026, 3, 1, 15, tzinfo=UTC), False, state,
+    )}
+    assert "query_event_ship_links" in tools
 
-    assert all(
-        any(t["function"]["name"] == "query_event_ship_links" for t in call["tools"])
-        for call in client.chat.completions.calls
-    )
-    assert trace == [{"tool": "query_event_ship_links", "arguments": '{"event_id":"evt_001"}'}]
+    llm = ScriptedFakeLLM(script=_links_script({"event_id": "evt_001"}, FINAL_ANSWER_OBSERVED))
+    outcome = run_lc_agent(None, "evt_001 附近有哪些模拟船？", llm=llm)
+
+    # 模型收到的工具列表中包含 query_event_ship_links，并成功选中执行
+    bound_names = {getattr(t, "name", None) for t in getattr(llm, "bound_tools", [])}
+    assert "query_event_ship_links" in bound_names
     assert outcome["tools_used"] == ["query_event_ship_links"]
 
 
 # ------------------------------------------------- 9. 工具结果进入最终响应
 def test_tool_result_reaches_final_response(patched_repo):
-    outcome = run_agent(None, _FakeClient(_links_script('{"event_id":"evt_001"}', FINAL_ANSWER_OBSERVED)),
-                        question="evt_001 附近有哪些模拟船？", trace=[])
+    outcome = _run_links_question(
+        _links_script({"event_id": "evt_001"}, FINAL_ANSWER_OBSERVED)
+    )
 
     assert outcome["answer"] == FINAL_ANSWER_OBSERVED
     result = outcome["results"]["call_001"]
     assert result["links"][0]["ship"]["name"] == "SIM V2 油轮 004"
 
-    payload = runner._jsonable(outcome)
+    payload = to_jsonable(outcome)
     payload["request_id"] = "req-ag05-test"
     response = AgentAnalyzeResponse(**payload)
     assert response.tools_used == ["query_event_ship_links"]
@@ -468,14 +416,16 @@ def test_full_flow_performs_no_db_writes():
         }
     )
 
-    outcome = run_agent(
+    outcome = run_lc_agent(
         session,
-        _FakeClient(_links_script('{"event_id":"evt_001"}', FINAL_ANSWER_OBSERVED)),
-        question="evt_001 附近有哪些模拟船？", trace=[],
+        "evt_001 附近有哪些模拟船？",
+        llm=ScriptedFakeLLM(
+            script=_links_script({"event_id": "evt_001"}, FINAL_ANSWER_OBSERVED)
+        ),
     )
 
     assert outcome["status"] == "ok"
-    # 适配层事件存在性查询 + 服务层事件查询 + 关联查询 + manifest = 4 条只读 SELECT
+    # 事件存在性查询 + 服务层事件查询 + 关联查询 + manifest = 4 条只读 SELECT
     assert len(session.executed_sql) == 4
     for sql in session.executed_sql:
         assert sql.lstrip().lower().startswith("select"), sql

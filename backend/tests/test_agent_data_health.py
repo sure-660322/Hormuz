@@ -1,25 +1,25 @@
-"""AG-02：get_data_health 智能体工具的离线自动测试。
+"""AG-02：get_data_health 智能体工具的离线自动测试（LC-04 迁移到 LangChain runner）。
 
 不连接真实数据库、不调用真实模型：
 - repository 层用 monkeypatch 打桩（前三个场景）或记录型假会话承载真实只读 SQL（写操作检查）；
-- 模型响应用脚本化假客户端模拟 Tool Calling 两阶段（工具调用 → 最终回答）。
+- 模型响应用脚本化假 ChatModel（ScriptedFakeLLM）模拟「工具调用 → 最终回答」两阶段。
 
 覆盖（对应任务要求的 7 个场景）：
-1. 正常结果；2. 来源缺数据；3. 派生层未构建；4. 查询失败（500 DATA_QUERY_FAILED）；
-5. 模型可选择并调用该工具；6. 工具结果进入最终响应且符合响应契约；
+1. 正常结果；2. 来源缺数据；3. 派生层未构建；4. 查询失败降级（200 + DATABASE_UNAVAILABLE）；
+5. 工具注册且模型可选择调用；6. 工具结果进入最终响应且符合响应契约；
 7. 全流程无任何数据库写入。
 """
 import re
 from datetime import datetime, timezone
-from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.app.repositories import data_health as health_repo
 from backend.app.schemas_agent import AgentAnalyzeResponse
-from backend.app.services.agent import runner
-from backend.app.services.agent.runner import TOOL_REGISTRY, TOOL_SCHEMAS, run_agent
+from backend.app.services.agent.langchain_runner import run_lc_agent
+from backend.app.services.agent.serialization import to_jsonable
+from backend.tests.fake_llm import ScriptedFakeLLM, tool_call
 
 UTC = timezone.utc
 
@@ -68,47 +68,11 @@ FINAL_ANSWER = (
 )
 
 
-# ---- 脚本化假模型客户端（OpenAI SDK 形状的最小模拟） ----
-class _FakeToolCall:
-    def __init__(self, call_id, name, arguments="{}"):
-        self.id = call_id
-        self.function = SimpleNamespace(name=name, arguments=arguments)
-
-
-class _FakeMessage:
-    def __init__(self, content=None, tool_calls=None):
-        self.content = content
-        self.tool_calls = tool_calls or []
-
-
-class _FakeCompletion:
-    def __init__(self, message):
-        self.choices = [SimpleNamespace(message=message)]
-
-
-class _FakeCompletions:
-    """按脚本顺序返回消息，并记录每次 create 的入参（含 tools schema）。"""
-
-    def __init__(self, script):
-        self._script = list(script)
-        self.calls = []
-
-    def create(self, **kwargs):
-        self.calls.append(kwargs)
-        assert self._script, "模型请求次数超过脚本"
-        return _FakeCompletion(self._script.pop(0))
-
-
-class _FakeClient:
-    def __init__(self, script):
-        self.chat = SimpleNamespace(completions=_FakeCompletions(script))
-
-
 def _health_script(final_answer=FINAL_ANSWER):
     """两阶段脚本：先调用 get_data_health，再给出最终回答。"""
     return [
-        _FakeMessage(tool_calls=[_FakeToolCall("call_health_1", "get_data_health")]),
-        _FakeMessage(content=final_answer),
+        tool_call("get_data_health", {}),
+        final_answer,
     ]
 
 
@@ -123,13 +87,13 @@ def patched_repo(monkeypatch):
     return None
 
 
-def _run_health_question(client, db=None, question="现在数据健康吗？各来源有多少报位？"):
-    return run_agent(db, client, question=question, trace=[])
+def _run_health_question(script, db=None, question="现在数据健康吗？各来源有多少报位？"):
+    return run_lc_agent(db, question, llm=ScriptedFakeLLM(script=script))
 
 
 # ---------------------------------------------------------------- 1. 正常结果
 def test_normal_result(patched_repo):
-    outcome = _run_health_question(_FakeClient(_health_script()))
+    outcome = _run_health_question(_health_script())
 
     assert outcome["status"] == "ok"
     assert outcome["tools_used"] == ["get_data_health"]
@@ -151,7 +115,7 @@ def test_normal_result(patched_repo):
 def test_missing_source_is_not_zero(patched_repo, monkeypatch):
     monkeypatch.setattr(health_repo, "fetch_source_counts", lambda db: [])
 
-    outcome = _run_health_question(_FakeClient(_health_script()))
+    outcome = _run_health_question(_health_script())
     health = outcome["results"]["call_001"]
 
     # 来源列表为空：只能表示未导入/无记录，不能解释为真实数量为零
@@ -166,7 +130,7 @@ def test_missing_source_is_not_zero(patched_repo, monkeypatch):
 def test_derived_not_built(patched_repo, monkeypatch):
     monkeypatch.setattr(health_repo, "fetch_derived_manifests", lambda db: [])
 
-    outcome = _run_health_question(_FakeClient(_health_script()))
+    outcome = _run_health_question(_health_script())
     health = outcome["results"]["call_001"]
     derived = {row["table"]: row for row in health["derived"]}
 
@@ -179,18 +143,24 @@ def test_derived_not_built(patched_repo, monkeypatch):
 
 
 # ------------------------------------------------------------ 4. 查询失败
-def test_query_failure_maps_to_data_query_failed(patched_repo, monkeypatch):
+def test_query_failure_degrades_to_honest_answer(patched_repo, monkeypatch):
+    """LC-01 起工具内数据库错误降级为 observation（200 + 诚实说明），不再 500。"""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
     from backend.app.database import get_db
     from backend.app.routers import agent as agent_router
+    from backend.app.services.agent import langchain_runner
 
     def _boom(db):
         raise SQLAlchemyError("connection lost (测试桩)")
 
     monkeypatch.setattr(health_repo, "fetch_source_counts", _boom)
-    monkeypatch.setattr(agent_router, "build_client", lambda: _FakeClient(_health_script()))
+    llm = ScriptedFakeLLM(script=[
+        tool_call("get_data_health", {}),
+        "数据库暂时不可用，数据健康查询失败，请稍后重试。",
+    ])
+    monkeypatch.setattr(langchain_runner, "build_llm", lambda: llm)
 
     app = FastAPI()
     app.include_router(agent_router.router)
@@ -198,49 +168,49 @@ def test_query_failure_maps_to_data_query_failed(patched_repo, monkeypatch):
     client = TestClient(app)
 
     response = client.post("/agent/analyze", json={"question": "现在数据健康吗？"})
-    assert response.status_code == 500
-    detail = response.json()["detail"]
-    assert detail["code"] == "DATA_QUERY_FAILED"
-    assert "request_id" in detail
+    assert response.status_code == 200
+    body = response.json()
+    envelope = body["results"]["call_001"]
+    assert envelope["status"] == "error"
+    assert envelope["code"] == "DATABASE_UNAVAILABLE"
+    assert "不可用" in body["answer"]
 
 
 # ------------------------------------------------------------ 5. 模型选择工具
 def test_model_can_select_get_data_health(patched_repo):
-    assert "get_data_health" in TOOL_REGISTRY
-    tool = TOOL_REGISTRY["get_data_health"]
-    assert tool.windowed is False
-    assert tool.parameters == {"type": "object", "properties": {}}
-    assert any(
-        schema["function"]["name"] == "get_data_health" for schema in TOOL_SCHEMAS
-    )
+    from backend.app.services.agent.business_tools import make_business_tools
 
-    client = _FakeClient(_health_script())
-    trace = []
-    outcome = run_agent(
-        None, client, question="现在派生数据是不是最新的？", trace=trace
-    )
+    state = {"tools_used": [], "results": {}, "tool_executions": 0,
+             "call_sequence": 0, "max_tool_executions": 8}
+    tools = {tool.name: tool for tool in make_business_tools(
+        None, datetime(2026, 2, 28, 15, tzinfo=UTC),
+        datetime(2026, 3, 1, 15, tzinfo=UTC), False, state,
+    )}
+    tool = tools["get_data_health"]
+    # 无必填参数（对应旧 windowed=False + 空 properties）
+    assert tool.args == {}
 
-    # 模型每次都收到包含 get_data_health 的 tools schema，并成功选中执行
-    assert all(
-        any(t["function"]["name"] == "get_data_health" for t in call["tools"])
-        for call in client.chat.completions.calls
-    )
-    assert trace == [{"tool": "get_data_health", "arguments": "{}"}]
+    llm = ScriptedFakeLLM(script=_health_script())
+    outcome = run_lc_agent(None, "现在派生数据是不是最新的？", llm=llm)
+
+    # 模型收到的工具列表中包含 get_data_health，并成功选中执行
+    bound_names = {getattr(t, "name", None) for t in getattr(llm, "bound_tools", [])}
+    assert "get_data_health" in bound_names
     assert outcome["tools_used"] == ["get_data_health"]
 
 
 # ------------------------------------------------- 6. 工具结果进入最终响应
 def test_tool_result_reaches_final_response(patched_repo):
-    outcome = _run_health_question(_FakeClient(_health_script()))
+    outcome = _run_health_question(_health_script())
 
     assert outcome["answer"] == FINAL_ANSWER
     health = outcome["results"]["call_001"]
     assert health["status"] == "ok"
-    # 工具结果经 _jsonable 序列化：datetime 为 ISO 字符串
+    # 工具结果经统一序列化：datetime 为 ISO 字符串
     assert health["derived"][0]["built_at"] == "2026-09-20T12:00:00+00:00"
 
     # 响应整体符合 schemas_agent 契约（顶层字段、context、results 均可序列化校验）
-    payload = runner._jsonable(outcome)
+    payload = to_jsonable(outcome)
     payload["request_id"] = "req-ag02-test"
     response = AgentAnalyzeResponse(**payload)
     assert response.tools_used == ["get_data_health"]
@@ -310,7 +280,7 @@ def test_full_flow_performs_no_db_writes():
         }
     )
 
-    outcome = _run_health_question(_FakeClient(_health_script()), db=session)
+    outcome = _run_health_question(_health_script(), db=session)
 
     assert outcome["status"] == "ok"
     assert len(session.executed_sql) == 3  # 三条只读 SELECT

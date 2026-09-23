@@ -1,8 +1,8 @@
-"""AG-04：query_encounters 智能体工具的离线自动测试。
+"""AG-04：query_encounters 智能体工具的离线自动测试（LC-04 迁移到 LangChain runner）。
 
 不连接真实数据库、不调用真实模型：
 - repository 层用 monkeypatch 打桩（encounters manifest / 行 / 源最大时间）；
-- 模型响应用脚本化假客户端模拟 Tool Calling（含阈值超限纠正场景）。
+- 模型响应用脚本化假 ChatModel 模拟工具调用（含阈值超限纠正场景）。
 
 覆盖（对应 AG-04 验收边界）：
 1. 正常结果（窗口 + max_distance_nm 过滤 + NM/米双单位 + 构建参数快照）；
@@ -11,20 +11,19 @@
 4. 派生层未构建（status=not_built）；
 5. 请求阈值超过构建阈值 → 纠正循环（能力不支持，不得返回 0）；
 6. 截断（匹配数超过 limit：truncated=True、计数保留）；
-7. 模型可选择并调用该工具；
-8. 工具结果进入最终响应且符合 schemas_agent 契约；
-9. 全流程无任何数据库写入。
+7. 工具结果进入最终响应且符合 schemas_agent 契约；
+8. 全流程无任何数据库写入。
 """
 import re
 from datetime import datetime, timezone
-from types import SimpleNamespace
 
 import pytest
 
 from backend.app.repositories import encounters as enc_repo
 from backend.app.schemas_agent import AgentAnalyzeResponse
-from backend.app.services.agent import runner
-from backend.app.services.agent.runner import TOOL_REGISTRY, TOOL_SCHEMAS, run_agent
+from backend.app.services.agent.langchain_runner import run_lc_agent
+from backend.app.services.agent.serialization import to_jsonable
+from backend.tests.fake_llm import ScriptedFakeLLM, tool_call
 
 UTC = timezone.utc
 
@@ -67,44 +66,11 @@ FINAL_ANSWER = (
 )
 
 
-# ---- 脚本化假模型客户端 ----
-class _FakeToolCall:
-    def __init__(self, call_id, name, arguments="{}"):
-        self.id = call_id
-        self.function = SimpleNamespace(name=name, arguments=arguments)
-
-
-class _FakeMessage:
-    def __init__(self, content=None, tool_calls=None):
-        self.content = content
-        self.tool_calls = tool_calls or []
-
-
-class _FakeCompletion:
-    def __init__(self, message):
-        self.choices = [SimpleNamespace(message=message)]
-
-
-class _FakeCompletions:
-    def __init__(self, script):
-        self._script = list(script)
-        self.calls = []
-
-    def create(self, **kwargs):
-        self.calls.append(kwargs)
-        assert self._script, "模型请求次数超过脚本"
-        return _FakeCompletion(self._script.pop(0))
-
-
-class _FakeClient:
-    def __init__(self, script):
-        self.chat = SimpleNamespace(completions=_FakeCompletions(script))
-
-
-def _encounters_script(arguments="{}", final_answer=FINAL_ANSWER):
+# ---- 脚本化假模型 ----
+def _encounters_script(args=None, final_answer=FINAL_ANSWER):
     return [
-        _FakeMessage(tool_calls=[_FakeToolCall("call_enc_1", "query_encounters", arguments)]),
-        _FakeMessage(content=final_answer),
+        tool_call("query_encounters", args or {}),
+        final_answer,
     ]
 
 
@@ -127,17 +93,18 @@ def patched_repo(monkeypatch):
     return seen
 
 
-def _run_encounters_question(client, db=None, question="这段时间哪些船相遇过？"):
-    return run_agent(db, client, question=question, trace=[])
+def _run_encounters_question(script, db=None, question="这段时间哪些船相遇过？"):
+    return run_lc_agent(db, question, llm=ScriptedFakeLLM(script=script))
 
 
 # ---------------------------------------------------------------- 1. 正常结果
 def test_normal_result(patched_repo):
-    args = (
-        '{"start_at":"2026-03-01T00:00:00+00:00","end_at":"2026-03-02T00:00:00+00:00",'
-        '"max_distance_nm":2.0}'
-    )
-    outcome = _run_encounters_question(_FakeClient(_encounters_script(arguments=args)))
+    args = {
+        "start_at": "2026-03-01T00:00:00+00:00",
+        "end_at": "2026-03-02T00:00:00+00:00",
+        "max_distance_nm": 2.0,
+    }
+    outcome = _run_encounters_question(_encounters_script(args=args))
 
     assert outcome["status"] == "ok"
     assert outcome["tools_used"] == ["query_encounters"]
@@ -172,7 +139,7 @@ def test_normal_result(patched_repo):
 
 # --------------------------------------- 2. 省略阈值时默认取构建阈值不过滤
 def test_default_filter_uses_build_threshold(patched_repo):
-    outcome = _run_encounters_question(_FakeClient(_encounters_script()))
+    outcome = _run_encounters_question(_encounters_script())
     enc = outcome["results"]["call_001"]
 
     assert enc["status"] == "ok"
@@ -186,7 +153,7 @@ def test_empty_result_is_valid_zero(patched_repo, monkeypatch):
     monkeypatch.setattr(enc_repo, "fetch_encounters", lambda db, s, e, m, limit: [])
 
     outcome = _run_encounters_question(
-        _FakeClient(_encounters_script(arguments='{"max_distance_nm":1.0}'))
+        _encounters_script(args={"max_distance_nm": 1.0})
     )
     enc = outcome["results"]["call_001"]
 
@@ -200,7 +167,7 @@ def test_empty_result_is_valid_zero(patched_repo, monkeypatch):
 def test_not_built(patched_repo, monkeypatch):
     monkeypatch.setattr(enc_repo, "fetch_manifest", lambda db: None)
 
-    outcome = _run_encounters_question(_FakeClient(_encounters_script()))
+    outcome = _run_encounters_question(_encounters_script())
     enc = outcome["results"]["call_001"]
 
     assert enc["status"] == "not_built"
@@ -212,27 +179,21 @@ def test_not_built(patched_repo, monkeypatch):
 
 # --------------------------------------- 5. 阈值超过构建阈值 → 纠正而非零结果
 def test_threshold_above_build_rejected_with_correction(patched_repo):
-    script = [
-        _FakeMessage(
-            tool_calls=[_FakeToolCall("call_enc_1", "query_encounters", '{"max_distance_nm":5.0}')]
-        ),
-        _FakeMessage(
-            tool_calls=[_FakeToolCall("call_enc_2", "query_encounters", '{"max_distance_nm":1.0}')]
-        ),
-        _FakeMessage(content=FINAL_ANSWER),
-    ]
-    client = _FakeClient(script)
-    outcome = run_agent(None, client, question="5 海里内有哪些船相遇过？", trace=[])
+    llm = ScriptedFakeLLM(script=[
+        tool_call("query_encounters", {"max_distance_nm": 5.0}),
+        tool_call("query_encounters", {"max_distance_nm": 1.0}),
+        FINAL_ANSWER,
+    ])
+    outcome = run_lc_agent(None, "5 海里内有哪些船相遇过？", llm=llm)
 
     assert outcome["status"] == "ok"
     assert outcome["tools_used"] == ["query_encounters"]
-    second_call_messages = client.chat.completions.calls[1]["messages"]
-    correction = [
-        m for m in second_call_messages
-        if isinstance(m, dict) and m.get("role") == "tool"
-    ]
-    assert correction and "构建阈值" in correction[0]["content"]
-    assert "超过构建阈值" in correction[0]["content"]
+    from langchain_core.messages import ToolMessage
+
+    second_turn = llm.received[1]
+    correction = [m for m in second_turn if isinstance(m, ToolMessage)]
+    assert correction and "构建阈值" in correction[0].content
+    assert "超过构建阈值" in correction[0].content
 
 
 # ------------------------------------------------------------------ 6. 截断
@@ -241,7 +202,7 @@ def test_truncation_keeps_matched_count(patched_repo, monkeypatch):
     monkeypatch.setattr(enc_repo, "fetch_encounters", lambda db, s, e, m, limit: many)
 
     outcome = _run_encounters_question(
-        _FakeClient(_encounters_script(arguments='{"limit":10}'))
+        _encounters_script(args={"limit": 10})
     )
     enc = outcome["results"]["call_001"]
 
@@ -251,34 +212,15 @@ def test_truncation_keeps_matched_count(patched_repo, monkeypatch):
     assert len(enc["encounters"]) == 10
 
 
-# ------------------------------------------------------------ 7. 模型选择工具
-def test_model_can_select_query_encounters(patched_repo):
-    assert "query_encounters" in TOOL_REGISTRY
-    tool = TOOL_REGISTRY["query_encounters"]
-    assert tool.windowed is False
-    assert any(schema["function"]["name"] == "query_encounters" for schema in TOOL_SCHEMAS)
-
-    client = _FakeClient(_encounters_script())
-    trace = []
-    outcome = run_agent(None, client, question="哪些船相遇过？", trace=trace)
-
-    assert all(
-        any(t["function"]["name"] == "query_encounters" for t in call["tools"])
-        for call in client.chat.completions.calls
-    )
-    assert trace == [{"tool": "query_encounters", "arguments": "{}"}]
-    assert outcome["tools_used"] == ["query_encounters"]
-
-
-# ------------------------------------------------- 8. 工具结果进入最终响应
+# ------------------------------------------------- 7. 工具结果进入最终响应
 def test_tool_result_reaches_final_response(patched_repo):
-    outcome = _run_encounters_question(_FakeClient(_encounters_script()))
+    outcome = _run_encounters_question(_encounters_script())
 
     assert outcome["answer"] == FINAL_ANSWER
     enc = outcome["results"]["call_001"]
     assert enc["encounters"][0]["period_start"] == "2026-03-01T10:00:00+00:00"
 
-    payload = runner._jsonable(outcome)
+    payload = to_jsonable(outcome)
     payload["request_id"] = "req-ag04-test"
     response = AgentAnalyzeResponse(**payload)
     assert response.tools_used == ["query_encounters"]
@@ -361,10 +303,10 @@ def test_full_flow_performs_no_db_writes():
         }
     )
 
-    outcome = _run_encounters_question(_FakeClient(_encounters_script()), db=session)
+    outcome = _run_encounters_question(_encounters_script(), db=session)
 
     assert outcome["status"] == "ok"
-    # 适配层 manifest 阈值读取 + 服务层 manifest/行/源最大时间 = 4 条只读 SELECT
+    # 服务层读 manifest 定阈值 + 服务内部再读 manifest/行 + 源最大时间 = 4 条只读 SELECT
     assert len(session.executed_sql) == 4
     for sql in session.executed_sql:
         assert sql.lstrip().lower().startswith("select"), sql

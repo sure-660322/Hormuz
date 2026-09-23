@@ -1,6 +1,6 @@
 # LangChain 业务智能体第一版技术方案
 
-状态：**候选实现阻塞整合**（2026-09-23 复核）。`kimi/agent-lc04` 已完成主体实现并通过后端离线回归及前端非浏览器检查，但同一请求可连续成功执行两次 `execute_sql`，违反现有 SQL 安全契约；整体超时返回后后台线程仍可继续调用工具；真实模型联调脚本也仍引用已删除的旧入口。因此候选提交尚未合入 `main`，当前运行事实仍以 v4 自定义工具循环为准。修复与验收阶段见 [智能体开发任务](agent_development_plan.md)。
+状态：**本地 main 已整合，整版已实现待真实环境验证**（2026-09-23，来源 `kimi/agent-lc04` 的 `6bf739c` 与 `codex/lc-safety-fix` 的 `1afd34b`；远端未推送）。`f14eceb` 曾因 SQL 可二次成功执行、超时后后台触库和联调脚本引用删除入口而阻塞整合；修复分支已通过确定性离线回归 245 passed / 12 skipped、前端 build/check:workbench 及三个 HTTP 冒烟入口。真实 DeepSeek、独立 PostgreSQL SQL 链路和浏览器尚未按本版验收。编排使用 LangChain `create_agent`，响应保持 v4 契约；8 个原生业务工具、知识库和受限 SQL 三工具均接入，旧 `runner.py` 手写循环已删除。详细复核和修复记录见 [开发任务](agent_development_plan.md)。
 
 ## 1. 目标体验
 
@@ -95,6 +95,8 @@ SQL Agent 是主智能体的一组工具，不是另一个模型：
 → 成功则回答；普通语法问题最多修正一次；仍失败则说明原因
 ```
 
+当前请求边界（2026-09-23 修复候选）：每请求统一最多 8 次工具调用，计入 8 个业务工具、知识库及 SQL 的 schema/check/execute；LangChain `create_agent` 的递归步数上限为 40，整体执行预算为 60 秒，没有旧版“4 轮模型请求、3 次业务工具执行”的限制。第 9 次工具请求以结构化 `TOOL_BUDGET_EXCEEDED` 返回，并停止后续模型调用。`execute_sql` 第一次成功、拒绝、超时或不可重试失败后关闭；第一次尚未实际执行的普通语法错误才允许一次修正，数据库实际执行最多一次。整体超时后的任务先取消后收尾，HTTP 超时响应须等线程停止，不能让后台继续访问请求级 Session。
+
 保留现有 `agent_data` 语义视图、`query_analytics_policy.py` 和 `query_analytics_executor.py`。第一版支持常见 SELECT、WHERE、排序、聚合和批准 JOIN；需要更多数据时扩展语义视图，而不是开放业务底表。
 
 最低保护继续保留：独立只读账号、只读事务、SELECT-only、超时、结果上限和 query_id。它们不是商业级过度设计，而是避免比赛演示时误写数据库、查询卡死或返回过大结果的最低保障。
@@ -129,18 +131,20 @@ SQL Agent 是主智能体的一组工具，不是另一个模型：
 | `backend/app/query_analytics_catalog_v1.json` | SQL schema 与语义目录基础 |
 | `frontend/src/components/AgentPanel.vue`、`frontend/src/api.ts` | 保留页面和结构化展示，做兼容性调整 |
 
-### LangChain接管后可以移除
+### LangChain接管后可以移除（均已于 LC-03/LC-04 执行）
 
-| 当前代码/规则 | 移除条件与替代方案 |
-| --- | --- |
-| `runner.py::_classify_preflight` | LC-01/03 完成后删除；问候、范围外、澄清和能力判断交给模型 |
-| `clarification_rules`、`deferred_patterns`、`unsafe_requests` 等固定短语表 | 不再为每种中文说法添加关键词；SQL写入由执行边界拒绝，语义澄清由 Agent处理 |
-| 当前超长 `SYSTEM_PROMPT` 中的固定工具优先级和样例句 | 改为简洁身份规则 + Tool 描述 + 按需知识检索 |
-| 手工 `TOOL_REGISTRY` JSON Schema | 业务服务包装为 LangChain `@tool` 后删除 |
-| `run_agent` 的手工四轮 Tool Calling 循环 | LC-04 完成等价回归后由 `create_agent` 替代 |
-| `_run_*` 适配函数 | 对应 LangChain Tool wrapper 稳定后删除；底层服务保留 |
-| `test_query_analytics_sql06.py` 中固定问句分类矩阵 | 替换为问候、范围外、知识、SQL、Skill、澄清和错误降级的多表达测试 |
-| `test_query_analytics_integration.py` 中模拟旧消息循环的测试 | LangChain集成测试稳定后删除；SQL策略/执行器专项测试继续保留 |
+下表移除项已按计划执行完毕（LC-04 等价回归 231 passed / 12 skipped 后），保留作决策记录：
+
+| 当前代码/规则 | 移除条件与替代方案 | 执行 |
+| --- | --- | --- |
+| `runner.py::_classify_preflight` | LC-01/03 完成后删除；问候、范围外、澄清和能力判断交给模型 | LC-03 移除前置分类 |
+| `clarification_rules`、`deferred_patterns`、`unsafe_requests` 等固定短语表 | 不再为每种中文说法添加关键词；SQL写入由执行边界拒绝，语义澄清由 Agent处理 | LC-03/04 移除 |
+| 当前超长 `SYSTEM_PROMPT` 中的固定工具优先级和样例句 | 改为简洁身份规则 + Tool 描述 + 按需知识检索 | LC-01 起为新系统提示 |
+| 手工 `TOOL_REGISTRY` JSON Schema | 业务服务包装为 LangChain `@tool` 后删除 | LC-04 由 `business_tools.py` 替代 |
+| `run_agent` 的手工四轮 Tool Calling 循环 | LC-04 完成等价回归后由 `create_agent` 替代 | LC-04 删除 `runner.py` |
+| `_run_*` 适配函数 | 对应 LangChain Tool wrapper 稳定后删除；底层服务保留 | LC-04 原生 Tools 直接调用服务层 |
+| `test_query_analytics_sql06.py` 中固定问句分类矩阵 | 替换为问候、范围外、知识、SQL、Skill、澄清和错误降级的多表达测试 | LC-04 由 `test_agent_expressions.py` 替代 |
+| `test_query_analytics_integration.py` 中模拟旧消息循环的测试 | LangChain集成测试稳定后删除；SQL策略/执行器专项测试继续保留 | LC-04 重写为 HTTP 层用例 |
 
 ### 不能移除
 

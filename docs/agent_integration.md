@@ -1,8 +1,14 @@
 # 智能体接入契约与任务
 
-> 本文描述当前仍在运行的 v4 自定义工具循环。下一步已经确定使用 LangChain 单智能体重构，但尚未实施；目标架构、代码去留和验收见 [LangChain 业务智能体第一版方案](langchain_agent_v1_plan.md)。本文在 LC-04 完成前继续作为当前接口事实来源。
+> 本文保留 **v4 响应契约**；本地 `main` 已合入 LangChain `create_agent` 编排及 `codex/lc-safety-fix` 安全修复，响应字段兼容。`f14eceb` 是合并前的旧 v4 自定义工具循环复核提交；下文描述旧循环、九工具注册表及固定分类的段落均为 LC-01 之前的历史契约背景，不代表当前运行实现。当前验收见 [开发任务](agent_development_plan.md)，架构见 [第一版方案](langchain_agent_v1_plan.md)。
 
-2026-09-22 状态核对：当前运行契约为 v4。data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](query_analytics_sql06.md)。
+2026-09-23 整合记录：`f14eceb` 审查记录了 SQL 成功后二次执行、超时响应后后台触库和联调脚本引用旧入口。三项已修复并整合到本地 `main`；每请求统一最多 8 次工具调用（8 个业务工具、知识库、SQL schema/check/execute 共用），模型递归步数上限 40、整体预算 60 秒。SQL 数据库实际执行最多一次；仅首次尚未执行的普通语法错误允许一次修正。预算耗尽返回含稳定错误码与 call_id 的结果；整体超时先设置取消事件并等待线程停止，之后才返回 504 和释放请求 Session。同步业务工具无法强制中断时，504 实际返回可能晚于 60 秒。修复分支离线后端全量 245 passed / 12 skipped、前端 build/check:workbench、`/health`/`/docs`/`/openapi.json` 非浏览器冒烟通过；真实模型、独立 PostgreSQL 和浏览器本版仍待验收，远端未推送。
+
+2026-09-22 LC-04 状态核对：LC-04 已实现待验证——8 个只读业务服务包装为原生 LangChain Tools（复用已验证服务层算法，参数经 Pydantic args_schema 校验，服务层错误降级为 `INVALID_TOOL_ARGS`/`DATABASE_UNAVAILABLE` observation），v4 响应组装迁至 `results.py`（`normalize_status` 增加「已纠正错误豁免」，保持纠正循环顶层状态语义），旧 `runner.py` 及手工 TOOL_REGISTRY/固定短语分类已按计划 §7 移除，固定问句测试由 `test_agent_expressions.py` 多表达矩阵替代。离线回归 231 passed / 12 skipped，前端 build 与 check:workbench 通过。未验证：真实 DeepSeek 问答与工具选择准确率、真实 PG SQL 链路、浏览器端到端（无密钥/无浏览器环境，本轮无法执行）。
+
+2026-09-22 LC-03 状态核对：受限 SQL 工具（`get_database_schema` / `check_sql` / `execute_sql`）已接入，复用 SQL-03/04 策略与独立只读执行器，仅在功能开关完整时向模型暴露；普通筛选/排序/聚合/批准 JOIN 走 schema→check→execute 链路，写入被只读策略拒绝且拒绝后关闭重试。固定短语前置分类已按方案 §7 移除（LC-01/03 完成条件达成），问候、范围外、知识、写库/越权意图和澄清全部交给模型与工具底座处理。LC-02 起已有轻量知识库与 `search_project_knowledge` 工具。统一序列化已修复 `Decimal`（median_gap_minutes）导致的 HTTP 500；工具错误降级为可理解 observation。以下「当前实现」段落中关于自定义工具循环、固定分类与手工 TOOL_REGISTRY 的描述指 LC-01 之前的 v4 实现，旧 `runner.py` 已于 LC-04 清理。
+
+2026-09-22 状态核对（LC-01 之前的事实，保留作契约背景）：data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](query_analytics_sql06.md)。
 
 历史核对：2026-09-20 的 v3 多工具版采用“大模型 API + 自定义只读查询工具”，当时未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。该段只说明旧版演进背景，不再代表下一步架构决定。
 
@@ -12,9 +18,9 @@
 
 用户反馈新生成的小规模模拟数据已表现出封锁后停止通过海峡；本次文档修改不重新核验数据库批次或数量，不将其写成已验证的数据库结论。事件面板和智能体均已接入 P2 关联读取，但 observed 演示邻近与 mentioned 文本提及严格分列；通行及关联工具都不得推导真实事件对具体船只的因果影响。
 
-已集成现有 FastAPI：路由位于 backend/app/routers/agent.py，工具调用循环、模型适配及查询服务位于 backend/app/services/agent/。当前使用 DeepSeek 的 OpenAI 兼容 API，通过 openai Python SDK 调用；配置和密钥仅由后端环境提供。
+已集成现有 FastAPI：路由位于 backend/app/routers/agent.py，编排、模型适配及查询服务位于 backend/app/services/agent/。当前版本通过 `langchain-openai` 的 ChatOpenAI 接入 DeepSeek OpenAI 兼容 API；配置和密钥仅由后端环境提供。
 
-当前是 Tool Calling：8 个确定性工具仍由开发者写 SQL/SQLAlchemy；第 9 个 `query_analytics` 允许模型在 catalog v1 内生成受限 SELECT 和绑定参数，但必须经过 SQL-03 全树白名单校验与 SQL-04 专用只读执行器。本版不提供任意 SQL HTTP 接口，也不回退主应用数据库连接。
+历史 v4 Tool Calling：8 个确定性工具由开发者写 SQL/SQLAlchemy；第 9 个 `query_analytics` 在 catalog v1 内允许模型生成受限 SELECT 和绑定参数，仍必须经过 SQL-03 全树白名单校验与 SQL-04 专用只读执行器。LangChain 分支把它拆成 schema/check/execute 三工具，不提供任意 SQL HTTP 接口，也不回退主应用数据库连接。
 
 | 责任 | 交付 |
 | --- | --- |
@@ -53,7 +59,7 @@ question 必填，去除首尾空白后 1–2000 字符。时间字段可省略�
 
 history 可选，为此前对话的消息列表（role 限 user/assistant，content 去除首尾空白后 1–2000 字符），最多携带最近 10 条消息（user/assistant 各计一条，通常为 5 组问答）；服务端将 history 插在 system 与本次问题之间。单轮问答不传 history。
 
-注册表包含九个只读工具，批次、门线、读取上限和返回条数上限由后端控制。`query_analytics` 默认关闭时从当前请求的模型工具表移除；所有工具都只通过 `/agent/analyze` 使用，不单独公开 SQL 路由：
+以下九工具注册表为 LC-01 前历史实现；当前版本保留八个业务工具，新增知识库工具并将 `query_analytics` 拆成 schema/check/execute 三工具。SQL 默认关闭时三工具均不向模型暴露；所有工具只通过 `/agent/analyze` 使用，不单独公开 SQL 路由：
 
 | 工具 | 参数 | 说明 |
 | --- | --- | --- |
@@ -80,9 +86,9 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 → 模型组织回答 → 后端从工具结果装配结构化 ID、数量和证据 → 返回页面
 ```
 
-当前实现：确定性分类先处理 AG-01 中条件不足、明确写库/泄露意图、项目能力/数据来源/通行规则类非数据问题，以及 catalog v1 尚不支持的船位/停留聚合，不调用模型或工具；其他数据问题若模型未调用工具仍报错。未知工具、普通非法参数允许有限纠正。结构化结果以服务端生成的 `call_001`、`call_002` 为键并带 `tool_name`，不会再被同名工具覆盖。除 `query_analytics` 的受限 SQL 外，SQL、距离和通行判断不交给模型计算。自由回答仍未逐项事实核验；SQL-06 增加疑似外部指令文本防回显门，命中时隐藏整段自由回答并保留结构化结果和限制说明。
+历史 v4 实现：确定性分类先处理条件不足、写库/泄露意图等；当前版本已移除固定分类，由模型选择工具，SQL 安全仍由策略和只读执行器强制。结构化结果以服务端生成的 `call_001`、`call_002` 为键并带 `tool_name`；自由回答仍未逐项事实核验，疑似外部指令文本防回显门继续保留。
 
-建议整体超时 60 秒、最多 4 轮模型请求、3 次业务工具执行；读取上限 50000 个报位，船舶检索上限 20 条，事件查询上限 5 个事件、每事件 10 条报道。读取超限要求缩小范围，不能截断后宣称零匹配；仅展示截断时保留实际总数并标记 truncated。前端超时覆盖后端预算，不沿用新闻查询的 20 秒。
+当前实现：整体预算 60 秒、统一最多 8 次工具调用、LangChain 递归步数上限 40；没有旧版 4 轮模型请求或 3 次业务工具执行上限。读取上限 50000 个报位，船舶检索上限 20 条，事件查询上限 5 个事件、每事件 10 条报道。读取超限要求缩小范围，不能截断后宣称零匹配；仅展示截断时保留实际总数并标记 truncated。前端超时覆盖后端预算，不沿用新闻查询的 20 秒。
 
 模型密钥和数据库凭据只保留在后端环境，不进入前端、回答或日志。除经过固定解析器、正向白名单、catalog 实物核验和独立只读角色的 `query_analytics` 外，不执行模型生成的 Python/SQL。数据库文本和新闻属于不可信数据，不执行其中指令。遗留 nearby-events 接口和 MobilityDB 固定窗口试验不作为本版通用工具。
 
@@ -149,6 +155,6 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 
 回答中的船/事件地图定位已实现；历史轨迹逐点回放联动与服务端会话持久化尚未实现；更细粒度的事件与模拟船交互建模仍需设计。旧版 get_ship_context、find_news_events、get_event_evidence 保留为参考，不是本版必做项；新闻扩展仍须区分报道日期与事件时间，保留来源标识，不按船名自动匹配真实与模拟船。
 
-受限 Text-to-SQL 已完成 SQL-01～06，`query_analytics` 已进入当前 v4 工具循环但默认关闭。SQL-06 已验证真实 DeepSeek 工具 schema、固定 fixture 人工 SQL 对照和浏览器交互。下一版已确定引入 LangChain 单智能体并复用这套 SQL 底座；第一版不直接编写 LangGraph，复杂恢复或持久化需求出现后再评估。
+历史 SQL-01～06 已完成并在旧 v4 循环注册默认关闭的 `query_analytics`。SQL-06 曾验证真实 DeepSeek 工具 schema、固定 fixture 人工 SQL 对照和浏览器交互，不能视为当前版本已重验。当前版本已用 LangChain 单智能体复用 SQL 底座，SQL 三工具默认关闭；第一版不直接编写 LangGraph，复杂恢复或持久化需求出现后再评估。
 
 最小版（v2）已实现并联调：后端 /agent/analyze 与前端智能体面板已跑通默认问题（返回 1 艘 SIM V2 化学品船 019，证据 P1，观测完成于 2026-02-28T18:14:54Z）；npm run build 与 npm run check:workbench 已通过。v3 多工具版历史联调记录（原标注日期晚于本次文档核对日，实际验收日期待核对；以下不代表本次重新验证）：通行回归问题 1 次工具调用 4.1s；「油轮 SIM V2 油轮 004 轨迹」问题链式调用 search_ships + get_ship_track 共 2 次 5.7s；「evt_001 事件与报道」1 次 get_event_context 3.1s，回答均保留来源链接与模拟边界声明。环境交接见 [database_setup.md](database_setup.md)。

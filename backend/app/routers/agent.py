@@ -1,6 +1,7 @@
-"""POST /agent/analyze：智能体问答接口（契约 v4）。
+"""POST /agent/analyze：智能体问答接口（契约 v4，LC-01 起由 LangChain Agent 驱动）。
 
 错误体统一为 detail 对象 {code, message, request_id}，对齐契约「预设响应与错误」。
+编排位于 services/agent/langchain_runner.py；模型配置缺失或不可用映射 503。
 """
 import logging
 import uuid
@@ -13,14 +14,13 @@ from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.schemas_agent import AgentAnalyzeRequest, AgentAnalyzeResponse
 from backend.app.services.agent.config import DEFAULT_CLOSURE_AT, MAX_WINDOW
-from backend.app.services.agent.model_client import AgentConfigError, build_client
-from backend.app.services.agent.runner import (
+from backend.app.services.agent.langchain_runner import run_lc_agent
+from backend.app.services.agent.model_client import AgentConfigError
+from backend.app.services.agent.results import (
     AgentInvalidResponseError,
     AgentTimeoutError,
-    _jsonable,
-    is_preflight_question,
-    run_agent,
 )
+from backend.app.services.agent.serialization import to_jsonable
 from backend.app.services.agent.query_analytics_executor import QueryExecutionError
 
 logger = logging.getLogger(__name__)
@@ -50,17 +50,9 @@ def analyze(
     if end_at - closure_at > MAX_WINDOW:
         _error(422, "INVALID_REQUEST", "查询窗口不能超过 24 小时", request_id)
 
-    client = None
-    if not is_preflight_question(request.question):
-        try:
-            client = build_client()
-        except AgentConfigError as exc:
-            _error(503, "AGENT_UNAVAILABLE", str(exc), request_id)
-
     try:
-        outcome = run_agent(
+        outcome = run_lc_agent(
             db,
-            client,
             question=request.question,
             closure_at=request.closure_at,
             end_at=request.end_at,
@@ -71,6 +63,8 @@ def analyze(
         _error(504, "AGENT_TIMEOUT", str(exc), request_id)
     except AgentInvalidResponseError as exc:
         _error(502, "AGENT_INVALID_RESPONSE", str(exc), request_id)
+    except AgentConfigError as exc:
+        _error(503, "AGENT_UNAVAILABLE", str(exc), request_id)
     except ValueError as exc:
         _error(422, "INVALID_REQUEST", str(exc), request_id)
     except QueryExecutionError as exc:
@@ -85,6 +79,6 @@ def analyze(
         logger.warning("model unavailable request_id=%s type=%s", request_id, type(exc).__name__)
         _error(503, "AGENT_UNAVAILABLE", "模型服务当前不可用", request_id)
 
-    payload = _jsonable(outcome)
+    payload = to_jsonable(outcome)
     payload["request_id"] = request_id
     return AgentAnalyzeResponse(**payload)

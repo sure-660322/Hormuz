@@ -9,7 +9,7 @@
 - 船舶与轨迹为教学模拟；events 为新闻聚合事件，news 为已采集的真实报道及加工字段。不得统一称为“全模拟”或“真实 AIS”。
 - 当前批次为 sim_ais_demo/output_news_aligned/；数量是可变状态，变更前查询实际数据。
 - MobilityDB/PostGIS 派生能力 P0–P4 已有实现，P5 部分实现（data-health 已接入，主回放尚未切换 simplified 派生层）。TimescaleDB 已安装，业务未使用时序表。
-- 智能体当前实现为 v4 自定义工具循环：POST /agent/analyze、8 个确定性只读工具、默认关闭的受限 `query_analytics`、多轮 history 和回答内地图定位。下一步已确定使用 LangChain 单智能体重构，目标为系统提示 + 轻量知识库 + 业务 Skills + 受限 SQL Agent；第一版不直接编写 LangGraph。当前契约见 docs/agent_integration.md，目标方案见 docs/langchain_agent_v1_plan.md，任务状态见 docs/agent_development_plan.md。
+- `main` 已合入 LangChain `create_agent` 单智能体、知识库、8 个业务工具和默认关闭的 SQL 三工具，以及整合前安全修复；响应继续保持 v4 契约。`f14eceb` 记录的候选缺陷已修复并保留历史复核证据。真实模型、独立数据库 SQL 链路及浏览器验收状态见 docs/agent_development_plan.md；当前契约见 docs/agent_integration.md。
 
 ## 修改与协作
 
