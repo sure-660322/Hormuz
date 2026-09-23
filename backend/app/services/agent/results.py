@@ -130,7 +130,9 @@ def build_result(
 ) -> dict:
     passage = None
     for result in results.values():
-        if result.get("tool_name") == "query_strait_passages":
+        if (result.get("tool_name") == "query_strait_passages"
+                and result.get("status") in {"ok", "partial"}
+                and "ships" in result and "evidence" in result):
             passage = result
             break
     ships: list[dict] = []

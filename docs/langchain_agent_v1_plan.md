@@ -1,6 +1,6 @@
 # LangChain 业务智能体第一版技术方案
 
-状态：**LC-04 已实现待验证**（2026-09-22，分支 kimi/agent-lc04；离线回归 231 passed / 12 skipped，前端 build 与 check:workbench 通过；真实模型、SQL 演示链路与浏览器端到端验收未做，无密钥/无浏览器环境）。编排已切换为 LangChain `create_agent`（依赖锁定 `langchain==1.4.2`、`langchain-openai==1.6.3`），响应保持 v4 契约；业务工具（LC-01）、轻量知识库（LC-02）、受限 SQL 工具（LC-03）已接入，8 个业务服务为原生 LangChain Tools（`business_tools.py`），固定短语前置分类与旧 `runner.py` 手写工具循环已按计划 §7 移除（LC-03/LC-04），固定问句测试由 `test_agent_expressions.py` 多表达矩阵替代。当前线上/本地运行细节仍以 [智能体接入契约](agent_integration.md) 为准。
+状态：**整版已实现待真实环境验证，尚未合入 main**（2026-09-23，分支 `codex/lc-safety-fix`，基线 `kimi/agent-lc04` 的 `6bf739c`）。`main` 的 `f14eceb` 曾因 SQL 可二次成功执行、超时后后台触库和联调脚本引用删除入口而阻塞整合；本分支已修复并通过确定性离线回归 245 passed / 12 skipped、前端 build/check:workbench 及三个 HTTP 冒烟入口。真实 DeepSeek、独立 PostgreSQL SQL 链路和浏览器未验证。编排使用 LangChain `create_agent`，响应保持 v4 契约；8 个原生业务工具、知识库和受限 SQL 三工具均接入，旧 `runner.py` 手写循环已删除。详细复核和修复记录见 [开发任务](agent_development_plan.md)。
 
 ## 1. 目标体验
 
@@ -94,6 +94,8 @@ SQL Agent 是主智能体的一组工具，不是另一个模型：
 理解统计问题 → 查看 schema → 生成 SQL → 检查 → 执行
 → 成功则回答；普通语法问题最多修正一次；仍失败则说明原因
 ```
+
+当前请求边界（2026-09-23 修复候选）：每请求统一最多 8 次工具调用，计入 8 个业务工具、知识库及 SQL 的 schema/check/execute；LangChain `create_agent` 的递归步数上限为 40，整体执行预算为 60 秒，没有旧版“4 轮模型请求、3 次业务工具执行”的限制。第 9 次工具请求以结构化 `TOOL_BUDGET_EXCEEDED` 返回，并停止后续模型调用。`execute_sql` 第一次成功、拒绝、超时或不可重试失败后关闭；第一次尚未实际执行的普通语法错误才允许一次修正，数据库实际执行最多一次。整体超时后的任务先取消后收尾，HTTP 超时响应须等线程停止，不能让后台继续访问请求级 Session。
 
 保留现有 `agent_data` 语义视图、`query_analytics_policy.py` 和 `query_analytics_executor.py`。第一版支持常见 SELECT、WHERE、排序、聚合和批准 JOIN；需要更多数据时扩展语义视图，而不是开放业务底表。
 

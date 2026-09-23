@@ -7,6 +7,7 @@ data_health/dwell_query/encounters_query/event_ship_links_query），不重写�
 from __future__ import annotations
 
 import json
+import threading
 from datetime import datetime
 from typing import Any, Literal
 
@@ -22,6 +23,7 @@ from backend.app.services.agent.encounters_query import run_encounters_query
 from backend.app.services.agent.event_context import get_event_context
 from backend.app.services.agent.event_ship_links_query import run_event_ship_links_query
 from backend.app.services.agent.results import DATA_HEALTH_LIMITATIONS, parse_time_arg, tool_payload
+from backend.app.services.agent.request_guard import reserve_tool
 from backend.app.services.agent.serialization import to_jsonable
 from backend.app.services.agent.ship_search import (
     MAX_LIMIT as SHIP_SEARCH_MAX_LIMIT,
@@ -67,30 +69,21 @@ def error_observation(code: str, message: str) -> str:
 
 def record_envelope(state: dict, tool_name: str, payload: dict) -> str:
     """统一记录工具 envelope 到 state（results/tools_used），返回 observation JSON。"""
-    state["call_sequence"] += 1
-    call_id = f"call_{state['call_sequence']:03d}"
-    envelope = to_jsonable({"call_id": call_id, "tool_name": tool_name, **payload})
-    if tool_name not in state["tools_used"]:
-        state["tools_used"].append(tool_name)
-    state["results"][call_id] = envelope
+    with state.setdefault("lock", threading.RLock()):
+        state["call_sequence"] += 1
+        call_id = f"call_{state['call_sequence']:03d}"
+        envelope = to_jsonable({"call_id": call_id, "tool_name": tool_name, **payload})
+        if tool_name not in state["tools_used"]:
+            state["tools_used"].append(tool_name)
+        state["results"][call_id] = envelope
     return json.dumps(envelope, ensure_ascii=False)
-
-
-def _guard_budget(state: dict) -> str | None:
-    if state["tool_executions"] >= state["max_tool_executions"]:
-        return error_observation(
-            "TOOL_BUDGET_EXCEEDED",
-            f"工具执行次数超过 {state['max_tool_executions']} 次预算，请基于已有结果回答。",
-        )
-    state["tool_executions"] += 1
-    return None
 
 
 def _execute_guarded(state: dict, tool_name: str, func) -> str:
     """工具执行统一兜底：参数/数据库/未知异常都降级为 observation，不产生 500。"""
-    budget = _guard_budget(state)
-    if budget is not None:
-        return budget
+    denied = reserve_tool(state)
+    if denied is not None:
+        return record_envelope(state, tool_name, denied)
     try:
         payload = func()
     except ValueError as exc:

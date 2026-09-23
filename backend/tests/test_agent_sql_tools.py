@@ -29,7 +29,7 @@ class _FakeExecutor:
         self.calls = []
         self.disposed = False
 
-    def execute(self, *, sql, params, purpose, request_id, call_id):
+    def execute(self, *, sql, params, purpose, request_id, call_id, cancel_event=None):
         self.calls.append(
             {"sql": sql, "params": params, "purpose": purpose,
              "request_id": request_id, "call_id": call_id}
@@ -169,6 +169,135 @@ def test_execute_sql_refusal_closes_further_sql(fake_executor):
     assert second["code"] == "SQL_CLOSED"
     # 拒绝后重试被底座拦截：假执行器只在第一次被调用
     assert len(fake_executor.calls) == 1
+
+
+def test_execute_sql_success_closes_further_sql(fake_executor):
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("execute_sql", {"sql": VALID_SQL, "params": VALID_PARAMS}),
+        _tool_call("execute_sql", {"sql": VALID_SQL, "params": VALID_PARAMS}),
+        "已得到首次查询结果。",
+    ])
+    outcome = run_lc_agent(None, "查船型", llm=llm, sql_enabled=True)
+    assert outcome["results"]["call_001"]["status"] == "ok"
+    assert outcome["results"]["call_002"]["code"] == "SQL_CLOSED"
+    assert len(fake_executor.calls) == 1
+
+
+@pytest.mark.parametrize("status,code", [
+    ("refused", "AGENT_QUERY_REFUSED"),
+    ("timeout", "AGENT_QUERY_TIMEOUT"),
+    ("permission_failed", "AGENT_QUERY_UNAVAILABLE"),
+    ("source_unavailable", "AGENT_QUERY_UNAVAILABLE"),
+])
+def test_sql_terminal_errors_never_retry(fake_executor, status, code):
+    from backend.app.services.agent.query_analytics_executor import QueryExecutionError
+    fake_executor.error = QueryExecutionError(
+        status=status, code=code, public_message="查询不可用", http_status=200,
+        retryable=False, query_executed=status == "timeout",
+    )
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("execute_sql", {"sql": VALID_SQL}),
+        _tool_call("execute_sql", {"sql": VALID_SQL}),
+        "查询失败。",
+    ])
+    outcome = run_lc_agent(None, "查船型", llm=llm, sql_enabled=True)
+    assert outcome["results"]["call_001"]["status"] == status
+    assert outcome["results"]["call_002"]["code"] == "SQL_CLOSED"
+    assert len(fake_executor.calls) == 1
+
+
+def test_first_unexecuted_syntax_error_has_one_correction(monkeypatch):
+    from backend.app.services.agent.query_analytics_executor import QueryExecutionError
+
+    class SyntaxThenSuccess(_FakeExecutor):
+        def execute(self, **kwargs):
+            self.calls.append(kwargs)
+            if len(self.calls) == 1:
+                raise QueryExecutionError(
+                    status="syntax_error", code="AGENT_QUERY_SYNTAX",
+                    public_message="语法错误", http_status=200,
+                    retryable=True, query_executed=False,
+                )
+            return _fake_result()
+
+    executor = SyntaxThenSuccess()
+    monkeypatch.setattr(sql_tools, "EXECUTOR_FACTORY", lambda: executor)
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("execute_sql", {"sql": "SELECT BAD"}),
+        _tool_call("execute_sql", {"sql": VALID_SQL}),
+        _tool_call("execute_sql", {"sql": VALID_SQL}),
+        "已得到结果。",
+    ])
+    outcome = run_lc_agent(None, "查船型", llm=llm, sql_enabled=True)
+    assert [v["status"] for v in outcome["results"].values()] == [
+        "syntax_error", "ok", "error",
+    ]
+    assert outcome["results"]["call_003"]["code"] == "SQL_CLOSED"
+    assert len(executor.calls) == 2
+
+
+def test_second_unexecuted_syntax_error_closes_branch(monkeypatch):
+    from backend.app.services.agent.query_analytics_executor import QueryExecutionError
+
+    class SyntaxExecutor(_FakeExecutor):
+        def execute(self, **kwargs):
+            self.calls.append(kwargs)
+            raise QueryExecutionError(
+                status="syntax_error", code="AGENT_QUERY_SYNTAX",
+                public_message="语法错误", http_status=200,
+                retryable=True, query_executed=False,
+            )
+
+    executor = SyntaxExecutor()
+    monkeypatch.setattr(sql_tools, "EXECUTOR_FACTORY", lambda: executor)
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("execute_sql", {"sql": "SELECT BAD"}),
+        _tool_call("execute_sql", {"sql": "SELECT BAD AGAIN"}),
+        _tool_call("execute_sql", {"sql": VALID_SQL}),
+        "语法无法修复。",
+    ])
+    outcome = run_lc_agent(None, "查船型", llm=llm, sql_enabled=True)
+    assert outcome["results"]["call_003"]["code"] == "SQL_CLOSED"
+    assert len(executor.calls) == 2
+
+
+def test_sql_tools_share_eight_call_budget(fake_executor):
+    llm = ScriptedFakeLLM(script=[
+        *[_tool_call("get_database_schema", {}) for _ in range(6)],
+        _tool_call("check_sql", {"sql": VALID_SQL, "params": VALID_PARAMS}),
+        _tool_call("execute_sql", {"sql": VALID_SQL, "params": VALID_PARAMS}),
+        _tool_call("execute_sql", {"sql": VALID_SQL, "params": VALID_PARAMS}),
+        "查询完成。",
+    ])
+    outcome = run_lc_agent(None, "查船型", llm=llm, sql_enabled=True)
+    assert outcome["results"]["call_008"]["status"] == "ok"
+    assert outcome["results"]["call_009"]["code"] == "TOOL_BUDGET_EXCEEDED"
+    assert outcome["status"] == "partial"
+    assert len(fake_executor.calls) == 1
+    assert llm._calls == 9
+
+
+def test_sql_budget_shared_with_knowledge_and_business(fake_executor, monkeypatch):
+    from backend.app.services.agent import business_tools
+
+    business_calls = []
+    monkeypatch.setattr(business_tools.health_service, "get_data_health",
+                        lambda db: business_calls.append(1) or {"source": {}})
+    llm = ScriptedFakeLLM(script=[
+        *[_tool_call("search_project_knowledge", {"query": "模拟船"}) for _ in range(4)],
+        _tool_call("get_data_health", {}),
+        _tool_call("get_database_schema", {}),
+        _tool_call("check_sql", {"sql": VALID_SQL, "params": VALID_PARAMS}),
+        _tool_call("execute_sql", {"sql": VALID_SQL, "params": VALID_PARAMS}),
+        _tool_call("get_data_health", {}),
+        "完成。",
+    ])
+    outcome = run_lc_agent(None, "查数据", llm=llm, sql_enabled=True)
+    assert outcome["results"]["call_009"]["code"] == "TOOL_BUDGET_EXCEEDED"
+    assert outcome["status"] == "partial"
+    assert len(business_calls) == 1
+    assert len(fake_executor.calls) == 1
+    assert llm._calls == 9
 
 
 # ------------------------------------------------------------ 功能开关

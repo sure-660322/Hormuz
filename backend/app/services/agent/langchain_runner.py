@@ -14,16 +14,19 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime
 from typing import Any
 
 from langchain.agents import create_agent
+from langchain.agents.middleware import before_model
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
+from langgraph.errors import GraphRecursionError
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -44,6 +47,7 @@ from backend.app.services.agent.model_client import (
     AgentConfigError,
     default_model,
 )
+from backend.app.services.agent.request_guard import new_state, reserve_tool
 
 # 整体执行预算（秒），与 v4 契约一致；单模型请求超时见 model_client
 OVERALL_BUDGET_SECONDS = 60.0
@@ -52,6 +56,11 @@ MAX_TOOL_EXECUTIONS = 8
 MAX_HISTORY_TURNS = 10  # 与 v4 一致：最近 10 条 user/assistant 消息
 # LangGraph 递归步数上限（create_agent 内部执行基础；每个模型/工具节点计一步）
 RECURSION_LIMIT = 40
+
+
+class _ToolBudgetStopped(RuntimeError):
+    """Internal stop after the first denied over-budget tool attempt."""
+
 
 SYSTEM_PROMPT = f"""你是霍尔木兹海峡海事态势分析智能体（教学项目问答助手）。
 
@@ -108,12 +117,9 @@ def _make_knowledge_tool(state: dict) -> StructuredTool:
         query: str = Field(description="检索主题，如「通行判定规则」「数据语义」「智能体能力边界」")
 
     def _invoke(query: str) -> str:
-        if state["tool_executions"] >= state["max_tool_executions"]:
-            return record_envelope(state, "search_project_knowledge", {
-                "status": "error", "code": "TOOL_BUDGET_EXCEEDED",
-                "message": f"工具执行次数超过 {state['max_tool_executions']} 次预算，请基于已有结果回答。",
-            })
-        state["tool_executions"] += 1
+        denied = reserve_tool(state)
+        if denied is not None:
+            return record_envelope(state, "search_project_knowledge", denied)
         matches = search_knowledge(query)
         return record_envelope(state, "search_project_knowledge", {
             "status": "ok",
@@ -181,21 +187,23 @@ def run_lc_agent(
     if sql_enabled is None:
         sql_enabled = sql_tools.sql_tools_enabled()
 
-    state: dict[str, Any] = {
-        "tools_used": [],
-        "results": {},
-        "tool_executions": 0,
-        "call_sequence": 0,
-        "max_tool_executions": MAX_TOOL_EXECUTIONS,
-        "sql_closed": False,
-    }
+    state: dict[str, Any] = new_state(MAX_TOOL_EXECUTIONS, budget_seconds)
     tools = make_business_tools(db, closure_at, end_at, forced_window, state)
     tools.append(_make_knowledge_tool(state))
     if sql_enabled:
         tools.extend(sql_tools.make_sql_tools(request_id=request_id, state=state))
 
     system_prompt = SYSTEM_PROMPT + (SQL_PROMPT_SECTION if sql_enabled else "")
-    agent = create_agent(llm, tools, system_prompt=system_prompt)
+    @before_model
+    def _stop_expired_or_exhausted(_agent_state, _runtime):
+        if state["cancel_event"].is_set() or time.monotonic() >= state["deadline"]:
+            state["cancel_event"].set()
+            raise results.AgentTimeoutError("智能体整体执行已超时")
+        if state["budget_exhausted"]:
+            raise _ToolBudgetStopped()
+
+    agent = create_agent(llm, tools, system_prompt=system_prompt,
+                         middleware=[_stop_expired_or_exhausted])
     input_messages = _history_messages(history) + [HumanMessage(content=question)]
 
     pool = ThreadPoolExecutor(max_workers=1)
@@ -207,13 +215,33 @@ def run_lc_agent(
         )
         try:
             result = future.result(timeout=budget_seconds)
+        except _ToolBudgetStopped:
+            status = results.normalize_status(state["tools_used"], state["results"])
+            return results.build_result(
+                state["tools_used"], state["results"], closure_at, end_at,
+                closure_source,
+                "本次请求已达到工具调用预算，请根据已返回的结构化结果核对，或发起新请求。",
+                status="partial" if status == "ok" else status,
+            )
+        except GraphRecursionError as exc:
+            raise results.AgentInvalidResponseError("模型未在执行步数预算内完成回答") from exc
         except FuturesTimeoutError as exc:
+            state["cancel_event"].set()
+            # Python cannot stop a running thread or synchronous repository call.
+            # Keep the request Session alive until the worker has fully stopped;
+            # every subsequent tool is denied by the cancellation gate.
+            try:
+                future.result()
+            except Exception:
+                pass  # Timeout is the stable public result after cancellation.
             raise results.AgentTimeoutError(
                 f"智能体执行超过 {budget_seconds:.0f} 秒整体预算"
             ) from exc
     finally:
-        # 超时后后台线程继续跑但不阻塞响应；单线程池随进程生命周期回收
-        pool.shutdown(wait=False)
+        pool.shutdown(wait=True)
+
+    if state["cancel_event"].is_set():
+        raise results.AgentTimeoutError(f"智能体执行超过 {budget_seconds:.0f} 秒整体预算")
 
     final = None
     for message in reversed(result.get("messages", [])):

@@ -4,7 +4,7 @@
 
 工作区整合：2026-09-22。SQL-06 已在独立 worktree 完成固定 fixture、一次性 PostgreSQL 17、真实 DeepSeek 和浏览器综合验收；未连接共享业务库，其余业务数量沿用历史核验记录。其他成员的数据库需自行导入，Git 不会同步数据库内容。本地验收不等于远端发布。
 
-当前协作：用户已确认 Kimi 前端优化结束，成果已纳入本轮整理；性能报告见 [地图渲染优化](docs/map_rendering_optimization.md)，性能数值为 Kimi 的历史测量，本轮未重测。后续新工作使用独立分支和 worktree，见 [多会话协作与交接](docs/collaboration.md)。本页维护当前能力摘要；[LangChain 业务智能体第一版](docs/langchain_agent_v1_plan.md) LC-01～04 已按阶段完成（分支 kimi/agent-lc01～04，未合入 main），实施状态见 [智能体开发任务](docs/agent_development_plan.md)。
+当前协作：用户已确认 Kimi 前端优化结束，成果已纳入本轮整理；性能报告见 [地图渲染优化](docs/map_rendering_optimization.md)，性能数值为 Kimi 的历史测量，本轮未重测。后续新工作使用独立分支和 worktree，见 [多会话协作与交接](docs/collaboration.md)。LangChain 第一版修复候选位于 `codex/lc-safety-fix`（以 `kimi/agent-lc04` 的 `6bf739c` 为基线），尚未合入 `main`；2026-09-23 修复与离线验收见 [智能体开发任务](docs/agent_development_plan.md)。`main` 的 `f14eceb` 完整性复核事实保留在该计划中。
 
 交接包注意：本轮文件校验发现 events/news 的 SHA-256 与 manifest 不符，当前工作区快照待重新导出和独立空库验收，不能沿用历史导入成功结论。详见 [数据库交接](docs/database_setup.md)。
 
@@ -20,7 +20,7 @@
 | 新闻浏览 | 分类及报道日期排序、关联报道和来源链接、有代表坐标的事件定位；与船舶回放独立 |
 | MobilityDB / PostGIS | **P0–P4 已实现，P5 部分实现**：派生轨迹、速度着色、事件关联、停留和相遇分析、data-health 已有代码；主回放仍读原始船位，未切换 simplified 派生层。旧停留试验仍并存；历史数量与验收见下表 |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
-| 智能体 | **LC-04 已实现待验证**：POST /agent/analyze 由 LangChain `create_agent` 单智能体驱动（分支 kimi/agent-lc04，响应保持 v4 契约），8 个只读业务服务为原生 LangChain Tools，知识库工具与受限 SQL 工具（schema/check/execute，仅功能开关完整时暴露）已接入，固定短语前置分类已移除，旧 `runner.py` 手写工具循环已删除；离线回归 231 passed / 12 skipped，前端构建与工作台检查通过；真实模型、本地演示环境 SQL 链路与浏览器验收待做 |
+| 智能体 | **修复候选已实现待真实环境验证，未合入 main**：`codex/lc-safety-fix` 的 POST /agent/analyze 由 LangChain `create_agent` 驱动，8 个只读业务工具、知识库和默认关闭的 SQL 三工具保持 v4 响应契约；统一 8 次工具调用预算、SQL 请求内最多一次实际执行、超时任务停止后才释放请求 Session。2026-09-23 离线后端 245 passed / 12 skipped，前端 build/check:workbench 与三个 HTTP 冒烟入口通过；真实模型、独立 PostgreSQL SQL 链路和浏览器未验证 |
 
 当前模拟批次依据同期新闻构造等待等行为，具体船数、响应时刻、航迹及比例属于模拟假设。新闻中的真实船名不能与模拟船自动认定为同一船；时空接近不能作为因果证据。参见[当前批次说明](sim_ais_demo/output_news_aligned/README.md)。
 
@@ -111,7 +111,7 @@ npm run dev -- --port 5174
 
 设计见[智能体接入契约与任务](docs/agent_integration.md)。POST /agent/analyze 已注册，前端右侧工作面板「智能体」页签支持多轮提问，回答带船只/事件引用与「地图定位」按钮，可定位到当前回放快照中的船或事件位置。
 
-> **LC-04 已实现待验证**（2026-09-22，分支 kimi/agent-lc04）：编排为 LangChain `create_agent` 单智能体（DeepSeek OpenAI 兼容接口），8 个现有只读业务服务包装为**原生 LangChain Tools**（`business_tools.py`，复用已验证的服务层算法），轻量知识库工具（`search_project_knowledge`）与受限 SQL 工具（`get_database_schema`/`check_sql`/`execute_sql`，复用 SQL-03/04 安全底座、仅功能开关完整时暴露）已接入，响应保持 v4 契约；固定短语前置分类已移除，写库/越权意图由只读策略拒绝、语义澄清由模型自然追问；旧 `runner.py` 手写模型工具循环已删除（v4 响应组装迁至 `results.py`），固定问句矩阵由多表达测试（`test_agent_expressions.py`）接管。离线回归 231 passed / 12 skipped；前端 `npm run build` 与 `npm run check:workbench` 通过；真实模型、本地演示环境 SQL 链路与浏览器端到端验收未做（无密钥，LC-04 范围）。
+> **2026-09-23 修复记录**：`main` 的 `f14eceb` 复核发现候选实现可重复执行 SQL、超时后后台继续触库、联调脚本导入旧入口。本分支已修复这三项并通过离线回归：SQL 三工具、知识库和业务工具共用 8 次请求预算；第一次 SQL 成功或终止失败后关闭执行分支，只有第一次未执行的普通语法错误允许一次修正；整体超时取消后等待工作线程退出，再由路由释放请求 Session。同步联调脚本到 `run_lc_agent`；无密钥返回 SKIP。真实 DeepSeek、独立 PostgreSQL 和浏览器仍待验证。
 
 当前实现采用 **LangChain `create_agent` + 原生业务 Tools + 现有只读业务服务/SQL 安全底座**，集成现有 FastAPI；手写工具循环与固定短语分类器已按计划 §7 移除。
 

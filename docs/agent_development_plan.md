@@ -1,6 +1,14 @@
 # 智能体下一阶段开发任务
 
-更新：2026-09-22。下一步目标已经调整为 [LangChain 业务智能体第一版](langchain_agent_v1_plan.md)。当前实际运行状态仍见 [智能体接入契约](agent_integration.md)，全项目摘要见 [README](../README.md)。本页只维护实施顺序和状态，不重复技术方案。
+更新：2026-09-23。LangChain 第一版修复候选在 `codex/lc-safety-fix`，基线 `kimi/agent-lc04` 的 `6bf739c`；尚未合入 `main`（复核提交 `f14eceb`）。当前分支实现见 [LangChain 第一版方案](langchain_agent_v1_plan.md) 与 [接入契约](agent_integration.md)，全项目摘要见 [README](../README.md)。
+
+## 2026-09-23 整合前复核与修复
+
+`main` 的 `f14eceb` 记录了候选实现的三项阻塞事实，作为历史复核保留：① 同一请求连续两次 `execute_sql` 都返回 `ok`，假执行器调用两次；② `ThreadPoolExecutor.shutdown(wait=False)` 使 0.062 秒返回的整体超时之后，后台仍于 0.172 秒调用 SQL 执行器，可能使用已释放的请求 Session；③ `scripts/test_deepseek_toolcall.py` 导入已删除的 `runner.run_agent`，启动即报 `ModuleNotFoundError`。当次候选全量测试 231 passed / 12 skipped、智能体专项 54 passed，前端 build/check:workbench 通过；这些通过记录并未覆盖上述缺陷。
+
+修复候选状态：**安全修复已通过确定性离线验证；整版已实现待真实环境验证，未合入 main**。本分支的 SQL 执行分支首次成功、拒绝、超时或不可重试失败即关闭；只有第一次尚未实际执行的语法错误可以重交一次，数据库实际执行最多一次。业务、知识库、schema、check、execute 共用每请求 8 次工具调用预算，超额请求返回带 `call_id`/`tool_name`/`TOOL_BUDGET_EXCEEDED` 的结构化结果并停止继续调用模型。整体预算 60 秒，超时设置取消事件；新工具被拒绝，执行中 SQL 收到取消事件；同步业务工具无法强制中断时，响应等工作线程结束才返回，确保 HTTP 504 后不会触库或使用已释放 Session。该等待可能使 HTTP 504 的实际响应时间超过 60 秒，属于保证资源生命周期的代价。
+
+2026-09-23 验证：使用 `D:\my_project\Hormuz-kimi-agent-lc04\backend\.venv\Scripts\python.exe -m pytest backend/tests -q`，**245 passed / 12 skipped**；离线测试覆盖 SQL 成功后二次拒绝、拒绝/超时/不可重试错误、语法修复一次、统一预算、晚返回模型调用、在途业务与 SQL 超时、HTTP 504 后 Session 释放及脚本无密钥 SKIP。`frontend` 中 `npm run build` 与 `npm run check:workbench` 通过；以占位环境变量和 FastAPI TestClient 对 `/health`、`/docs`、`/openapi.json` 冒烟均 200，没有连接数据库。真实 DeepSeek、独立 PostgreSQL SQL 链路和浏览器本轮未验证；没有连接共享数据库、推送或合入 main。
 
 ## 当前判断
 
@@ -18,6 +26,8 @@
 | LC-02 | 现有 8 个只读业务服务包装为 LangChain Tools；轻量 Markdown 知识库 | **已实现待验证** | 模型能按多种表达自主选择知识或 Skill；多轮代词可用 |
 | LC-03 | `get_database_schema`、`check_sql`、`execute_sql`；本地受限 SQL Agent | **已实现待验证** | 普通筛选/排序/聚合可问答；复杂业务继续走 Skill；写 SQL 被只读底座拒绝 |
 | LC-04 | 前端兼容、旧 runner/固定规则清理、真实模型和浏览器验收 | **已实现待验证** | 不要求固定问法；澄清、故障降级、表格、来源和地图引用正常 |
+
+LC-R1～R4（`f14eceb` 提出的整合前修复）：SQL 单次执行与统一预算、超时生命周期、联调入口、非浏览器验收已在本分支**离线验证**。LC-R5 的真实模型、独立 PostgreSQL 与浏览器验收**待验证**；合入 main 与远端推送**待开始**。
 
 ### LC-01 实施记录（2026-09-22，分支 kimi/agent-lc01）
 

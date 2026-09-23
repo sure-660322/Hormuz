@@ -82,7 +82,7 @@ class _FakeExecutor:
         self.calls = []
         self.disposed = False
 
-    def execute(self, *, sql, params, purpose, request_id, call_id):
+    def execute(self, *, sql, params, purpose, request_id, call_id, cancel_event=None):
         self.calls.append({"sql": sql, "params": params, "purpose": purpose})
         return self.result
 

@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -29,6 +30,8 @@ from backend.app.services.agent.query_analytics_policy import (
     validate_query,
 )
 from backend.app.services.agent.serialization import to_jsonable
+from backend.app.services.agent.request_guard import reserve_tool
+from backend.app.services.agent.business_tools import record_envelope
 
 # 测试接缝：与 v4 runner.QUERY_ANALYTICS_EXECUTOR_FACTORY 同款
 EXECUTOR_FACTORY = QueryAnalyticsExecutor.from_env
@@ -103,16 +106,15 @@ def _execute_payload(
     *,
     request_id: str,
     call_id: str,
+    cancel_event=None,
 ) -> dict:
     executor = EXECUTOR_FACTORY()
     try:
-        result = executor.execute(
-            sql=sql,
-            params=params or [],
-            purpose=purpose,
-            request_id=request_id,
-            call_id=call_id,
-        )
+        kwargs = dict(sql=sql, params=params or [], purpose=purpose,
+                      request_id=request_id, call_id=call_id)
+        if cancel_event is not None:
+            kwargs["cancel_event"] = cancel_event
+        result = executor.execute(**kwargs)
         return result.to_dict()
     finally:
         executor.dispose()
@@ -122,13 +124,7 @@ def make_sql_tools(*, request_id: str, state: dict) -> list[StructuredTool]:
     """构造三个受限 SQL 工具；执行/拒绝记录到 state（results、tools_used、sql_closed）。"""
 
     def _record(tool_name: str, payload: dict) -> str:
-        state["call_sequence"] += 1
-        call_id = f"call_{state['call_sequence']:03d}"
-        envelope = to_jsonable({"call_id": call_id, "tool_name": tool_name, **payload})
-        if tool_name not in state["tools_used"]:
-            state["tools_used"].append(tool_name)
-        state["results"][call_id] = envelope
-        return json.dumps(envelope, ensure_ascii=False)
+        return record_envelope(state, tool_name, payload)
 
     class _SchemaArgs(BaseModel):
         pass
@@ -144,34 +140,65 @@ def make_sql_tools(*, request_id: str, state: dict) -> list[StructuredTool]:
         purpose: str = Field(default="", description="查询用途说明（最多 500 字；不构成授权依据）")
 
     def _get_database_schema() -> str:
+        denied = reserve_tool(state)
+        if denied is not None:
+            return _record("get_database_schema", denied)
         try:
             return _record("get_database_schema", _schema_payload())
         except QueryPolicyError as exc:
             return _record("get_database_schema", {
                 "status": "error", "code": exc.code, "message": str(exc),
             })
+        except Exception:
+            return _record("get_database_schema", {
+                "status": "error", "code": "AGENT_QUERY_UNAVAILABLE",
+                "message": "SQL 目录当前不可用",
+            })
 
     def _check_sql(sql: str, params: list | None = None, purpose: str = "") -> str:
-        return _record("check_sql", _check_payload(sql, params, purpose))
+        denied = reserve_tool(state)
+        if denied is not None:
+            return _record("check_sql", denied)
+        try:
+            payload = _check_payload(sql, params, purpose)
+        except Exception:
+            payload = {"status": "error", "code": "AGENT_QUERY_UNAVAILABLE",
+                       "message": "SQL 校验当前不可用"}
+        if payload["status"] not in ("ok", "syntax_error"):
+            with state.setdefault("lock", threading.RLock()):
+                state["sql_closed"] = True
+        return _record("check_sql", payload)
 
     def _execute_sql(sql: str, params: list | None = None, purpose: str = "") -> str:
-        if state.get("sql_closed"):
+        denied = reserve_tool(state)
+        if denied is not None:
+            return _record("execute_sql", denied)
+        with state.setdefault("lock", threading.RLock()):
+            closed = state.get("sql_closed") or state.get("sql_attempts", 0) >= 2
+            if not closed:
+                state["sql_attempts"] = state.get("sql_attempts", 0) + 1
+                # Reserve the unique execution slot before releasing the lock.
+                state["sql_closed"] = True
+        if closed:
             return _record("execute_sql", {
                 "status": "error", "code": "SQL_CLOSED",
-                "message": "execute_sql 已因拒绝/超时/执行失败终止，不允许再次调用；"
-                           "请基于已有结果回答，或改走业务工具。",
+                "message": "本请求的 SQL 执行分支已关闭；请基于已有结果回答。",
             })
-        state["call_sequence"] += 1
-        call_id = f"call_{state['call_sequence']:03d}"
+        with state["lock"]:
+            state["call_sequence"] += 1
+            call_id = f"call_{state['call_sequence']:03d}"
         try:
             payload = _execute_payload(
-                sql, params, purpose, request_id=request_id, call_id=call_id
+                sql, params, purpose, request_id=request_id, call_id=call_id,
+                cancel_event=state.get("cancel_event"),
             )
         except QueryExecutionError as exc:
-            # 安全拒绝、超时或已执行的失败：关闭后续 execute_sql；
-            # 尚未执行的普通语法错误（retryable）允许修正一次
-            if not (exc.retryable and not exc.query_executed):
-                state["sql_closed"] = True
+            # Only the first unexecuted syntax failure may reopen one correction.
+            if (state["sql_attempts"] == 1 and exc.status == "syntax_error"
+                    and exc.retryable and not exc.query_executed
+                    and not state.get("cancel_event", threading.Event()).is_set()):
+                with state["lock"]:
+                    state["sql_closed"] = False
             payload = {
                 "status": exc.status,
                 "code": exc.code,
@@ -180,10 +207,15 @@ def make_sql_tools(*, request_id: str, state: dict) -> list[StructuredTool]:
                 "query_executed": exc.query_executed,
                 "retryable": exc.retryable,
             }
+        except Exception:
+            payload = {"status": "error", "code": "AGENT_QUERY_UNAVAILABLE",
+                       "message": "SQL 执行当前不可用", "query_executed": False,
+                       "retryable": False}
         envelope = to_jsonable({"call_id": call_id, "tool_name": "execute_sql", **payload})
-        if "execute_sql" not in state["tools_used"]:
-            state["tools_used"].append("execute_sql")
-        state["results"][call_id] = envelope
+        with state["lock"]:
+            if "execute_sql" not in state["tools_used"]:
+                state["tools_used"].append("execute_sql")
+            state["results"][call_id] = envelope
         return json.dumps(envelope, ensure_ascii=False)
 
     return [

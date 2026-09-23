@@ -7,6 +7,11 @@
   工具错误降级、超时与历史消息。
 """
 import time
+import os
+import subprocess
+import sys
+from pathlib import Path
+from threading import Event
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -159,6 +164,167 @@ def test_overall_budget_timeout():
     llm = ScriptedFakeLLM(script=["不会走到这里"], sleep_seconds=2.0)
     with pytest.raises(AgentTimeoutError):
         run_lc_agent(None, "你好", llm=llm, budget_seconds=0.2)
+
+
+def test_late_model_tools_cannot_touch_executor_or_repository(monkeypatch):
+    from backend.app.services.agent import sql_tools, business_tools
+
+    counts = {"sql": 0, "business": 0}
+
+    class Executor:
+        def execute(self, **kwargs):
+            counts["sql"] += 1
+            raise AssertionError("SQL must not start")
+
+        def dispose(self):
+            pass
+
+    def business(db):
+        counts["business"] += 1
+        raise AssertionError("repository must not start")
+
+    monkeypatch.setattr(sql_tools, "EXECUTOR_FACTORY", Executor)
+    monkeypatch.setattr(business_tools.health_service, "get_data_health", business)
+    llm = ScriptedFakeLLM(script=[
+        AIMessage(content="", tool_calls=[
+            {"name": "execute_sql", "args": {"sql": "SELECT ship_id FROM agent_data.v_ships"}, "id": "sql"},
+            {"name": "get_data_health", "args": {}, "id": "business"},
+        ]),
+        "超时",
+    ], sleep_seconds=0.12)
+    with pytest.raises(AgentTimeoutError):
+        run_lc_agent(None, "查数据", llm=llm, sql_enabled=True, budget_seconds=0.02)
+    assert counts == {"sql": 0, "business": 0}
+    time.sleep(0.05)
+    assert counts == {"sql": 0, "business": 0}
+
+
+def test_timeout_waits_for_inflight_tool_before_session_release(monkeypatch):
+    from backend.app.services.agent import business_tools, sql_tools
+
+    entered = Event()
+    finished = Event()
+    session = object()
+    counts = {"business": 0, "sql": 0}
+
+    def slow_business(db):
+        assert db is session
+        counts["business"] += 1
+        entered.set()
+        time.sleep(0.45)
+        finished.set()
+        return {"source": {}, "limitations": []}
+
+    class Executor:
+        def execute(self, **kwargs):
+            counts["sql"] += 1
+            raise AssertionError("SQL after deadline")
+
+        def dispose(self):
+            pass
+
+    monkeypatch.setattr(business_tools.health_service, "get_data_health", slow_business)
+    monkeypatch.setattr(sql_tools, "EXECUTOR_FACTORY", Executor)
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("get_data_health", {}),
+        _tool_call("execute_sql", {"sql": "SELECT ship_id FROM agent_data.v_ships"}),
+        "完成",
+    ])
+    with pytest.raises(AgentTimeoutError):
+        run_lc_agent(session, "查数据", llm=llm, sql_enabled=True, budget_seconds=0.20)
+    assert entered.is_set() and finished.is_set()
+    assert counts == {"business": 1, "sql": 0}
+    time.sleep(0.05)
+    assert counts == {"business": 1, "sql": 0}
+
+
+def test_timeout_cancels_inflight_sql_before_return(monkeypatch):
+    from backend.app.services.agent import sql_tools
+    from backend.app.services.agent.query_analytics_executor import QueryExecutionError
+
+    events = {"entered": Event(), "finished": Event()}
+
+    class Executor:
+        def execute(self, *, cancel_event, **kwargs):
+            events["entered"].set()
+            assert cancel_event.wait(1.0)
+            events["finished"].set()
+            raise QueryExecutionError(
+                status="timeout", code="AGENT_QUERY_TIMEOUT",
+                public_message="查询超时", http_status=504, query_executed=True,
+            )
+
+        def dispose(self):
+            pass
+
+    monkeypatch.setattr(sql_tools, "EXECUTOR_FACTORY", Executor)
+    llm = ScriptedFakeLLM(script=[
+        _tool_call("execute_sql", {"sql": "SELECT ship_id FROM agent_data.v_ships"}),
+        "超时",
+    ])
+    with pytest.raises(AgentTimeoutError):
+        run_lc_agent(None, "查船", llm=llm, sql_enabled=True, budget_seconds=0.20)
+    assert events["entered"].is_set() and events["finished"].is_set()
+
+
+def test_deepseek_script_skips_without_key():
+    root = Path(__file__).resolve().parents[2]
+    env = os.environ.copy()
+    env.pop("DEEPSEEK_API_KEY", None)
+    completed = subprocess.run(
+        [sys.executable, str(root / "scripts" / "test_deepseek_toolcall.py")],
+        cwd=root, env=env, capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 0
+    assert completed.stdout.startswith("SKIP:")
+    assert "ImportError" not in completed.stderr
+
+
+def test_http_timeout_releases_session_only_after_worker_stops(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from backend.app.database import get_db
+    from backend.app.routers import agent as agent_router
+    from backend.app.services.agent import business_tools
+
+    class SessionMarker:
+        closed = False
+
+    marker = SessionMarker()
+    counts = {"before_close": 0, "after_close": 0}
+
+    def dependency():
+        try:
+            yield marker
+        finally:
+            marker.closed = True
+
+    def repository(db):
+        time.sleep(0.40)
+        key = "after_close" if db.closed else "before_close"
+        counts[key] += 1
+        return {"source": {}, "limitations": []}
+
+    monkeypatch.setattr(business_tools.health_service, "get_data_health", repository)
+    monkeypatch.setattr(langchain_runner, "build_llm", lambda: ScriptedFakeLLM(script=[
+        _tool_call("get_data_health", {}), "完成",
+    ]))
+    # The default argument is bound at import time; route calls the wrapper below.
+    original = langchain_runner.run_lc_agent
+    monkeypatch.setattr(agent_router, "run_lc_agent",
+                        lambda *args, **kwargs: original(*args, **kwargs, budget_seconds=0.20))
+    app = FastAPI()
+    app.include_router(agent_router.router)
+    app.dependency_overrides[get_db] = dependency
+    response = TestClient(app).post("/agent/analyze", json={"question": "查数据"})
+    assert response.status_code == 504
+    assert response.json()["detail"]["code"] == "AGENT_TIMEOUT"
+    assert marker.closed
+    assert counts["before_close"] == 1
+    assert counts["after_close"] == 0
+    stable = counts.copy()
+    time.sleep(0.05)
+    assert counts == stable
 
 
 # ------------------------------------------------------------ 前置分类已移除（LC-03）
