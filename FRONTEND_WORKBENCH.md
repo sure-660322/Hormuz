@@ -66,7 +66,7 @@ POST /agent/analyze 已注册（schemas、统一错误、CORS POST 均已同步�
 
 ## 验证
 
-2026-09-24 事件封面接入：独立 worktree `codex/event-cover-images` 中运行 `backend/tests/test_event_covers.py -q`（1 passed）、`frontend` 的 `npm run build` 与 `npm run check:workbench`、`git diff --check`，均通过。Playwright 用 5175 Vite 连接当前 8000 API，浏览器路由仅为 5175 增加 CORS 测试头，并以本地一张图片替代封面请求做布局检查：桌面新闻列表缩略图可见，地图 `evt_028` 弹卡图片加载成功，显示区域 232×116；390×844 窄屏列表抽屉中的缩略图排版正常。浏览器图片请求为测试替身，不作为真实接口端到端证据；目标服务器的图片目录、文件传输和公开部署尚未验证。
+2026-09-24 事件封面接入：独立 worktree `codex/event-cover-images` 中运行 `backend/tests/test_event_covers.py -q`（1 passed）、`frontend` 的 `npm run build` 与 `npm run check:workbench`、`git diff --check`，均通过。Playwright 用 5175 Vite 连接当前 8000 API，浏览器路由仅为 5175 增加 CORS 测试头，并以本地一张图片替代封面请求做布局检查：桌面新闻列表缩略图可见，390×844 窄屏列表抽屉中的缩略图排版正常。合入本地 `main` 后重新运行相同的后端单测、前端 build 和 check:workbench，均通过；当前 8000 后端 `/health`、`/docs`、`/events/evt_028/cover` 均返回 200，后者为 159289 字节 JPEG；不存在的封面返回 404。Playwright 在本地 5174 页面连接真实图片接口，左栏图片加载成功，地图 `evt_028` 弹卡图片加载成功并显示为 232×116。目标服务器的图片目录、文件传输和公开部署尚未验证。
 
 2026-09-24 新闻时间回放修正：在独立 worktree `C:\Users\18242\.codex\worktrees\news-timeline-reveal\Hormuz` 基于 `3251591` 修改。`frontend` 下 `npm run build` 与 `npm run check:workbench` 通过，根目录 `git diff --check` 通过；轻量检查覆盖未来时刻、恰好到时、回退后隐藏、缺失/无效时间。Playwright 使用本 worktree 的 Vite 5175 和当前 8000 API，仅为浏览器测试拦截响应补充 5175 CORS 头，未修改后端配置：起始帧 2026-02-26 02:43 左侧 1/65、地图 1 个新闻点；终止帧 2026-03-04 23:59 左侧 26/65、地图新闻点随之增加；回到起点后恢复 1/65，选中的 3 月 2 日事件详情关闭，浏览器刷新后控制台 0 error。未验证真实模型、数据库内容变更或完整设备矩阵。38 条无发生时间、1 条晚于回放窗口是历史 JSONL 批次快照计数，本轮未重查数据库。
 
