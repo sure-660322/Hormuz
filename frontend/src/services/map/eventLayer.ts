@@ -1,5 +1,5 @@
 import * as L from 'leaflet'
-import type { ApiEvent } from '../../api'
+import { eventCoverUrl, type ApiEvent } from '../../api'
 import { eventKind, eventLocationLabel, eventPriority, eventTimeText, type LocatedEvent } from '../../domain/maritime'
 import type { LayerState } from '../../domain/maritime'
 
@@ -236,6 +236,18 @@ export class EventLayerManager {
     const kind = eventKind(event.event_type)
     const card = document.createElement('article')
     card.className = 'event-pop'
+
+    const cover = document.createElement('figure')
+    cover.className = 'event-pop-cover'
+    const photo = document.createElement('img')
+    photo.alt = '关联报道配图'
+    photo.decoding = 'async'
+    photo.onerror = () => cover.remove()
+    photo.src = eventCoverUrl(event.event_id)
+    const caption = document.createElement('figcaption')
+    caption.textContent = '关联报道配图'
+    cover.append(photo, caption)
+    card.append(cover)
 
     const head = document.createElement('p')
     head.className = 'event-pop-kind'

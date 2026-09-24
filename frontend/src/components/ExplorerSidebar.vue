@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { ApiEvent, ApiMapShip } from '../api'
+import { computed, reactive } from 'vue'
+import { eventCoverUrl, type ApiEvent, type ApiMapShip } from '../api'
 import { eventKind, eventKinds, eventTimeText, shipType } from '../domain/maritime'
 import ShipSearch from './ShipSearch.vue'
 
@@ -26,6 +26,7 @@ const emit = defineEmits<{
   retry: []
 }>()
 const category = defineModel<'events' | 'ships'>({ default: 'events' })
+const failedCovers = reactive(new Set<string>())
 const sortedShips = computed(() => [...props.ships].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN')))
 function selectEvent(event: ApiEvent) { category.value = 'events'; emit('selectEvent', event) }
 function selectShip(ship: ApiMapShip) { category.value = 'ships'; emit('selectShip', ship) }
@@ -57,9 +58,15 @@ function selectShip(ship: ApiMapShip) { category.value = 'ships'; emit('selectSh
       <div v-if="eventsLoading" class="explorer-message" role="status">正在加载新闻事件…</div>
       <div v-else-if="eventsError" class="explorer-message" role="alert">{{ eventsError }} <button @click="emit('retry')">重试</button></div>
       <div v-else class="explorer-list">
-        <button v-for="event in events" :key="event.event_id" class="explorer-item" :class="{ selected: selectedEventId === event.event_id }" @click="selectEvent(event)">
-          <span class="explorer-item-title">{{ event.title }}</span>
-          <span class="explorer-item-meta"><time :title="eventTimeText(event)">发生日期 {{ event.occurred_at?.slice(0, 10) }}</time><span :style="{ color: eventKind(event.event_type).color }">{{ eventKind(event.event_type).label }}</span><span>{{ event.coverage_count }} 篇</span></span>
+        <button v-for="event in events" :key="event.event_id" class="explorer-item event-item" :class="{ selected: selectedEventId === event.event_id }" @click="selectEvent(event)">
+          <span class="explorer-item-cover" title="关联报道配图">
+            <img v-if="!failedCovers.has(event.event_id)" :src="eventCoverUrl(event.event_id)" alt="" loading="lazy" decoding="async" @error="failedCovers.add(event.event_id)" />
+            <img v-else class="cover-fallback" :src="eventKind(event.event_type).icon" alt="" />
+          </span>
+          <span class="explorer-item-copy">
+            <span class="explorer-item-title">{{ event.title }}</span>
+            <span class="explorer-item-meta"><time :title="eventTimeText(event)">发生日期 {{ event.occurred_at?.slice(0, 10) }}</time><span :style="{ color: eventKind(event.event_type).color }">{{ eventKind(event.event_type).label }}</span><span>{{ event.coverage_count }} 篇</span></span>
+          </span>
         </button>
         <p v-if="!currentTime" class="explorer-message">回放时间不可用，暂无法按发生时间显示新闻事件。</p>
         <p v-else-if="!events.length" class="explorer-message">截至当前回放时刻暂无此类新闻事件，可拖动时间轴或切换类型。</p>

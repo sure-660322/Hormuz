@@ -101,6 +101,10 @@ export interface ApiSimulationMeta {
 
 const API_BASE_URL = 'http://127.0.0.1:8000'    //当前的FastAPI地址
 
+export function eventCoverUrl(eventId: string): string {
+  return `${API_BASE_URL}/events/${encodeURIComponent(eventId)}/cover`
+}
+
 export async function fetchShips():Promise<ApiShip[]>{
     const response =await fetch(`${API_BASE_URL}/ships`, { signal: AbortSignal.timeout(20_000) })    //fetch：浏览器原生HTTP请求功能
 

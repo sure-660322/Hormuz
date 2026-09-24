@@ -10,6 +10,8 @@
 
 2026-09-24 新闻时间回放修正从独立分支 `codex/news-timeline-reveal` 快进合入本地 `main`；地图与左侧新闻列表共用事件发生时间筛选，具体规则和本轮验证见 [前端工作台](FRONTEND_WORKBENCH.md)。远端未推送。
 
+2026-09-24 事件封面图已接入左侧新闻列表和地图事件弹卡；图片由后端按事件编号提供，部署时通过 `NEWS_IMAGE_ROOT` 指向新闻图片目录，见 [前端工作台](FRONTEND_WORKBENCH.md) 和 [环境交接](docs/database_setup.md)。本地已验证代码与页面，远端未部署。
+
 交接包注意：本轮文件校验发现 events/news 的 SHA-256 与 manifest 不符，当前工作区快照待重新导出和独立空库验收，不能沿用历史导入成功结论。详见 [数据库交接](docs/database_setup.md)。
 
 ## 当前进度
@@ -21,7 +23,7 @@
 | 新闻 | 65 个新闻聚合事件、290 条报道（223 条关联事件，67 条未关联）；40 个事件有代表坐标，27 个有非空事件时间，非空不等于精确到时分 |
 | 地图工作台 | **2026-09-23 已实现新版布局；2026-09-24 时间回放修正已合入本地 `main`，验证见 [前端工作台](FRONTEND_WORKBENCH.md)**：态势总览与地图探索双视图；探索页左侧新闻/模拟船舶列表、中央地图、选中后详情浮层及底部全宽回放。保留轨迹、航速曲线、图层、国家边界、本地半径查询与派生层速度着色；地图新闻代表点按 `event_datetime` 不晚于当前回放帧逐步出现。 |
 | 历史回放 | 按不超过 24 小时的窗口加载，5 分钟展示步长，共 1,985 个刻度；取当前时刻前最近报位，不插值 |
-| 新闻浏览 | 左侧新闻列表与地图共用发生时间门控，并按发生时间排序；有代表坐标的已发生事件可定位，无坐标但有发生时间的事件仍可阅读文字详情。缺少 `event_datetime` 的事件不据报道日期补造发生时刻，暂不进入时间回放；关联报道与来源仍在事件详情中。 |
+| 新闻浏览 | 左侧新闻列表与地图共用发生时间门控，并按发生时间排序；列表左侧显示事件封面缩略图，点击地图事件点的弹卡显示横幅配图，图片缺失时退化为图标或纯文字。有代表坐标的已发生事件可定位，无坐标但有发生时间的事件仍可阅读文字详情。缺少 `event_datetime` 的事件不据报道日期补造发生时刻，暂不进入时间回放；关联报道与来源仍在事件详情中。 |
 | MobilityDB / PostGIS | **P0–P4 已实现，P5 部分实现**：派生轨迹、速度着色、事件关联、停留和相遇分析、data-health 已有代码；主回放仍读原始船位，未切换 simplified 派生层。旧停留试验仍并存；历史数量与验收见下表 |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
 | 智能体 | **本地 main 已整合，真实环境待验证**：POST /agent/analyze 由 LangChain `create_agent` 驱动，8 个只读业务工具、知识库和默认关闭的 SQL 三工具保持 v4 响应契约；统一 8 次工具调用预算、SQL 请求内最多一次实际执行、超时任务停止后才释放请求 Session。2026-09-23 修复分支离线后端 245 passed / 12 skipped，前端 build/check:workbench 与三个 HTTP 冒烟入口通过；真实模型、独立 PostgreSQL SQL 链路和浏览器未验证 |
@@ -101,6 +103,7 @@ npm run dev -- --port 5174
 | POST | `/api/encounters/analyze` | P4 受控同步重建相遇派生层：body `{distance_nm, overlap_min, sample_seconds}`，成功后写表并回 summary；模拟时空邻近，接近不等于实际交互 |
 | GET | `/api/data-health` | P5 数据健康：按 `data_source` 的报位数/船数/覆盖区间/中位 gap、全局计数、四张派生表行数 + built_at + stale |
 | GET | `/events` | 新闻聚合事件，按最早报道日期排序 |
+| GET | `/events/{event_id}/cover` | 按业务事件 ID 读取关联报道配图；从 `NEWS_IMAGE_ROOT` 下受限的 `images/` 路径返回图片，缺失时 404 |
 | GET | `/events/{event_id}/news` | 使用业务事件字符串 ID 查询关联报道，不是数据库整数主键 |
 | GET | `/simulation/meta` | 模拟船位范围及刻度；`event_count=0` 指不含回放模拟事件，不是新闻数为零 |
 | POST | `/agent/analyze` | 智能体问答：问题 + 可选封锁窗口（带时区、≤24 小时）+ 可选多轮 history（≤10 条消息，user/assistant 各计一条）；返回回答、船只、通行证据、统计、tools_used 与各工具结构化结果；错误统一为 detail{code,message,request_id} |

@@ -18,6 +18,8 @@
 
 交接文件是明确选取业务字段的可移植数据，不包含 .env、账户、数据库角色或 pg_dump 恢复备份。news 不含文章全文；来源链接与摘要不代表取得原始报道的再许可，使用时保留来源，不把新闻中的真实船名匹配成模拟船。已有 data/news_data 是历史采集资料，不是当前四表导入入口。
 
+事件封面图单独保存在新闻原始资料的 `images/` 子目录，不在上述 JSONL 或 Git 数据包中。运行后端前可设置环境变量 `NEWS_IMAGE_ROOT` 为该子目录的上一级目录，例如本机 `D:\my_project\news_raw_data`，后端按 `events.image_path` 中的 `images/<文件名>` 读取。未设置时默认使用仓库上一级的 `news_raw_data`；服务器部署时应显式设置服务器自己的目录，并单独传输图片。`GET /events/{event_id}/cover` 在图片缺失或路径无效时返回 404；目前没有图片上传、对象存储或自动同步流程。历史交接数据的图片文件是否齐全需在目标机器另行核验。
+
 ships.id、ship_positions.ship_id、events.id、news.event_id 保留数据库关系；events.event_id 是业务字符串，和 news.event_id 的整数外键不同。生成文件 temp_ship_id 不等于数据库 ships.id。
 
 ## 1. 获取代码和安装依赖
