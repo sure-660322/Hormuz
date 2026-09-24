@@ -195,7 +195,7 @@ onBeforeUnmount(() => {
   <section
     class="timeline"
     :class="{ expanded }"
-    aria-label="船舶轨迹回放时间轴"
+    aria-label="模拟船位与新闻事件回放时间轴"
   >
     <div v-if="loading || errorMessage" class="timeline-status" role="status">
       {{ errorMessage || '正在加载模拟回放数据…'
@@ -325,7 +325,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="timeline-caption">
-        <span>空格播放 / 暂停 · ← → 逐帧 · 此时间轴仅控制模拟船位</span
+        <span>空格播放 / 暂停 · ← → 逐帧 · 新闻按发生时间逐步出现</span
         ><span>1× 每秒推进一帧 · 仅显示载入时段</span>
       </div>
       <details class="time-range-accessible"><summary>精确选择时间范围</summary><label>开始 <select :value="zoomStart" @change="stop(); zoomStart = Math.min(rangeEnd, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label><label>结束 <select :value="rangeEnd" @change="stop(); zoomEnd = Math.max(zoomStart, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label></details>

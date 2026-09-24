@@ -5,7 +5,7 @@ import { usePlayback } from './composables/usePlayback'
 import {
   inBounds,
   formatTime,
-  displayZone, zoneLabel, hasEventLocation, eventTimeText, eventCoordinates, eventKinds,
+  displayZone, zoneLabel, hasEventLocation, eventOccurredBy, eventTimeText, eventCoordinates, eventKinds,
   type GeoPoint,
   type LayerState,
   type Panel,
@@ -95,15 +95,22 @@ const selectedTrack = computed(() =>
       ),
 )
 const filteredEvents = computed(() =>
-  [...events.value].filter(e => eventType.value === 'all' || e.event_type === eventType.value)
+  [...events.value].filter(e =>
+    (eventType.value === 'all' || e.event_type === eventType.value) && eventOccurredBy(e, time.value),
+  )
     .sort((a, b) => {
-      const left = a.publish_date_min, right = b.publish_date_min
-      if (!left || !right) return left ? -1 : right ? 1 : a.event_id.localeCompare(b.event_id)
-      return (left.localeCompare(right) || a.event_id.localeCompare(b.event_id)) * (eventSort.value === 'asc' ? 1 : -1)
+      const left = Date.parse(a.occurred_at!), right = Date.parse(b.occurred_at!)
+      return (left - right || a.event_id.localeCompare(b.event_id)) * (eventSort.value === 'asc' ? 1 : -1)
     }),
 )
-// 新闻代表点与模拟船位回放独立；只显示具有代表坐标的新闻事件。
+// 地图与列表共用事件发生时间门控；无代表坐标的已发生事件只进入列表。
 const mapEvents = computed(() => filteredEvents.value.filter(hasEventLocation))
+const untimedEvents = computed(() => events.value.filter(e => !e.occurred_at).length)
+watch(time, () => {
+  if (!selectedEvent.value || eventOccurredBy(selectedEvent.value, time.value)) return
+  selectedEvent.value = null
+  if (panel.value === 'events') panelOpen.value = false
+})
 const viewShips = computed(() =>
   bounds.value
     ? currentShips.value.filter((s) => inBounds(s, bounds.value!))
@@ -162,10 +169,10 @@ async function initialize() {
   const state = new URLSearchParams(location.hash.slice(1))
   if (state.get('theme') === 'light') theme.value = 'light'
   if (state.get('zone') === 'Asia/Shanghai') displayZone.value = 'Asia/Shanghai'
-  const event = events.value.find(e => e.event_id === state.get('event'))
-  if (event) chooseEvent(event)
   const at = state.get('at')
   if (at && Number.isFinite(Date.parse(at))) seek(at)
+  const event = events.value.find(e => e.event_id === state.get('event'))
+  if (event) chooseEvent(event)
   const ship = currentShips.value.find(s => String(s.id) === state.get('ship'))
   if (ship) chooseShip(ship)
   const lat = Number(state.get('lat')), lon = Number(state.get('lon')), zoom = Number(state.get('z'))
@@ -265,6 +272,12 @@ function focusShipById(shipId: number) {
   if (ship) chooseShip(ship)
 }
 function chooseEvent(event: ApiEvent) {
+  if (!eventOccurredBy(event, time.value)) {
+    notice.value = event.occurred_at
+      ? '该新闻事件尚未到达发生日期，请向后拖动时间轴。'
+      : '该新闻事件没有可用于回放的发生时间，不能按时间轴定位。'
+    return
+  }
   clearShip()
   if (eventType.value !== 'all' && eventType.value !== event.event_type)
     eventType.value = 'all'
@@ -277,8 +290,7 @@ function chooseEvent(event: ApiEvent) {
   layers.value.events = true
   if (!hasEventLocation(event)) notice.value = '该新闻事件没有可定位的代表坐标，详情仍可阅读。'
 }
-// 智能体回答中的「地图定位」：定位的是地图当前回放时刻的位置；
-// 目标不在当前回放快照或缺少位置时如实提示，不伪造。
+// 智能体回答中的「地图定位」只定位当前回放时刻已出现的事件和船位。
 function locateAgentShip(shipId: number) {
   const ship = currentShips.value.find((item) => item.id === shipId)
   if (!ship) {
@@ -500,6 +512,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       :events-loading="eventsLoading"
       :events-error="eventsError"
       :ships-loading="loading"
+      :current-time="time"
+      :untimed-events="untimedEvents"
       :event-type="eventType"
       :event-sort="eventSort"
       :selected-event-id="selectedEvent?.event_id ?? null"
@@ -610,7 +624,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <span><b class="vessel-key">▲</b> 当前船位</span
         ><span><b class="track-key">─•─</b> 已航行轨迹</span
         ><span>船位为教学模拟；事件为代表点，非精确事发位置</span
-        ><span>新闻代表点与模拟船位回放独立</span>
+        ><span>新闻按事件发生时间随回放出现；日期级记录不代表精确时刻</span>
       </div>
       <div v-if="loading || error" class="map-data-status" role="status">
         {{ error || '正在载入船舶与历史采样…'
@@ -708,7 +722,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </aside>
     <section class="print-report">
       <h2>霍尔木兹海峡 · 船位与新闻概览</h2><p>{{ formatTime(time, true) }} {{ zoneLabel() }} · 船位为教学模拟，新闻事件为独立历史资料</p>
-      <p>当前视野 {{ viewShips.length }} 艘模拟船舶、{{ viewEvents.length }} 条可定位新闻事件。新闻点与模拟回放时间独立。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
+      <p>当前视野 {{ viewShips.length }} 艘模拟船舶、{{ viewEvents.length }} 条截至回放时刻已出现的可定位新闻事件。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
       <table><thead><tr><th>事件时间文字</th><th>事件</th><th>经纬度</th></tr></thead><tbody><tr v-for="e in viewEvents" :key="e.id"><td>{{ eventTimeText(e) }}</td><td>{{ e.title }}</td><td>{{ eventCoordinates(e) }}</td></tr></tbody></table>
     </section>
   </main>

@@ -4,7 +4,7 @@ import { eventKind, eventLocationLabel, eventPriority, eventTimeText, type Locat
 import type { LayerState } from '../../domain/maritime'
 
 // 事件渲染上下文：由 MapView 在每次渲染时从最新 props 构造。
-// 新闻代表点与模拟船位回放独立；筛选、图层开关等变化会更新显隐集合。
+// 新闻代表点随事件发生时间进入地图；筛选、图层开关和回放时间会更新显隐集合。
 // Marker 按坐标组复用，未变化的组无需重建。
 export interface EventRenderContext {
   events: LocatedEvent[]
@@ -16,7 +16,7 @@ export interface EventRenderContext {
 
 interface EventEntry {
   marker: L.Marker
-  /** 组内事件构成：筛选改变同坐标事件集合时重建 Marker（弹窗列表闭包依赖组内容） */
+  /** 组内事件构成：时间或筛选改变同坐标事件集合时重建 Marker（弹窗列表闭包依赖组内容） */
   idsSignature: string
   /** 选中/弱化/紧急等可视状态：变化时只换 icon，不重建 Marker */
   visualSignature: string
@@ -35,7 +35,7 @@ const safeText = (value: string) => {
 }
 
 // 事件图层：按“坐标组”维护稳定 Marker（同坐标事件共享一个 Marker）。
-// 船位回放时间推进不改变新闻集合；筛选和图层状态变化时增量更新，
+// 回放时间、筛选和图层状态变化时增量更新，
 // 避免对未变化的坐标组执行 clearLayers + 全量重建。
 export class EventLayerManager {
   private entries = new Map<string, EventEntry>()

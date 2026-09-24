@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ApiEvent, ApiMapShip } from '../api'
-import { eventKind, eventKinds, shipType } from '../domain/maritime'
+import { eventKind, eventKinds, eventTimeText, shipType } from '../domain/maritime'
 import ShipSearch from './ShipSearch.vue'
 
 const props = defineProps<{
@@ -11,6 +11,8 @@ const props = defineProps<{
   eventsLoading: boolean
   eventsError: string
   shipsLoading: boolean
+  currentTime: string | null
+  untimedEvents: number
   eventType: string
   eventSort: 'asc' | 'desc'
   selectedEventId: string | null
@@ -47,18 +49,20 @@ function selectShip(ship: ApiMapShip) { category.value = 'ships'; emit('selectSh
           <option v-for="(kind, key) in eventKinds" :key="key" :value="key">{{ kind.label }}</option>
         </select>
         <select aria-label="新闻排序" :value="eventSort" @change="emit('sortChange', ($event.target as HTMLSelectElement).value as 'asc' | 'desc')">
-          <option value="desc">最新报道在前</option><option value="asc">最早报道在前</option>
+          <option value="desc">较晚发生在前</option><option value="asc">较早发生在前</option>
         </select>
       </div>
-      <p class="explorer-count">{{ events.length }} / {{ totalEvents }} 条新闻事件</p>
+      <p class="explorer-count">截至当前回放时刻 {{ events.length }} / {{ totalEvents }} 条新闻事件</p>
+      <p v-if="untimedEvents" class="explorer-count">{{ untimedEvents }} 条缺少发生时间，未纳入时间回放。</p>
       <div v-if="eventsLoading" class="explorer-message" role="status">正在加载新闻事件…</div>
       <div v-else-if="eventsError" class="explorer-message" role="alert">{{ eventsError }} <button @click="emit('retry')">重试</button></div>
       <div v-else class="explorer-list">
         <button v-for="event in events" :key="event.event_id" class="explorer-item" :class="{ selected: selectedEventId === event.event_id }" @click="selectEvent(event)">
           <span class="explorer-item-title">{{ event.title }}</span>
-          <span class="explorer-item-meta"><time>{{ event.publish_date_min || '报道日期未明' }}</time><span :style="{ color: eventKind(event.event_type).color }">{{ eventKind(event.event_type).label }}</span><span>{{ event.coverage_count }} 篇</span></span>
+          <span class="explorer-item-meta"><time :title="eventTimeText(event)">发生日期 {{ event.occurred_at?.slice(0, 10) }}</time><span :style="{ color: eventKind(event.event_type).color }">{{ eventKind(event.event_type).label }}</span><span>{{ event.coverage_count }} 篇</span></span>
         </button>
-        <p v-if="!events.length" class="explorer-message">此分类暂无新闻事件。可切换到全部类型。</p>
+        <p v-if="!currentTime" class="explorer-message">回放时间不可用，暂无法按发生时间显示新闻事件。</p>
+        <p v-else-if="!events.length" class="explorer-message">截至当前回放时刻暂无此类新闻事件，可拖动时间轴或切换类型。</p>
       </div>
     </template>
     <template v-else>

@@ -63,16 +63,16 @@ onBeforeUnmount(() => request?.abort())
 <template>
   <section ref="panel" class="panel-content event-panel">
     <header class="panel-heading">
-      <p>显示 {{ events.length }} / {{ totalCount }} 条 · 按首次报道日期排序</p>
-      <p>独立浏览历史新闻，不改变模拟船舶回放。</p>
+      <p>截至当前回放时刻显示 {{ events.length }} / {{ totalCount }} 条 · 按事件发生时间排序</p>
+      <p>拖动模拟船位时间轴会同步更新新闻事件列表；报道日期与发生时间分开展示。</p>
     </header>
     <div class="event-filters">
       <select aria-label="事件类型" :value="eventType" @change="emit('typeChange', ($event.target as HTMLSelectElement).value)">
         <option value="all">全部类型</option>
         <option v-for="(kind, key) in eventKinds" :key="key" :value="key">{{ kind.label }}</option>
       </select>
-      <select aria-label="报道日期顺序" :value="sort" @change="emit('sortChange', ($event.target as HTMLSelectElement).value as 'asc' | 'desc')">
-        <option value="asc">报道日期正序</option><option value="desc">最新报道在前</option>
+      <select aria-label="事件发生时间顺序" :value="sort" @change="emit('sortChange', ($event.target as HTMLSelectElement).value as 'asc' | 'desc')">
+        <option value="asc">较早发生在前</option><option value="desc">较晚发生在前</option>
       </select>
     </div>
     <div v-if="loading" class="empty" role="status">正在加载事件…</div>
@@ -128,11 +128,11 @@ onBeforeUnmount(() => request?.abort())
           </ul>
         </section>
       </section>
-      <p v-if="!events.length" class="empty">此分类暂无事件，可切换到全部类型。</p>
+      <p v-if="!events.length" class="empty">截至当前回放时刻暂无此类事件，可拖动时间轴或切换类型。</p>
       <ul v-else class="event-list">
         <li v-for="event in events" :key="event.event_id">
           <button class="event-row" :class="{ selected: selected?.event_id === event.event_id }" :data-event-id="event.event_id" @click="emit('select', event)">
-            <time>{{ event.publish_date_min?.slice(5) || '—' }}</time>
+            <time :title="eventTimeText(event)">{{ event.occurred_at?.slice(5, 10) || '—' }}</time>
             <span class="event-dot" :style="{ color: eventKind(event.event_type).color }"><img :src="eventKind(event.event_type).icon" alt=""></span>
             <span class="event-row-title">{{ event.title }}</span>
             <small class="event-row-count">{{ event.coverage_count }} 篇</small>

@@ -134,6 +134,12 @@ export function hasEventLocation(e: ApiEvent): e is LocatedEvent {
 export function eventTimeText(e: ApiEvent) {
   return e.event_time_text || (e.event_datetime ? `${e.event_datetime.slice(0, 10)}（日期记录）` : '时间未明确')
 }
+export function eventOccurredBy(e: Pick<ApiEvent, 'occurred_at'>, at: string | null): boolean {
+  if (!e.occurred_at || !at) return false
+  const occurred = Date.parse(e.occurred_at)
+  const current = Date.parse(at)
+  return Number.isFinite(occurred) && Number.isFinite(current) && occurred <= current
+}
 export function eventCoordinates(e: ApiEvent) {
   return hasEventLocation(e) ? `${e.latitude.toFixed(4)}, ${e.longitude.toFixed(4)}` : '暂无可定位坐标'
 }

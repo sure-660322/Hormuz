@@ -36,7 +36,7 @@ const { distanceNm, inBounds, eventKind, shipType, projectPosition, sampleAge, s
 const { localWorkbench } = require(path.join(out, 'services/workbench.js'))
 const api = require(path.join(out, 'api.js'))
 const { usePlayback } = require(path.join(out, 'composables/usePlayback.js'))
-const { hasEventLocation, eventTimeText, safeNewsUrl } = require(path.join(out, 'domain/maritime.js'))
+const { hasEventLocation, eventOccurredBy, eventTimeText, safeNewsUrl } = require(path.join(out, 'domain/maritime.js'))
 
 async function main() {
   const { countryLabelPosition } = require(path.join(out, 'domain/countryLabels.js'))
@@ -69,6 +69,13 @@ async function main() {
   assert.equal(hasEventLocation({ latitude: 26, longitude: null }), false)
   assert.equal(eventTimeText(unknownEvent), '时间未明确')
   assert.equal(eventTimeText({ event_time_text: '3月初' }), '3月初')
+  const datedEvent = { occurred_at: '2026-03-01T06:27:00Z' }
+  assert.equal(eventOccurredBy(datedEvent, '2026-03-01T06:26:59Z'), false, 'Future event stays hidden')
+  assert.equal(eventOccurredBy(datedEvent, '2026-03-01T06:27:00Z'), true, 'Event appears at its timestamp')
+  assert.equal(eventOccurredBy(datedEvent, '2026-03-02T00:00:00Z'), true, 'Past event remains visible')
+  assert.equal(eventOccurredBy({ occurred_at: null }, '2026-03-02T00:00:00Z'), false, 'Unknown occurrence is not invented from report date')
+  assert.equal(eventOccurredBy(datedEvent, null), false, 'No playback time means no revealed event')
+  assert.equal(eventOccurredBy({ occurred_at: 'invalid' }, '2026-03-02T00:00:00Z'), false)
   assert.equal(eventKind('military').label, '军事行动与安全事件')
   assert.equal(eventKind('passage').label, '海峡通行与航运动态')
   assert.equal(eventKind('freight').label, '运费与航运保险')
