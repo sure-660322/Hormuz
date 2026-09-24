@@ -4,8 +4,8 @@ import { eventKind, eventLocationLabel, eventPriority, eventTimeText, type Locat
 import type { LayerState } from '../../domain/maritime'
 
 // 事件渲染上下文：由 MapView 在每次渲染时从最新 props 构造。
-// 事件数据本身不随回放帧变化（回放只做时间门控的显隐），
-// 因此 Marker 一次创建、长期复用，普通帧只做 addLayer/removeLayer。
+// 新闻代表点与模拟船位回放独立；筛选、图层开关等变化会更新显隐集合。
+// Marker 按坐标组复用，未变化的组无需重建。
 export interface EventRenderContext {
   events: LocatedEvent[]
   selectedEvent: ApiEvent | null
@@ -16,7 +16,7 @@ export interface EventRenderContext {
 
 interface EventEntry {
   marker: L.Marker
-  /** 组内事件构成：同坐标事件随回放门控逐步出现时重建 Marker（弹窗列表闭包依赖组内容） */
+  /** 组内事件构成：筛选改变同坐标事件集合时重建 Marker（弹窗列表闭包依赖组内容） */
   idsSignature: string
   /** 选中/弱化/紧急等可视状态：变化时只换 icon，不重建 Marker */
   visualSignature: string
@@ -35,8 +35,8 @@ const safeText = (value: string) => {
 }
 
 // 事件图层：按“坐标组”维护稳定 Marker（同坐标事件共享一个 Marker）。
-// 回放时间推进只会改变事件的显隐集合，已存在 Marker 不再重建，
-// 杜绝普通回放帧 clearLayers + 全量重建。
+// 船位回放时间推进不改变新闻集合；筛选和图层状态变化时增量更新，
+// 避免对未变化的坐标组执行 clearLayers + 全量重建。
 export class EventLayerManager {
   private entries = new Map<string, EventEntry>()
   private lastCtx: EventRenderContext | null = null
@@ -109,7 +109,7 @@ export class EventLayerManager {
 
     for (const [key, entry] of this.entries) {
       if (currentKeys.has(key)) continue
-      // 组消失（如回放门控隐藏）时，若其信息卡仍开着则关闭
+      // 组因筛选等条件消失时，若其信息卡仍开着则关闭
       if (this.openKey === key) {
         this.beginPopupSwitch()
         this.options.getMap()?.closePopup()

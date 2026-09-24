@@ -5,7 +5,7 @@ import { usePlayback } from './composables/usePlayback'
 import {
   inBounds,
   formatTime,
-  displayZone, zoneLabel, hasEventLocation, eventTimeText, eventCoordinates, eventRevealTime, eventKinds,
+  displayZone, zoneLabel, hasEventLocation, eventTimeText, eventCoordinates, eventKinds,
   type GeoPoint,
   type LayerState,
   type Panel,
@@ -18,11 +18,11 @@ import EventPanel from './components/EventPanel.vue'
 import AgentPanel from './components/AgentPanel.vue'
 import ShipInspector from './components/ShipInspector.vue'
 import TimelineControls from './components/TimelineControls.vue'
-import ShipSearch from './components/ShipSearch.vue'
 import WorkspaceTools from './components/WorkspaceTools.vue'
 import ToolRail from './components/ToolRail.vue'
 import OverviewPanel from './components/OverviewPanel.vue'
 import LayersPopover from './components/LayersPopover.vue'
+import ExplorerSidebar from './components/ExplorerSidebar.vue'
 
 const {
   tracks,
@@ -39,13 +39,16 @@ const events = ref<ApiEvent[]>([])
 const eventsLoading = ref(true)
 const eventsError = ref('')
 const panel = ref<Panel>('overview')
-const panelOpen = ref(!window.matchMedia('(max-width: 760px)').matches)
+const panelOpen = ref(false)
+const workspaceMode = ref<'overview' | 'explore'>('explore')
+const exploreCategory = ref<'events' | 'ships'>('events')
+const sidebarOpen = ref(false)
 const layersOpen = ref(false)
 const legendOpen = ref(false)
 const selectedShipId = ref<number | null>(null)
 const selectedEvent = ref<ApiEvent | null>(null)
 const eventType = ref('all')
-const eventSort = ref<'asc' | 'desc'>('asc')
+const eventSort = ref<'asc' | 'desc'>('desc')
 const isolated = ref(false)
 const trackVisible = ref(false)
 const globalViewRequest = ref(0)
@@ -99,25 +102,8 @@ const filteredEvents = computed(() =>
       return (left.localeCompare(right) || a.event_id.localeCompare(b.event_id)) * (eventSort.value === 'asc' ? 1 : -1)
     }),
 )
-// 地图事件随回放时刻逐步呈现：呈现时刻不晚于当前回放时刻才标注到地图，
-// 反映事件先后发生顺序。回放时间未就绪时不做门控，避免空数据状态下地图无事件。
-// 没有可用时间（发生日期与报道日期皆无）的事件不按时间补造，暂不标注。
-const mapEvents = computed(() => {
-  const located = filteredEvents.value.filter(hasEventLocation)
-  if (!time.value) return located
-  const at = Date.parse(time.value)
-  return located.filter((e) => {
-    const reveal = eventRevealTime(e)
-    return reveal !== null && reveal <= at
-  })
-})
-// 仅传入 occurred_at 非空的事件：报道无明确发生时刻时不补造时间，不进时间轴。
-const timelineEvents = computed(
-  () =>
-    filteredEvents.value.filter((e) => e.occurred_at) as (ApiEvent & {
-      occurred_at: string
-    })[],
-)
+// 新闻代表点与模拟船位回放独立；只显示具有代表坐标的新闻事件。
+const mapEvents = computed(() => filteredEvents.value.filter(hasEventLocation))
 const viewShips = computed(() =>
   bounds.value
     ? currentShips.value.filter((s) => inBounds(s, bounds.value!))
@@ -134,6 +120,11 @@ const averageSpeed = computed(() =>
         viewShips.value.reduce((sum, ship) => sum + ship.speed, 0) /
         viewShips.value.length
       ).toFixed(1)
+    : '—',
+)
+const snapshotAverageSpeed = computed(() =>
+  currentShips.value.length
+    ? (currentShips.value.reduce((sum, ship) => sum + ship.speed, 0) / currentShips.value.length).toFixed(1)
     : '—',
 )
 // 新闻与模拟船位属同一时期但相互独立：不因时间或空间接近建立关联。
@@ -256,7 +247,10 @@ function chooseShip(ship: ApiMapShip) {
   selectedShipId.value = ship.id
   selectedEvent.value = null
   panel.value = 'ships'
+  workspaceMode.value = 'explore'
+  exploreCategory.value = 'ships'
   panelOpen.value = true
+  sidebarOpen.value = false
   layers.value.ships = true
   focusShipRequest.value++
 }
@@ -276,14 +270,12 @@ function chooseEvent(event: ApiEvent) {
     eventType.value = 'all'
   selectedEvent.value = event
   panel.value = 'events'
+  workspaceMode.value = 'explore'
+  exploreCategory.value = 'events'
   panelOpen.value = true
+  sidebarOpen.value = false
   layers.value.events = true
-  // 地图按回放时刻逐步呈现事件：选中尚未到呈现时刻（或无可排序时间）的事件时如实提示。
-  const reveal = eventRevealTime(event)
-  if (reveal === null)
-    notice.value = '该事件缺少发生日期与报道日期，无法放入时间序列，地图暂不标注。'
-  else if (time.value && reveal > Date.parse(time.value))
-    notice.value = `该事件记录时间晚于当前回放时刻，地图暂不标注；回放推进到 ${formatTime(new Date(reveal).toISOString(), true)} 后显示。`
+  if (!hasEventLocation(event)) notice.value = '该新闻事件没有可定位的代表坐标，详情仍可阅读。'
 }
 // 智能体回答中的「地图定位」：定位的是地图当前回放时刻的位置；
 // 目标不在当前回放快照或缺少位置时如实提示，不伪造。
@@ -314,6 +306,7 @@ function restore() {
 }
 function togglePanel(value: Panel) {
   panel.value = value
+  workspaceMode.value = 'explore'
   panelOpen.value = true
   picking.value = false
 }
@@ -334,6 +327,12 @@ function backToOverview() {
   clearShip()
   selectedEvent.value = null
   panel.value = 'overview'
+  panelOpen.value = false
+}
+function openExplorer(category: 'events' | 'ships') {
+  workspaceMode.value = 'explore'
+  exploreCategory.value = category
+  backToOverview()
 }
 function chooseCenter(point: GeoPoint) {
   center.value = point
@@ -454,6 +453,8 @@ function onKey(event: KeyboardEvent) {
     layersOpen.value = false
     legendOpen.value = false
     panel.value = 'overview'
+    panelOpen.value = false
+    sidebarOpen.value = false
   }
 }
 onMounted(() => {
@@ -464,7 +465,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <main class="workbench" :class="{ 'panel-collapsed': !panelOpen }">
+  <main class="workbench" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen }">
     <header class="topbar">
       <div class="brand">
         <img class="brand-logo" :src="logoUrl" alt="" aria-hidden="true" />
@@ -472,6 +473,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <h1>霍尔木兹<span>海事态势分析</span></h1>
         </div>
       </div>
+      <nav class="workspace-nav" aria-label="工作视图">
+        <button :class="{ active: workspaceMode === 'overview' }" :aria-current="workspaceMode === 'overview' ? 'page' : undefined" @click="workspaceMode = 'overview'; panelOpen = false">态势总览</button>
+        <button :class="{ active: workspaceMode === 'explore' }" :aria-current="workspaceMode === 'explore' ? 'page' : undefined" @click="workspaceMode = 'explore'">地图探索</button>
+      </nav>
       <div class="top-status">
         <span class="simulation-label">模拟船舶 · 新闻事件</span>
         <button @click="displayZone = displayZone === 'UTC' ? 'Asia/Shanghai' : 'UTC'" aria-label="切换时区">{{ zoneLabel() }}</button>
@@ -483,36 +488,49 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           </div>
         </details>
       </div>
-      <button
-        class="panel-toggle"
-        :aria-expanded="panelOpen"
-        aria-label="切换工作面板"
-        @click="panelOpen = !panelOpen"
-      >
-        {{ panelOpen ? '收起面板' : '工作面板' }}
-      </button>
+      <button class="sidebar-toggle" :aria-expanded="sidebarOpen" @click="sidebarOpen = !sidebarOpen; workspaceMode = 'explore'">{{ sidebarOpen ? '收起列表' : '查找' }}</button>
     </header>
-    <ToolRail
-      :layers-active="layersOpen"
-      :area-active="picking"
-      :agent-active="panel === 'agent' && panelOpen"
-      @open-layers="layersOpen = !layersOpen"
-      @start-area="openAreaAnalysis"
-      @share="shareRequest++"
-      @print="printReport"
-      @open-agent="togglePanel('agent')"
-    />
-    <LayersPopover
-      v-if="layersOpen"
-      v-model:layers="layers"
-      v-model:vector-minutes="vectorMinutes"
-      v-model:vector-linked="vectorLinked"
-      :harbour-status="harbourStatus"
-      :country-status="countryStatus"
-      :effective-vector="effectiveVector"
-      @close="layersOpen = false"
+    <ExplorerSidebar
+      v-model="exploreCategory"
+      class="explorer-placement"
+      :class="{ 'mobile-open': sidebarOpen }"
+      :events="filteredEvents"
+      :ships="currentShips"
+      :total-events="events.length"
+      :events-loading="eventsLoading"
+      :events-error="eventsError"
+      :ships-loading="loading"
+      :event-type="eventType"
+      :event-sort="eventSort"
+      :selected-event-id="selectedEvent?.event_id ?? null"
+      :selected-ship-id="selectedShipId"
+      @select-event="chooseEvent"
+      @select-ship="chooseShip"
+      @type-change="changeEventType"
+      @sort-change="eventSort = $event"
+      @retry="loadEvents"
     />
     <section class="map-workspace" aria-label="霍尔木兹海峡态势地图">
+      <ToolRail
+        :layers-active="layersOpen"
+        :area-active="picking"
+        :agent-active="panel === 'agent' && panelOpen"
+        @open-layers="layersOpen = !layersOpen"
+        @start-area="openAreaAnalysis"
+        @share="shareRequest++"
+        @print="printReport"
+        @open-agent="togglePanel('agent')"
+      />
+      <LayersPopover
+        v-if="layersOpen"
+        v-model:layers="layers"
+        v-model:vector-minutes="vectorMinutes"
+        v-model:vector-linked="vectorLinked"
+        :harbour-status="harbourStatus"
+        :country-status="countryStatus"
+        :effective-vector="effectiveVector"
+        @close="layersOpen = false"
+      />
       <MapView
         :ships="currentShips"
         :events="mapEvents"
@@ -539,7 +557,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :encounters="encounterList"
         :selected-encounter="selectedEncounter"
         @share-view="shareView"
-        @clear-selection="selectedEvent = null; clearShip()"
+        @clear-selection="selectedEvent = null; clearShip(); panelOpen = false"
         @select-ship="chooseShip"
         @select-event="chooseEvent"
         @select-encounter="chooseEncounter"
@@ -549,13 +567,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @country-status="countryStatus = $event"
       />
       <div class="map-top-tools">
-        <ShipSearch
-          :ships="currentShips"
-          :loading="loading"
-          :events="events"
-          @select-event="chooseEvent"
-          @select="chooseShip"
-        /><button
+        <button
           class="map-tool"
           @click="restore"
           title="回到霍尔木兹海峡全局视野"
@@ -575,7 +587,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <span
           ><strong>{{ viewShips.length }}</strong> 船</span
         ><span
-          ><strong>{{ viewEvents.length }}</strong> 已呈现事件</span
+          ><strong>{{ viewEvents.length }}</strong> 视野新闻事件</span
         ><span class="hud-speed"
           >均速 <strong>{{ averageSpeed }}</strong> kn</span
         >
@@ -598,66 +610,41 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <span><b class="vessel-key">▲</b> 当前船位</span
         ><span><b class="track-key">─•─</b> 已航行轨迹</span
         ><span>船位为教学模拟；事件为代表点，非精确事发位置</span
-        ><span>事件随回放时刻按记录时间先后逐步呈现</span>
+        ><span>新闻代表点与模拟船位回放独立</span>
       </div>
       <div v-if="loading || error" class="map-data-status" role="status">
         {{ error || '正在载入船舶与历史采样…'
         }}<button v-if="error" @click="load">重试</button>
       </div>
-      <div class="timeline-dock">
-        <TimelineControls
-          v-model="index"
-          :frame-times="times"
-          :events="timelineEvents"
-          :selected-event-id="selectedEvent?.id ?? null"
-          :seek-request="seekRequest"
-          :loading="loading"
-          :error-message="error"
-          :event-type="eventType"
-          @speed-change="playbackSpeed = $event"
-          @retry="load"
-          @select-event="chooseEvent"
-          @type-change="changeEventType"
-        />
-      </div>
     </section>
+    <section class="overview-stage" aria-label="态势总览">
+      <header class="overview-stage-head"><div><p class="eyebrow">霍尔木兹海峡 · 历史资料与教学模拟</p><h2>从海峡动态，进入地图调查</h2><p>新闻事件来自已采集报道；船位是教学模拟。两类资料分别浏览，不据时空邻近推断真实关联。</p></div><button class="primary" @click="workspaceMode = 'explore'">进入地图探索</button></header>
+      <OverviewPanel
+        :time="time" :view-ships="currentShips" :view-events="mapEvents" :events="filteredEvents"
+        :total-ships="currentShips.length" :total-events="events.length" :average-speed="snapshotAverageSpeed"
+        :events-loading="eventsLoading" :encounters="encounterList" :health="health"
+        :encounters-loading="encountersLoading" :encounter-error="encounterError"
+        @select-ship="chooseShip" @select-event="chooseEvent" @select-encounter="chooseEncounter"
+        @reanalyze-encounters="reanalyzeEncounters" @open-events="openExplorer('events')" @open-ships="openExplorer('ships')"
+      />
+    </section>
+    <div class="timeline-dock">
+      <TimelineControls
+        v-model="index" :frame-times="times" :events="[]"
+        :selected-event-id="selectedEvent?.id ?? null" :seek-request="seekRequest"
+        :loading="loading" :error-message="error" :event-type="eventType"
+        @speed-change="playbackSpeed = $event" @retry="load"
+        @select-event="chooseEvent" @type-change="changeEventType"
+      />
+    </div>
     <aside v-show="panelOpen" class="inspector" aria-label="上下文工作面板">
       <header class="inspector-head">
-        <button
-          v-if="panel !== 'overview'"
-          class="head-back"
-          aria-label="返回态势概览"
-          title="返回态势概览"
-          @click="backToOverview"
-        >
-          ‹</button
-        >
         <h2>
           {{ headTitle
           }}<span v-if="headContext" :title="headContext">· {{ headContext }}</span>
         </h2>
+        <button class="detail-close" aria-label="关闭详情" @click="backToOverview">×</button>
       </header>
-      <OverviewPanel
-        v-if="panel === 'overview'"
-        :time="time"
-        :view-ships="viewShips"
-        :view-events="viewEvents"
-        :events="filteredEvents"
-        :total-ships="currentShips.length"
-        :total-events="events.length"
-        :average-speed="averageSpeed"
-        :events-loading="eventsLoading"
-        :encounters="encounterList"
-        :health="health"
-        :encounters-loading="encountersLoading"
-        :encounter-error="encounterError"
-        @select-ship="chooseShip"
-        @select-event="chooseEvent"
-        @select-encounter="chooseEncounter"
-        @reanalyze-encounters="reanalyzeEncounters"
-        @open-events="togglePanel('events')"
-        @open-ships="togglePanel('ships')"
-      />
       <EventPanel
         v-if="panel === 'events'"
         :events="filteredEvents"
@@ -671,7 +658,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @select-ship="focusShipById"
         @type-change="changeEventType"
         @sort-change="eventSort = $event"
-        @clear="selectedEvent = null"
+        @clear="selectedEvent = null; panelOpen = false"
         @retry="loadEvents"
       />
       <ShipInspector
@@ -689,7 +676,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :events-error="eventsError"
         :events-loading="eventsLoading"
         @select="chooseShip"
-        @clear="clearShip"
+        @clear="clearShip(); panelOpen = false"
         @track="toggleTrack"
         @speed-color="toggleSpeedColor"
         @isolate="isolated = !isolated"
@@ -721,7 +708,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </aside>
     <section class="print-report">
       <h2>霍尔木兹海峡 · 船位与新闻概览</h2><p>{{ formatTime(time, true) }} {{ zoneLabel() }} · 船位为教学模拟，新闻事件为独立历史资料</p>
-      <p>当前视野 {{ viewShips.length }} 艘船舶、{{ viewEvents.length }} 条已呈现新闻事件（随回放时刻逐步出现）。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
+      <p>当前视野 {{ viewShips.length }} 艘模拟船舶、{{ viewEvents.length }} 条可定位新闻事件。新闻点与模拟回放时间独立。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
       <table><thead><tr><th>事件时间文字</th><th>事件</th><th>经纬度</th></tr></thead><tbody><tr v-for="e in viewEvents" :key="e.id"><td>{{ eventTimeText(e) }}</td><td>{{ e.title }}</td><td>{{ eventCoordinates(e) }}</td></tr></tbody></table>
     </section>
   </main>

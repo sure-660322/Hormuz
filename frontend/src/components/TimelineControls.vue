@@ -2,7 +2,7 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import type { ApiEvent as NewsEvent } from '../api'
 type ApiEvent = NewsEvent & { occurred_at: string }
-import { eventKind, eventKinds, formatTime, zoneLabel } from '../domain/maritime'
+import { displayZone, eventKind, eventKinds, formatTime, zoneLabel } from '../domain/maritime'
 const props = defineProps<{
   frameTimes: string[]
   modelValue: number
@@ -26,19 +26,7 @@ const zoomStart = ref(0)
 const zoomEnd = ref<number | null>(null)
 const dragStart = ref<number | null>(null)
 const dragEnd = ref<number | null>(null)
-// 呈现层展开态：悬停/聚焦展开，刷选拖拽中或精确时间 details 打开时绝不收起。
 const expanded = ref(false)
-const rangeOpen = ref(false)
-function onPointerLeave() {
-  if (dragStart.value !== null || rangeOpen.value) return
-  expanded.value = false
-}
-function onFocusOut(event: FocusEvent) {
-  const next = event.relatedTarget as Node | null
-  if (next && (event.currentTarget as HTMLElement).contains(next)) return
-  if (dragStart.value !== null || rangeOpen.value) return
-  expanded.value = false
-}
 const rangeEnd = computed(() => Math.min(last.value, zoomEnd.value ?? last.value))
 const visibleFrames = computed(() => props.frameTimes.slice(zoomStart.value, rangeEnd.value + 1))
 function resetZoom() { zoomStart.value = 0; zoomEnd.value = null }
@@ -78,6 +66,9 @@ const laneWidth = ref(700)
 let observer: ResizeObserver | undefined
 const last = computed(() => Math.max(0, props.frameTimes.length - 1))
 const current = computed(() => props.frameTimes[props.modelValue])
+const fullCurrentTime = computed(() => current.value
+  ? new Intl.DateTimeFormat('zh-CN', { timeZone: displayZone.value, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(current.value))
+  : '—')
 const hasFrames = computed(() => props.frameTimes.length > 0)
 const start = computed(() => Date.parse(props.frameTimes[zoomStart.value] ?? ''))
 const end = computed(() => Date.parse(props.frameTimes[rangeEnd.value] ?? ''))
@@ -205,10 +196,6 @@ onBeforeUnmount(() => {
     class="timeline"
     :class="{ expanded }"
     aria-label="船舶轨迹回放时间轴"
-    @pointerenter="expanded = true"
-    @pointerleave="onPointerLeave"
-    @focusin="expanded = true"
-    @focusout="onFocusOut"
   >
     <div v-if="loading || errorMessage" class="timeline-status" role="status">
       {{ errorMessage || '正在加载模拟回放数据…'
@@ -220,7 +207,7 @@ onBeforeUnmount(() => {
           <strong>模拟船舶回放</strong
           ><span
             >{{ formatTime(frameTimes[0], true).split(' ')[0] }} ·
-            模拟采样</span
+            非实时 AIS</span
           >
         </div>
         <div class="playback-buttons">
@@ -259,10 +246,11 @@ onBeforeUnmount(() => {
           </select>
         </div>
         <output class="current-time"
-          >{{ formatTime(current, true) }}<small>{{ zoneLabel() }}</small></output
+          >{{ fullCurrentTime }}<small>{{ zoneLabel() }}</small></output
         ><span class="frame-count"
           >{{ modelValue + 1 }} / {{ frameTimes.length }} 帧</span
         >
+        <button class="timeline-expand" :aria-expanded="expanded" @click="expanded = !expanded">{{ expanded ? '收起分析' : '展开分析' }}</button>
       </div>
       <div class="timeline-mini" aria-hidden="true">
         <div class="mini-bins">
@@ -337,10 +325,10 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="timeline-caption">
-        <span>空格播放 / 暂停 · ← → 逐帧 · 地图事件按记录时间随回放逐步呈现</span
+        <span>空格播放 / 暂停 · ← → 逐帧 · 此时间轴仅控制模拟船位</span
         ><span>1× 每秒推进一帧 · 仅显示载入时段</span>
       </div>
-      <details class="time-range-accessible" @toggle="rangeOpen = ($event.target as HTMLDetailsElement).open"><summary>精确选择时间范围</summary><label>开始 <select :value="zoomStart" @change="stop(); zoomStart = Math.min(rangeEnd, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label><label>结束 <select :value="rangeEnd" @change="stop(); zoomEnd = Math.max(zoomStart, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label></details>
+      <details class="time-range-accessible"><summary>精确选择时间范围</summary><label>开始 <select :value="zoomStart" @change="stop(); zoomStart = Math.min(rangeEnd, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label><label>结束 <select :value="rangeEnd" @change="stop(); zoomEnd = Math.max(zoomStart, Number(($event.target as HTMLSelectElement).value))"><option v-for="(t, i) in frameTimes" :key="t" :value="i">{{ formatTime(t) }}</option></select></label></details>
       </div>
     </template>
   </section>

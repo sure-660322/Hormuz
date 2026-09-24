@@ -134,14 +134,6 @@ export function hasEventLocation(e: ApiEvent): e is LocatedEvent {
 export function eventTimeText(e: ApiEvent) {
   return e.event_time_text || (e.event_datetime ? `${e.event_datetime.slice(0, 10)}（日期记录）` : '时间未明确')
 }
-// 事件在地图上开始呈现的时刻（epoch 毫秒）：优先事件发生日期，缺失时退化为最早报道日期
-//（事件不可能早于首次报道被知晓，作为呈现下限而非发生时刻）；两者皆无返回 null，不按时间补造。
-export function eventRevealTime(e: ApiEvent): number | null {
-  const occurred = e.occurred_at ? Date.parse(e.occurred_at) : NaN
-  if (Number.isFinite(occurred)) return occurred
-  const published = e.publish_date_min ? Date.parse(e.publish_date_min) : NaN
-  return Number.isFinite(published) ? published : null
-}
 export function eventCoordinates(e: ApiEvent) {
   return hasEventLocation(e) ? `${e.latitude.toFixed(4)}, ${e.longitude.toFixed(4)}` : '暂无可定位坐标'
 }

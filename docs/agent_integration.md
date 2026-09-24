@@ -2,6 +2,8 @@
 
 > 本文保留 **v4 响应契约**；本地 `main` 已合入 LangChain `create_agent` 编排及 `codex/lc-safety-fix` 安全修复，响应字段兼容。`f14eceb` 是合并前的旧 v4 自定义工具循环复核提交；下文描述旧循环、九工具注册表及固定分类的段落均为 LC-01 之前的历史契约背景，不代表当前运行实现。当前验收见 [开发任务](agent_development_plan.md)，架构见 [第一版方案](langchain_agent_v1_plan.md)。
 
+前端入口更新（2026-09-23）：地图探索页工具栏的「智能体」按钮在右侧详情浮层打开 `AgentPanel.vue`；前端布局与本轮浏览器验证见 [前端工作台](../FRONTEND_WORKBENCH.md)。本次仅改入口布局，未重新验收真实模型链路。
+
 2026-09-23 整合记录：`f14eceb` 审查记录了 SQL 成功后二次执行、超时响应后后台触库和联调脚本引用旧入口。三项已修复并整合到本地 `main`；每请求统一最多 8 次工具调用（8 个业务工具、知识库、SQL schema/check/execute 共用），模型递归步数上限 40、整体预算 60 秒。SQL 数据库实际执行最多一次；仅首次尚未执行的普通语法错误允许一次修正。预算耗尽返回含稳定错误码与 call_id 的结果；整体超时先设置取消事件并等待线程停止，之后才返回 504 和释放请求 Session。同步业务工具无法强制中断时，504 实际返回可能晚于 60 秒。修复分支离线后端全量 245 passed / 12 skipped、前端 build/check:workbench、`/health`/`/docs`/`/openapi.json` 非浏览器冒烟通过；真实模型、独立 PostgreSQL 和浏览器本版仍待验收，远端未推送。
 
 2026-09-22 LC-04 状态核对：LC-04 已实现待验证——8 个只读业务服务包装为原生 LangChain Tools（复用已验证服务层算法，参数经 Pydantic args_schema 校验，服务层错误降级为 `INVALID_TOOL_ARGS`/`DATABASE_UNAVAILABLE` observation），v4 响应组装迁至 `results.py`（`normalize_status` 增加「已纠正错误豁免」，保持纠正循环顶层状态语义），旧 `runner.py` 及手工 TOOL_REGISTRY/固定短语分类已按计划 §7 移除，固定问句测试由 `test_agent_expressions.py` 多表达矩阵替代。离线回归 231 passed / 12 skipped，前端 build 与 check:workbench 通过。未验证：真实 DeepSeek 问答与工具选择准确率、真实 PG SQL 链路、浏览器端到端（无密钥/无浏览器环境，本轮无法执行）。
@@ -42,7 +44,7 @@
 
 ## 已实现接口与工具
 
-POST /agent/analyze，一次请求返回完整回答。未实现流式输出和多智能体；前端已支持回答内船只/事件地图定位，定位到当前回放快照，不跳转历史轨迹点。
+POST /agent/analyze，一次请求返回完整回答。未实现流式输出和多智能体；前端已支持回答内船只/事件地图定位：船定位到当前模拟回放快照，不跳转历史轨迹点；有代表坐标的新闻事件按自身位置定位，与回放时刻独立。
 
 以下日期仅为结构示例，不代表真实封锁时间；联调需替换成核验后的参数：
 

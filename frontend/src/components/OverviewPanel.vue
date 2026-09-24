@@ -54,9 +54,9 @@ const derivedTables = computed(() => props.health?.derived ?? [])
     </header>
     <div class="overview-chips">
       <span
-        ><strong>{{ viewShips.length }}</strong> 视野船舶</span
+        ><strong>{{ viewShips.length }}</strong> 快照船舶</span
       ><span
-        ><strong>{{ viewEvents.length }}</strong> 已呈现事件</span
+        ><strong>{{ viewEvents.length }}</strong> 可定位新闻</span
       ><span
         >平均航速 <strong>{{ averageSpeed }}</strong> kn</span
       >
@@ -85,9 +85,9 @@ const derivedTables = computed(() => props.health?.derived ?? [])
         </button>
       </template>
     </section>
-    <section class="overview-section" aria-label="视野船舶">
+    <section class="overview-section" aria-label="当前快照船舶">
       <div class="section-title">
-        <h3>视野船舶</h3>
+        <h3>当前快照船舶</h3>
         <span>按航速降序</span>
       </div>
       <button
