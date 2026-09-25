@@ -14,7 +14,7 @@ export function sampleAge(ship: ApiMapShip, at: string | null) {
 export function shipStatus(ship: ApiMapShip, at: string | null) {
   return sampleAge(ship, at) > 30 ? { label: '采样陈旧', color: riskColors.stale, rank: 1 } : { label: '采样有效', color: riskColors.normal, rank: 0 }
 }
-export function shipShape(type: string) {
+export function shipShape(type: string | null) {
   const name = shipType(type)
   return name.includes('油') || name.includes('天然气') ? '△' : name.includes('集装箱') ? '■' : name.includes('货') ? '▶' : '◆'
 }
@@ -46,7 +46,8 @@ export function eventKind(type: string) {
     eventKinds[type] ?? { label: '其他', color: '#788890', symbol: '他', icon: '/event-kinds/other.png' }
   )
 }
-export function shipType(type: string) {
+export function shipType(type: string | null) {
+  if (!type) return '类型未提供'
   if (/[\u4e00-\u9fff]/.test(type)) return type
   const names: Record<string, string> = {
     tanker: '油轮',
@@ -93,7 +94,7 @@ export interface AreaQuery {
 export interface AreaResult {
   ships: ApiMapShip[]
   events: ApiEvent[]
-  source: 'local-simulation'
+  source: 'local-simulation' | 'local-ais-snapshot'
 }
 export interface LayerState {
   countries: boolean

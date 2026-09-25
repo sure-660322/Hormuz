@@ -4,6 +4,7 @@ defineProps<{
   harbourStatus: string
   countryStatus: string
   effectiveVector: number
+  realAis: boolean
 }>()
 const layers = defineModel<LayerState>('layers', { required: true })
 const vectorMinutes = defineModel<number>('vectorMinutes', { required: true })
@@ -98,7 +99,7 @@ const layerOptions: {
       <div class="popover-settings">
         <label>速度矢量 <select v-model.number="vectorMinutes"><option :value="3">3 分钟</option><option :value="6">6 分钟</option><option :value="12">12 分钟</option></select></label>
         <label><input type="checkbox" v-model="vectorLinked" /> 随回放倍率调整（当前 {{ effectiveVector }} 分钟）</label>
-        <p class="caption">实线为有效船首向；虚线为 COG/SOG 等速外推。无 ROT 与船体尺寸数据，不绘制转向旗和真尺度轮廓。速度着色默认与当前显示的轨迹同范围，可在船舶调查面板切换为仅最近 24 小时。</p>
+        <p class="caption">实线为有效船首向；虚线为 COG/SOG 等速外推。无 ROT 与船体尺寸数据，不绘制转向旗和真尺度轮廓。{{ realAis ? '单船轨迹按时间桶抽稀；速度着色使用采样报位的航速，报位点开关只显示采样点。' : '速度着色默认与当前显示的轨迹同范围，可在船舶调查面板切换为仅最近 24 小时。' }}</p>
       </div>
       <div class="detail-section">
         <h3>底图来源</h3>

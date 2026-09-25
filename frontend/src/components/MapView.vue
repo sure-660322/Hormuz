@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createCountryLayer } from '../services/countryLayer'
 import { hasEventLocation, type LocatedEvent } from '../domain/maritime'
-import type { ApiTrackSegment } from '../api'
+import type { ApiTrackSegment, ApiTrackWindow } from '../api'
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -24,6 +24,9 @@ const props = defineProps<{
   track: ApiShipPosition[]
   trackVisible: boolean
   speedSegments: ApiTrackSegment[] | null
+  windowSegments: ApiTrackWindow['segments'] | null
+  windowSpeedColor: boolean
+  windowPointsVisible: boolean
   isolated: boolean
   layers: LayerState
   globalViewRequest: number
@@ -127,6 +130,9 @@ function scheduleTrack() {
       visible: props.trackVisible,
       layersTracks: props.layers.tracks,
       speedSegments: props.speedSegments,
+      windowSegments: props.windowSegments,
+      windowSpeedColor: props.windowSpeedColor,
+      windowPointsVisible: props.windowPointsVisible,
     })
   })
 }
@@ -382,7 +388,7 @@ watch(
   scheduleShips,
 )
 watch(() => [props.events, props.selectedEvent, props.time, displayZone.value], scheduleEvents)
-watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, displayZone.value], scheduleTrack)
+watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, props.windowSegments, props.windowSpeedColor, props.windowPointsVisible, displayZone.value], scheduleTrack)
 watch(() => props.shareRequest, () => { if (map) { const c = map.getCenter(); emit('shareView', { lat: c.lat, lon: c.lng, zoom: map.getZoom() }) } })
 watch(() => [props.dwell, props.encounters, props.selectedEncounter, props.isolated], scheduleDerived)
 // 从概览面板选中相遇时，地图飞到最近接近点并保证相遇图层可见。

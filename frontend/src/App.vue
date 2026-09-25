@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { fetchEvents, fetchShipTracks, fetchDwell, fetchEncounters, analyzeEncounters, fetchDataHealth, describeApiError, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiDwellResponse, type ApiEncounter, type ApiDataHealth } from './api'
+import { fetchEvents, fetchShipTracks, fetchShipTrackWindow, fetchDwell, fetchEncounters, analyzeEncounters, fetchDataHealth, describeApiError, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiTrackWindow, type ApiDwellResponse, type ApiEncounter, type ApiDataHealth } from './api'
 import { usePlayback } from './composables/usePlayback'
 import {
   inBounds,
@@ -30,10 +30,18 @@ const {
   loading,
   error,
   time,
+  requestedTime,
   times,
   currentShips,
+  frameReady,
+  isRealAis,
+  hasEvents,
+  hasDerived,
+  snapshotLoading,
+  snapshotError,
   load,
   seek,
+  retrySnapshot,
 } = usePlayback()
 const events = ref<ApiEvent[]>([])
 const eventsLoading = ref(true)
@@ -64,6 +72,37 @@ const theme = ref<'dark' | 'light'>('dark')
 const vectorMinutes = ref(6)
 // 轨迹展示范围：默认显示全部已回放报位点；开启后只看回放时刻前 24 小时。
 const trackRecent24h = ref(false)
+const realTrackHours = ref<1 | 6 | 24>(24)
+const realPointsVisible = ref(false)
+const realTrack = ref<ApiTrackWindow | null>(null)
+const realTrackLoading = ref(false)
+const realTrackError = ref('')
+watch(
+  () => [isRealAis.value, selectedShipId.value, trackVisible.value, time.value, realTrackHours.value] as const,
+  (state, _old, onCleanup) => {
+    const [real, shipId, visible, at, hours] = state
+    realTrack.value = null
+    realTrackError.value = ''
+    realTrackLoading.value = false
+    if (!real || shipId === null || !visible || !at || !times.value.length) return
+    const end = Date.parse(at)
+    const start = Math.max(Date.parse(times.value[0]!), end - hours * 3600_000)
+    if (end <= start) return
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      realTrackLoading.value = true
+      try {
+        realTrack.value = await fetchShipTrackWindow(shipId, new Date(start).toISOString(), at,
+          hours === 1 ? 30 : hours === 6 ? 120 : 300, controller.signal)
+      } catch (e) {
+        if (!controller.signal.aborted) realTrackError.value = describeApiError(e, '单船轨迹加载失败')
+      } finally {
+        if (!controller.signal.aborted) realTrackLoading.value = false
+      }
+    }, 150)
+    onCleanup(() => { clearTimeout(timer); controller.abort() })
+  },
+)
 const playbackSpeed = ref(1)
 const vectorLinked = ref(false)
 const effectiveVector = computed(() => vectorMinutes.value * (vectorLinked.value ? playbackSpeed.value : 1))
@@ -143,6 +182,7 @@ const areaResult = computed(() =>
         { center: center.value, radiusNm: radius.value, at: time.value },
         currentShips.value,
         [],
+        isRealAis.value ? 'local-ais-snapshot' : 'local-simulation',
       )
     : null,
 )
@@ -165,10 +205,25 @@ async function shareView(view: { lat: number; lon: number; zoom: number }) {
   catch { notice.value = '视图状态已写入地址栏，可复制地址分享。' }
 }
 async function initialize() {
-  await Promise.all([load(), loadEvents(), loadEncounters(), loadHealth()])
+  await load()
   const state = new URLSearchParams(location.hash.slice(1))
+  if (state.get('zone') === 'Asia/Shanghai' || (isRealAis.value && state.get('zone') !== 'UTC'))
+    displayZone.value = 'Asia/Shanghai'
+  const supplementary: Promise<void>[] = []
+  if (hasEvents.value) supplementary.push(loadEvents())
+  else {
+    exploreCategory.value = 'ships'
+    events.value = []
+    eventsLoading.value = false
+    eventsError.value = '当前试点库未接入新闻事件。'
+  }
+  if (hasDerived.value) {
+    supplementary.push(loadEncounters(), loadHealth())
+  } else {
+    encountersLoading.value = false
+  }
+  await Promise.all(supplementary)
   if (state.get('theme') === 'light') theme.value = 'light'
-  if (state.get('zone') === 'Asia/Shanghai') displayZone.value = 'Asia/Shanghai'
   const at = state.get('at')
   if (at && Number.isFinite(Date.parse(at))) seek(at)
   const event = events.value.find(e => e.event_id === state.get('event'))
@@ -219,6 +274,7 @@ async function loadHealth() {
   }
 }
 async function loadDwellOnce() {
+  if (!hasDerived.value) return
   if (dwellData.value) return
   try {
     dwellData.value = await fetchDwell()
@@ -236,6 +292,7 @@ function chooseEncounter(enc: ApiEncounter) {
 }
 // 按默认参数（3 NM / 30 分钟重叠 / 60 秒采样）受控重建相遇派生层，随后刷新列表与健康状态。
 async function reanalyzeEncounters() {
+  if (!hasDerived.value) return
   encountersLoading.value = true
   encounterError.value = ''
   try {
@@ -250,7 +307,13 @@ async function reanalyzeEncounters() {
   }
 }
 function chooseShip(ship: ApiMapShip) {
-  if (selectedShipId.value !== ship.id) trackVisible.value = false
+  if (selectedShipId.value !== ship.id) {
+    trackVisible.value = false
+    if (isRealAis.value) {
+      realPointsVisible.value = false
+      speedColorOn.value = false
+    }
+  }
   selectedShipId.value = ship.id
   selectedEvent.value = null
   panel.value = 'ships'
@@ -264,6 +327,7 @@ function chooseShip(ship: ApiMapShip) {
 function clearShip() {
   selectedShipId.value = null
   trackVisible.value = false
+  realPointsVisible.value = false
   isolated.value = false
 }
 // P2：事件面板「地图定位」关联船——在回放快照中找船并选中聚焦。
@@ -452,6 +516,13 @@ function toggleSpeedColor() {
     layers.value.tracks = true
   }
 }
+function toggleRealPoints() {
+  realPointsVisible.value = !realPointsVisible.value
+  if (realPointsVisible.value) {
+    trackVisible.value = true
+    layers.value.tracks = true
+  }
+}
 function clearArea() {
   fenceEnabled.value = false
   center.value = null
@@ -490,7 +561,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <button :class="{ active: workspaceMode === 'explore' }" :aria-current="workspaceMode === 'explore' ? 'page' : undefined" @click="workspaceMode = 'explore'">地图探索</button>
       </nav>
       <div class="top-status">
-        <span class="simulation-label">船舶轨迹 · 新闻事件</span>
+        <span class="simulation-label">{{ isRealAis ? '历史 AIS 船位 · 新闻独立' : '船舶轨迹 · 新闻事件' }}</span>
         <button @click="displayZone = displayZone === 'UTC' ? 'Asia/Shanghai' : 'UTC'" aria-label="切换时区">{{ zoneLabel() }}</button>
         <button @click="theme = theme === 'dark' ? 'light' : 'dark'" aria-label="切换地图主题">{{ theme === 'dark' ? '浅色' : '深色' }}</button>
         <details class="top-more">
@@ -511,6 +582,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       :total-events="events.length"
       :events-loading="eventsLoading"
       :events-error="eventsError"
+      :events-available="hasEvents"
       :ships-loading="loading"
       :current-time="time"
       :untimed-events="untimedEvents"
@@ -543,6 +615,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :harbour-status="harbourStatus"
         :country-status="countryStatus"
         :effective-vector="effectiveVector"
+        :real-ais="isRealAis"
         @close="layersOpen = false"
       />
       <MapView
@@ -553,6 +626,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :track="selectedTrack"
         :track-visible="trackVisible"
         :speed-segments="speedColorOn ? speedSegments : null"
+        :window-segments="isRealAis ? (realTrack?.segments ?? []) : null"
+        :window-speed-color="isRealAis && speedColorOn"
+        :window-points-visible="isRealAis && realPointsVisible"
         :isolated="isolated"
         :layers="layers"
         :global-view-request="globalViewRequest"
@@ -589,6 +665,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           ⌖ 全局视野
         </button>
       </div>
+      <div v-if="isRealAis" class="ais-snapshot-strip" role="status">
+        <strong>历史 AIS · {{ formatTime(time, true) }} {{ zoneLabel() }}</strong>
+        <span>快照 {{ currentShips.length }} 艘，视野内 {{ viewShips.length }} 艘</span>
+        <span>仅采用此前 1 小时内的最新报位</span>
+        <span v-if="snapshotLoading && requestedTime !== time">正在获取 {{ formatTime(requestedTime, true) }} 的快照</span>
+      </div>
       <div v-if="notice" class="alert-toast" role="status"><span>{{ notice }}</span><button @click="notice = ''" aria-label="关闭提醒">×</button></div>
       <div v-if="picking" class="map-instruction" role="status">
         点击地图选点，或按 Enter 使用视野中心
@@ -598,6 +680,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         仅显示选中船舶 <button @click="isolated = false">恢复全部</button>
       </div>
       <div class="map-hud">
+        <span v-if="isRealAis" title="历史 AIS；每艘船采用所选时刻前一小时内最新报位"><strong>历史 AIS</strong> · {{ formatTime(time, true) }} {{ zoneLabel() }} · 1 小时有效窗</span>
         <span
           ><strong>{{ viewShips.length }}</strong> 船</span
         ><span
@@ -626,17 +709,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         ><span>船位来源以接入数据为准；事件为代表点，非精确事发位置</span
         ><span>新闻按事件发生时间随回放出现；日期级记录不代表精确时刻</span>
       </div>
-      <div v-if="loading || error" class="map-data-status" role="status">
-        {{ error || '正在载入船舶与历史采样…'
-        }}<button v-if="error" @click="load">重试</button>
+      <div v-if="loading || error || snapshotLoading || snapshotError" class="map-data-status" role="status">
+        {{ error || snapshotError || (isRealAis ? '正在查询所选时刻的船位快照…' : '正在载入船舶与历史采样…')
+        }}<button v-if="error || snapshotError" @click="error ? load() : retrySnapshot()">重试</button>
       </div>
     </section>
     <section class="overview-stage" aria-label="态势总览">
-      <header class="overview-stage-head"><div><p class="eyebrow">霍尔木兹海峡 · 历史船位与新闻</p><h2>从海峡动态，进入地图调查</h2><p>计划接入船位时段：2026-02-25 至 2026-03-03（UTC）；实际回放范围以入库数据为准。新闻事件来自已采集报道，两类资料分别浏览，不据时空邻近推断真实关联。</p></div><button class="primary" @click="workspaceMode = 'explore'">进入地图探索</button></header>
+      <header class="overview-stage-head"><div><p class="eyebrow">霍尔木兹海峡 · 历史船位与新闻</p><h2>从海峡动态，进入地图调查</h2><p>{{ isRealAis ? `当前接入历史 AIS：${formatTime(times[0], true)} 至 ${formatTime(times.at(-1), true)} ${zoneLabel()}；地图为所选时刻前 1 小时内的最新报位。` : '计划接入船位时段：2026-02-25 至 2026-03-03（UTC）；实际回放范围以入库数据为准。' }} 新闻事件来自独立报道，两类资料分别浏览，不据时空邻近推断真实关联。</p></div><button class="primary" @click="workspaceMode = 'explore'">进入地图探索</button></header>
       <OverviewPanel
         :time="time" :view-ships="currentShips" :view-events="mapEvents" :events="filteredEvents"
         :total-ships="currentShips.length" :total-events="events.length" :average-speed="snapshotAverageSpeed"
         :events-loading="eventsLoading" :encounters="encounterList" :health="health"
+        :has-derived="hasDerived"
         :encounters-loading="encountersLoading" :encounter-error="encounterError"
         @select-ship="chooseShip" @select-event="chooseEvent" @select-encounter="chooseEncounter"
         @reanalyze-encounters="reanalyzeEncounters" @open-events="openExplorer('events')" @open-ships="openExplorer('ships')"
@@ -644,7 +728,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </section>
     <div class="timeline-dock">
       <TimelineControls
-        v-model="index" :frame-times="times" :events="[]"
+        v-model="index" :frame-times="times" :events="[]" :snapshot-mode="isRealAis" :frame-ready="frameReady" :frame-error="snapshotError"
         :selected-event-id="selectedEvent?.id ?? null" :seek-request="seekRequest"
         :loading="loading" :error-message="error" :event-type="eventType"
         @speed-change="playbackSpeed = $event" @retry="load"
@@ -682,6 +766,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :ships="currentShips"
         :track="selectedTrack"
         :track-visible="trackVisible"
+        :track-available="true"
+        :real-ais="isRealAis"
+        :real-track="realTrack"
+        :real-track-loading="realTrackLoading"
+        :real-track-error="realTrackError"
+        :real-track-hours="realTrackHours"
+        :real-points-visible="realPointsVisible"
+        @update:real-track-hours="realTrackHours = $event"
         :speed-color="speedColorOn"
         v-model:track-recent-24h="trackRecent24h"
         v-model:speed-color-recent-24h="speedColorRecent24h"
@@ -693,6 +785,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @clear="clearShip(); panelOpen = false"
         @track="toggleTrack"
         @speed-color="toggleSpeedColor"
+        @real-points="toggleRealPoints"
         @isolate="isolated = !isolated"
         @event="chooseEvent"
         @locate="focusShipRequest++"

@@ -13,6 +13,7 @@ const props = defineProps<{
   eventsLoading: boolean
   encounters: ApiEncounter[]
   health: ApiDataHealth | null
+  hasDerived: boolean
   encountersLoading: boolean
   encounterError: string
 }>()
@@ -97,14 +98,14 @@ const derivedTables = computed(() => props.health?.derived ?? [])
         @click="emit('selectShip', ship)"
       >
         <span class="overview-row-title"
-          >{{ ship.name }}<small>{{ shipType(ship.ship_type) }}</small></span
+          >{{ ship.name ?? ship.mmsi }}<small>{{ shipType(ship.ship_type) }}</small></span
         >
         <small>{{ ship.speed.toFixed(1) }} kn</small>
       </button>
       <p v-if="!topShips.length" class="empty compact">当前视野暂无船舶。</p>
       <button class="overview-more" @click="emit('openShips')">全部船舶 ›</button>
     </section>
-    <section class="overview-section" aria-label="相遇分析">
+    <section v-if="hasDerived" class="overview-section" aria-label="相遇分析">
       <div class="section-title">
         <h3>相遇分析</h3>
         <span>按最近距离排序</span>
@@ -130,7 +131,7 @@ const derivedTables = computed(() => props.health?.derived ?? [])
         <p class="empty compact">时空接近不代表实际交互。</p>
       </template>
     </section>
-    <section class="overview-section" aria-label="数据健康">
+    <section v-if="hasDerived" class="overview-section" aria-label="数据健康">
       <div class="section-title">
         <h3>数据健康</h3>
         <span>源覆盖与派生层新鲜度</span>

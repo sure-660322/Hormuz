@@ -47,5 +47,5 @@ def get_data_health(db: Session) -> dict:
             "totals": global_counts,
         },
         "derived": derived,
-        "note": "船位为教学模拟（data_source 标识来源）；stale 表示派生层早于最新源报位，需重建",
+        "note": "data_source 标识船位来源；stale 表示派生层早于最新源报位，需重建",
     }

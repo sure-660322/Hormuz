@@ -170,11 +170,11 @@ export class ShipLayerManager {
     let entry = this.entries.get(ship.id)
     if (!entry) {
       const marker = L.marker([ship.latitude, ship.longitude], {
-        title: ship.name,
-        alt: ship.name,
+        title: ship.name ?? ship.mmsi,
+        alt: ship.name ?? ship.mmsi,
         bubblingMouseEvents: false,
       })
-      marker.bindTooltip(safeText(`${ship.name} · ${ship.speed.toFixed(1)} kn`), {
+      marker.bindTooltip(safeText(`${ship.name ?? ship.mmsi} · ${ship.speed.toFixed(1)} kn`), {
         direction: 'top',
       })
       marker.on('click', () => {
@@ -238,7 +238,7 @@ export class ShipLayerManager {
     entry.rotor?.setAttribute('transform', `rotate(${complete ? angle : ship.course} 14 14)`)
 
     // tooltip：内容变化才更新
-    const tooltipText = `${ship.name} · ${ship.speed.toFixed(1)} kn`
+    const tooltipText = `${ship.name ?? ship.mmsi} · ${ship.speed.toFixed(1)} kn`
     if (tooltipText !== entry.tooltipText) {
       entry.tooltipText = tooltipText
       entry.marker.setTooltipContent(safeText(tooltipText))

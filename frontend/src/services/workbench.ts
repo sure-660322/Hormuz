@@ -1,25 +1,26 @@
 import type { ApiMapShip, ApiEvent } from '../api'
 import { hasEventLocation, distanceNm, type AreaQuery, type AreaResult } from '../domain/maritime'
 
-// These adapters operate on the loaded simulation, never on invented AIS/news.
+// These adapters operate on the currently loaded ship snapshot.
 export interface WorkbenchService {
   searchShips(query: string, ships: ApiMapShip[]): ApiMapShip[]
   queryArea(
     query: AreaQuery,
     ships: ApiMapShip[],
     events: ApiEvent[],
+    source?: AreaResult['source'],
   ): AreaResult
 }
 export const localWorkbench: WorkbenchService = {
   searchShips(query, ships) {
     const q = query.trim().toLocaleLowerCase()
     return ships.filter((ship) =>
-      [ship.name, ship.mmsi, ship.imo ?? ''].some((value) =>
+      [ship.name ?? '', ship.mmsi, ship.imo ?? ''].some((value) =>
         value.toLocaleLowerCase().includes(q),
       ),
     )
   },
-  queryArea(query, ships, events) {
+  queryArea(query, ships, events, source = 'local-simulation') {
     return {
       ships: ships.filter(
         (ship) => distanceNm(query.center, ship) <= query.radiusNm,
@@ -30,7 +31,7 @@ export const localWorkbench: WorkbenchService = {
           Date.parse(event.occurred_at) <= Date.parse(query.at) &&
           distanceNm(query.center, event) <= query.radiusNm,
       ),
-      source: 'local-simulation',
+      source,
     }
   },
 }

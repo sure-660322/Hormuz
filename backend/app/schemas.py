@@ -11,8 +11,9 @@ class ShipResponse(BaseModel):
 
     id:int
     mmsi:str
-    name:str
-    ship_type:str
+    name:str | None
+    ship_type:str | None
+    ship_type_cn_raw:str | None
     flag:str | None
     imo:str | None
     callsign:str | None
@@ -84,8 +85,9 @@ class ShipMapResponse(BaseModel):
 
     id: int
     mmsi: str
-    name: str
-    ship_type: str
+    name: str | None
+    ship_type: str | None
+    ship_type_cn_raw: str | None
     flag: str | None
     imo: str | None
     callsign: str | None
@@ -97,6 +99,16 @@ class ShipMapResponse(BaseModel):
     recorded_at: datetime
 
 
+class ShipSnapshotFrameResponse(BaseModel):
+    at: datetime
+    ships: list[ShipMapResponse]
+
+
+class ShipSnapshotWindowResponse(BaseModel):
+    frames: list[ShipSnapshotFrameResponse]
+    max_age_seconds: int
+
+
 class SimulationMetaResponse(BaseModel):
     start_at: datetime | None
     end_at: datetime | None
@@ -106,3 +118,5 @@ class SimulationMetaResponse(BaseModel):
     position_count: int
     event_count: int
     is_simulated: bool
+    has_events: bool = True
+    has_derived: bool = True

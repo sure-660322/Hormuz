@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { eventCoverUrl, type ApiEvent, type ApiMapShip } from '../api'
 import { eventKind, eventKinds, eventTimeText, shipType } from '../domain/maritime'
 import ShipSearch from './ShipSearch.vue'
@@ -10,6 +10,7 @@ const props = defineProps<{
   totalEvents: number
   eventsLoading: boolean
   eventsError: string
+  eventsAvailable: boolean
   shipsLoading: boolean
   currentTime: string | null
   untimedEvents: number
@@ -27,7 +28,10 @@ const emit = defineEmits<{
 }>()
 const category = defineModel<'events' | 'ships'>({ default: 'events' })
 const failedCovers = reactive(new Set<string>())
-const sortedShips = computed(() => [...props.ships].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN')))
+const sortedShips = computed(() => [...props.ships].sort((a, b) => (a.name ?? a.mmsi).localeCompare(b.name ?? b.mmsi, 'zh-CN')))
+const shipListLimit = ref(100)
+const visibleShips = computed(() => sortedShips.value.slice(0, shipListLimit.value))
+watch(() => props.ships, () => { shipListLimit.value = 100 })
 function selectEvent(event: ApiEvent) { category.value = 'events'; emit('selectEvent', event) }
 function selectShip(ship: ApiMapShip) { category.value = 'ships'; emit('selectShip', ship) }
 </script>
@@ -56,7 +60,7 @@ function selectShip(ship: ApiMapShip) { category.value = 'ships'; emit('selectSh
       <p class="explorer-count">截至当前回放时刻 {{ events.length }} / {{ totalEvents }} 条新闻事件</p>
       <p v-if="untimedEvents" class="explorer-count">{{ untimedEvents }} 条缺少发生时间，未纳入时间回放。</p>
       <div v-if="eventsLoading" class="explorer-message" role="status">正在加载新闻事件…</div>
-      <div v-else-if="eventsError" class="explorer-message" role="alert">{{ eventsError }} <button @click="emit('retry')">重试</button></div>
+      <div v-else-if="eventsError" class="explorer-message" role="alert">{{ eventsError }} <button v-if="eventsAvailable" @click="emit('retry')">重试</button></div>
       <div v-else class="explorer-list">
         <button v-for="event in events" :key="event.event_id" class="explorer-item event-item" :class="{ selected: selectedEventId === event.event_id }" @click="selectEvent(event)">
           <span class="explorer-item-cover" title="关联报道配图">
@@ -73,12 +77,13 @@ function selectShip(ship: ApiMapShip) { category.value = 'ships'; emit('selectSh
       </div>
     </template>
     <template v-else>
-      <p class="explorer-count">当前回放快照 · {{ ships.length }} 艘船舶</p>
+      <p class="explorer-count">当前船位快照 · {{ ships.length }} 艘船舶</p>
       <div class="explorer-list">
-        <button v-for="ship in sortedShips" :key="ship.id" class="explorer-item" :class="{ selected: selectedShipId === ship.id }" @click="selectShip(ship)">
-          <span class="explorer-item-title">{{ ship.name }}</span>
+        <button v-for="ship in visibleShips" :key="ship.id" class="explorer-item" :class="{ selected: selectedShipId === ship.id }" @click="selectShip(ship)">
+          <span class="explorer-item-title">{{ ship.name ?? ship.mmsi }}</span>
           <span class="explorer-item-meta"><span>{{ shipType(ship.ship_type) }}</span><span>{{ ship.speed.toFixed(1) }} kn</span></span>
         </button>
+        <button v-if="shipListLimit < ships.length" class="overview-more" @click="shipListLimit += 100">再显示 100 艘（已显示 {{ visibleShips.length }} / {{ ships.length }}）</button>
         <p v-if="!ships.length" class="explorer-message">当前时刻暂无船位，可调整底部回放时间。</p>
       </div>
     </template>

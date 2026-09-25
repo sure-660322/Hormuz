@@ -65,7 +65,7 @@ function choose(ship: ApiMapShip) {
         class="ship-result"
         @click="choose(ship)"
       >
-        <strong>{{ ship.name }}</strong
+        <strong>{{ ship.name ?? ship.mmsi }}</strong
         ><span>{{ shipType(ship.ship_type) }} · MMSI {{ ship.mmsi }}</span
         ><small v-if="ship.imo">IMO {{ ship.imo }}</small>
       </button>

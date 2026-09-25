@@ -2,6 +2,8 @@
 
 > 2026-09-25 当前状态：本机 `ships` 和 `ship_positions` 已清空，Git 跟踪的模拟船舶交接文件及旧 manifest 已移除；仓库目前没有可导入的四表数据包。主目录中 Git 忽略的旧报位和备份仍存在（自动审批拒绝删除）。`events.jsonl` 和 `news.jsonl` 仍保留，但未作为当前快照重新核验。以下 2026-09-14 的导入命令、预期数量及成功演练均为历史记录，不能直接对现有文件执行。真实 AIS 尚未导入应用库。
 
+> 2026-09-25 单日试导：`ais_import_pilot_20260225` 是独立测试库，已核对 2,801 艘、3,634,184 条 2026-02-25 AIS 报位。新迁移 `014_real_ais_import.sql` 已在测试库验证，并作为结构变更应用到 `aisdb`；应用库船舶/船位仍为 0/0，没有导入真实 AIS。不能把测试库数据或旧四表交接流程说成应用库已接入。详见[真实 AIS 单日试导](real_ais_import_pilot.md)。
+
 历史状态：2026-09-14 曾提供独立 Docker Compose、四表 JSONL 交接数据、空库导入与核验脚本，并在新容器、新数据卷上演练。脚本保留，当前缺少完整数据包。Git 不会同步运行中的数据库。
 
 ## 仓库提供哪些数据
@@ -109,8 +111,9 @@ docker compose --env-file deploy/handoff.env -f compose.handoff.yaml stop
 
 2026-09-14：独立官方 Docker 镜像空库导入成功；四源表逐行一致；PostGIS 生成列、两项船位索引、源表外键和序列已核验；重复导入被拒绝；114 段派生轨迹重建成功。/health、/docs、/ships、/ships/map、/events、/events/evt_001/news、/simulation/meta、/mobility-demo/analysis、/mobility-demo/tracks 均返回 200。原数据库只读回查仍与导出数据一致。
 
-## 旧脚本边界
+## 脚本边界
 
+- 014_real_ais_import.sql 是 2026-09-25 真实 AIS 字段扩展迁移，已在独立测试库验证并应用于当前应用库的空船舶表；它不导入数据。`backend/import_real_ais_pilot.py` 只允许 2026-02-25 CSV 写入固定独立测试库，不能用于应用库或其余日期。核验与限制见[单日试导](real_ais_import_pilot.md)。
 - 008_fresh_handoff_schema.sql 是新空库入口，由 handoff 脚本在事务和空库保护下执行；不要对已有库直接重放。
 - 001–007 是历史演进，不能无条件顺序执行；006 会重建新闻表。
 - 009_ship_tracks.sql 是 P0 泛化派生层（ship_tracks、track_build_manifest、源表 BRIN/data_source 索引），全部由 backend/build_ship_tracks.py 以幂等 DDL 执行并负责重建与 manifest 留痕；不进交接包，新库首次重建时自动建立。

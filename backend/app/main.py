@@ -18,7 +18,7 @@ app = FastAPI()
 #添加中间件
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5174",],    #vue的来源
+    allow_origins=["http://localhost:5174", "http://localhost:5176"],
     allow_methods=["GET", "POST"],               #请求方法
     allow_headers=["*"],                        #请求头
 )

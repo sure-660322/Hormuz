@@ -12,6 +12,9 @@ const props = defineProps<{
   selectedEventId: number | null
   seekRequest: number
   eventType: string
+  snapshotMode?: boolean
+  frameReady?: boolean
+  frameError?: string
 }>()
 const emit = defineEmits<{
   'update:modelValue': [index: number]
@@ -138,6 +141,7 @@ function move(index: number) {
   emit('update:modelValue', Math.max(zoomStart.value, Math.min(rangeEnd.value, index)))
 }
 function play() {
+  if (props.snapshotMode && props.frameError) return
   if (playing.value) {
     stop()
     return
@@ -157,12 +161,14 @@ watch([playing, speed], () => {
   clearInterval(timer)
   if (!playing.value) return
   timer = setInterval(() => {
+    if (props.snapshotMode && !props.frameReady) return
     const next = Math.min(rangeEnd.value, props.modelValue + 1)
     emit('update:modelValue', next)
     if (next === rangeEnd.value) stop()
   }, 1000 / speed.value)
 })
 watch(speed, value => emit('speedChange', value))
+watch(() => props.frameError, (message) => { if (message) stop() })
 watch(() => props.seekRequest, () => { stop(); resetZoom() })
 watch(
   () => props.loading,
@@ -204,7 +210,7 @@ onBeforeUnmount(() => {
     <template v-else>
       <div class="timeline-toolbar">
         <div class="replay-title">
-          <strong>船舶回放</strong
+          <strong>{{ snapshotMode ? '历史 AIS 回放' : '船舶回放' }}</strong
           ><span
             >{{ formatTime(frameTimes[0], true).split(' ')[0] }} ·
             非实时 AIS</span
@@ -227,7 +233,8 @@ onBeforeUnmount(() => {
             ‹</button
           ><button
             class="primary play-button"
-            :disabled="!hasFrames"
+            :disabled="!hasFrames || (snapshotMode && !!frameError)"
+            :title="snapshotMode ? '按 5 分钟推进；目标快照未就绪时暂停等待' : undefined"
             @click="play"
           >
             {{ playing ? 'Ⅱ 暂停' : '▶ 播放' }}</button

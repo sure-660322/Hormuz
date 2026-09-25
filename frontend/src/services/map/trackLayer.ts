@@ -1,5 +1,5 @@
 import * as L from 'leaflet'
-import type { ApiShipPosition, ApiTrackSegment } from '../../api'
+import type { ApiShipPosition, ApiTrackSegment, ApiTrackWindow } from '../../api'
 import { formatTime, riskColors } from '../../domain/maritime'
 
 // 轨迹渲染上下文：track 为按回放时刻过滤后的可见报位点（随回放推进单调追加）。
@@ -8,6 +8,9 @@ export interface TrackRenderContext {
   visible: boolean
   layersTracks: boolean
   speedSegments: ApiTrackSegment[] | null
+  windowSegments: ApiTrackWindow['segments'] | null
+  windowSpeedColor: boolean
+  windowPointsVisible: boolean
 }
 
 interface SpeedRun {
@@ -55,6 +58,9 @@ export class TrackLayerManager {
   private renderedPoints: ApiShipPosition[] = []
   private pointMarkers: L.CircleMarker[] = []
   private speedRuns = new Map<string, SpeedRun>()
+  private renderedWindowSegments: ApiTrackWindow['segments'] | null = null
+  private renderedWindowSpeedColor = false
+  private renderedWindowPointsVisible = false
   private options: TrackLayerManagerOptions
 
   constructor(options: TrackLayerManagerOptions) {
@@ -64,6 +70,52 @@ export class TrackLayerManager {
   update(ctx: TrackRenderContext) {
     if (!ctx.visible || !ctx.layersTracks) {
       this.clear()
+      return
+    }
+    if (ctx.windowSegments !== null) {
+      if (ctx.windowSegments === this.renderedWindowSegments &&
+          ctx.windowSpeedColor === this.renderedWindowSpeedColor &&
+          ctx.windowPointsVisible === this.renderedWindowPointsVisible) return
+      this.clear()
+      for (const segment of ctx.windowSegments) {
+        const points = segment.points
+        if (points.length > 1) {
+          if (ctx.windowSpeedColor) {
+            let color = speedBucketColor(points[0]!.speed)
+            let run: L.LatLngTuple[] = [[points[0]!.latitude, points[0]!.longitude]]
+            const drawRun = () => {
+              if (run.length > 1) L.polyline(run, {
+                renderer: this.options.canvas, color, weight: 3, opacity: 0.9, interactive: false,
+              }).addTo(this.options.trackLayer)
+            }
+            for (let i = 0; i < points.length - 1; i++) {
+              const nextColor = speedBucketColor(points[i]!.speed)
+              if (nextColor !== color) {
+                drawRun()
+                run = [[points[i]!.latitude, points[i]!.longitude]]
+                color = nextColor
+              }
+              run.push([points[i + 1]!.latitude, points[i + 1]!.longitude])
+            }
+            drawRun()
+          } else {
+            L.polyline(points.map((p): L.LatLngTuple => [p.latitude, p.longitude]), {
+              renderer: this.options.canvas, color: riskColors.selected, weight: 3, opacity: 0.9,
+              interactive: false,
+            }).addTo(this.options.trackLayer)
+          }
+        }
+        for (const point of ctx.windowPointsVisible ? points : points.length === 1 ? points : []) {
+          L.circleMarker([point.latitude, point.longitude], {
+            radius: 3, color: riskColors.selected, weight: 1, fillColor: '#fff', fillOpacity: 1,
+          }).bindTooltip(safeText(
+            `采样报位 ${formatTime(point.recorded_at, true)} · ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ${point.speed.toFixed(1)} kn`,
+          )).addTo(this.options.trackLayer)
+        }
+      }
+      this.renderedWindowSegments = ctx.windowSegments
+      this.renderedWindowSpeedColor = ctx.windowSpeedColor
+      this.renderedWindowPointsVisible = ctx.windowPointsVisible
       return
     }
     const points = ctx.track
@@ -185,6 +237,12 @@ export class TrackLayerManager {
   }
 
   clear() {
+    if (this.renderedWindowSegments !== null) {
+      this.options.trackLayer.clearLayers()
+      this.renderedWindowSegments = null
+      this.renderedWindowSpeedColor = false
+      this.renderedWindowPointsVisible = false
+    }
     if (this.polyline) {
       this.options.trackLayer.removeLayer(this.polyline)
       this.polyline = null

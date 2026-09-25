@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import type { ApiMapShip, ApiShipPosition, ApiEvent } from '../api'
+import type { ApiMapShip, ApiShipPosition, ApiEvent, ApiTrackWindow } from '../api'
 import { formatTime, shipType, eventKind, shipShape, shipStatus, sampleAge, zoneLabel } from '../domain/maritime'
 const props = defineProps<{
   ship: ApiMapShip | null
   ships: ApiMapShip[]
   track: ApiShipPosition[]
   trackVisible: boolean
+  trackAvailable: boolean
+  realAis: boolean
+  realTrack: ApiTrackWindow | null
+  realTrackLoading: boolean
+  realTrackError: string
+  realTrackHours: 1 | 6 | 24
+  realPointsVisible: boolean
   trackRecent24h: boolean
   speedColor: boolean
   speedColorRecent24h: boolean
@@ -21,15 +28,18 @@ const emit = defineEmits<{
   clear: []
   track: []
   'speed-color': []
+  'real-points': []
   'update:speedColorRecent24h': [value: boolean]
   'update:trackRecent24h': [value: boolean]
+  'update:realTrackHours': [value: 1 | 6 | 24]
   isolate: []
   event: [event: ApiEvent]
   locate: []
 }>()
 const section = ref<'track' | 'events' | 'news'>('track')
 const compact = ref(true)
-const sortedShips = computed(() => [...props.ships].sort((a, b) => shipStatus(b, props.time).rank - shipStatus(a, props.time).rank || a.name.localeCompare(b.name, 'zh-CN')))
+const sortedShips = computed(() => [...props.ships].sort((a, b) => shipStatus(b, props.time).rank - shipStatus(a, props.time).rank || (a.name ?? a.mmsi).localeCompare(b.name ?? b.mmsi, 'zh-CN')))
+const directoryLimit = ref(100)
 const panel = ref<HTMLElement | null>(null)
 watch(
   () => props.ship?.id,
@@ -65,7 +75,7 @@ const points = computed(() => {
         <div class="section-title">
           <span>船舶调查</span><button @click="emit('clear')">取消选中</button>
         </div>
-        <h2>{{ ship.name }}</h2>
+        <h2>{{ ship.name ?? ship.mmsi }}</h2>
         <p>
           {{ shipType(ship.ship_type) }} <span>{{ ship.flag ?? '未提供' }}</span>
         </p>
@@ -118,15 +128,18 @@ const points = computed(() => {
       </dl>
       <div class="ship-actions">
         <button
+          v-if="trackAvailable"
           class="primary"
           :aria-pressed="trackVisible"
           @click="emit('track')"
         >
           {{ trackVisible ? '隐藏轨迹' : '查看轨迹' }}</button
-        ><button :aria-pressed="speedColor" @click="emit('speed-color')">
+        ><button v-if="trackAvailable" :aria-pressed="speedColor" @click="emit('speed-color')">
           {{ speedColor ? '关闭着色' : '速度着色' }}</button
+        ><button v-if="realAis" :aria-pressed="realPointsVisible" @click="emit('real-points')">
+          {{ realPointsVisible ? '隐藏报位点' : '显示报位点' }}</button
         ><button
-          v-if="speedColor"
+          v-if="speedColor && !realAis"
           :aria-pressed="speedColorRecent24h"
           @click="emit('update:speedColorRecent24h', !speedColorRecent24h)"
         >
@@ -136,11 +149,11 @@ const points = computed(() => {
         ><button @click="emit('locate')">定位</button>
       </div>
       <p v-if="speedColor" class="speed-legend">
-        派生层着色（数据库插值结果）：<span style="color: #8a97a3">■</span> &lt;3 kn
+        {{ realAis ? '抽稀轨迹按线段起点的实测航速着色，无速度插值：' : '派生层着色（数据库插值结果）：' }}<span style="color: #8a97a3">■</span> &lt;3 kn
         <span style="color: #2e9e5b">■</span> 3–8
         <span style="color: #e6a23c">■</span> 8–12
-        <span style="color: #d64f4f">■</span> &gt;12 kn ·
-        {{ speedColorRecent24h ? '仅回放时刻前 24 小时' : '范围与当前显示的轨迹一致' }}
+        <span style="color: #d64f4f">■</span> &gt;12 kn<span v-if="!realAis"> ·
+        {{ speedColorRecent24h ? '仅回放时刻前 24 小时' : '范围与当前显示的轨迹一致' }}</span>
       </p>
       <nav class="detail-tabs" aria-label="船舶详情分类">
         <button
@@ -161,6 +174,23 @@ const points = computed(() => {
         </button>
       </nav>
       <section v-if="section === 'track'" class="detail-section">
+        <p v-if="!trackAvailable" class="empty compact">当前为单时刻船位快照。单船轨迹将在下一阶段接入。</p>
+        <div v-else-if="realAis" class="real-track-details">
+          <div class="section-title"><h3>单船历史轨迹</h3><span>最长 24 小时</span></div>
+          <div class="track-range" role="group" aria-label="轨迹时间范围">
+            <button v-for="hours in ([1, 6, 24] as const)" :key="hours" :aria-pressed="realTrackHours === hours" @click="emit('update:realTrackHours', hours)">最近 {{ hours }} 小时</button>
+          </div>
+          <p v-if="realTrackLoading" class="caption" role="status">正在读取并抽稀该船报位…</p>
+          <p v-else-if="realTrackError" class="empty compact" role="alert">{{ realTrackError }}</p>
+          <template v-else-if="realTrack">
+            <p class="caption">窗口内原始报位 {{ realTrack.source_count }} 条，地图采样 {{ realTrack.point_count }} 点、{{ realTrack.segments.length }} 段。相邻报位超过 {{ realTrack.gap_minutes }} 分钟即断开；各段首尾保留，段间不连线。</p>
+            <p class="caption">“显示报位点”仅显示返回的采样点；线段着色使用起点报位的航速。原始报位仍保存在数据库中。</p>
+            <p v-if="realTrack.gaps.length" class="track-note">发现 {{ realTrack.gaps.length }} 处断档，最长 {{ Math.max(...realTrack.gaps.map(g => g.minutes)).toFixed(1) }} 分钟。断档并不代表船舶停止航行。</p>
+            <p v-if="!realTrack.source_count" class="empty compact">此时段没有该船报位，可调整时间轴或时间范围。</p>
+          </template>
+          <p v-else class="caption">点击“查看轨迹”后按所选时段加载。</p>
+        </div>
+        <template v-else>
         <div class="section-title">
           <h3>航速变化</h3>
           <span>{{ track.length }} 个采样</span>
@@ -216,6 +246,7 @@ const points = computed(() => {
           />只看最近 24h 轨迹</label
         >
         <details class="sample-records"><summary>船位记录（{{ track.length }} 条）</summary><table><thead><tr><th>时间</th><th>纬度 / 经度</th><th>kn</th></tr></thead><tbody><tr v-for="p in [...track].reverse()" :key="p.id"><td>{{ formatTime(p.recorded_at) }}</td><td>{{ p.latitude.toFixed(3) }} / {{ p.longitude.toFixed(3) }}</td><td>{{ p.speed.toFixed(1) }}</td></tr></tbody></table></details>
+        </template>
       </section>
       <section v-else-if="section === 'events'" class="detail-section">
         <h3>船舶事件关联</h3>
@@ -244,7 +275,8 @@ const points = computed(() => {
       </section>
       <section v-else class="detail-section empty">
         <h3>船舶新闻关联暂不可用</h3>
-        <p>计划接入船位时段：2026-02-25 至 2026-03-03（UTC）；实际范围以入库数据为准。</p>
+        <p v-if="!trackAvailable">当前仅展示历史 AIS 船位快照；尚未核验该船与报道的身份对应关系。</p>
+        <p v-else>船舶与报道的身份对应关系尚未核验。</p>
         <p>已采集新闻可在事件详情中查看；船舶与新闻的身份和因果关系需独立核验。</p>
       </section>
     </template>
@@ -255,8 +287,9 @@ const points = computed(() => {
       </header>
       <div class="directory-toolbar"><span>{{ ships.length }} 艘船舶</span><button @click="compact = !compact" :aria-pressed="compact">{{ compact ? '紧凑' : '舒适' }}</button></div>
       <table class="ship-table" :class="{ compact }"><thead><tr><th>船舶 / MMSI</th><th>kn</th><th>采样</th></tr></thead><tbody>
-        <tr v-for="item in sortedShips" :key="item.id"><td><button @click="emit('select', item)" :aria-label="`查看 ${item.name}`"><span class="status-dot" :style="{ background: shipStatus(item, time).color }" :title="shipStatus(item, time).label"></span><span class="ship-name">{{ shipShape(item.ship_type) }} {{ item.name }}<small>{{ item.mmsi }}</small></span></button></td><td>{{ item.speed.toFixed(1) }}</td><td><span :title="shipStatus(item, time).label">{{ sampleAge(item, time).toFixed(0) }} 分前</span></td></tr>
+        <tr v-for="item in sortedShips.slice(0, directoryLimit)" :key="item.id"><td><button @click="emit('select', item)" :aria-label="`查看 ${item.name ?? item.mmsi}`"><span class="status-dot" :style="{ background: shipStatus(item, time).color }" :title="shipStatus(item, time).label"></span><span class="ship-name">{{ shipShape(item.ship_type) }} {{ item.name ?? item.mmsi }}<small>{{ item.mmsi }}</small></span></button></td><td>{{ item.speed.toFixed(1) }}</td><td><span :title="shipStatus(item, time).label">{{ sampleAge(item, time).toFixed(0) }} 分前</span></td></tr>
       </tbody></table>
+      <button v-if="directoryLimit < ships.length" class="overview-more" @click="directoryLimit += 100">再显示 100 艘（已显示 {{ Math.min(directoryLimit, ships.length) }} / {{ ships.length }}）</button>
       <p v-if="!ships.length" class="empty">
         当前时刻没有可用船位，请检查回放数据状态。
       </p></template

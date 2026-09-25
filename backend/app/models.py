@@ -15,20 +15,22 @@ class Ship(Base):
     )
 
     mmsi:Mapped[str]= mapped_column(
-        String(9),
+        String(10),
         unique=True,
         nullable=False,
     )
 
-    name:Mapped[str] = mapped_column(
+    name:Mapped[str | None] = mapped_column(
         String(100),
-        nullable=False,
+        nullable=True,
     )
 
-    ship_type: Mapped[str] = mapped_column(
+    ship_type: Mapped[str | None] = mapped_column(
         String(50),
-        nullable=False,
+        nullable=True,
     )
+    ship_type_cn_raw: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    dwt_t: Mapped[float | None] = mapped_column(Double, nullable=True)
 
     flag: Mapped[str | None] = mapped_column(
         String(50),
@@ -101,6 +103,9 @@ class ShipPosition(Base):
     draught_m: Mapped[float | None] = mapped_column(Double, nullable=True)
     destination: Mapped[str | None] = mapped_column(String(255), nullable=True)
     ais_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    eta_text: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    source_batch_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    source_row: Mapped[int | None] = mapped_column(Integer, nullable=True)
     data_source: Mapped[str] = mapped_column(
         String(50), nullable=False, server_default="unknown",
     )

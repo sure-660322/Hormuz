@@ -1788,6 +1788,25 @@ button.primary:hover {
 .map-top-tools { top: 18px; left: 18px; }
 .map-top-tools .map-tool { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; height: 36px; }
 .map-hud { display: none; }
+.ais-snapshot-strip {
+  position: absolute;
+  z-index: 820;
+  top: 70px;
+  left: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-width: min(670px, calc(100% - 36px));
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  box-shadow: var(--shadow-overlay);
+  font-size: 11px;
+  pointer-events: none;
+}
+.ais-snapshot-strip strong { color: var(--ink); }
 .tool-rail { position: absolute; z-index: 900; top: 17px; right: 18px; display: flex; flex-direction: row; grid-column: auto; grid-row: auto; gap: 3px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-overlay); }
 .tool-rail button { width: 34px; height: 34px; }
 .layers-popover { position: absolute; z-index: 1100; top: 68px; right: 18px; left: auto; max-height: calc(100% - 80px); }
@@ -1838,6 +1857,7 @@ button.primary:hover {
   .explorer-sidebar.mobile-open { display: flex; }
   .map-workspace { grid-column: 1; grid-row: 2; }
   .map-top-tools { top: 10px; left: 10px; }
+  .ais-snapshot-strip { top: 54px; left: 10px; max-width: calc(100% - 20px); font-size: 10px; }
   .map-top-tools .map-tool { display: block; }
   .tool-rail { top: 10px; right: 10px; gap: 0; }
   .tool-rail button { width: 29px; height: 29px; }

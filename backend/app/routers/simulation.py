@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from math import ceil
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select, text
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
@@ -25,6 +25,16 @@ def get_simulation_meta(db: Session = Depends(get_db)):
     ).one()
 
     ship_count = db.scalar(select(func.count(Ship.id))) or 0
+    has_non_simulated_positions = db.scalar(
+        select(exists().where(ShipPosition.data_source != "simulation"))
+    ) or False
+    available = db.execute(text("""
+        SELECT to_regclass('public.events') IS NOT NULL AS has_events,
+               to_regclass('public.ship_tracks') IS NOT NULL
+               AND to_regclass('public.ship_dwell') IS NOT NULL
+               AND to_regclass('public.encounters') IS NOT NULL
+               AND to_regclass('public.track_build_manifest') IS NOT NULL AS has_derived
+    """)).one()
     # News-derived events do not belong to the simulated ship replay.
     event_count = 0
 
@@ -37,5 +47,7 @@ def get_simulation_meta(db: Session = Depends(get_db)):
         ship_count=ship_count,
         position_count=position_summary[2],
         event_count=event_count,
-        is_simulated=True,
+        is_simulated=bool(position_summary[2]) and not has_non_simulated_positions,
+        has_events=available.has_events,
+        has_derived=available.has_derived,
     )

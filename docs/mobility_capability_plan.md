@@ -1,6 +1,8 @@
 # MobilityDB 时空数据能力底座技术方案
 
 > 2026-09-25 当前状态：**P0–P4 代码已有实现，P5 部分实现**；本机模拟源船位和全部对应派生记录已删除，真实 AIS 尚未导入应用库。2026-09-19/20 数量及测试为历史验收，不代表当前库。新数据接入后的派生重建、核对和浏览器验收均待开始。
+> 2026-09-25 另在独立测试库试导 2 月 25 日真实 AIS 3,634,184 条；前端阶段三使用原始报位按船索引查询、分段和时间桶抽稀，未重建 P0–P4 MobilityDB 派生数据，详情见[单日试导记录](real_ais_import_pilot.md)。
+> 2026-09-25 真实 AIS 阶段三另接入抽稀轨迹的速度着色和采样点显示：线段使用起点报位的实测 SOG 分档，不属于下文 P1 的 MobilityDB 插值速度着色；两套口径应分别标注。
 >
 > 目标：以 MobilityDB 为核心建立可复用的时空数据能力层，支撑 AIS 船舶轨迹 + 海事事件 + GIS 地图 + 后续真实数据接入。当前应用库没有船位；真实数据接入和兼容性尚待验证。
 
@@ -36,8 +38,8 @@ RealAisAdapter ─→│ ships / ship_positions  │        │             回�
 
 ### 2.1 源表（基本不动）
 
-- **`ships`**：现状保留。注意点：真实 AIS 中 MMSI 会变更/复用，内部 `id` 做永久主键，MMSI 仅作属性；未来若需要可按 MMSI+时间段追溯身份，现在不建。
-- **`ship_positions`**：字段已覆盖真实 AIS 核心需求（lat/lon/speed/course/heading/recorded_at/unix_time/nav_status/rot/draught/ais_type/`data_source`）。`location` 生成列（002）保留。**需补的索引**：
+- **`ships`**：2026-09-25 `014` 扩大 mmsi 至 10 位，允许 name/ship_type 为 NULL，并新增原始中文船型和载重吨列；单日试导仅以 MMSI 建立最新属性快照。同一 MMSI 的元数据确有变化，当前快照不能表示历史身份；未来若需要可按 MMSI+时间段追溯身份。
+- **`ship_positions`**：字段已覆盖真实 AIS 核心需求（lat/lon/speed/course/heading/recorded_at/unix_time/nav_status/rot/draught/ais_type/`data_source`）；`014` 又新增 ETA 原文、批次与来源行号。`location` 生成列（002）保留。**已有索引**：
   - `(ship_id, recorded_at)` btree——按船+时间窗查询的主路径；
   - `recorded_at` BRIN——大批量真实数据为追加型时序，BRIN 极小且快；
   - `(data_source)` 或部分索引——模拟/真实分析隔离与并行期过滤。
@@ -172,7 +174,7 @@ GET /api/data-health
 
 ## 8. 模拟与真实数据的接入
 
-本节为后续设计，不是已注册 Adapter 或已完成真实 AIS 接入的说明。
+本节原为后续设计。2026-09-25 已有单日、独立测试库试导脚本；它尚未成为应用库 Adapter，也未验证派生层与前端。以下旧设计条目仍是目标，不应当作已完成的接入。
 
 - **统一目标表**：两个 Adapter 都把数据写成 `ships` + `ship_positions`，`data_source` 分别打 `sim_batch_xx` / 真实供应商名。下游零感知。
 - **SimBatchAdapter**：读 `sim_ais_demo/output_news_aligned/`（handoff jsonl），即现有导入流程的包装。

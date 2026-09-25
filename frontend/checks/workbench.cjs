@@ -36,6 +36,7 @@ const { distanceNm, inBounds, eventKind, shipType, projectPosition, sampleAge, s
 const { localWorkbench } = require(path.join(out, 'services/workbench.js'))
 const api = require(path.join(out, 'api.js'))
 const { usePlayback } = require(path.join(out, 'composables/usePlayback.js'))
+const { nextTick } = require('vue')
 const { hasEventLocation, eventOccurredBy, eventTimeText, safeNewsUrl } = require(path.join(out, 'domain/maritime.js'))
 
 async function main() {
@@ -257,8 +258,43 @@ async function main() {
   await playback.load()
   assert.match(playback.error.value, /暂无可回放/)
   assert.equal(playback.currentShips.value.length, 0)
+  api.fetchSimulationMeta = async () => ({
+    start_at: first.recorded_at, end_at: last.recorded_at,
+    frame_count: 3, frame_interval_seconds: 300,
+    is_simulated: false, has_events: false, has_derived: false,
+  })
+  api.fetchShipSnapshot = async () => [{ ...ship, speed: 12, recorded_at: last.recorded_at }]
+  let resolveWindow
+  api.fetchShipSnapshotWindow = async () => new Promise((resolve) => { resolveWindow = resolve })
+  const realPlayback = usePlayback()
+  await realPlayback.load()
+  assert.equal(realPlayback.isRealAis.value, true)
+  assert.equal(realPlayback.frameReady.value, true)
+  assert.equal(realPlayback.currentShips.value[0].speed, 12)
+  realPlayback.index.value = 0
+  await nextTick()
+  assert.equal(realPlayback.frameReady.value, false)
+  assert.equal(realPlayback.time.value, new Date(last.recorded_at).toISOString(), 'Keep displayed time while the target frame loads')
+  assert.equal(realPlayback.currentShips.value[0].speed, 12, 'Keep the previous map snapshot during loading')
+  await new Promise((resolve) => setTimeout(resolve, 150))
+  resolveWindow({
+    frames: [
+      { at: first.recorded_at, ships: [{ ...ship, speed: 8, recorded_at: first.recorded_at }] },
+      { at: '2026-08-30T00:05:00Z', ships: [{ ...ship, speed: 10, recorded_at: '2026-08-30T00:05:00Z' }] },
+      { at: last.recorded_at, ships: [{ ...ship, speed: 12, recorded_at: last.recorded_at }] },
+    ],
+    max_age_seconds: 3600,
+  })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(realPlayback.frameReady.value, true)
+  assert.equal(realPlayback.time.value, new Date(first.recorded_at).toISOString())
+  assert.equal(realPlayback.currentShips.value[0].speed, 8)
+  realPlayback.index.value = 1
+  await nextTick()
+  assert.equal(realPlayback.frameReady.value, true, 'Adjacent cached frame is ready without a new request')
+  assert.equal(realPlayback.currentShips.value[0].speed, 10)
   console.log(
-    'PASS: spatial distance, temporal filtering, search, identity, replay ordering/seeking, empty/error/retry states',
+    'PASS: spatial distance, temporal filtering, search, identity, replay ordering/seeking, bounded real AIS snapshots, empty/error/retry states',
   )
 }
 main().catch((error) => {

@@ -1,8 +1,9 @@
 export interface ApiShip{   //描述FastAPI/ships返回的数据结构
     id:number
     mmsi:string
-    name:string
-    ship_type:string
+    name:string | null
+    ship_type:string | null
+    ship_type_cn_raw:string | null
     flag:string | null
     imo:string | null
     callsign:string | null
@@ -22,8 +23,9 @@ export interface ApiShipPosition {
 export interface ApiMapShip{
     id: number
     mmsi: string
-    name: string
-    ship_type: string
+    name: string | null
+    ship_type: string | null
+    ship_type_cn_raw: string | null
     flag: string | null
     imo: string | null
     callsign: string | null
@@ -97,9 +99,12 @@ export interface ApiSimulationMeta {
   position_count: number
   event_count: number
   is_simulated: boolean
+  has_events: boolean
+  has_derived: boolean
 }
 
-const API_BASE_URL = 'http://127.0.0.1:8000'    //当前的FastAPI地址
+declare const __API_BASE_URL__: string
+const API_BASE_URL = typeof __API_BASE_URL__ === 'undefined' ? 'http://127.0.0.1:8000' : __API_BASE_URL__
 
 export function eventCoverUrl(eventId: string): string {
   return `${API_BASE_URL}/events/${encodeURIComponent(eventId)}/cover`
@@ -127,6 +132,30 @@ export async function fetchMapShips():Promise<ApiMapShip[]>{
     return response.json()
 }
 
+export async function fetchShipSnapshot(at: string, signal?: AbortSignal): Promise<ApiMapShip[]> {
+  const params = new URLSearchParams({ at })
+  const response = await fetch(`${API_BASE_URL}/ships/snapshot?${params}`, {
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) throw new Error(`获取船位快照失败：${response.status}`)
+  return response.json()
+}
+
+export interface ApiSnapshotWindow {
+  frames: { at: string; ships: ApiMapShip[] }[]
+  max_age_seconds: number
+}
+
+export async function fetchShipSnapshotWindow(at: string[], signal?: AbortSignal): Promise<ApiSnapshotWindow> {
+  const params = new URLSearchParams()
+  at.forEach((time) => params.append('at', time))
+  const response = await fetch(`${API_BASE_URL}/ships/snapshot-window?${params}`, {
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) throw new Error(`获取船位快照窗口失败：${response.status}`)
+  return response.json()
+}
+
 export async function fetchShipPositions(
     shipId:number,
 ):Promise<ApiShipPosition[]>{
@@ -138,6 +167,37 @@ export async function fetchShipPositions(
         throw new Error(`获取船舶轨迹失败：${response.status}`)
     }
     return response.json()
+}
+
+export interface ApiTrackWindowPoint {
+  id: number
+  latitude: number
+  longitude: number
+  speed: number
+  recorded_at: string
+}
+
+export interface ApiTrackWindow {
+  ship_id: number
+  from: string
+  to: string
+  bucket_seconds: number
+  gap_minutes: number
+  source_count: number
+  point_count: number
+  segments: { segment_no: number; points: ApiTrackWindowPoint[] }[]
+  gaps: { from: string; to: string; minutes: number }[]
+}
+
+export async function fetchShipTrackWindow(
+  shipId: number, from: string, to: string, bucketSeconds: number, signal?: AbortSignal,
+): Promise<ApiTrackWindow> {
+  const params = new URLSearchParams({ from, to, bucket_seconds: String(bucketSeconds) })
+  const response = await fetch(`${API_BASE_URL}/ships/${shipId}/track-window?${params}`, {
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) throw new Error(`获取单船轨迹失败：${response.status}`)
+  return response.json()
 }
 
 export async function fetchEvents(): Promise<ApiEvent[]> {
