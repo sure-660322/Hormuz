@@ -39,7 +39,7 @@ const emit = defineEmits<{
     <div class="detail-section">
       <h3>圆形半径查询</h3>
       <p class="caption">
-        在地图上选择中心，按当前回放时刻计算范围内的模拟船舶。新闻事件空间查询尚未适配。
+        在地图上选择中心，按当前回放时刻计算范围内的船舶。新闻事件空间查询尚未适配。
       </p>
       <label class="radius-control"
         >半径
@@ -72,7 +72,7 @@ const emit = defineEmits<{
         {{ center.longitude.toFixed(4) }}° E
       </p>
       <p v-if="loading || error" class="empty">
-        {{ error || '等待模拟快照加载…' }}
+        {{ error || '等待船位快照加载…' }}
       </p>
     </div>
     <section v-if="result && !error && !loading" class="detail-section">
@@ -81,13 +81,13 @@ const emit = defineEmits<{
         <span>{{ radius }} NM</span>
       </div>
       <p class="analysis-total">
-        模拟船舶 <strong>{{ result.ships.length }}</strong>
+        船舶 <strong>{{ result.ships.length }}</strong>
       </p>
       <p class="caption">
-        本地模拟快照计算 · 非后端空间查询<br />新闻事件未参与半径统计。
+        本地船位快照计算 · 非后端空间查询<br />新闻事件未参与半径统计。
       </p>
       <p v-if="!result.ships.length && !result.events.length" class="empty">
-        范围内暂无模拟船舶。可扩大半径或更换时间。
+        范围内暂无船舶。可扩大半径或更换时间。
       </p>
       <button
         v-for="ship in result.ships"
@@ -111,7 +111,7 @@ const emit = defineEmits<{
     <details class="future-capability">
       <summary>前后时段对比 <span>规划中</span></summary>
       <p>
-        后续以同一空间范围比较两个时段的船位与航速。当前只有单日模拟回放，尚未实现双地图、密度或通航量对比。
+        后续以同一空间范围比较两个时段的船位与航速；双地图、密度或通航量对比尚未实现。
       </p>
     </details>
   </section>

@@ -195,16 +195,16 @@ onBeforeUnmount(() => {
   <section
     class="timeline"
     :class="{ expanded }"
-    aria-label="模拟船位与新闻事件回放时间轴"
+    aria-label="船位与新闻事件回放时间轴"
   >
     <div v-if="loading || errorMessage" class="timeline-status" role="status">
-      {{ errorMessage || '正在加载模拟回放数据…'
+      {{ errorMessage || '正在加载回放数据…'
       }}<button v-if="errorMessage" @click="emit('retry')">重试</button>
     </div>
     <template v-else>
       <div class="timeline-toolbar">
         <div class="replay-title">
-          <strong>模拟船舶回放</strong
+          <strong>船舶回放</strong
           ><span
             >{{ formatTime(frameTimes[0], true).split(' ')[0] }} ·
             非实时 AIS</span

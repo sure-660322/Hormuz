@@ -64,7 +64,7 @@ onBeforeUnmount(() => request?.abort())
   <section ref="panel" class="panel-content event-panel">
     <header class="panel-heading">
       <p>截至当前回放时刻显示 {{ events.length }} / {{ totalCount }} 条 · 按事件发生时间排序</p>
-      <p>拖动模拟船位时间轴会同步更新新闻事件列表；报道日期与发生时间分开展示。</p>
+      <p>拖动船位时间轴会同步更新新闻事件列表；报道日期与发生时间分开展示。</p>
     </header>
     <div class="event-filters">
       <select aria-label="事件类型" :value="eventType" @change="emit('typeChange', ($event.target as HTMLSelectElement).value)">
@@ -89,12 +89,12 @@ onBeforeUnmount(() => request?.abort())
           <div><dt>代表点</dt><dd>{{ eventCoordinates(selected) }}<br />{{ eventLocationLabel(selected) }}</dd></div>
           <div><dt>定位说明</dt><dd>{{ selected.geo_note || '暂无定位说明' }}</dd></div>
           <div><dt>报道视角</dt><dd>{{ selected.perspectives.join('、') || '未标注' }}</dd></div>
-          <div v-if="selected.mentioned_vessels.length"><dt>提及船名</dt><dd>{{ selected.mentioned_vessels.join('、') }}（原文提及，未关联模拟船舶）</dd></div>
+          <div v-if="selected.mentioned_vessels.length"><dt>提及船名</dt><dd>{{ selected.mentioned_vessels.join('、') }}（原文提及，未确认关联库中船舶）</dd></div>
         </dl>
         <p class="caption">{{ hasEventLocation(selected) ? '地图仅展示代表点，地名或区域中心不等于精确事发位置；多点展示待适配。' : '此事件没有可定位坐标，保留文字详情，不移动地图。' }}</p>
         <section v-if="links.length" class="event-links">
           <h3>事件 × 船舶关联</h3>
-          <p class="caption">observed 为模拟数据时空邻近演示，不构成真实因果；mentioned 为原文船名，未关联模拟船。</p>
+          <p class="caption">observed 表示船位与事件的时空邻近，不构成真实因果；mentioned 仅为原文船名，不自动确认船舶身份。</p>
           <ul class="news-list">
             <li v-for="(link, i) in links" :key="i">
               <template v-if="link.link_type === 'observed' && link.ship">

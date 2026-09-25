@@ -39,7 +39,7 @@ function pointMarker(point: ApiShipPosition): L.CircleMarker {
     fillOpacity: 1,
   }).bindTooltip(
     safeText(
-      `报位 ${formatTime(point.recorded_at, true)} · ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ${point.speed.toFixed(1)} kn · 航向 ${point.course.toFixed(0)}°（教学模拟采样）`,
+      `报位 ${formatTime(point.recorded_at, true)} · ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)} · ${point.speed.toFixed(1)} kn · 航向 ${point.course.toFixed(0)}°`,
     ),
     { direction: 'top' },
   )

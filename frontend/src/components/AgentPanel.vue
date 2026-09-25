@@ -189,8 +189,8 @@ onBeforeUnmount(() => request?.abort())
 <template>
   <section class="panel-content agent-panel">
     <header class="panel-heading">
-      <p>向智能体提问海峡通行、模拟船轨迹或新闻事件；回答附带船只、证据或报道来源。</p>
-      <p class="caption">船位为教学模拟数据，非真实 AIS；新闻事件为真实报道聚合，两者相互独立。</p>
+      <p>向智能体提问海峡通行、船舶轨迹或新闻事件；回答附带船只、证据或报道来源。</p>
+      <p class="caption">船位来源以实际接入数据为准；新闻事件为已采集报道的聚合，两者相互独立。</p>
     </header>
 
     <form class="agent-form" @submit.prevent="submit">
@@ -339,7 +339,7 @@ onBeforeUnmount(() => request?.abort())
 
         <section v-if="eventResult(turn.response)?.events.length" class="facts-block">
           <h3>事件（{{ eventResult(turn.response)!.returned_event_count }}）</h3>
-          <p class="caption">新闻事件为真实报道聚合，与模拟船相互独立。</p>
+          <p class="caption">新闻事件为已采集报道的聚合，与船位数据相互独立。</p>
           <ul class="event-list">
             <li v-for="event in eventResult(turn.response)!.events" :key="event.event_id">
               <div class="event-head">

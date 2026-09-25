@@ -41,7 +41,7 @@ export function usePlayback() {
         fetchMapShips(),
       ])
       if (!meta.start_at || !meta.end_at || !meta.frame_count)
-        throw new Error('暂无可回放的模拟位置数据')
+        throw new Error('暂无可回放的船位数据')
       const start = Date.parse(meta.start_at)
       const end = Date.parse(meta.end_at)
       const positionsById = new Map<number, ApiShipPosition>()

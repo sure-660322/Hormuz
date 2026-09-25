@@ -197,7 +197,7 @@ const points = computed(() => {
           {{
             peak.toFixed(1)
           }}
-          kn<br />仅统计已回放的模拟采样，不推断异常或航行状态。
+          kn<br />仅统计已回放的船位采样，不推断异常或航行状态。
         </p>
         <p class="track-note">
           {{
@@ -215,12 +215,12 @@ const points = computed(() => {
             @change="emit('update:trackRecent24h', ($event.target as HTMLInputElement).checked)"
           />只看最近 24h 轨迹</label
         >
-        <details class="sample-records"><summary>模拟位置记录（{{ track.length }} 条）</summary><table><thead><tr><th>时间</th><th>纬度 / 经度</th><th>kn</th></tr></thead><tbody><tr v-for="p in [...track].reverse()" :key="p.id"><td>{{ formatTime(p.recorded_at) }}</td><td>{{ p.latitude.toFixed(3) }} / {{ p.longitude.toFixed(3) }}</td><td>{{ p.speed.toFixed(1) }}</td></tr></tbody></table></details>
+        <details class="sample-records"><summary>船位记录（{{ track.length }} 条）</summary><table><thead><tr><th>时间</th><th>纬度 / 经度</th><th>kn</th></tr></thead><tbody><tr v-for="p in [...track].reverse()" :key="p.id"><td>{{ formatTime(p.recorded_at) }}</td><td>{{ p.latitude.toFixed(3) }} / {{ p.longitude.toFixed(3) }}</td><td>{{ p.speed.toFixed(1) }}</td></tr></tbody></table></details>
       </section>
       <section v-else-if="section === 'events'" class="detail-section">
         <h3>船舶事件关联</h3>
         <p class="caption">
-          新闻事件与模拟船位时段不重合，本阶段不进行船舶事件关联。
+          新闻事件与船舶身份需分别核验；时空接近不能证明真实关联。
         </p>
         <p v-if="eventsLoading || eventsError" class="empty">
           {{ eventsError || '正在加载事件…' }}
@@ -244,8 +244,8 @@ const points = computed(() => {
       </section>
       <section v-else class="detail-section empty">
         <h3>船舶新闻关联暂不可用</h3>
-        <p>当前船位为8月的教学模拟，不能与2—3月新闻直接建立关联。</p>
-        <p>已采集新闻可在事件详情中查看；尚无与这艘模拟船舶的可靠关联。</p>
+        <p>计划接入船位时段：2026-02-25 至 2026-03-03（UTC）；实际范围以入库数据为准。</p>
+        <p>已采集新闻可在事件详情中查看；船舶与新闻的身份和因果关系需独立核验。</p>
       </section>
     </template>
     <template v-else
@@ -253,7 +253,7 @@ const points = computed(() => {
         <h2>船舶目录</h2>
         <p>按采样陈旧程度排序；暂无真实船舶风险评级。</p>
       </header>
-      <div class="directory-toolbar"><span>{{ ships.length }} 艘模拟船舶</span><button @click="compact = !compact" :aria-pressed="compact">{{ compact ? '紧凑' : '舒适' }}</button></div>
+      <div class="directory-toolbar"><span>{{ ships.length }} 艘船舶</span><button @click="compact = !compact" :aria-pressed="compact">{{ compact ? '紧凑' : '舒适' }}</button></div>
       <table class="ship-table" :class="{ compact }"><thead><tr><th>船舶 / MMSI</th><th>kn</th><th>采样</th></tr></thead><tbody>
         <tr v-for="item in sortedShips" :key="item.id"><td><button @click="emit('select', item)" :aria-label="`查看 ${item.name}`"><span class="status-dot" :style="{ background: shipStatus(item, time).color }" :title="shipStatus(item, time).label"></span><span class="ship-name">{{ shipShape(item.ship_type) }} {{ item.name }}<small>{{ item.mmsi }}</small></span></button></td><td>{{ item.speed.toFixed(1) }}</td><td><span :title="shipStatus(item, time).label">{{ sampleAge(item, time).toFixed(0) }} 分前</span></td></tr>
       </tbody></table>

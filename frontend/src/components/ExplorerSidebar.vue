@@ -36,12 +36,12 @@ function selectShip(ship: ApiMapShip) { category.value = 'ships'; emit('selectSh
   <aside class="explorer-sidebar" aria-label="事件与船舶探索">
     <div class="explorer-intro">
       <h2>海峡动态</h2>
-      <p>查找历史新闻与模拟船舶，点选后在地图中查看。</p>
+      <p>查找历史新闻与船舶，点选后在地图中查看。</p>
       <ShipSearch :ships="ships" :events="events" :loading="shipsLoading" @select="selectShip" @select-event="selectEvent" />
     </div>
     <div class="explorer-tabs" role="group" aria-label="探索类别">
       <button :class="{ active: category === 'events' }" :aria-pressed="category === 'events'" @click="category = 'events'">新闻事件</button>
-      <button :class="{ active: category === 'ships' }" :aria-pressed="category === 'ships'" @click="category = 'ships'">模拟船舶</button>
+      <button :class="{ active: category === 'ships' }" :aria-pressed="category === 'ships'" @click="category = 'ships'">船舶</button>
     </div>
     <template v-if="category === 'events'">
       <div class="explorer-filters">
@@ -73,7 +73,7 @@ function selectShip(ship: ApiMapShip) { category.value = 'ships'; emit('selectSh
       </div>
     </template>
     <template v-else>
-      <p class="explorer-count">当前回放快照 · {{ ships.length }} 艘模拟船舶</p>
+      <p class="explorer-count">当前回放快照 · {{ ships.length }} 艘船舶</p>
       <div class="explorer-list">
         <button v-for="ship in sortedShips" :key="ship.id" class="explorer-item" :class="{ selected: selectedShipId === ship.id }" @click="selectShip(ship)">
           <span class="explorer-item-title">{{ ship.name }}</span>

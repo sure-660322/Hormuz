@@ -20,7 +20,7 @@ const layerOptions: {
   {
     key: 'ships',
     label: '船舶当前位置',
-    description: '随历史时间更新的模拟船位',
+    description: '随回放时间更新的船位',
   },
   {
     key: 'tracks',
@@ -41,7 +41,7 @@ const layerOptions: {
   {
     key: 'dwell',
     label: '停留识别（锚泊/漂航/慢速）',
-    description: 'MobilityDB 派生层：低速区间的识别结果，教学模拟数据',
+    description: 'MobilityDB 派生层：低速区间的识别结果，需结合数据来源核验',
   },
   {
     key: 'encounters',
@@ -103,7 +103,7 @@ const layerOptions: {
       <div class="detail-section">
         <h3>底图来源</h3>
         <p class="caption">
-          OpenStreetMap / OpenSeaMap<br />在线参考地图不等同于官方航海图；模拟业务图层不代表真实航运态势。
+          OpenStreetMap / OpenSeaMap<br />在线参考地图不等同于官方航海图；业务图层不用于航行决策。
         </p>
       </div>
     </div>

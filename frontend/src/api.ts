@@ -155,7 +155,7 @@ export async function fetchSimulationMeta(): Promise<ApiSimulationMeta> {
   const response = await fetch(`${API_BASE_URL}/simulation/meta`, { signal: AbortSignal.timeout(20_000) })
 
   if (!response.ok) {
-    throw new Error(`获取模拟时段失败：${response.status}`)
+    throw new Error(`获取船位时段失败：${response.status}`)
   }
 
   return response.json()

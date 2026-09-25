@@ -37,7 +37,7 @@ const hotEvents = computed(() =>
 const topShips = computed(() =>
   [...props.viewShips].sort((a, b) => b.speed - a.speed).slice(0, 5),
 )
-// 相遇列表：按最近距离升序取前 12 对；接近是模拟时空邻近，不代表实际交互。
+// 相遇列表：按最近距离升序取前 12 对；接近不代表实际交互。
 const nearestEncounters = computed(() =>
   [...props.encounters].sort((a, b) => a.min_distance_m - b.min_distance_m).slice(0, 12),
 )
@@ -47,10 +47,10 @@ const derivedTables = computed(() => props.health?.derived ?? [])
   <section class="panel-content overview-panel">
     <header class="panel-heading">
       <p>
-        {{ totalShips }} 艘模拟船 · {{ totalEvents }} 条新闻事件 · 快照
+        {{ totalShips }} 艘船舶 · {{ totalEvents }} 条新闻事件 · 快照
         {{ formatTime(time, true) }}
       </p>
-      <p>历史快照 · 非实时 AIS；新闻与模拟船舶相互独立，不因时空接近建立关联。</p>
+      <p>历史快照 · 非实时数据；新闻与船位来源独立，不因时空接近建立关联。</p>
     </header>
     <div class="overview-chips">
       <span
@@ -127,7 +127,7 @@ const derivedTables = computed(() => props.health?.derived ?? [])
         <button class="overview-more" @click="emit('reanalyzeEncounters')">
           按默认参数重新分析（3 NM / 30 分钟）›
         </button>
-        <p class="empty compact">接近为模拟时空邻近，不代表实际交互。</p>
+        <p class="empty compact">时空接近不代表实际交互。</p>
       </template>
     </section>
     <section class="overview-section" aria-label="数据健康">

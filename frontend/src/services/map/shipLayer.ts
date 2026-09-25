@@ -115,7 +115,7 @@ export class ShipLayerManager {
               html: `<span>${group.length}</span>`,
               iconSize: [34, 34],
             }),
-            title: `${group.length} 艘模拟船，点击放大`,
+            title: `${group.length} 艘船舶，点击放大`,
             bubblingMouseEvents: false,
           })
             .on('click', () => {

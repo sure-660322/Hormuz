@@ -168,7 +168,7 @@ function renderDwell() {
         safeText(
           `${p.ship_name} · ${meta.label} ${(p.duration_min / 60).toFixed(1)} 小时 · ` +
           `位移半径 ${Math.round(p.displacement_radius_m)} m · 最大 ${p.max_speed_kn.toFixed(1)} kn` +
-          `（教学模拟识别）`,
+          `（基于船位识别）`,
         ),
         { direction: 'top' },
       )
@@ -218,7 +218,7 @@ function renderEncounters() {
         entry.circle.bindTooltip(
           safeText(
             `${enc.ship_a.name} × ${enc.ship_b.name} · 最近 ${enc.min_distance_nm.toFixed(2)} NM` +
-            ` · 时间重叠 ${(enc.overlap_minutes / 60).toFixed(1)} 小时（模拟时空邻近）`,
+            ` · 时间重叠 ${(enc.overlap_minutes / 60).toFixed(1)} 小时（时空邻近，不代表实际交互）`,
           ),
           { direction: 'top' },
         )

@@ -134,7 +134,7 @@ const snapshotAverageSpeed = computed(() =>
     ? (currentShips.value.reduce((sum, ship) => sum + ship.speed, 0) / currentShips.value.length).toFixed(1)
     : '—',
 )
-// 新闻与模拟船位属同一时期但相互独立：不因时间或空间接近建立关联。
+// 新闻与船位来源独立：不因时间或空间接近建立关联。
 const nearbyEvents: (ApiEvent & { distance: number })[] = []
 const nearbyShipIds: number[] = []
 const areaResult = computed(() =>
@@ -154,7 +154,7 @@ watch(fenceInside, (ids, previous) => {
   if (!fenceEnabled.value || !advanced) return
   const entered = ids.filter(id => !previous.includes(id)).length
   const left = previous.filter(id => !ids.includes(id)).length
-  if (entered || left) notice.value = `模拟围栏变化：${entered} 艘进入，${left} 艘离开（相邻回放快照）`
+  if (entered || left) notice.value = `围栏变化：${entered} 艘进入，${left} 艘离开（相邻回放快照）`
 })
 watch(theme, value => document.documentElement.dataset.theme = value, { immediate: true })
 async function shareView(view: { lat: number; lon: number; zoom: number }) {
@@ -229,7 +229,7 @@ async function loadDwellOnce() {
 watch(() => layers.value.dwell, (on) => {
   if (on) void loadDwellOnce()
 })
-// 选中相遇：高亮该对并在地图定位；接近不等于实际交互，仅模拟时空邻近。
+// 选中相遇：高亮该对并在地图定位；接近不等于实际交互。
 function chooseEncounter(enc: ApiEncounter) {
   selectedEncounter.value = enc
   layers.value.encounters = true
@@ -490,7 +490,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <button :class="{ active: workspaceMode === 'explore' }" :aria-current="workspaceMode === 'explore' ? 'page' : undefined" @click="workspaceMode = 'explore'">地图探索</button>
       </nav>
       <div class="top-status">
-        <span class="simulation-label">模拟船舶 · 新闻事件</span>
+        <span class="simulation-label">船舶轨迹 · 新闻事件</span>
         <button @click="displayZone = displayZone === 'UTC' ? 'Asia/Shanghai' : 'UTC'" aria-label="切换时区">{{ zoneLabel() }}</button>
         <button @click="theme = theme === 'dark' ? 'light' : 'dark'" aria-label="切换地图主题">{{ theme === 'dark' ? '浅色' : '深色' }}</button>
         <details class="top-more">
@@ -623,7 +623,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
         <span><b class="vessel-key">▲</b> 当前船位</span
         ><span><b class="track-key">─•─</b> 已航行轨迹</span
-        ><span>船位为教学模拟；事件为代表点，非精确事发位置</span
+        ><span>船位来源以接入数据为准；事件为代表点，非精确事发位置</span
         ><span>新闻按事件发生时间随回放出现；日期级记录不代表精确时刻</span>
       </div>
       <div v-if="loading || error" class="map-data-status" role="status">
@@ -632,7 +632,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
     </section>
     <section class="overview-stage" aria-label="态势总览">
-      <header class="overview-stage-head"><div><p class="eyebrow">霍尔木兹海峡 · 历史资料与教学模拟</p><h2>从海峡动态，进入地图调查</h2><p>新闻事件来自已采集报道；船位是教学模拟。两类资料分别浏览，不据时空邻近推断真实关联。</p></div><button class="primary" @click="workspaceMode = 'explore'">进入地图探索</button></header>
+      <header class="overview-stage-head"><div><p class="eyebrow">霍尔木兹海峡 · 历史船位与新闻</p><h2>从海峡动态，进入地图调查</h2><p>计划接入船位时段：2026-02-25 至 2026-03-03（UTC）；实际回放范围以入库数据为准。新闻事件来自已采集报道，两类资料分别浏览，不据时空邻近推断真实关联。</p></div><button class="primary" @click="workspaceMode = 'explore'">进入地图探索</button></header>
       <OverviewPanel
         :time="time" :view-ships="currentShips" :view-events="mapEvents" :events="filteredEvents"
         :total-ships="currentShips.length" :total-events="events.length" :average-speed="snapshotAverageSpeed"
@@ -718,11 +718,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @select-ship="chooseShip"
         @select-event="chooseEvent"
       />
-      <div v-if="panel === 'analysis' && center" class="display-settings"><label><input type="checkbox" v-model="fenceEnabled" /> 将查询圆设为模拟电子围栏</label><p class="caption">{{ fenceEnabled ? `围栏内 ${fenceInside.length} 艘；随回放提示进入/离开。` : '仅本次会话有效；不判断两个采样之间的穿越。' }}</p></div>
+      <div v-if="panel === 'analysis' && center" class="display-settings"><label><input type="checkbox" v-model="fenceEnabled" /> 将查询圆设为电子围栏</label><p class="caption">{{ fenceEnabled ? `围栏内 ${fenceInside.length} 艘；随回放提示进入/离开。` : '仅本次会话有效；不判断两个采样之间的穿越。' }}</p></div>
     </aside>
     <section class="print-report">
-      <h2>霍尔木兹海峡 · 船位与新闻概览</h2><p>{{ formatTime(time, true) }} {{ zoneLabel() }} · 船位为教学模拟，新闻事件为独立历史资料</p>
-      <p>当前视野 {{ viewShips.length }} 艘模拟船舶、{{ viewEvents.length }} 条截至回放时刻已出现的可定位新闻事件。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
+      <h2>霍尔木兹海峡 · 船位与新闻概览</h2><p>{{ formatTime(time, true) }} {{ zoneLabel() }} · 船位与新闻为独立资料</p>
+      <p>当前视野 {{ viewShips.length }} 艘船舶、{{ viewEvents.length }} 条截至回放时刻已出现的可定位新闻事件。选中船：{{ selectedShip?.name ?? '无' }}；选中事件：{{ selectedEvent?.title ?? '无' }}。</p>
       <table><thead><tr><th>事件时间文字</th><th>事件</th><th>经纬度</th></tr></thead><tbody><tr v-for="e in viewEvents" :key="e.id"><td>{{ eventTimeText(e) }}</td><td>{{ e.title }}</td><td>{{ eventCoordinates(e) }}</td></tr></tbody></table>
     </section>
   </main>

@@ -57,7 +57,7 @@ function choose(ship: ApiMapShip) {
     </div>
     <div v-if="open" id="ship-search-results" class="search-results">
       <p class="search-summary">
-        {{ loading ? '正在载入船舶…' : `模拟船舶 ${results.length} 个匹配 · 新闻显示 ${eventResults.length} 条（最多15条）` }}
+        {{ loading ? '正在载入船舶…' : `船舶 ${results.length} 个匹配 · 新闻显示 ${eventResults.length} 条（最多15条）` }}
       </p>
       <button
         v-for="ship in results.slice(0, 30)"
