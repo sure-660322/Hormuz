@@ -1,8 +1,8 @@
 # MobilityDB 时空数据能力底座技术方案
 
-> 2026-09-21 静态核对：**P0–P4 已有实现，P5 部分实现**（data-health 已接入，主回放切换 simplified 和特征保留规则未完成）。2026-09-19/20 数量及测试为历史记录，本轮未重跑数据库/浏览器验收。以对应 SQL、构建/核对脚本和报告为实施依据；文中的真实数据接入、空间查询扩展和压测仍为规划。
+> 2026-09-25 当前状态：**P0–P4 代码已有实现，P5 部分实现**；本机模拟源船位和全部对应派生记录已删除，真实 AIS 尚未导入应用库。2026-09-19/20 数量及测试为历史验收，不代表当前库。新数据接入后的派生重建、核对和浏览器验收均待开始。
 >
-> 目标：以 MobilityDB 为核心建立可复用的时空数据能力层，支撑 AIS 船舶轨迹 + 海事事件 + GIS 地图 + 后续真实数据接入。当前使用模拟数据，但本方案以真实生产数据能够直接承接为设计目标，不因模拟数据做临时实现。
+> 目标：以 MobilityDB 为核心建立可复用的时空数据能力层，支撑 AIS 船舶轨迹 + 海事事件 + GIS 地图 + 后续真实数据接入。当前应用库没有船位；真实数据接入和兼容性尚待验证。
 
 ## 设计总则
 
@@ -196,7 +196,7 @@ GET /api/data-health
 | P0 ✅ | 009 迁移（ship_tracks 泛化表+索引+manifest）、参数化重建任务、独立 Python 核对 | 底座先立；替代 demo 表，验证管线与规模。已验收：009 建表+索引；重建 30 船 289 段（gap 90 分钟，32640）；manifest id 1 留痕；独立核对 segmentation 全一致、41 组采样插值误差 0 m、速度 0 不符 |
 | P1 ✅ | `/api/tracks` + speed 输出 + 速度着色前端 | 展示冲击力最强，打通"派生→API→地图"全链路。已实施：GET /api/tracks/{ship_id}（full=整段几何+对齐 [[epoch,kn]] 速度序列，simplified=时间桶抽稀）；ShipInspector「速度着色」按回放窗口（15 分钟量化）取派生层，四档色带渲染；显示范围超过后端 24h 单窗上限时按 ≤24h 分片并行取回、按 segment_no 去重合并，覆盖整条显示轨迹，另可切换为仅最近 24h 着色；三分支验证与 build/check:workbench 通过（2026-09-19，分片合并 2026-09-20） |
 | P2 ✅ | `event_ship_links` 模型 + 事件/船舶双向 API + 高亮 | 项目核心叙事（事件×船）。已实施：010 迁移（mentioned/observed 分列，mentioned ship_id 恒空）；构建脚本（50 km 半径时空邻近，阈值入 manifest）；双向 API（/api/events/{id}/ships、/api/ships/{id}/events）；事件面板关联区（observed 可定位船）；独立核对逐条重算距离 ≤2 m（2026-09-19） |
-| P3 ✅ | dwell 识别 + 等待区图层 | 复用 P0 管线，纯增量。已实施：`011_ship_dwell.sql`（kind at_anchor/drift/slow_transit、enter/leave_at、duration_min、geom 4326、displacement_radius_m）；`build_ship_dwell.py`（速度档 run + 90 分钟 gap 断开 + 时长过滤 + 位移半径分类，阈值入 manifest，默认锚泊 <3 kn/30 min、慢速 <8 kn/60 min、位移半径 926 m）；GET `/api/dwell?kind=&from=&to=`；前端图层开关「停留识别」按需加载打点（kind 配色 + tooltip）；独立核对 `verify_ship_dwell.py` 纯 Python 重算 231 行全一致（位移容忍 max(60 m, 1%)）。当前库 231 行（199 锚泊 / 21 漂航 / 11 慢速）（2026-09-20） |
+| P3 ✅ | dwell 识别 + 等待区图层 | 复用 P0 管线，纯增量。已实施：`011_ship_dwell.sql`（kind at_anchor/drift/slow_transit、enter/leave_at、duration_min、geom 4326、displacement_radius_m）；`build_ship_dwell.py`（速度档 run + 90 分钟 gap 断开 + 时长过滤 + 位移半径分类，阈值入 manifest，默认锚泊 <3 kn/30 min、慢速 <8 kn/60 min、位移半径 926 m）；GET `/api/dwell?kind=&from=&to=`；前端图层开关「停留识别」按需加载打点（kind 配色 + tooltip）；独立核对 `verify_ship_dwell.py` 纯 Python 重算 231 行全一致（位移容忍 max(60 m, 1%)）。2026-09-20 当时库 231 行（199 锚泊 / 21 漂航 / 11 慢速）；2026-09-25 当前库 0 行 |
 | P4 ✅ | encounters 分析与查询 | 组合复杂度最高，放稳态后。已实施：`012_encounters.sql`（一船对一行：period tstzspan、min_distance_m、closest_point 4326、overlap_minutes 累计、params 快照）；`build_encounters.py`（候选对时间重叠粗筛 → 等时长重采样对齐 → 逐时刻 geography 距离，默认 3 NM / 30 min / 60 s）；GET `/api/encounters?max_distance_nm=` + POST `/api/encounters/analyze`（受控同步重建）；前端概览「相遇分析」列表（最近距离排序、点击地图定位 + 最小距离虚线圈）与「按默认参数重新分析」按钮。独立核对 `verify_encounters.py`：136 对、最近距离最大差 19 m。当前库 136 行（默认参数 manifest id 12）（2026-09-20） |
 | P5 部分完成 | 回放抽稀层 + data-health 完善 | data-health API 和前端区块已实现；/api/tracks 的 simplified 输出已由 P1 提供，但主回放未切换，三条特征保留规则尚未实现。stale 启发式限制见 §5；真实数据接入前补强 |
 | 全程 | 每个迁移 `ON_ERROR_STOP`、HTTP 三分支验证、文档同步 | 项目既有验收纪律 |

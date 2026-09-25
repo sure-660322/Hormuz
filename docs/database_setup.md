@@ -1,26 +1,23 @@
 # 数据库与环境交接
 
-> 2026-09-21 工作区审计：ships / ship_positions 的 SHA-256 与 manifest 一致；events / news 行数仍为 65 / 290，但 SHA-256 不匹配，当前工作区交接包不可直接导入。应由数据负责人确认新闻变更后，经批准重新导出完整快照并在独立空库验收；不得只修改 manifest 哈希、关闭校验或覆盖在途数据。下文 2026-09-14 是历史成功演练，不代表当前未提交快照再次通过。多会话期间不在 Kimi 使用的 main 目录 pull 或切分支，见 [协作流程](collaboration.md)。
+> 2026-09-25 当前状态：本机 `ships` 和 `ship_positions` 已清空，模拟船舶交接文件及旧 manifest 已移除；仓库目前没有可导入的四表数据包。`events.jsonl` 和 `news.jsonl` 仍保留，但未作为当前快照重新核验。以下 2026-09-14 的导入命令、预期数量及成功演练均为历史记录，不能直接对现有文件执行。真实 AIS 尚未导入应用库。
 
-状态：2026-09-14。现在提供独立 Docker Compose、四张当前源表的 JSONL 交接数据、空库建表导入脚本和验证脚本。已在维护者机器的新容器、新数据卷上演练；不是直接连接维护者的数据库。Git 不会同步运行中的数据库，接手者必须执行导入。
+历史状态：2026-09-14 曾提供独立 Docker Compose、四表 JSONL 交接数据、空库导入与核验脚本，并在新容器、新数据卷上演练。脚本保留，当前缺少完整数据包。Git 不会同步运行中的数据库。
 
 ## 仓库提供哪些数据
 
 | 路径 | 内容与用途 |
 | --- | --- |
-| data/handoff/current/ships.jsonl | 当前数据库的 30 艘模拟船，保留数据库 ID |
-| data/handoff/current/ship_positions.jsonl | 当前数据库的 9,354 条模拟船位，不导出 location 生成列 |
 | data/handoff/current/events.jsonl | 65 个新闻聚合事件及加工字段 |
 | data/handoff/current/news.jsonl | 290 条报道的来源、日期、摘要及加工字段；223 条关联事件，67 条无关联 |
-| data/handoff/current/manifest.json | 导出时间、数量、每个文件 SHA-256 |
-| sim_ais_demo/output_news_aligned/ | 已跟踪的最新模拟生成批次，包括 ships、清洗船位、原始观测、隔离记录、情景及验收文件 |
-| sim_ais_demo/config/news_aligned_config.json | 模拟配置与封锁情景假设 |
+| sim_ais_demo/output_news_aligned/ | 旧模拟批次的历史报告；船舶和报位数据文件已删除 |
+| sim_ais_demo/config/news_aligned_config.json | 旧模拟配置，仅供历史参考 |
 
-交接文件是明确选取业务字段的可移植数据，不包含 .env、账户、数据库角色或 pg_dump 恢复备份。news 不含文章全文；来源链接与摘要不代表取得原始报道的再许可，使用时保留来源，不把新闻中的真实船名匹配成模拟船。已有 data/news_data 是历史采集资料，不是当前四表导入入口。
+保留的新闻文件不包含 .env、账户、数据库角色或 pg_dump 恢复备份。news 不含文章全文；来源链接与摘要不代表取得原始报道的再许可，使用时保留来源。已有 data/news_data 是历史采集资料，不是当前四表导入入口。
 
 事件封面图单独保存在新闻原始资料的 `images/` 子目录，不在上述 JSONL 或 Git 数据包中。运行后端前可设置环境变量 `NEWS_IMAGE_ROOT` 为该子目录的上一级目录，例如本机 `D:\my_project\news_raw_data`，后端按 `events.image_path` 中的 `images/<文件名>` 读取。未设置时默认使用仓库上一级的 `news_raw_data`；服务器部署时应显式设置服务器自己的目录，并单独传输图片。`GET /events/{event_id}/cover` 在图片缺失或路径无效时返回 404；目前没有图片上传、对象存储或自动同步流程。历史交接数据的图片文件是否齐全需在目标机器另行核验。
 
-ships.id、ship_positions.ship_id、events.id、news.event_id 保留数据库关系；events.event_id 是业务字符串，和 news.event_id 的整数外键不同。生成文件 temp_ship_id 不等于数据库 ships.id。
+历史四表交接设计保留 ships.id、ship_positions.ship_id、events.id、news.event_id 的数据库关系；events.event_id 是业务字符串，和 news.event_id 的整数外键不同。当前缺少船舶文件，不能按旧流程导入。
 
 ## 1. 获取代码和安装依赖
 
@@ -57,6 +54,8 @@ docker compose --env-file deploy/handoff.env -f compose.handoff.yaml ps
 
 ## 3. 创建当前结构并导入
 
+> 以下为 2026-09-14 历史演练命令；当前缺少 `ships.jsonl`、`ship_positions.jsonl` 和 `manifest.json`，执行会失败。待新真实数据经过来源与格式核验、重新导出完整交接包并在独立空库验收后，才能恢复此流程。
+
 ```powershell
 .\backend\.venv\Scripts\python.exe -m backend.handoff_run import --database hormuz_handoff
 if ($LASTEXITCODE -ne 0) { throw '导入未完成，请检查空库、配置与数据文件。' }
@@ -67,7 +66,7 @@ if ($LASTEXITCODE -ne 0) { throw '导入未完成，请检查空库、配置与�
 
 导入前验证数据文件 SHA-256 和字段，再检查目标库不存在五张应用表。已有任何应用表（即使为空）就拒绝导入；不会 DROP/TRUNCATE 或覆盖现有数据。建表、插入、序列设置与回查在同一事务中完成，遇错回滚。
 
-预期数量：ships=30、ship_positions=9354、events=65、news=290。verify 逐行对比所有导入字段，不只是核对数量。首次导入后 location 由 PostGIS 生成列重建，主键、唯一约束、外键、空间和最新船位索引由 008 建立。
+2026-09-14 历史预期数量：ships=30、ship_positions=9354、events=65、news=290。verify 逐行对比所有导入字段，不只是核对数量。首次导入后 location 由 PostGIS 生成列重建，主键、唯一约束、外键、空间和最新船位索引由 008 建立。
 
 重复执行 import 失败是保护机制。已有导入结果只需 verify；需要另一份测试环境时使用新的 Compose 项目、空数据卷和端口，不清理已有数据库。本数据包是定时快照，以后数据库更新不会自动推送，需要重新导出、验证和提交。
 
@@ -77,7 +76,7 @@ if ($LASTEXITCODE -ne 0) { throw '导入未完成，请检查空库、配置与�
 .\backend\.venv\Scripts\python.exe -m backend.handoff_run build-mobility
 ```
 
-本次预期为 114 段。此命令先核对源表与数据包一致，仅替换独立派生表，验证源表未改变；不会写入旧批次的历史报告。主回放仍读取 ship_positions。源数据改变后需要另行核验并显式重建派生数据。
+2026-09-14 历史演练预期为 114 段。当前无船位数据，不运行本节命令。主回放仍读取 ship_positions；新源数据接入后需要另行核验并显式重建派生数据。
 
 ## 5. 验证并启动应用
 
