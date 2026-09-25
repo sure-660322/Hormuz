@@ -1,0 +1,290 @@
+-        | 2026-02-26 | NVDA stock down after Nvidia earnings explained: Why did NVDA stock dr | indiatimes.com
+-        | 2026-02-26 | Union Minister Ashwini Vaishnaw launches Rail Tech Policy and e-RCT Sy | indiatimes.com
+-        | 2026-02-26 | What we know so far about the deadly boat shooting off Cuba’s coast | theguardian.com
+evt_002  | 2026-02-26 | British warships exit Gulf as Iran conflict looms for US | thenationalnews.com
+-        | 2026-02-26 | 4 killed on US boat in deadly clash off Cuba's coast: Rescue mission o | gulfnews.com
+evt_003  | 2026-02-26 | US military builds up the largest force of warships and aircraft in We | indiatimes.com
+-        | 2026-02-26 | Supreme Court seeks Customs Department's response on Xiaomi's appeal i | indiatimes.com
+-        | 2026-02-26 | Noel Tata’s tough ask on IPO stalled vote on Chairman tenure | indiatimes.com
+-        | 2026-02-26 | DHL to Test Abu Dhabi-Made Drones for Regional Deliveries | gulfnews.com
+-        | 2026-02-26 | Stardew Valley at 10: The pixel art farm game that became an unlikely  | cnn.com
+-        | 2026-02-26 | Trump U-turn: Is Venezuelan oil really available to Cuba again? | aljazeera.com
+-        | 2026-02-26 | Deadly shooting in Cuban waters highlights obsessions with counter-rev | apnews.com
+-        | 2026-02-26 | What to know about the boat shooting in Cuban waters that killed 4 | apnews.com
+-        | 2026-02-26 | MIT Sloan Sports Analytics Conference still raising the bar as it cele | apnews.com
+-        | 2026-02-26 | Seized oil tanker Marinera leaves Scotland to head over Atlantic | bbc.com
+-        | 2026-02-26 | American citizen among those killed in Cuba boat shooting, US official | bbc.com
+-        | 2026-02-26 | What we know about the Cuba speedboat shooting incident | cnn.com
+-        | 2026-02-26 | Former US F-35 instructor charged with conspiring to train Chinese mil | cnn.com
+evt_001  | 2026-02-26 | Iran would be outgunned in any war with the US but could still inflict | apnews.com
+evt_003  | 2026-02-26 | US military builds up the largest force of warships and aircraft in th | apnews.com
+evt_001  | 2026-02-26 | Iran would be outgunned in any war with the US but could still inflict | indiatimes.com
+-        | 2026-02-27 | Sweden intercepts suspected Russian drone during visit by French aircr | apnews.com
+evt_005  | 2026-02-27 | Anxious days inside Iran as speculation grows of US strikes | bbc.com
+evt_004  | 2026-02-27 | Oil prices rise 3% as US and Iran extend talks into next week | indiatimes.com
+-        | 2026-02-27 | Aviation industry is running out of the people who keep planes flying | cnn.com
+evt_003  | 2026-02-27 | Is the US preparing to strike Iran again? Latest developments on Iran  | indiatimes.com
+-        | 2026-02-27 | Taiwan detects 8 PLA aircraft, 6 PLAN vessels around its territory | indiatimes.com
+-        | 2026-02-27 | ‘From fragile five to global growth engine’: PM Modi slams Congress, s | indiatimes.com
+evt_004  | 2026-02-27 | A shaky step forward | tehrantimes.com
+evt_004  | 2026-02-27 | Oil on track to post weekly decline as US-Iran talks progress | thenationalnews.com
+-        | 2026-02-27 | A stolen boat, a deadly gunfight and a supposed plot against Cuba | indiatimes.com
+-        | 2026-02-27 | From loyalist to power player: OPS’s dramatic political odyssey culmin | indiatimes.com
+-        | 2026-02-27 | Iran, Turkmenistan hold strategic rail corridor talks in Sarakhs | tehrantimes.com
+-        | 2026-02-27 | ‘The river won’: how campaigners in Brazilian Amazon stopped privatisa | theguardian.com
+-        | 2026-02-27 | Growing pains: Industry has shown that bigger isn’t always better | theguardian.com
+-        | 2026-02-27 | UAE’s Mother of the Nation ship arrives in Egypt with 7,300 tonnes of  | thenationalnews.com
+-        | 2026-02-27 | Family of St. Lucia fishing boat captain seeks answers after deadly US | apnews.com
+-        | 2026-02-27 | Russia-Ukraine war: List of key events, day 1,464 | aljazeera.com
+-        | 2026-02-27 | Barca look to tighten grip on top spot in La Liga with win over Villar | aljazeera.com
+-        | 2026-02-27 | US moves to legally control tanker and 2M barrels of oil seized off Ve | apnews.com
+-        | 2026-02-27 | Drone jammed near French aircraft carrier was probably Russian, says S | bbc.com
+-        | 2026-02-27 | Five things to look out for in the EFL this weekend | bbc.com
+evt_009  | 2026-02-28 | With few good strategic options, Iran’s best prospect may be to retali | theguardian.com
+-        | 2026-02-28 | The Selby rail crash at Great Heck remembered 25 years on | bbc.com
+-        | 2026-02-28 | At least 11 killed after military plane carrying banknotes crashes in  | bbc.com
+-        | 2026-02-28 | Bolivian military plane carrying banknotes crashes near capital, killi | aljazeera.com
+-        | 2026-02-28 | Sweden confirms Russian drone intercepted near French aircraft carrier | aljazeera.com
+-        | 2026-02-28 | Cuba unveils new details in fatal US boat shooting and says a 2nd boat | apnews.com
+-        | 2026-02-28 | As Europe readies tougher migration measures, a Greek island sees ille | apnews.com
+-        | 2026-02-28 | A14 Northamptonshire fly-tip: Why does cleaning-up take so long? | bbc.com
+-        | 2026-02-28 | Bolivian Military Plane Crash: 15 Dead as Cash Scatters Near La Paz | gulfnews.com
+-        | 2026-02-28 | As Europe readies tougher migration measures, a Greek island sees ille | indiatimes.com
+-        | 2026-02-28 | Iran’s exports to Qatar rise 34%, trade balance turns positive | tehrantimes.com
+-        | 2026-02-28 | At least 20 killed as cash-laden military cargo plane crashes in Boliv | theguardian.com
+-        | 2026-02-28 | ‘A woman screams from a high balcony: “Help me! I’m freezing to death! | theguardian.com
+-        | 2026-02-28 | Ukraine war briefing: Sweden jammed Russian drone near French aircraft | theguardian.com
+evt_009  | 2026-02-28 | Iran's leader Ali Khamenei killed in joint US Israeli strikes, Trump s | bbc.com
+evt_009  | 2026-02-28 | Mapping US and Israeli attacks on Iran and Tehran’s retaliatory strike | aljazeera.com
+evt_011  | 2026-02-28 | Dubai suspends all flights as Gulf states close airspace after Iran st | thenationalnews.com
+evt_012  | 2026-02-28 | US-Iran war: What will the impact be on oil? | thenationalnews.com
+evt_015  | 2026-02-28 | US and Israel face 'game-changer' missiles acquired by Iran | thenationalnews.com
+evt_012  | 2026-02-28 | Oil prices set for swings next week as US-Israel strikes raise supply  | apnews.com
+evt_007  | 2026-02-28 | Strait of Hormuz Tensions: Oil Shipments Halt Amid US-Israel-Iran Conf | gulfnews.com
+evt_016  | 2026-02-28 | Strait of Hormuz on edge due to Iran-Israel war? Iran’s leverage is a  | indiatimes.com
+evt_009  | 2026-02-28 | Why did US and Israel attack Iran and how long could the war last? | bbc.com
+evt_004  | 2026-02-28 | Oil prices rise more than 2% as US and Iran extend talks | indiatimes.com
+evt_018  | 2026-02-28 | Four people killed in Syria after an Iranian missile falls on building | indiatimes.com
+evt_009  | 2026-02-28 | Iran war: Donald Trump's statement, in full | indiatimes.com
+evt_014  | 2026-02-28 | Iran war: Death toll in strike on girls' school rises to 40, state med | indiatimes.com
+evt_010  | 2026-02-28 | India's nuanced diplomacy in turbulent West Asia, Af-Pak | indiatimes.com
+evt_010  | 2026-02-28 | Iran-Israel-US war: India reacts, urges restraint from all sides invol | indiatimes.com
+evt_009  | 2026-02-28 | US-Iran war highlights: Dubai, Abu Dhabi attacked, American naval forc | indiatimes.com
+evt_006  | 2026-02-28 | Will Iranians finally take over government and will Iran proxies join  | indiatimes.com
+evt_017  | 2026-02-28 | Iran war: What is the Strait of Hormuz and why is it so important for  | indiatimes.com
+evt_008  | 2026-02-28 | Bahrain strikes raise questions on how US can deal with Iran retaliati | bbc.com
+evt_008  | 2026-02-28 | Iran’s Day 1 strikes | tehrantimes.com
+evt_008  | 2026-02-28 | IRGC strongly hits USS MST vessel | tehrantimes.com
+evt_013  | 2026-02-28 | Trump’s unprovoked attack on Iran has no mandate – or legal basis | theguardian.com
+-        | 2026-02-28 | King pays tribute on Great Heck train disaster 25th anniversary | bbc.com
+-        | 2026-02-28 | Munster 21-7 Zebre: Irish province defeat Italian visitors in United R | bbc.com
+evt_007  | 2026-02-28 | Iranian Navy tells ships to avoid Strait of Hormuz | thenationalnews.com
+evt_028  | 2026-03-01 | Oil tanker with 15 Indian crew members comes under attack off Oman coa | indiatimes.com
+evt_027  | 2026-03-01 | Rising tensions in Middle East may impact trade, push up freight, insu | indiatimes.com
+evt_016  | 2026-03-01 | Iran crisis: No immediate oil disruption for India; price volatility,  | indiatimes.com
+evt_032  | 2026-03-01 | Massive protests hit Lucknow streets as Shia community condemns US-Isr | indiatimes.com
+evt_021  | 2026-03-01 | OPEC+ debates oil output boost as US war on Iran disrupts shipments | indiatimes.com
+evt_022  | 2026-03-01 | Trump was once wary of ordering regime change in Iran, here's what mad | indiatimes.com
+evt_008  | 2026-03-01 | Iranian missiles strike: Loud blasts shake up safe haven UAE | indiatimes.com
+evt_019  | 2026-03-01 | Has Iran attacked USS Abraham Lincoln with ballistic missiles, and wha | indiatimes.com
+evt_019  | 2026-03-01 | US sinks Iranian warship and claims Tehran missiles did not even touch | indiatimes.com
+evt_017  | 2026-03-01 | What is Strait of Hormuz and will Iran close it now? Key global oil tr | indiatimes.com
+evt_007  | 2026-03-01 | Hundreds of ships drop anchor in Middle East Gulf, data shows | indiatimes.com
+evt_031  | 2026-03-01 | Israel-Iran war: Netanyahu vows to strike ‘thousands of targets’ in co | indiatimes.com
+evt_028  | 2026-03-01 | Oil tanker under United States sanctions hit near Oman | indiatimes.com
+evt_011  | 2026-03-01 | US-Israel Attack Iran News Live Updates: Israel's Netanyahu says many  | indiatimes.com
+evt_022  | 2026-03-01 | Contradictions in Trump's war on Iran are glaring, and unlikely to end | indiatimes.com
+evt_020  | 2026-03-01 | Should be a short sputter in pipelines | indiatimes.com
+evt_008  | 2026-03-01 | CENTCOM confirms no US casualties amid US-Israel offensive on Iran as  | indiatimes.com
+evt_012  | 2026-03-01 | Oil faces $20 spike as Hormuz artery grinds to a halt | khaleejtimes.com
+evt_033  | 2026-03-01 | US–Israel–Iran conflict delivers generation‑defining economic shock | khaleejtimes.com
+evt_023  | 2026-03-01 | GCC condemns brutal Iranian attack on Duqm Port and oil tanker off the | khaleejtimes.com
+evt_024  | 2026-03-01 | Gulf markets open in volatile trade as Iran conflict jolts region | thenationalnews.com
+evt_023  | 2026-03-01 | One injured after two drones target Oman's Duqm port | khaleejtimes.com
+evt_023  | 2026-03-01 | Qatar expresses strong condemnation of Iranian attacks on Duqm Port in | khaleejtimes.com
+evt_009  | 2026-03-01 | Israel claims Khamenei killed in strikes; Iran says leader firmly comm | khaleejtimes.com
+evt_009  | 2026-03-01 | Iran's supreme leader Khamenei killed in his office, state media confi | khaleejtimes.com
+evt_007  | 2026-03-01 | US-Iran strikes: global shipping braces for hit from Strait of Hormuz  | scmp.com
+evt_008  | 2026-03-01 | Iran pounds Israel, keeps up attacks on regional U.S. bases overnight | tehrantimes.com
+evt_019  | 2026-03-01 | Iran declares missile strikes on US aircraft carrier | tehrantimes.com
+evt_007  | 2026-03-01 | Strait of Hormuz remains closed; reports suggest three vessels hit for | tehrantimes.com
+evt_031  | 2026-03-01 | Morning Mail: calls for talks as waves of missiles target Iran; scruti | theguardian.com
+evt_012  | 2026-03-01 | Oil price expected to surge after Iran strikes and strait of Hormuz cl | theguardian.com
+evt_017  | 2026-03-01 | What is the strait of Hormuz and why is it crucial for oil supplies? | theguardian.com
+evt_026  | 2026-03-01 | US contractors in Kuwait decry meager bunkers and pay cuts amid Iran w | theguardian.com
+evt_013  | 2026-03-01 | The Guardian view on Trump’s Iranian campaign: an illegal war that ris | theguardian.com
+evt_031  | 2026-03-01 | Trump says 48 leaders killed in strikes on Iran: what we know so far o | theguardian.com
+evt_034  | 2026-03-01 | Trump allies defend US-Israel strikes on Iran as Democrats call it a ‘ | theguardian.com
+evt_031  | 2026-03-01 | US and Israel launch new wave of attacks on Iran amid threat of escala | theguardian.com
+evt_006  | 2026-03-01 | Without some change in direction, Iran’s regime risks breakdown in civ | theguardian.com
+evt_021  | 2026-03-01 | Opec+ agrees 206,000 bpd increase as Iran conflict tests supply routes | thenationalnews.com
+evt_028  | 2026-03-01 | Strait of Hormuz in focus as Iran attacks expose Gulf energy transport | thenationalnews.com
+evt_031  | 2026-03-01 | Israel to 'escalate' Iran attacks as war engulfs region | thenationalnews.com
+evt_017  | 2026-03-01 | What is the Strait of Hormuz? How will its closure impact oil prices? | aljazeera.com
+-        | 2026-03-01 | Gaza's ceasefire had some momentum. Now, some fear a new war will dist | apnews.com
+-        | 2026-03-01 | Brit Awards 2026: The real winners and losers | bbc.com
+-        | 2026-03-01 | Adani Ports confirms Israel-based Haifa Port infrastructure fully secu | indiatimes.com
+-        | 2026-03-01 | Silver, gold may surge next week as Middle East tension intensifies: A | indiatimes.com
+-        | 2026-03-01 | Global Markets | Wall Street turns to ‘Haven-First’ strategies amid Ir | indiatimes.com
+-        | 2026-03-01 | Today in US history on March 1: Michigan ends capital punishment; Yell | indiatimes.com
+-        | 2026-03-01 | Belgium special forces seize Russian ‘shadow fleet’ tanker | scmp.com
+-        | 2026-03-01 | Investment in AI-resistant ‘Halo’ companies helps push UK and EU marke | theguardian.com
+-        | 2026-03-01 | Welbeck lifts Brighton to pile pressure on Nottingham Forest and Vítor | theguardian.com
+-        | 2026-03-01 | Stunning views, honesty shops and community pubs: people power on the  | theguardian.com
+-        | 2026-03-01 | Suspected Russian ‘shadow fleet’ tanker seized in North Sea | theguardian.com
+evt_009  | 2026-03-01 | US-Israel attacks on Iran, day 2: Khamenei is killed, Iran retaliates | aljazeera.com
+evt_035  | 2026-03-01 | US-Israel attacks on Iran: Death toll and injuries live tracker | aljazeera.com
+evt_015  | 2026-03-01 | What are Iran’s weapons as it fights the US and Israel? | aljazeera.com
+evt_030  | 2026-03-01 | World reacts to killing of Iran’s Khamenei by US, Israel forces | aljazeera.com
+evt_030  | 2026-03-01 | World leaders urge return to talks after US and Israeli strikes kill I | apnews.com
+evt_029  | 2026-03-01 | Oil prices rise sharply after attacks in Middle East disrupt global en | apnews.com
+evt_029  | 2026-03-01 | Tanker hit off Iran amid fears of oil price spike | bbc.com
+evt_029  | 2026-03-01 | What a US attack on Iran could mean for oil prices, in charts and maps | cnn.com
+evt_012  | 2026-03-01 | Oil Prices Set to Surge as Iran Conflict Threatens Strait of Hormuz | gulfnews.com
+evt_023  | 2026-03-01 | Iran Strikes Oman Port and Tanker, Escalating Gulf Tensions | gulfnews.com
+evt_028  | 2026-03-01 | Oil Tanker Skylight Attacked Near Oman Coast, Crew Safely Evacuated | gulfnews.com
+evt_025  | 2026-03-01 | US military uses 'kamikaze' drones against Iran, improved clones of Sh | gulfnews.com
+evt_016  | 2026-03-01 | Iran Crisis: No immediate oil disruption for India; Russia pivot possi | indiatimes.com
+evt_007  | 2026-03-01 | Oil and gas majors and traders suspend shipments via Hormuz, sources s | indiatimes.com
+evt_021  | 2026-03-01 | OPEC+ hikes oil production by more than expected following outbreak of | indiatimes.com
+evt_012  | 2026-03-01 | Crude oil prices to cross $100? What experts predict after US, Israel  | indiatimes.com
+evt_009  | 2026-03-01 | Israel, US launched strikes as Iran's Ayatollah Ali Khamenei met with  | indiatimes.com
+evt_027  | 2026-03-01 | Iran-Israel-US war: Conflict, impact on maritime traffic could hurt In | indiatimes.com
+-        | 2026-03-02 | Egypt's economy in crisis as financial turmoil grips region | thenationalnews.com
+evt_063  | 2026-03-02 | What you should expect to pay for gas as the war with Iran continues | cnn.com
+evt_017  | 2026-03-02 | Explainer: What happens if Iran closes the Strait of Hormuz? | khaleejtimes.com
+evt_063  | 2026-03-02 | What's happening to UK petrol and diesel prices now the US and Iran ha | bbc.com
+evt_044  | 2026-03-02 | Why QatarEnergy’s LNG production halt could shake up global gas market | aljazeera.com
+evt_050  | 2026-03-02 | After Iran’s salvo hit their skylines, will Gulf states enter the war? | aljazeera.com
+evt_007  | 2026-03-02 | Iran says will attack any ship trying to pass through Strait of Hormuz | aljazeera.com
+evt_029  | 2026-03-02 | Oil prices rise sharply after US, Israeli attacks on Iran | aljazeera.com
+evt_044  | 2026-03-02 | Gas prices soar as QatarEnergy halts LNG production after Iran attacks | aljazeera.com
+evt_015  | 2026-03-02 | What is Iran’s military strategy? How has it changed since June 2025 w | aljazeera.com
+evt_037  | 2026-03-02 | What we know on day three of US-Israeli attacks on Iran | aljazeera.com
+evt_041  | 2026-03-02 | Europe defends military bases and struggles to evacuate citizens as it | apnews.com
+evt_048  | 2026-03-02 | FACT FOCUS: Misrepresented images spread after US and Israel strike Ir | apnews.com
+evt_047  | 2026-03-02 | Gulf carriers resume some flights even as US-Israel strikes and Iran r | apnews.com
+evt_022  | 2026-03-02 | From doubts about nuke talks to an Air Force One flight, what led up t | apnews.com
+evt_029  | 2026-03-02 | Energy prices surge as tanker disruptions, facility shutdowns, rattle  | apnews.com
+evt_024  | 2026-03-02 | US futures and Asian shares open lower, oil prices soar as US and Isra | apnews.com
+evt_007  | 2026-03-02 | What to know about the Strait of Hormuz, a key passageway essential fo | apnews.com
+evt_037  | 2026-03-02 | What we know about the widening US war with Iran on the conflict’s thi | cnn.com
+evt_064  | 2026-03-02 | Three US fighter jets accidentally shot down by Kuwaiti air defenses,  | cnn.com
+evt_025  | 2026-03-02 | Warships, explosive drones and stealth bombers: The high-tech weapons  | cnn.com
+evt_009  | 2026-03-02 | Iran after 48 hours: Tactical success, strategic uncertainty | cnn.com
+evt_037  | 2026-03-02 | Live updates: Several US military aircraft have crashed but all crew s | cnn.com
+evt_021  | 2026-03-02 | List: OPEC+ members to boost production of crude oil amid supply disru | gulfnews.com
+evt_061  | 2026-03-02 | How Strait of Hormuz Tensions Could Impact UAE's Fuel and Grocery Pric | gulfnews.com
+evt_024  | 2026-03-02 | Oil and Gold Surge Amid US-Israel-Iran Conflict, Inflation Concerns Ri | gulfnews.com
+evt_028  | 2026-03-02 | Oil Tanker Attacked Near Oman Coast: One Crew Member Killed in Maritim | gulfnews.com
+evt_049  | 2026-03-02 | War risk shock: Insurers pull back as tankers pile up off Fujairah | khaleejtimes.com
+evt_038  | 2026-03-02 | Saudi Arabia Intercepts Drones Near Key Air Base Amid Rising Middle Ea | gulfnews.com
+evt_037  | 2026-03-02 | Iran Conflict Escalates: Militias and Hezbollah Join as Regional Tensi | gulfnews.com
+evt_025  | 2026-03-02 | Operation Epic Fury: US Unleashes Full Military Might on Iran with B-2 | gulfnews.com
+evt_037  | 2026-03-02 | Iran-Backed Militias Escalate Conflict: Oil, Airspace, and Nuclear Ris | gulfnews.com
+evt_046  | 2026-03-02 | Understanding Hezbollah and Iran's Militias: Key Players in the Middle | gulfnews.com
+evt_056  | 2026-03-02 | India unlikely to see petrol, diesel price hike despite global oil pri | indiatimes.com
+evt_049  | 2026-03-02 | Iran-Israel War: The Gulf waters turn riskier as insurers pull the war | indiatimes.com
+evt_055  | 2026-03-02 | Iran-Israel War: Asia's richest economies face a risk as lion’s share  | indiatimes.com
+evt_055  | 2026-03-02 | Israel-Iran war: Escalating hostilities in the Middle East risk renewe | indiatimes.com
+evt_007  | 2026-03-02 | Mideast oil output may need to stop if Hormuz closed for 25 days | indiatimes.com
+evt_029  | 2026-03-02 | Oil jumps 10%, could touch $100 per barrel | indiatimes.com
+evt_029  | 2026-03-02 | Oil prices surge as Strait of Hormuz tanker disruptions rattle global  | indiatimes.com
+evt_007  | 2026-03-02 | Strait of Hormuz must not be allowed to shut down: Indian-American mar | indiatimes.com
+evt_027  | 2026-03-02 | West Asia conflict sparks oil price fears, India Inc flags hit to dema | indiatimes.com
+evt_040  | 2026-03-02 | Indian ship owners seeks diplomatic intervention for safe passage in W | indiatimes.com
+evt_065  | 2026-03-02 | Iran conflict disrupts global shipping as tankers are stranded, damage | indiatimes.com
+evt_044  | 2026-03-02 | European gas prices jump 50% after Qatar halts LNG output | indiatimes.com
+evt_058  | 2026-03-02 | Oil could top USD 100 as Strait of Hormuz closure halts flows | indiatimes.com
+evt_029  | 2026-03-02 | Oil jumps as Iran conflict escalates, disrupts shipping | indiatimes.com
+evt_058  | 2026-03-02 | Oil prices expected to stay high for days, all eyes on Strait of Hormu | indiatimes.com
+evt_024  | 2026-03-02 | Dollar gains, euro sags as Iran war lifts energy prices | indiatimes.com
+evt_021  | 2026-03-02 | OPEC+ boosts oil production after attacks on Iran and throughout regio | indiatimes.com
+evt_020  | 2026-03-02 | Defence stocks are the only clear buy right now: Andrew Freris | indiatimes.com
+evt_020  | 2026-03-02 | Oil markets on edge: Crude spike may be shorter-lived than feared: Ala | indiatimes.com
+evt_024  | 2026-03-02 | Treasury bonds, dollar remain reliable safe havens in crisis: Peter Ca | indiatimes.com
+evt_011  | 2026-03-02 | Sensex Today | Nifty 50 | Stock Market Highlights: Sensex settles 1,04 | indiatimes.com
+evt_042  | 2026-03-02 | Adani Ports shares plunge 6% as escalating Iran-Israel war sparks conc | indiatimes.com
+evt_042  | 2026-03-02 | Asian Paints, other paint stocks plunge up to 6% as Israel-Iran war fu | indiatimes.com
+evt_042  | 2026-03-02 | Explained: What US-Israel war on Iran means for Indian stock market in | indiatimes.com
+evt_042  | 2026-03-02 | Iran-Israel war: Over 30 listed Indian companies face Middle East expo | indiatimes.com
+evt_020  | 2026-03-02 | Jefferies calls Israel-Iran conflict a buying opportunity; warns Hormu | indiatimes.com
+evt_027  | 2026-03-02 | LT Foods, KRBL other rice stocks fall up to 11% as Israel-Iran war fla | indiatimes.com
+evt_042  | 2026-03-02 | Oil shock, AI worries to weigh on Indian markets amid rising global un | indiatimes.com
+evt_042  | 2026-03-02 | GIFT Nifty down 50 points; here's the trading setup for today's sessio | indiatimes.com
+evt_042  | 2026-03-02 | Stock Market Crash: Up to Rs 8 lakh crore gone! Sensex slumps 1,000 pt | indiatimes.com
+evt_024  | 2026-03-02 | Fresh Middle East curve ball raises risks for weary world markets | indiatimes.com
+evt_024  | 2026-03-02 | Global Market | Middle East Shockwave: Markets brace for oil, inflatio | indiatimes.com
+evt_024  | 2026-03-02 | Global Market Today | Oil prices surge, stocks skid in flight from ris | indiatimes.com
+evt_028  | 2026-03-02 | Iran vs Israel-US war Day 3: Trump’s grave warning, Israel’s next targ | indiatimes.com
+evt_057  | 2026-03-02 | Israel strikes Lebanon following Hezbollah attacks, widening Iran conf | indiatimes.com
+evt_027  | 2026-03-02 | Iran conflict threatens India’s $4.5 billion electronics exports to Gu | indiatimes.com
+evt_027  | 2026-03-02 | Iran-Israel-US war: Ships asked to bypass West Asia ports | indiatimes.com
+evt_040  | 2026-03-02 | Oil, rice, textiles more: The cost Indians may have to pay for Iran-Is | indiatimes.com
+evt_027  | 2026-03-02 | Oil, trade risks for India amid Iran-Israel war | indiatimes.com
+evt_027  | 2026-03-02 | West Asia conflict may spike dal prices; rice exports to Iran at risk | indiatimes.com
+evt_042  | 2026-03-02 | Israel-Iran war's 'Strait' fight can damage one of India's well-built  | indiatimes.com
+evt_040  | 2026-03-02 | Government calls urgent meet as West Asia turmoil hits air cargo, ship | indiatimes.com
+evt_052  | 2026-03-02 | Iran vs US, Israel conflict: Major Saudi refinery, Iraqi Kurdish and I | indiatimes.com
+evt_043  | 2026-03-02 | Iran conflict poses new risk to US economic resilience | indiatimes.com
+evt_029  | 2026-03-02 | Oil jumps as Iran conflict risks supply disruption | thenationalnews.com
+evt_006  | 2026-03-02 | Iran switches to survival mode after killing of Khamenei | indiatimes.com
+evt_006  | 2026-03-02 | Khamenei killed, now the aftermath: Gulf on brink | indiatimes.com
+evt_058  | 2026-03-02 | Can oil price reach $100, and why are airline stocks and shares fallin | indiatimes.com
+evt_037  | 2026-03-02 | Iran Israel war live latest updates: Iranian rockets hit Jerusalem, IR | indiatimes.com
+evt_024  | 2026-03-02 | Middle east conflict shakes markets: Airline stocks fall while oil and | indiatimes.com
+evt_058  | 2026-03-02 | Oil prices to touch $120? Oil price today surges after Iran strikes Sa | indiatimes.com
+evt_037  | 2026-03-02 | US-Iran war highlights: Over 200 killed, Tehran strikes at Israel, Ame | indiatimes.com
+evt_024  | 2026-03-02 | Why are Dow S 500 and Nasdaq falling today: US stock market big crash  | indiatimes.com
+evt_024  | 2026-03-02 | US Treasuries slide as Middle East conflict sparks oil price surge – a | indiatimes.com
+evt_047  | 2026-03-02 | Which air routes are opening for flying from Dubai and Abu Dhabi? Chec | indiatimes.com
+evt_029  | 2026-03-02 | Why are global sugar, oil and gas prices surging now, and how many oil | indiatimes.com
+evt_024  | 2026-03-02 | Why Russian oil stocks are rising today? Rosneft, Lukoil, Gazprom Neft | indiatimes.com
+evt_051  | 2026-03-02 | Iran crisis hits India’s economy; PE firms dial up SaaS deals | indiatimes.com
+evt_024  | 2026-03-02 | S 500 slips as US strikes on Iran send oil up 6%: Why S 500 crashing a | indiatimes.com
+evt_060  | 2026-03-02 | Israeli PM Benjamin Netanyahu’s office reportedly attacked in Iran str | indiatimes.com
+evt_053  | 2026-03-02 | Today's Quote by John F. Kennedy amid Iran-Israel conflict: 'Mankind m | indiatimes.com
+evt_047  | 2026-03-02 | Iran-US-Isreal conflict: Stranded passengers may get relief as Dubai a | indiatimes.com
+evt_028  | 2026-03-02 | Indian mariner killed as oil tanker attacked in Gulf of Oman | indiatimes.com
+evt_027  | 2026-03-02 | Freight, fuel, and fear: As missiles fly in West Asia, these Indian se | indiatimes.com
+evt_051  | 2026-03-02 | Iran Conflict: AI-hit tech companies fear slowdown in spends | indiatimes.com
+evt_051  | 2026-03-02 | Iran-Israel war: AI-hit tech companies fear slowdown in spends | indiatimes.com
+evt_044  | 2026-03-02 | Qatar halts gas output after Iran strikes top facility | thenationalnews.com
+evt_036  | 2026-03-02 | Ola Electric loses speed; AWS ops in Middle East hit | indiatimes.com
+evt_027  | 2026-03-02 | Iran Conflict: Electronics exports of $4.5 billion at risk | indiatimes.com
+evt_027  | 2026-03-02 | Iran-Israel war: Electronics exports of $4.5 billion at risk | indiatimes.com
+evt_047  | 2026-03-02 | Dubai Airports announces limited flight resumption from DXB and DWC | khaleejtimes.com
+evt_029  | 2026-03-02 | Oil rockets on Gulf flare-up, $100 in sight if Hormuz flows stall | khaleejtimes.com
+evt_045  | 2026-03-02 | One dead, 2 injured in Iranian attacks: Bahrain interior ministry | khaleejtimes.com
+evt_028  | 2026-03-02 | Indian killed as projectile hits MKD VYOM; Embassy in Oman offers cond | khaleejtimes.com
+evt_024  | 2026-03-02 | Hong Kong stocks slump alongside Asian equities as gold, oil jump on I | scmp.com
+evt_011  | 2026-03-02 | Cathay Pacific halts Dubai flights until Thursday amid US-Israeli atta | scmp.com
+evt_007  | 2026-03-02 | Asia’s main oil artery is all but blocked. What happens now? | scmp.com
+evt_049  | 2026-03-02 | Maritime insurers cancel war risk cover in Gulf as Iran conflict disru | theguardian.com
+evt_024  | 2026-03-02 | US markets see-saw as investors keep close eye on Iran war | theguardian.com
+evt_044  | 2026-03-02 | A gas shock – not an oil shock – from the Iran war looks more threaten | theguardian.com
+evt_039  | 2026-03-02 | Trump open to talks with Iran as conflict deepens in Middle East | theguardian.com
+evt_044  | 2026-03-02 | Qatar LNG production halt poses fresh questions for Asian buyers | thenationalnews.com
+evt_062  | 2026-03-02 | Private jet prices soar as wealthy scramble to leave Dubai | theguardian.com
+evt_011  | 2026-03-02 | Thousands of flights cancelled as world faces worst travel chaos since | theguardian.com
+evt_050  | 2026-03-02 | Gulf states on verge of acting against Iran over ‘reckless’ strikes ac | theguardian.com
+evt_059  | 2026-03-02 | Hegseth says US won’t get ‘bogged down’ in Iran – but doesn’t rule out | theguardian.com
+evt_007  | 2026-03-02 | What disrupting the strait of Hormuz could mean for global cost-of-liv | theguardian.com
+evt_029  | 2026-03-02 | How escalating Iran conflict is driving up oil and gas prices – a visu | theguardian.com
+evt_054  | 2026-03-02 | Iran’s Shahed drones have brought terror to the skies over Ukraine – n | theguardian.com
+evt_029  | 2026-03-02 | Oil prices rise as Iran war threatens shipping through strait of Hormu | theguardian.com
+evt_037  | 2026-03-02 | US-Israel war on Iran dramatically expands across Middle East | theguardian.com
+evt_037  | 2026-03-02 | The war in the Middle East in maps, video and photos | theguardian.com
+evt_038  | 2026-03-02 | Saudi Aramco shuts down Ras Tanura refinery due to 'drone attack' | thenationalnews.com
+evt_049  | 2026-03-02 | Strait of Hormuz escalation rattles global shipping with war levies an | thenationalnews.com
+evt_052  | 2026-03-02 | Iran's new wave of attacks escalates threat to the world's largest oil | thenationalnews.com
+evt_024  | 2026-03-02 | US markets turn positive in major comeback amid Iran conflict fears | thenationalnews.com
+evt_041  | 2026-03-02 | Britain increases military support for Gulf region | thenationalnews.com
+-        | 2026-03-02 | Australian Grand Prix: Formula 1 season-opener to feel 'no impact' of  | bbc.com
+-        | 2026-03-02 | Charlie Kirk’s legacy, cheaper iPhone, prehistoric hookups: Catch up o | cnn.com
+-        | 2026-03-02 | ‘I’m dying for the day heterosexuals have to come out’: Catherine Opie | theguardian.com
+-        | 2026-03-02 | Morning Mail: Trump details objectives in Iran war, Hanson’s taxpayer- | theguardian.com
+-        | 2026-03-02 | Infantino’s idolisation of Trump has left football with blood on its h | theguardian.com
+-        | 2026-03-02 | Rembrandt discovery and Iran conflict: photos of the day – Monday | theguardian.com
+-        | 2026-03-02 | First Thing: Trump says ‘likely more’ deaths of US troops before Iran  | theguardian.com
+-        | 2026-03-02 | Ukraine war briefing: Starmer says Ukrainian experts will help shoot d | theguardian.com
