@@ -98,6 +98,7 @@ def _event_direction(db: Session, event_id: str, link_type: str) -> dict:
         )
     result = links_service.get_event_ships(db, event_id)
     links = [item for item in result["links"] if item["link_type"] == link_type]
+    observed_not_built = link_type == "observed" and result["built_at"] is None
 
     limitations = [PROJECTION_LIMITATION, TIME_PRECISION_LIMITATION]
     limitations.append(MENTIONED_LIMITATION if link_type == "mentioned" else OBSERVED_LIMITATION)
@@ -107,8 +108,11 @@ def _event_direction(db: Session, event_id: str, link_type: str) -> dict:
             " observed 关联，零条仅表示派生层内无此类关联"
         )
 
+    if observed_not_built:
+        limitations.append("observed 派生层没有构建记录，不能将空结果解读为没有事件关联")
+
     return {
-        "status": "ok" if links else "no_data",
+        "status": "not_built" if observed_not_built else ("ok" if links else "no_data"),
         "direction": "by_event",
         "event_id": result["event_id"],
         "title_zh": result["title_zh"],
@@ -133,9 +137,10 @@ def _ship_direction(
     to_raw = end.isoformat() if end else None
     result = links_service.get_ship_events(db, ship_id, from_raw, to_raw)
     events = result["observed"]
+    observed_not_built = result["built_at"] is None
 
     return {
-        "status": "ok" if events else "no_data",
+        "status": "not_built" if observed_not_built else ("ok" if events else "no_data"),
         "direction": "by_ship",
         "ship_id": ship_id,
         "ship_name": ship["name"],

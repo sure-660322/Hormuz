@@ -2,7 +2,9 @@
 
 > 2026-09-25 真实 AIS 适配（分支 `codex/real-ais-agent-passage`，待整合）：船舶搜索、单船轨迹、来源说明和项目知识已改为 `nnu_ais`；通行工具沿用现有 56.2°E / 56.7°E 虚拟双门线，但限定纬度 25.8–27.1°N、经度 55.8–57.1°E 和最多 24 小时查询窗 + 24 小时前置观察。数据库只向应用返回聚合与侧别变化，最多扫描 100 万门线侧别报位、最多返回 5000 个变化候选，超限报错；可选 ship_id。中间报位离开判定区域、6 小时长间隔或 30 kn 跳点列为不确定候选，不计入确定通行。阈值尚未用真实 AIS 独立校准，未观测到不等于未通过。当前应用库只读验证和未验证项见[开发任务](agent_development_plan.md)。下文标有“模拟批次”的实施与验收数字均属历史记录，不代表当前 AIS 口径。
 
-当前 SQL 三工具不暴露给真实 AIS 智能体：既有 `agent_data.v_ships` 仍筛 `simulation`，即使旧环境开关为真也会隐藏，待视图、只读角色和 catalog 完成真实 AIS 适配及独立验证后再启用。
+当前 SQL 三工具不暴露给真实 AIS 智能体：应用库不存在 `agent_data` schema；历史 013 脚本中的 `v_ships` 只筛 `simulation`，015 迁移对旧环境的此视图执行受限删除。v1 catalog 和 SQL-02～06 测试保留为历史证据，不可作为当前 AIS 工具。须重新设计视图、只读角色和 catalog 并独立验证后再启用。
+
+2026-09-25 工具查验：八个业务工具在本机 `aisdb` 均可调用；`search_ships`、`get_ship_track`、`query_strait_passages`、`get_event_context`、`get_data_health`、`query_event_ship_links(mentioned)` 返回现有数据，`query_ship_dwell` 与 `query_encounters` 返回 `not_built`。`query_event_ship_links(observed)` 已改为无构建记录时返回 `not_built`，不再把未构建说成 `no_data`。完整证据与时间见[开发任务](agent_development_plan.md)。这只是确定性工具核对，真实模型表述与浏览器问答仍待验证。
 
 > 本文保留 **v4 响应契约**；本地 `main` 已合入 LangChain `create_agent` 编排及 `codex/lc-safety-fix` 安全修复，响应字段兼容。`f14eceb` 是合并前的旧 v4 自定义工具循环复核提交；下文描述旧循环、九工具注册表及固定分类的段落均为 LC-01 之前的历史契约背景，不代表当前运行实现。当前验收见 [开发任务](agent_development_plan.md)，架构见 [第一版方案](langchain_agent_v1_plan.md)。
 

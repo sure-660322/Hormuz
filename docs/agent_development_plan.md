@@ -1,5 +1,26 @@
 # 智能体下一阶段开发任务
 
+## 2026-09-25 旧 SQL 船舶视图退役与业务工具复核
+
+状态：**已验证（应用库只读工具及退役迁移），待本地 main 整合**。承接 `codex/real-ais-agent-passage` 的 `208f39d`；本轮未调用真实模型或改动船位、新闻、事件数据。应用库检查发现 `agent_data` schema 及三个旧 SQL 视图均不存在，`ship_positions` 只有 `nnu_ais` 来源 17,921,533 条。新增 `015_retire_simulation_agent_view.sql`，在其他环境有旧 `agent_data.v_ships` 时只以 `DROP VIEW ... RESTRICT` 删除它；历史 013 与 v1 catalog 保留为旧批次验收资料并标明不得对当前库重放。本机 `aisdb` 在事务内执行 015 前后 `v_ships` 均不存在；另在同一库的回滚事务内临时创建 `agent_data.v_ships`，执行 015 后确认视图被删，回滚后 schema 仍不存在。四个业务源表数量仍为 ships 4,462 / ship_positions 17,921,533 / events 65 / news 290。
+
+逐一通过 `make_business_tools` 在本机 `aisdb` 只读调用（固定 2026-02-28T15:00Z–16:00Z；新闻/派生工具使用其自身参数），记录如下。工具可执行不等于其派生数据已构建，更不等于真实模型会准确选择或表述：
+
+| 工具 | 当前结果 | 判定 |
+| --- | --- | --- |
+| `search_ships` | MMSI `538009322` 命中 1 艘 | 可用，仅历史 `nnu_ais` |
+| `get_ship_track` | `ship_id=9757` 一小时 354 条报位 | 可用，仍受 5 万条上限 |
+| `query_strait_passages` | 同船同窗 1 次虚拟门线通行 | 可用，口径及阈值限制见下节 |
+| `get_event_context` | `evt_002` 返回事件与报道 | 可用，报道与 AIS 船身份未核对 |
+| `get_data_health` | `ok`，约 56.6 秒 | 可调用，但接近智能体 60 秒预算，性能待优化 |
+| `query_ship_dwell` | `not_built` | 工具可用，七日 AIS 派生层未构建 |
+| `query_encounters` | `not_built` | 工具可用，七日 AIS 派生层未构建 |
+| `query_event_ship_links` | `evt_002` 的 mentioned 返回 3 条；observed 原返回 `no_data` | mentioned 可用；已修正无 observed manifest 时返回 `not_built`，按事件与按船查询均复核通过 |
+
+旧 SQL 三工具 `get_database_schema` / `check_sql` / `execute_sql` 在当前 AIS 主链强制隐藏；旧 SQL-02～06 测试只证明历史模拟 fixture 的安全链，不是当前业务库 SQL 能力。下一步表述优化应按工具状态生成措辞：真实 AIS 的观测通行需注明虚拟门线和覆盖限制；`not_built` 应说“尚未构建”，不能说“没有停留/相遇/关联”；新闻 mentioned 只是文本提及；数据健康超时须如实报告而非编造统计。真实 DeepSeek、浏览器问答、SQL 新视图及 6 小时/30 kn 阈值仍待验证。
+
+验证命令：`D:\my_project\Hormuz\backend\.venv\Scripts\python.exe -m pytest backend/tests -q` → **254 passed / 12 skipped**；015 使用 SQLAlchemy 事务执行，测试了视图不存在的空操作及回滚事务内真实删除分支。未运行前端构建（未改前端）。
+
 ## 2026-09-25 七日真实 AIS 语义与虚拟门线适配
 
 状态：**已验证（后端工具与应用库只读查询），待整合**。负责人 Codex；基线 `main` / `9bc9f6b`；工作目录 `D:/my_project/Hormuz-worktrees/codex-real-ais-agent-passage`，分支 `codex/real-ais-agent-passage`。本轮仅修改 `backend/app/services/agent/`、`backend/app/services/data_health.py`、相关后端测试及 README/智能体文档；未启动服务端口，数据库目标为本机 `aisdb`，只读验证，不修改源表或派生表。

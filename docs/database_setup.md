@@ -118,7 +118,7 @@ docker compose --env-file deploy/handoff.env -f compose.handoff.yaml stop
 - 010_event_ship_links.sql 是 P2 事件×船舶关联派生表，由 backend/build_event_ship_links.py 幂等执行与重建（mentioned 恒不指向模拟船）；同样不进交接包。
 - 011_ship_dwell.sql 是 P3 停留识别派生表（at_anchor/drift/slow_transit），由 backend/build_ship_dwell.py 幂等执行与重建，阈值入 manifest；同样不进交接包。
 - 012_encounters.sql 是 P4 相遇分析派生表（一船对一行 + params 快照），由 backend/build_encounters.py 幂等执行与重建；POST /api/encounters/analyze 是受控同步重建入口；同样不进交接包。
-- 013_agent_analytics_readonly.sql 是 SQL-02 的语义视图与最小权限角色迁移，会撤销目标数据库 `PUBLIC` 的 TEMP 及 `public` schema 默认权限；不得随普通交接导入自动执行。先按 [SQL-02 说明](query_analytics_sql02.md) 在独立库验证并由 DBA 评审既有角色依赖，再单独部署。
+- 013_agent_analytics_readonly.sql 是旧模拟批次 SQL-02 的历史迁移，会撤销目标数据库 `PUBLIC` 的 TEMP 及 `public` schema 默认权限，并创建只筛 `simulation` 的 `agent_data.v_ships`；不得对当前真实 AIS 应用库重放。015_retire_simulation_agent_view.sql 只在旧视图实际存在时以 `DROP VIEW ... RESTRICT` 退役该视图；本机 `aisdb` 执行前后均无 `agent_data` schema，故为空操作。v1 catalog 与 SQL 三工具的历史验收见 [SQL-02 说明](query_analytics_sql02.md)，当前 AIS 主链已隐藏 SQL 三工具。
 - create_tables.py 只补 ORM 表，不准备全部扩展、空间结构和索引。
 - migrate_real_news.py 仍是维护者历史迁移工具，依赖仓库外源路径；新成员使用本页的导入入口。
 - seed_data.py、generate_demo_data.py 使用旧事件语义，不作为当前初始化入口。

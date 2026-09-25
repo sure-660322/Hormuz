@@ -1,5 +1,7 @@
 # SQL-02 语义视图与只读角色
 
+> 历史范围：本页记录 2026-09-21 模拟批次 `agent_data` 三视图及隔离验收。2026-09-25 本机真实 AIS 应用库没有 `agent_data` schema；`015_retire_simulation_agent_view.sql` 用于退役其他环境中旧的 `v_ships`，当前状态见[智能体开发任务](agent_development_plan.md)。不要将本页视图数量或船舶语义当作当前应用库事实。
+
 状态：**已完成并通过隔离验证**（2026-09-21，分支 `codex/sql02-agent-reader`，本轮接续基线 `260678b`；SQL-04 于同日补全固定 `search_path=pg_catalog` 的哈希条件并复跑 56 项通过）。本阶段建设数据库读取边界和 catalog v1；后续 SQL-04 执行器和 SQL-05 工具注册均已验证，功能开关仍默认关闭。
 
 ## 交付内容

@@ -12,7 +12,7 @@ from backend.app.repositories import event_links as links_repo
 from backend.app.services.tracks import parse_window
 
 OBSERVED_NOTE = "模拟数据时空邻近演示，不构成真实因果"
-MENTIONED_NOTE = "新闻原文提及的真实船舶名称；与数据库中模拟船不按名称关联，未认定同一实体"
+MENTIONED_NOTE = "新闻原文提及的船舶名称；尚未与数据库 AIS 船舶按标识核对同一实体"
 
 
 def _params(manifest):

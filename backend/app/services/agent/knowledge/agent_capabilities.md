@@ -9,8 +9,9 @@
 - get_data_health：来源覆盖与派生层构建状态。
 - query_ship_dwell / query_encounters / query_event_ship_links：派生层只读查询。
 - search_project_knowledge：项目知识库检索（定位、语义、规则、能力边界）。
-- get_database_schema / check_sql / execute_sql：受限 SQL 工具（仅本地演示环境
-  启用；独立只读连接、SELECT-only、超时和结果上限，仅访问 agent_data 语义视图）。
+- get_database_schema / check_sql / execute_sql：历史受限 SQL 工具。当前真实 AIS
+  主链不暴露：旧 catalog 的船舶视图只覆盖 simulation，应用库也没有 agent_data
+  schema。迁移和独立验证前不可用于 nnu_ais 统计。
 
 ## 不可用能力
 

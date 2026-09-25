@@ -1,6 +1,8 @@
 \set ON_ERROR_STOP on
 
--- SQL-02: semantic views and least-privilege roles for query_analytics.
+-- HISTORICAL SQL-02 fixture: simulation-only semantic views and read-only roles.
+-- Do not replay against the current nnu_ais application database. 015 retires
+-- agent_data.v_ships if this historical view exists in an older environment.
 -- Run only as a reviewed database administration/migration identity, first in
 -- an isolated test database. This script never sets or stores a password.
 

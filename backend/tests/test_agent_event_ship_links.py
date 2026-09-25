@@ -270,6 +270,21 @@ def test_empty_result_is_valid_zero(patched_repo, monkeypatch):
     assert result["built_at"] is not None  # 零条≠未构建
 
 
+def test_observed_without_manifest_is_not_built(patched_repo, monkeypatch):
+    monkeypatch.setattr(links_repo, "fetch_manifest", lambda db: None)
+    monkeypatch.setattr(
+        links_repo, "fetch_links_for_event", lambda db, pk, eid: [dict(MENTIONED_LINK)]
+    )
+    monkeypatch.setattr(links_repo, "fetch_observed_for_ship", lambda db, sid, start, end: [])
+
+    by_event = run_event_ship_links_query(None, {"event_id": "evt_001", "link_type": "observed"})
+    by_ship = run_event_ship_links_query(None, {"ship_id": 4})
+    assert by_event["status"] == "not_built"
+    assert by_ship["status"] == "not_built"
+    assert by_event["links"] == []
+    assert by_ship["events"] == []
+
+
 # ------------------------------------------------------- 7. 非法参数
 def test_invalid_params_rejected(patched_repo):
     with pytest.raises(ValueError, match="必须且只能提供一个"):
