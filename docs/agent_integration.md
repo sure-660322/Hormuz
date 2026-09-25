@@ -2,9 +2,11 @@
 
 > 2026-09-25 真实 AIS 适配（`208f39d`、`7f1b89a` 已合入本地 main）：船舶搜索、单船轨迹、来源说明和项目知识已改为 `nnu_ais`；通行工具沿用现有 56.2°E / 56.7°E 虚拟双门线，但限定纬度 25.8–27.1°N、经度 55.8–57.1°E 和最多 24 小时查询窗 + 24 小时前置观察。数据库只向应用返回聚合与侧别变化，最多扫描 100 万门线侧别报位、最多返回 5000 个变化候选，超限报错；可选 ship_id。中间报位离开判定区域、6 小时长间隔或 30 kn 跳点列为不确定候选，不计入确定通行。阈值尚未用真实 AIS 独立校准，未观测到不等于未通过。当前应用库只读验证和未验证项见[开发任务](agent_development_plan.md)。下文标有“模拟批次”的实施与验收数字均属历史记录，不代表当前 AIS 口径。
 
-当前 SQL 三工具不暴露给真实 AIS 智能体：应用库不存在 `agent_data` schema；历史 013 脚本中的 `v_ships` 只筛 `simulation`，015 迁移对旧环境的此视图执行受限删除。v1 catalog 和 SQL-02～06 测试保留为历史证据，不可作为当前 AIS 工具。须重新设计视图、只读角色和 catalog 并独立验证后再启用。
+2026-09-25 起 SQL 三工具经 catalog v2 重新向真实 AIS 主链开放（本机已启用）：`016_agent_views_nnu_ais.sql` 重建 `agent_data` 语义视图（`v_ships` 一船一行、仅含 ≥1 条 `nnu_ais` 报位的船；`v_events`/`v_news` 定义与 v1 逐字一致）与 `agent_view_owner`/`agent_reader`/`agent_reader_login` 只读角色；`query_analytics_catalog_v2.json` 记录视图哈希（按 `search_path=pg_catalog` 口径计算）与 `data_source_scope: nnu_ais`。`sql_tools_enabled()` 要求 catalog 口径与 `SHIP_DATA_SOURCE` 一致且执行器配置完整（fail-closed）。含 TimescaleDB 的集群须为读者角色设 `timescaledb.disable_load=on`（016 已内置），否则聚合查询报 `_timescaledb_functions` 权限错误。原始报位不在 catalog 内（5 秒语句超时下大范围聚合不可行），报位级分析走业务工具。历史 v1 catalog 与 013 保留为旧批次资料，不得重放。
 
 2026-09-25 工具查验：八个业务工具在本机 `aisdb` 均可调用；`search_ships`、`get_ship_track`、`query_strait_passages`、`get_event_context`、`get_data_health`、`query_event_ship_links(mentioned)` 返回现有数据，`query_ship_dwell` 与 `query_encounters` 返回 `not_built`。`query_event_ship_links(observed)` 已改为无构建记录时返回 `not_built`，不再把未构建说成 `no_data`。完整证据与时间见[开发任务](agent_development_plan.md)。这只是确定性工具核对，真实模型表述与浏览器问答仍待验证。
+
+2026-09-25 SQL 三工具真实 AIS 适配验收：本机 `aisdb` 已执行 016 并启用 `AGENT_QUERY_ENABLED`；执行器全链路通过（catalog 角色/权限/视图哈希核验，油轮计数 793、按船型分布 25 行、报道 290，写入被只读策略拒绝）；真实 DeepSeek 对「一共多少艘油轮」自主完成 schema→check→execute 并回答 793 艘（含 NULL/未知船型不计入的口径说明），catalog limitations 正确流入响应。离线回归 257 passed / 12 skipped。未验证：浏览器端到端、远端推送。详见[开发任务](agent_development_plan.md)。
 
 > 本文保留 **v4 响应契约**；本地 `main` 已合入 LangChain `create_agent` 编排及 `codex/lc-safety-fix` 安全修复，响应字段兼容。`f14eceb` 是合并前的旧 v4 自定义工具循环复核提交；下文描述旧循环、九工具注册表及固定分类的段落均为 LC-01 之前的历史契约背景，不代表当前运行实现。当前验收见 [开发任务](agent_development_plan.md)，架构见 [第一版方案](langchain_agent_v1_plan.md)。
 

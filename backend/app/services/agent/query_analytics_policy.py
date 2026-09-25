@@ -2,7 +2,8 @@
 
 The validator never connects to a database and never executes SQL. It parses a
 single PostgreSQL statement with the pinned SQLGlot version, validates the full
-tree against catalog v1 and returns SQL serialized from that same accepted AST.
+tree against the current catalog (v2, nnu_ais semantic views) and returns SQL
+serialized from that same accepted AST.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from sqlglot.errors import ParseError, TokenError
 
 SQLGLOT_VERSION = "30.18.0"
 SQL_DIALECT = "postgres"
-CATALOG_PATH = Path(__file__).resolve().parents[2] / "query_analytics_catalog_v1.json"
+CATALOG_PATH = Path(__file__).resolve().parents[2] / "query_analytics_catalog_v2.json"
 
 MAX_SQL_BYTES = 16 * 1024
 MAX_PARAMS = 50
@@ -91,9 +92,9 @@ def load_catalog(path: Path = CATALOG_PATH) -> dict[str, Any]:
     try:
         catalog = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise QueryInputError("catalog v1 无法加载") from exc
-    if catalog.get("catalog_version") != "1.0" or not isinstance(catalog.get("views"), list):
-        raise QueryInputError("catalog v1 结构无效")
+        raise QueryInputError("catalog v2 无法加载") from exc
+    if catalog.get("catalog_version") != "2.0" or not isinstance(catalog.get("views"), list):
+        raise QueryInputError("catalog v2 结构无效")
     return catalog
 
 

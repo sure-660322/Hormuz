@@ -89,7 +89,7 @@ ALLOW_CASES = [
 @pytest.mark.parametrize("sql,params", ALLOW_CASES)
 def test_allowed_queries(sql, params):
     result = validate_query(sql, params, purpose="离线测试")
-    assert result.catalog_version == "1.0"
+    assert result.catalog_version == "2.0"
     assert result.normalized_sql.startswith("SELECT")
     assert 1 <= result.ast_node_count <= MAX_AST_NODES
     assert result.referenced_views

@@ -123,7 +123,7 @@ def test_integration_normal_zero_aggregate_join_and_typed_binding(executor) -> N
     assert normal.status == "ok"
     assert normal.returned_row_count == 3
     assert normal.rows[0][1] == "2026-09-20"
-    assert normal.source["catalog_version"] == "1.0"
+    assert normal.source["catalog_version"] == "2.0"
     assert normal.source["views"] == ["agent_data.v_news"]
 
     empty = _execute(

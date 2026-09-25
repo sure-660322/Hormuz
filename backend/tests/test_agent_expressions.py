@@ -98,7 +98,7 @@ def _count_result():
         rows=(("Tanker", 12),),
         returned_row_count=1,
         truncated=False,
-        source={"catalog_version": "1.0"},
+        source={"catalog_version": "2.0"},
         limitations=("固定夹具结果，仅用于测试",),
     )
 

@@ -20,8 +20,43 @@ VALID_SQL = (
 VALID_PARAMS = [{"name": "ship_type", "type": "text", "value": "Tanker"}]
 
 
-def test_old_simulation_sql_catalog_hidden_for_real_ais():
+class _ExecutorConfigStub:
+    """隔离本机 .env 的执行器配置桩。"""
+    enabled = False
+
+    @classmethod
+    def from_env(cls):
+        return cls()
+
+
+def test_sql_tools_hidden_without_executor_config(monkeypatch):
+    monkeypatch.setattr(sql_tools, "ExecutorConfig", _ExecutorConfigStub)
     assert sql_tools.sql_tools_enabled() is False
+
+
+def test_sql_tools_hidden_when_catalog_scope_mismatches(monkeypatch):
+    class _EnabledStub(_ExecutorConfigStub):
+        enabled = True
+
+    monkeypatch.setattr(sql_tools, "ExecutorConfig", _EnabledStub)
+    monkeypatch.setattr(sql_tools, "load_catalog", lambda: {
+        "catalog_version": "2.0", "data_source_scope": "simulation", "views": [],
+    })
+    assert sql_tools.sql_tools_enabled() is False
+
+
+def test_sql_tools_enabled_when_scope_matches_and_config_complete(monkeypatch):
+    class _EnabledStub(_ExecutorConfigStub):
+        enabled = True
+
+    monkeypatch.setattr(sql_tools, "ExecutorConfig", _EnabledStub)
+    assert sql_tools.sql_tools_enabled() is True
+
+
+def test_catalog_v2_scope_matches_ship_data_source():
+    from backend.app.services.agent.config import SHIP_DATA_SOURCE
+
+    assert sql_tools.load_catalog()["data_source_scope"] == SHIP_DATA_SOURCE
 
 
 class _FakeExecutor:
@@ -54,7 +89,7 @@ def _fake_result():
         rows=(("Tanker", 12), ("Chemical", 9)),
         returned_row_count=2,
         truncated=False,
-        source={"catalog_version": "1.0"},
+        source={"catalog_version": "2.0"},
         limitations=("固定夹具结果，仅用于测试",),
     )
 

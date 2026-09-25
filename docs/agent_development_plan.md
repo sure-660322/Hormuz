@@ -1,5 +1,21 @@
 # 智能体下一阶段开发任务
 
+## 2026-09-25 受限 SQL 三工具 nnu_ais 适配
+
+状态：**已验证（应用库执行器全链路 + 离线回归 + 真实模型问答），已合入本地 main**。负责人 Kimi；工作目录 `D:/my_project/Hormuz`，本地 `main` 直接推进（用户确认单人开发）。
+
+- 目标：让 `get_database_schema` / `check_sql` / `execute_sql` 在真实 AIS 主链重新可用，解决「一共多少艘油轮」这类通用聚合统计没有工具承接的问题（此前模型只能退到 `search_ships` 给部分数据，且系统提示与工具注册不一致）。
+- 方案（改后复用，不删重写）：SQLGlot 全树白名单校验（SQL-03）与独立只读执行器（SQL-04，角色/视图哈希/权限运行时核验）整体保留；新增 `backend/sql/016_agent_views_nnu_ais.sql` 重建 `agent_data` 语义层与只读角色；新增 `backend/app/query_analytics_catalog_v2.json`；`sql_tools_enabled()` 放行条件由「数据源是 simulation」改为「catalog v2 声明口径与 `SHIP_DATA_SOURCE` 一致 + 执行器配置完整」，保持 fail-closed。
+- catalog v2 视图设计：`agent_data.v_ships` 一船一行（仅含 ≥1 条 `nnu_ais` 报位的船，列形状与 v1 相同，`data_source` 常量 `nnu_ais`、`is_simulated=false`，COUNT(*) 即船数，不依赖 DISTINCT）；`v_events` / `v_news` 定义与 v1 逐字一致（视图哈希不变，批准 JOIN 仍只有 `v_news.event_id = v_events.event_id`）。**不含报位级视图**：执行器语句超时 5 秒，17,921,533 条报位的全表/大范围聚合不可靠；报位级分析继续走 8 个业务工具。
+- 环境事实（本机 `aisdb`，只读核验）：PG 17.10，应用角色 `aisdb` 是库属主且为超级用户；`_timescaledb_*` / `tiger` / `tiger_data` / `topology` 等扩展模式的 USAGE 均经 PUBLIC 授予。执行器的会话 schema 白名单校验要求 `agent_reader_login` 仅能 USAGE `agent_data`，故 016 需收回上述 PUBLIC 默认授权并对应用角色显式补授（属主与超级用户身份不受影响）；`public` schema 与数据库 TEMP 同步按 013 口径收紧。影响面仅限 `aisdb` 库内 PUBLIC 默认授权。
+- 密钥边界：`agent_reader_login` 口令只进本机 `.env`（`AGENT_DB_PASSWORD` 等 `AGENT_DB_*` 变量），不进 Git、不进日志与回答。
+- 验证顺序与结果：回滚事务预演（视图/权限/口径核验通过，v_ships=4,462 与源表一致）→ 哈希写入 catalog v2 → 代码改造（policy 指向 v2、`sql_tools_enabled` 改为 catalog 口径校验 + 执行器配置、系统提示与知识库表述同步、测试隔离 .env）→ 离线全量回归 **257 passed / 12 skipped**（新增 4 项开关/口径守卫测试）→ 正式执行 016 → 执行器实测（油轮计数 793、按船型分布 25 行、报道总数 290，`DELETE` 被只读策略拒绝）→ 真实 DeepSeek 问答验收（见下）。
+- TimescaleDB 兼容性发现（写入 016 注释与 catalog environment_notes）：本机集群 `shared_preload_libraries` 含 timescaledb（2.22.0），收回 `_timescaledb_functions` 等 PUBLIC 授权后，**任何聚合查询**（甚至 `SELECT count(*) FROM pg_namespace`）都会报 `permission denied for schema _timescaledb_functions`；`timescaledb.enable_optimizations=off` 无效，而为 `agent_reader_login` 设置 `timescaledb.disable_load=on`（016 已内置）后完全正常。SQL-04/06 历史验收环境无 TimescaleDB，故未覆盖此模式。
+- 视图哈希口径修正：catalog 哈希必须按 catalog 声明的方法在 `search_path=pg_catalog` 下计算（读者会话口径）；应用角色默认 search_path 下 `pg_get_viewdef` 的 schema 限定不同，哈希不同。v_events/v_news 的读者口径哈希与 v1 catalog 完全一致（定义逐字未变）。
+- 真实模型问答验收（2026-09-25，本机 aisdb + 真实 DeepSeek）：提问「这批七日历史AIS数据里，一共出现了多少艘油轮？」，模型自主按 get_database_schema → check_sql → execute_sql 链路回答 **793 艘（ship_type 标注为「油轮」）**，并主动说明 NULL/未知船型 707/348 艘不计入、AIS 自报口径与七日覆盖边界；catalog limitations 正确流入响应。对照修复前同一问题只能返回 search_ships 部分数据并误述「SQL 工具不可用」。
+- 本机启用方式：`.env` 追加 `AGENT_QUERY_ENABLED=true` 与 `AGENT_DB_*`（`agent_reader_login` 口令仅本机保存，未提交）；`sql_tools_enabled()` 保持 fail-closed（catalog v2 `data_source_scope` 必须等于 `SHIP_DATA_SOURCE` 且执行器配置完整）。
+- 未验证：浏览器端到端（AgentPanel 问答交互，本轮无浏览器环境）；远端推送；其他机器/集群的 016 重放（TimescaleDB 版本差异需复核 disable_load 行为）；报位级 SQL 有意不在 catalog v2 范围（17,921,533 行聚合不可行，走业务工具）。
+
 ## 2026-09-25 旧 SQL 船舶视图退役与业务工具复核
 
 状态：**已验证（应用库只读工具及退役迁移），已合入本地 main**。承接 `codex/real-ais-agent-passage` 的 `208f39d`，功能提交 `7f1b89a` 已快进合入本地 `main`；本轮未调用真实模型或改动船位、新闻、事件数据。应用库检查发现 `agent_data` schema 及三个旧 SQL 视图均不存在，`ship_positions` 只有 `nnu_ais` 来源 17,921,533 条。新增 `015_retire_simulation_agent_view.sql`，在其他环境有旧 `agent_data.v_ships` 时只以 `DROP VIEW ... RESTRICT` 删除它；历史 013 与 v1 catalog 保留为旧批次验收资料并标明不得对当前库重放。本机 `aisdb` 在事务内执行 015 前后 `v_ships` 均不存在；另在同一库的回滚事务内临时创建 `agent_data.v_ships`，执行 015 后确认视图被删，回滚后 schema 仍不存在。四个业务源表数量仍为 ships 4,462 / ship_positions 17,921,533 / events 65 / news 290。

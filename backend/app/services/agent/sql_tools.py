@@ -42,9 +42,13 @@ _CATALOG_PATH = None  # 使用 policy 模块默认 catalog 路径
 
 def sql_tools_enabled() -> bool:
     """只决定是否向模型暴露 SQL 工具；启用后的完整配置仍由执行器 fail closed。"""
-    # 013 的 v_ships 只筛 simulation，不能用于当前 nnu_ais 统计。
-    # 修订并独立验证语义视图/只读角色之前，即使旧环境开关为真也不暴露。
-    if SHIP_DATA_SOURCE != "simulation":
+    # fail-closed：catalog v2 声明的数据口径必须与当前船舶数据源一致。
+    # 口径不符（例如旧 simulation catalog）时即使执行器配置完整也不暴露。
+    try:
+        catalog = load_catalog()
+    except QueryPolicyError:
+        return False
+    if catalog.get("data_source_scope") != SHIP_DATA_SOURCE:
         return False
     try:
         return ExecutorConfig.from_env().enabled
