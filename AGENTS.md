@@ -7,7 +7,7 @@
 - 仅在当前仓库范围工作，不从 Hormuz-Web 或其他同名项目复制实现事实。
 - 前端为 frontend/（Vue 3、TypeScript、Vite、Leaflet）；后端为 backend/（FastAPI、SQLAlchemy）；数据库为 PostgreSQL / PostGIS。
 - 2026-09-25 本机应用库的教学模拟船舶、船位及其派生数据已删除；真实 AIS 尚未导入 `ships` / `ship_positions`。events 为新闻聚合事件，news 为已采集的真实报道及加工字段；不得统一称为“全模拟”或“真实 AIS”。
-- sim_ais_demo/output_news_aligned/ 是已移除船位的历史批次报告；数量是可变状态，变更前查询实际数据。
+- sim_ais_demo/output_news_aligned/ 的 Git 跟踪船位已移除，报告属历史记录；主目录仍有 Git 忽略的旧批次报位和备份文件（自动审批拒绝删除）。数量是可变状态，变更前查询实际数据。
 - MobilityDB/PostGIS 派生能力 P0–P4 已有实现，P5 部分实现（data-health 已接入，主回放尚未切换 simplified 派生层）。TimescaleDB 已安装，业务未使用时序表。
 - `main` 已合入 LangChain `create_agent` 单智能体、知识库、8 个业务工具和默认关闭的 SQL 三工具，以及整合前安全修复；响应继续保持 v4 契约。`f14eceb` 记录的候选缺陷已修复并保留历史复核证据。真实模型、独立数据库 SQL 链路及浏览器验收状态见 docs/agent_development_plan.md；当前契约见 docs/agent_integration.md。
 
