@@ -259,8 +259,14 @@ async function loadEncounters() {
   encounterError.value = ''
   try {
     const data = await fetchEncounters()
-    encounterList.value = data.encounters
+    if (data.status === 'not_built') {
+      encounterList.value = []
+      encounterError.value = data.message
+    } else {
+      encounterList.value = data.encounters
+    }
   } catch (e) {
+    encounterList.value = []
     encounterError.value = describeApiError(e, '相遇分析加载失败')
   } finally {
     encountersLoading.value = false

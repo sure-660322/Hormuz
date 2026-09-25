@@ -682,8 +682,8 @@ export interface ApiEncounter {
   is_simulated: boolean
 }
 
-export interface ApiEncountersResponse {
-  status: string
+export interface ApiEncountersReadyResponse {
+  status: 'ok' | 'no_data'
   encounters: ApiEncounter[]
   count: number
   truncated: boolean
@@ -692,6 +692,13 @@ export interface ApiEncountersResponse {
   stale: boolean
   note: string
 }
+
+export interface ApiEncountersNotBuiltResponse {
+  status: 'not_built'
+  message: string
+}
+
+export type ApiEncountersResponse = ApiEncountersReadyResponse | ApiEncountersNotBuiltResponse
 
 export async function fetchEncounters(maxDistanceNm?: number): Promise<ApiEncountersResponse> {
   const query = maxDistanceNm !== undefined ? `?max_distance_nm=${maxDistanceNm}` : ''
