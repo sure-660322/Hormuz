@@ -21,6 +21,8 @@
 
 2026-09-25 七日导入由用户明确指定在当前目录从 `da5f4eb` 建立 `codex/ais-seven-day-import` 分支，不创建 worktree；用户随后取消独立测试库验证。应用库导入及验证见[七日记录](docs/real_ais_seven_day_import.md)。此前单日试导仍见[历史记录](docs/real_ais_import_pilot.md)。
 
+2026-09-25 七日导入和船舶详情修复已从 `codex/ais-seven-day-import` 快进合入本地 `main`（功能提交 `ee7b81e`、`5b663bd`）；未推送远端。数据库数据仍只在本机，不随 Git 合并。
+
 交接包注意：模拟船舶文件及旧 manifest 已移除，当前仓库没有可导入的四表交接包。历史导入验收不代表当前可导入；详见 [数据库交接](docs/database_setup.md)。
 
 ## 当前进度
