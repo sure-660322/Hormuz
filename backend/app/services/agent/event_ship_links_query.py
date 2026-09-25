@@ -3,8 +3,8 @@
 复用 P2 event-ship link 服务（get_event_ships / get_ship_events），只读
 event_ship_links 派生层现有结果，不触发重建：
 - event_id 方向（by_event）：mentioned（原文船名文本证据，ship_id 恒为空，
-  与模拟船不按名称关联）与 observed（模拟轨迹时空邻近演示）按 link_type 分列；
-- ship_id 方向（by_ship）：observed 反查；mentioned 类不指向模拟船，不参与反向；
+  未与 AIS 船按名称关联）与 observed（已构建时空邻近）按 link_type 分列；
+- ship_id 方向（by_ship）：observed 反查；mentioned 类没有船 ID，不参与反向；
 - 未知 event_id / ship_id 抛 ValueError 进入纠正循环（提示先用 get_event_context /
   search_ships 检索），不当作零结果；
 - 关联距离为构建时 EPSG:32640 平面投影近似，保留投影误差限制，
@@ -24,11 +24,11 @@ MAX_WINDOW = timedelta(hours=24)
 
 MENTIONED_LIMITATION = (
     "mentioned 为新闻原文提及的真实船舶名称（文本证据），ship_id 恒为空；"
-    "与数据库中模拟船不按名称关联，未认定同一实体"
+    "mentioned 文本船名不按名称关联数据库 AIS 船舶；尚未按 MMSI/IMO 等标识核对同一实体"
 )
 OBSERVED_LIMITATION = (
-    "observed 为模拟数据时空邻近演示（模拟轨迹在事件时间窗内进入构建半径），"
-    "不构成真实因果"
+    "observed 为派生的时空邻近，七日 AIS 尚未重建该层；空结果不是海上无船，"
+    "邻近也不构成真实因果"
 )
 PROJECTION_LIMITATION = (
     "关联距离为构建时 EPSG:32640 平面投影近似（跨 UTM 带存在失真），"
@@ -148,7 +148,7 @@ def _ship_direction(
             OBSERVED_LIMITATION,
             PROJECTION_LIMITATION,
             TIME_PRECISION_LIMITATION,
-            "mentioned 类关联不指向模拟船，不参与按船反查；"
+            "mentioned 类关联没有核验后的 AIS 船 ID，不参与按船反查；"
             "原文船名提及见事件方向的 link_type=mentioned 查询",
             "未提供时间窗时按整个已构建批次反查",
         ],
@@ -171,7 +171,7 @@ def run_event_ship_links_query(db: Session, args: dict) -> dict:
     # ship_id 反查方向
     if link_type == "mentioned":
         raise ValueError(
-            "mentioned 类关联不指向模拟船，不能按 ship_id 反查；"
+            "mentioned 类关联没有核验后的 AIS 船 ID，不能按 ship_id 反查；"
             "请改用 event_id 方向查询原文提及船名"
         )
     return _ship_direction(db, ship_id, start, end)

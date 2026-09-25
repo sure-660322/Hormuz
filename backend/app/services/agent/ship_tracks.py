@@ -3,7 +3,7 @@
 查询指定船只在 [start_at, end_at) 内的全部报位，按时间排序。
 纯只读、参数化查询；不做穿越判定（那是 query_strait_passages 的口径）。
 
-边界：轨迹为教学模拟数据（ship_positions.data_source=simulation），不是真实 AIS。
+边界：轨迹为 nnu_ais 来源的历史 AIS 实测报位，覆盖与授权尚未核实。
 """
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.app.models import Ship, ShipPosition
-from backend.app.services.agent.config import MAX_POSITIONS_READ, MAX_WINDOW, SCHEMA_VERSION
+from backend.app.services.agent.config import MAX_POSITIONS_READ, MAX_WINDOW, SCHEMA_VERSION, SHIP_DATA_SOURCE
 
 
 @dataclass
@@ -74,6 +74,7 @@ def get_ship_track(
     fix_count = db.scalar(
         select(func.count(ShipPosition.id)).where(
             ShipPosition.ship_id == ship_id,
+            ShipPosition.data_source == SHIP_DATA_SOURCE,
             ShipPosition.recorded_at >= start_at,
             ShipPosition.recorded_at < end_at,
         )
@@ -88,6 +89,7 @@ def get_ship_track(
         select(ShipPosition)
         .where(
             ShipPosition.ship_id == ship_id,
+            ShipPosition.data_source == SHIP_DATA_SOURCE,
             ShipPosition.recorded_at >= start_at,
             ShipPosition.recorded_at < end_at,
         )
@@ -107,7 +109,7 @@ def get_ship_track(
     ]
 
     limitations = [
-        "轨迹为教学模拟数据（ship_positions.data_source=simulation），不是真实 AIS"
+        "轨迹为 nnu_ais 来源的历史 AIS 实测报位；来源授权与覆盖尚未核实，不能据缺报推断船舶不存在"
     ]
     if not fixes:
         status = "no_data"

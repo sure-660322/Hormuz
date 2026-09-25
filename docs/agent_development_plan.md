@@ -1,5 +1,16 @@
 # 智能体下一阶段开发任务
 
+## 2026-09-25 七日真实 AIS 语义与虚拟门线适配
+
+状态：**已验证（后端工具与应用库只读查询），待整合**。负责人 Codex；基线 `main` / `9bc9f6b`；工作目录 `D:/my_project/Hormuz-worktrees/codex-real-ais-agent-passage`，分支 `codex/real-ais-agent-passage`。本轮仅修改 `backend/app/services/agent/`、`backend/app/services/data_health.py`、相关后端测试及 README/智能体文档；未启动服务端口，数据库目标为本机 `aisdb`，只读验证，不修改源表或派生表。
+
+- 原因：原智能体将船位写成 `simulation`，`search_ships` 只检索模拟来源；通行查询会把截止时间之前所有源报位读入 Python，七日 `nnu_ais` 数据下超限。旧 SQL 语义视图 `agent_data.v_ships` 仍筛 `simulation`，不能用于真实 AIS。
+- 实现：船舶搜索以 `nnu_ais` 报位存在性过滤，MMSI/IMO 等关键字作字面检索，截断时返回真实匹配数；单船轨迹只读该来源，纠正来源说明。系统提示、知识库、业务工具描述、结果 context 与 data-health 批次说明改为七日历史 AIS，保留新闻实体核验边界。缺省 2026-02-28T15:00Z 仅是兼容旧接口的查询起点，不再称为真实封锁时刻。旧 SQL 视图仍筛 `simulation`，因此生产工具注册强制隐藏 SQL 三工具，待视图与权限按真实 AIS 重做并验证。
+- 虚拟门线：沿用西侧 `<56.2°E`、东侧 `>56.7°E`，只使用纬度 25.8–27.1°N、经度 55.8–57.1°E 的 `nnu_ais` 实测报位；门线之间的报位不改变侧别。窗口最长 24 小时，前置侧别最多回看 24 小时。数据库内按船、时间、数据库报位 ID 排序并筛出侧别变化，仅返回聚合和变化证据；最多处理 100 万门线侧别报位、返回 5000 个变化候选，超限拒绝。两侧报位之间若另有报位离开判定区域、相隔超过 6 小时或推算速度超过 30 kn，候选单列为不确定；可用 `ship_id` 只核对一船。完成时间是完成侧首条报位时间，不是精确越线时刻。阈值尚未用七日 AIS 独立校准；零匹配不证明未通过。
+- 2026-09-25 验证：`D:\my_project\Hormuz\backend\.venv\Scripts\python.exe -m pytest backend/tests -q` → **253 passed / 12 skipped**；工作树内 `compileall` 与 `git diff --check` 通过。应用库只读查询：2026-02-28T15:00Z–16:00Z 的门线侧别报位 282,900 条、确定通行 4 次；同窗 `ship_id=9757` 确定西向东 1 次，两侧报位为 12:29:06Z `(56.199355,26.4012)` 和 15:21:38Z `(56.700098,26.235923)`；该船 MMSI `538009322` 搜索命中且两小时轨迹返回 638 条。同起点 24 小时为门线侧别报位 449,765 条、确定通行 35 次、长间隔不确定候选 4 次；这些数值只属于本次本机应用库与上述口径。FastAPI TestClient 只读 GET `/health`、`/docs`、`/api/data-health` 均为 200，data-health 显示 `nnu_ais=17,921,533`；该全量健康统计约 58 秒，尚需性能优化。
+- 用 `ScriptedFakeLLM` 走真实应用库 `run_lc_agent`：显式 1 小时窗口与 `ship_id=9757` 返回 `status=ok`、`context.ship_data_source=nnu_ais`、1 次通行及对应船 ID；这验证 LangChain 工具往返与结构化结果，不能替代真实模型自主选工具。
+- 未验证：真实 DeepSeek 对新工具与知识的自主选择、前端浏览器问答、七天每个窗口的独立人工通行核对、来源授权和区域覆盖、6 小时/30 kn 阈值校准、并发性能、受限 SQL 语义视图真实 AIS 适配。七日 AIS 的停留、相遇与 observed 事件关联派生层未重建；四艘新闻船关联本轮不处理。无推送、无 main 合并。
+
 更新：2026-09-23。LangChain 第一版及安全修复已合入本地 `main`，来源为 `kimi/agent-lc04` 的 `6bf739c` 与 `codex/lc-safety-fix` 的 `1afd34b`；远端尚未推送。当前实现见 [LangChain 第一版方案](langchain_agent_v1_plan.md) 与 [接入契约](agent_integration.md)，全项目摘要见 [README](../README.md)。
 
 ## 2026-09-23 整合前复核与修复

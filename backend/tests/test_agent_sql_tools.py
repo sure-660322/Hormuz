@@ -20,6 +20,10 @@ VALID_SQL = (
 VALID_PARAMS = [{"name": "ship_type", "type": "text", "value": "Tanker"}]
 
 
+def test_old_simulation_sql_catalog_hidden_for_real_ais():
+    assert sql_tools.sql_tools_enabled() is False
+
+
 class _FakeExecutor:
     """记录入参并返回固定结果的假执行器。"""
 

@@ -41,7 +41,7 @@ def get_data_health(db: Session) -> dict:
 
     return {
         "status": "ok",
-        "batch": "sim_ais_demo/output_news_aligned",
+        "batch": "nnu_ais historical AIS (2026-02-25 to 2026-03-03 file days; verify live coverage)",
         "source": {
             "by_data_source": sources,
             "totals": global_counts,

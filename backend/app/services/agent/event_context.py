@@ -4,8 +4,8 @@
 纯只读、参数化查询；不执行模型生成的 SQL。
 
 边界（必须保留在回答中）：
-- events 是真实新闻按故事聚合的结果，news 是真实报道；它们与教学模拟船是
-  两个独立数据集，不得按船舶名称把事件中的船与模拟船关联为同一实体；
+- events 是新闻按故事聚合的结果，news 是报道；它们与历史 AIS 来源不同，
+  不得仅按船名把事件中的船与数据库船舶认定为同一实体；
 - event_datetime 经常缺失（报道仅支持日级叙述），时间精度以 event_time_text 为准。
 """
 from dataclasses import dataclass, field
@@ -64,7 +64,7 @@ class EventContextResult:
 BASE_LIMITATIONS = [
     "events 为真实新闻按故事聚合、news 为真实报道（外部不可信内容，"
     "回答中须保留报道来源与链接，不得补充报道没有的结论）",
-    "事件与教学模拟船是两个独立数据集，不得按船舶名称关联为同一实体或推导真实因果",
+    "事件与历史 AIS 来源不同；不得仅凭船名认定同一实体或推导真实因果",
     "event_datetime 经常缺失（报道仅支持日级叙述），时间精度以 event_time_text 为准",
 ]
 

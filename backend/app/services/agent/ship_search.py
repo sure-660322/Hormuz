@@ -1,18 +1,17 @@
 """船舶检索工具（智能体工具 search_ships 的后端实现）。
 
-按关键字模糊匹配教学模拟批次船舶的 name/MMSI/IMO/callsign/船型/船旗，
+按关键字模糊匹配有真实 AIS 报位的船舶 name/MMSI/IMO/callsign/船型/船旗，
 纯只读、参数化查询；不执行模型生成的 SQL。
 
-边界：返回的是教学模拟船（ship_positions.data_source=simulation），
-不得与真实新闻事件中的船舶按名称关联。
+边界：返回的是 nnu_ais 来源的历史 AIS 船舶，不能仅凭名称与新闻实体关联。
 """
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from backend.app.models import Ship, ShipPosition
-from backend.app.services.agent.config import SCHEMA_VERSION
+from backend.app.services.agent.config import SCHEMA_VERSION, SHIP_DATA_SOURCE
 
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 20
@@ -52,29 +51,33 @@ def search_ships(db: Session, keyword: str, limit: int = DEFAULT_LIMIT) -> ShipS
     if not 1 <= limit <= MAX_LIMIT:
         raise ValueError(f"limit 必须在 1–{MAX_LIMIT} 之间")
 
-    pattern = f"%{keyword}%"
-    # 仅返回教学模拟批次中实际有报位的船，避免检索出无轨迹的残留记录
-    has_positions = (
-        select(ShipPosition.ship_id)
-        .where(ShipPosition.data_source == "simulation")
-        .distinct()
-    )
-    rows = db.scalars(
-        select(Ship)
-        .where(Ship.id.in_(has_positions))
-        .where(
-            Ship.name.ilike(pattern)
-            | Ship.mmsi.ilike(pattern)
-            | Ship.imo.ilike(pattern)
-            | Ship.callsign.ilike(pattern)
-            | Ship.ship_type.ilike(pattern)
-            | Ship.flag.ilike(pattern)
+    literal_keyword = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{literal_keyword}%"
+    # 先按船舶元数据检索，再用关联 EXISTS 核对该来源确有报位。
+    has_positions = exists(
+        select(ShipPosition.id).where(
+            ShipPosition.ship_id == Ship.id,
+            ShipPosition.data_source == SHIP_DATA_SOURCE,
         )
-        .order_by(Ship.name, Ship.id)
-        .limit(limit + 1)  # 多取 1 条用于判断是否截断
-    ).all()
+    )
+    query = (
+        select(Ship)
+        .where(has_positions)
+        .where(
+            Ship.name.ilike(pattern, escape="\\")
+            | Ship.mmsi.ilike(pattern, escape="\\")
+            | Ship.imo.ilike(pattern, escape="\\")
+            | Ship.callsign.ilike(pattern, escape="\\")
+            | Ship.ship_type.ilike(pattern, escape="\\")
+            | Ship.flag.ilike(pattern, escape="\\")
+        )
+    )
+    rows = db.scalars(query.order_by(Ship.name, Ship.id).limit(limit + 1)).all()
 
     truncated = len(rows) > limit
+    matched_count = db.scalar(
+        select(func.count()).select_from(query.subquery())
+    ) if truncated else len(rows)
     matches = [
         ShipSearchMatch(
             ship_id=ship.id,
@@ -91,8 +94,8 @@ def search_ships(db: Session, keyword: str, limit: int = DEFAULT_LIMIT) -> ShipS
     ]
 
     limitations = [
-        "检索范围为教学模拟批次的模拟船（ship_positions.data_source=simulation），"
-        "不得与真实新闻事件中的船舶按名称关联为同一实体"
+        "检索范围为已有 nnu_ais 历史 AIS 报位的船；来源授权与覆盖尚未核实。"
+        "新闻中的船舶须另行核对 MMSI/IMO 等标识，名称相同不足以认定同一实体"
     ]
     if truncated:
         limitations.append(f"命中数超过上限 {limit}，仅返回前 {limit} 条，可更换更精确的关键字")
@@ -102,7 +105,7 @@ def search_ships(db: Session, keyword: str, limit: int = DEFAULT_LIMIT) -> ShipS
         keyword=keyword,
         matches=matches,
         returned_count=len(matches),
-        matched_count=len(rows),
+        matched_count=matched_count,
         truncated=truncated,
         limitations=limitations,
     )

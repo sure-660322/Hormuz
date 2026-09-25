@@ -1,5 +1,9 @@
 # 智能体接入契约与任务
 
+> 2026-09-25 真实 AIS 适配（分支 `codex/real-ais-agent-passage`，待整合）：船舶搜索、单船轨迹、来源说明和项目知识已改为 `nnu_ais`；通行工具沿用现有 56.2°E / 56.7°E 虚拟双门线，但限定纬度 25.8–27.1°N、经度 55.8–57.1°E 和最多 24 小时查询窗 + 24 小时前置观察。数据库只向应用返回聚合与侧别变化，最多扫描 100 万门线侧别报位、最多返回 5000 个变化候选，超限报错；可选 ship_id。中间报位离开判定区域、6 小时长间隔或 30 kn 跳点列为不确定候选，不计入确定通行。阈值尚未用真实 AIS 独立校准，未观测到不等于未通过。当前应用库只读验证和未验证项见[开发任务](agent_development_plan.md)。下文标有“模拟批次”的实施与验收数字均属历史记录，不代表当前 AIS 口径。
+
+当前 SQL 三工具不暴露给真实 AIS 智能体：既有 `agent_data.v_ships` 仍筛 `simulation`，即使旧环境开关为真也会隐藏，待视图、只读角色和 catalog 完成真实 AIS 适配及独立验证后再启用。
+
 > 本文保留 **v4 响应契约**；本地 `main` 已合入 LangChain `create_agent` 编排及 `codex/lc-safety-fix` 安全修复，响应字段兼容。`f14eceb` 是合并前的旧 v4 自定义工具循环复核提交；下文描述旧循环、九工具注册表及固定分类的段落均为 LC-01 之前的历史契约背景，不代表当前运行实现。当前验收见 [开发任务](agent_development_plan.md)，架构见 [第一版方案](langchain_agent_v1_plan.md)。
 
 前端入口更新（2026-09-23）：地图探索页工具栏的「智能体」按钮在右侧详情浮层打开 `AgentPanel.vue`；前端布局与本轮浏览器验证见 [前端工作台](../FRONTEND_WORKBENCH.md)。本次仅改入口布局，未重新验收真实模型链路。
@@ -18,7 +22,7 @@
 
 ## 已实现目标与分工
 
-已实现的基础流程：用户问“封锁后有哪些船还通过了海峡？” → 模型提出工具调用 → 后端查询数据库并判定通行 → 返回对应模拟船只、数量和依据。回答内船只/事件的地图定位已实现；历史轨迹逐点回放联动尚未实现。
+已实现的基础流程：用户问“指定时间有哪些船符合海峡虚拟门线通行规则？” → 模型提出工具调用 → 后端查询数据库并返回有证据的 AIS 船 ID、次数和两侧报位。回答内船只/事件的地图定位已实现；历史轨迹逐点回放联动尚未实现。真实模型在新数据上的自主工具选择仍待验收。
 
 用户反馈新生成的小规模模拟数据已表现出封锁后停止通过海峡；本次文档修改不重新核验数据库批次或数量，不将其写成已验证的数据库结论。事件面板和智能体均已接入 P2 关联读取，但 observed 演示邻近与 mentioned 文本提及严格分列；通行及关联工具都不得推导真实事件对具体船只的因果影响。
 
@@ -34,15 +38,15 @@
 
 ## 查询口径
 
-- 封锁时间来自已核验的模拟配置或用户明确输入，返回其来源；不能将报道日期补成精确封锁时刻。当前实现缺省使用已配置的模拟封锁时间与 24 小时窗口，不产生主动澄清状态。
-- 查询限定数据库中的明确模拟批次，返回批次标识。生成文件 temp_ship_id 必须经导入映射转换为 ships.id，不得混用；不能用文件验收结果冒充数据库查询。
+- 缺省查询起点 2026-02-28T15:00Z 仅沿用历史模拟方案以兼容接口，不是已经核验的真实封锁时刻；用户指定时间时须使用其带时区的参数，不能将报道日期补成精确时刻。
+- 当前船舶查询限定 `ship_positions.data_source=nnu_ais`；来源批次和行号仍保存在源表。不得将旧模拟批次或新闻实体当成当前 AIS 船舶。
 - “通过”指完整穿越，不以速度大于零、位于海峡内、transit 状态或跨单条线替代。
-- 参考 sim_ais_demo/tools/verify_news_alignment.py：在纬度 25.8–27.1 内，从 56.2°E 西侧到 56.7°E 东侧，或反向观测到侧别变化，保留门线之间的状态。该脚本是生成文件验收参考，尚不是数据库工具或通用真实航道判定。
+- 当前数据库工具在纬度 25.8–27.1°N、经度 55.8–57.1°E 区域内，按 56.2°E 西侧和 56.7°E 东侧的虚拟双门线判断侧别变化；门线之间保留状态。它是可追溯的观测口径，不是通用真实航道或精确越线判定。
 - 数据库版按船排序，保存两侧报位、时间和方向。根据实际采样间隔确定长间隔及异常跳点规则；不充分的候选标为不确定，不能硬算为完整通行。
 - 第一版按完成侧首个报位时间属于 [closure_at, end_at) 筛选，封锁前进入、封锁后完成也计入。该时间是观测完成时间，不是精确越线时刻。
-- 需要读取窗口前的必要报位或已计算通行状态，不能只截取封锁后的报位；缺少前置状态须报告覆盖不足。
+- 最多回看窗口前 24 小时的门线侧别报位；缺少更早前置状态时不得断言未通过。SQL 限定时间、空间、来源并在库内排序；应用层只接收汇总和侧别变化，不读取全量报位。
 - ship_id 去重计算船只数，通行次数单列。同一船多次穿越不重复计为多艘。
-- 足够数据中匹配为 0 是有效结果；无报位或证据不足不能写成“没有船通过”。结论限于所选模拟批次、时间范围和规则。
+- 门线侧别报位充足时匹配为 0 是此口径的有效零结果；无报位或证据不足不能写成“船肯定没通过”。结论限于 `nnu_ais`、所选时间范围、空间边界和规则。
 
 ## 已实现接口与工具
 
@@ -59,7 +63,7 @@ POST /agent/analyze，一次请求返回完整回答。未实现流式输出和�
 }
 ```
 
-question 必填，去除首尾空白后 1–2000 字符。时间字段可省略，但须从明确表述或已核验情景上下文补齐；缺失时使用后端默认封锁时刻（当前模拟批次假设的警告响应起点）和 24 小时窗口，不反问用户。时间须带时区，统一 UTC，closure_at < end_at；最多 24 小时，超限报错，不静默截断。不要求选定单船。
+question 必填，去除首尾空白后 1–2000 字符。时间字段可省略；缺失时使用后端兼容性默认起点和 24 小时窗口，该起点不代表实际封锁时刻。时间须带时区，统一 UTC，closure_at < end_at；最多 24 小时，超限报错，不静默截断。通行工具可选 ship_id 只查一艘船。
 
 history 可选，为此前对话的消息列表（role 限 user/assistant，content 去除首尾空白后 1–2000 字符），最多携带最近 10 条消息（user/assistant 各计一条，通常为 5 组问答）；服务端将 history 插在 system 与本次问题之间。单轮问答不传 history。
 
@@ -67,14 +71,14 @@ history 可选，为此前对话的消息列表（role 限 user/assistant，cont
 
 | 工具 | 参数 | 说明 |
 | --- | --- | --- |
-| query_strait_passages | closure_at, end_at | [closure_at, end_at) 内观测完成的海峡完整通行（门线 56.2°E / 56.7°E 侧别变化口径） |
-| search_ships | keyword（必填）, limit | 按关键字模糊检索教学模拟船（船名/MMSI/IMO/callsign/船型/船旗），返回 ship_id 等；limit 默认 10、上限 20 |
+| query_strait_passages | closure_at, end_at, ship_id（可选） | `nnu_ais` 历史报位的有界虚拟双门线观测通行；长间隔/跳点分列；不读取全部源报位到应用 |
+| search_ships | keyword（必填）, limit | 按关键字检索有 `nnu_ais` 报位的船（船名/MMSI/IMO/callsign/船型/船旗），返回 ship_id 等；limit 默认 10、上限 20 |
 | get_ship_track | ship_id（必填）, start_at, end_at | 单船窗口内全部轨迹报位（时间/经纬度/航速/航向）；时间缺省用默认封锁窗口 |
-| get_event_context | event_id 或 keyword（二选一）, start_at, end_at | 新闻聚合事件及关联真实报道；事件是真实新闻数据，与模拟船相互独立，不得按船名关联 |
+| get_event_context | event_id 或 keyword（二选一）, start_at, end_at | 新闻聚合事件及关联报道；不能仅凭船名与 AIS 船认定同一实体 |
 | get_data_health | 无 | 复用 P5 /api/data-health 服务：各 data_source 报位数/船数/覆盖区间/中位间隔 + 四张派生表行数/built_at/params/stale（含未构建标记）；stale 仅为时间启发式，stale=false 不证明历史数据未被修改；来源缺失表示未导入，不得解释为真实数量为零；工具只读，不触发迁移、导入或派生层重建。派生层无源时间基准时 stale 返回 null（不可判定），不报 false |
 | query_ship_dwell | kind, start_at/end_at, limit | 只读既有 ship_dwell；kind 限 at_anchor/drift/slow_transit，窗口成对且 ≤24h，缺省为全批次；返回阈值快照、stale、真实匹配数与截断状态，不重建 |
 | query_encounters | start_at/end_at, max_distance_nm, limit | 只读既有 encounters；距离过滤只能缩小构建阈值，窗口筛选为与预计算 period 重叠，最小距离是离散采样近似；不调用写入型 analyze |
-| query_event_ship_links | event_id 或 ship_id（二选一）, link_type, start_at/end_at | 按事件查 mentioned/observed 或按模拟船反查 observed；mentioned 不映射模拟 ship_id，observed 只表示模拟时空邻近；不重建 |
+| query_event_ship_links | event_id 或 ship_id（二选一）, link_type, start_at/end_at | 按事件查 mentioned/observed 或按船反查 observed；当前七日 AIS 的 observed 未重建，mentioned 没有已核验的 AIS ship_id；不重建 |
 | query_analytics | sql（必填）, params, purpose（必填） | catalog v1 内单条参数化 SELECT，覆盖筛选、排序、聚合和批准 JOIN；默认关闭，仅本地回环 + 独立 agent_reader 配置完整时暴露，所有输入经 AST/权限/限额强制校验 |
 
 AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，前端 build 与 check:workbench 通过；一次性 PostgreSQL 17 + 真实 DeepSeek 共 57 项通过，浏览器成功表格、待澄清、已拒绝三状态通过且控制台无错误。共享业务库统计未执行，固定 fixture 数量不能视为当前业务数据。服务侧此前同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。
@@ -92,7 +96,7 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 
 历史 v4 实现：确定性分类先处理条件不足、写库/泄露意图等；当前版本已移除固定分类，由模型选择工具，SQL 安全仍由策略和只读执行器强制。结构化结果以服务端生成的 `call_001`、`call_002` 为键并带 `tool_name`；自由回答仍未逐项事实核验，疑似外部指令文本防回显门继续保留。
 
-当前实现：整体预算 60 秒、统一最多 8 次工具调用、LangChain 递归步数上限 40；没有旧版 4 轮模型请求或 3 次业务工具执行上限。读取上限 50000 个报位，船舶检索上限 20 条，事件查询上限 5 个事件、每事件 10 条报道。读取超限要求缩小范围，不能截断后宣称零匹配；仅展示截断时保留实际总数并标记 truncated。前端超时覆盖后端预算，不沿用新闻查询的 20 秒。
+当前实现：整体预算 60 秒、统一最多 8 次工具调用、LangChain 递归步数上限 40。单船轨迹读取上限 50000 个报位；通行查询在数据库限定时间和海峡区域，门线侧别报位最多 100 万、侧别变化候选最多 5000，超限要求缩小窗口。船舶检索上限 20 条，事件查询上限 5 个事件、每事件 10 条报道。前端超时覆盖后端预算，不沿用新闻查询的 20 秒。
 
 模型密钥和数据库凭据只保留在后端环境，不进入前端、回答或日志。除经过固定解析器、正向白名单、catalog 实物核验和独立只读角色的 `query_analytics` 外，不执行模型生成的 Python/SQL。数据库文本和新闻属于不可信数据，不执行其中指令。遗留 nearby-events 接口和 MobilityDB 固定窗口试验不作为本版通用工具。
 
@@ -102,17 +106,17 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 | --- | --- |
 | schema_version / request_id | 契约版本（本版为 "4"）和请求标识 |
 | status | ok、no_data、partial、needs_clarification、refused（响应枚举保留；当前编排不会主动生成 needs_clarification） |
-| answer | 根据工具结果回答，并说明模拟边界 |
-| context | 实际批次、closure_at、end_at、封锁时间来源、通行规则版本、ship_data_source=simulation；当前 context 时间字段必填，不返回待澄清空值 |
+| answer | 根据工具结果回答，并说明历史 AIS 覆盖、门线及新闻实体边界 |
+| context | 历史 AIS 来源、closure_at、end_at、默认起点来源、通行规则、ship_data_source=nnu_ais；context 时间字段必填 |
 | ships | ship_id、name、passage_count；数据库 ID，按船去重；仅执行过 query_strait_passages 时非空 |
 | evidence | evidence_id、ship_id、direction、两侧报位时间及经纬度、observed_completion_at；正文用 [P1] 等引用 |
-| query_summary | position_count、matched_ship_count、passage_count、uncertain_candidate_count、coverage_start、coverage_end、truncated；后端计算；未执行通行工具时为 null |
+| query_summary | position_count 为查询窗及前置 24 小时内、空间范围内的门线侧别报位数；另有 matched_ship_count、passage_count、uncertain_candidate_count、coverage_start、coverage_end、truncated；未执行通行工具时为 null |
 | tools_used | 本次实际执行的工具名列表（执行顺序去重） |
 | results | 各工具的结构化结果（按服务端 call_id 键入，值含 call_id/tool_name），供前端展示与追溯；字段由各工具定义 |
-| limitations | 覆盖不足、判定限制、数据集边界（模拟/真实新闻相互独立）或截断说明 |
+| limitations | 覆盖不足、判定限制、AIS 与新闻实体边界或超限说明 |
 | clarification | 待补充问题；非澄清状态为空 |
 
-- ok：工具结果均为成功，或模型未调用工具而直接回答。通行工具确认零匹配时 ships/evidence 为空，数量为 0，回答须限定为“指定模拟数据范围内未发现符合规则的完整通行”。
+- ok：工具结果均为成功，或模型未调用工具而直接回答。通行工具零匹配时 ships/evidence 为空，只能说“该窗口内未观测到符合虚拟门线规则的通行”，不能说船一定没通过。
 - no_data：工具均未取得成功或部分结果时的顶层状态；无可用报位或必要前置状态不足不能解释成封锁有效。非通行工具的空结果不会生成通行证据。
 - partial：工具成功结果与错误/数据缺口并存，或工具返回部分结果；仅说明已确认部分。
 - needs_clarification：保留在 v4 响应枚举中，当前 LangChain 编排不主动生成此状态；模型可在 answer 中自然追问，此时若没有工具结果，顶层状态为 ok、clarification 为 null。缺通行情景时间使用默认窗口。

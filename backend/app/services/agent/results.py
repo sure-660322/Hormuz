@@ -28,11 +28,12 @@ class AgentInvalidResponseError(RuntimeError):
 
 
 PASSAGE_RULE = (
-    "完整穿越判定：纬度 25.8–27.1°N 带内，经度从 56.2°E 一侧变为 56.7°E 另一侧"
-    "（门线之间保留状态），完成侧首个报位时间 ∈ [closure_at, end_at)；"
-    "口径出处 sim_ais_demo/tools/verify_news_alignment.py"
+    "虚拟双门线观测通行：纬度 25.8–27.1°N 带内，56.2°E 西侧与 56.7°E 东侧"
+    "发生侧别变化；仅纳入经度 55.8–57.1°E、来源 nnu_ais 的历史报位。"
+    "门线之间保留状态，完成侧首个报位时间 ∈ [closure_at, end_at)；"
+    "前置侧别最多回看 24 小时，长间隔和疑似跳点不计入确定结果"
 )
-BATCH_DESCRIPTION = "当前教学模拟批次 sim_ais_demo/output_news_aligned（ship_data_source=simulation）"
+BATCH_DESCRIPTION = "2026-02-25 至 2026-03-03 七日历史 AIS（ship_data_source=nnu_ais；以实际数据库覆盖为准）"
 
 # get_data_health 随结果返回的固定限制（AG-02）：stale 只是时间启发式，
 # 不能包装成完整数据一致性证明；来源缺失不等于真实数量为零；工具只读。
@@ -166,7 +167,7 @@ def build_result(
         "context": {
             "schema_version": SCHEMA_VERSION,
             "batch": BATCH_DESCRIPTION,
-            "ship_data_source": "simulation",
+            "ship_data_source": "nnu_ais",
             "closure_at": closure_at,
             "end_at": end_at,
             "closure_source": closure_source,

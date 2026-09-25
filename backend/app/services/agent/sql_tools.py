@@ -32,6 +32,7 @@ from backend.app.services.agent.query_analytics_policy import (
 from backend.app.services.agent.serialization import to_jsonable
 from backend.app.services.agent.request_guard import reserve_tool
 from backend.app.services.agent.business_tools import record_envelope
+from backend.app.services.agent.config import SHIP_DATA_SOURCE
 
 # 测试接缝：与 v4 runner.QUERY_ANALYTICS_EXECUTOR_FACTORY 同款
 EXECUTOR_FACTORY = QueryAnalyticsExecutor.from_env
@@ -41,6 +42,10 @@ _CATALOG_PATH = None  # 使用 policy 模块默认 catalog 路径
 
 def sql_tools_enabled() -> bool:
     """只决定是否向模型暴露 SQL 工具；启用后的完整配置仍由执行器 fail closed。"""
+    # 013 的 v_ships 只筛 simulation，不能用于当前 nnu_ais 统计。
+    # 修订并独立验证语义视图/只读角色之前，即使旧环境开关为真也不暴露。
+    if SHIP_DATA_SOURCE != "simulation":
+        return False
     try:
         return ExecutorConfig.from_env().enabled
     except QueryExecutionError:

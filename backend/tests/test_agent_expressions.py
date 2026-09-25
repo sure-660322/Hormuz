@@ -145,6 +145,9 @@ class _FakeResult:
             def all(self):
                 return list(rows)
 
+            def one(self):
+                return rows[0]
+
         return _Mapping()
 
 
@@ -155,14 +158,17 @@ class _PassageSession:
         self._rows = rows
         self.executed = []
 
-    def scalar(self, clause):
-        self.executed.append(str(clause))
-        return len(self._rows)
-
     def execute(self, clause, *args, **kwargs):
         sql = str(clause)
         self.executed.append(sql)
-        assert sql.lstrip().lower().startswith("select")
+        assert sql.lstrip().lower().startswith(("select", "with"))
+        if "count(*) AS position_count" in sql:
+            return _FakeResult([{
+                "position_count": 2,
+                "window_position_count": 1,
+                "coverage_start": datetime(2026, 2, 28, 14, 0, tzinfo=UTC),
+                "coverage_end": datetime(2026, 2, 28, 16, 0, tzinfo=UTC),
+            }])
         return _FakeResult(self._rows)
 
     def _write_attempt(self, *_args, **_kwargs):
@@ -177,14 +183,16 @@ class _PassageSession:
 
 
 # 西侧报位（窗口前，确定初始侧）→ 东侧报位（默认窗口内，观测完成）
-PASSAGE_ROWS = [
-    {"ship_id": 4, "name": "SIM V2 油轮 004", "longitude": 56.1, "latitude": 26.5,
-     "recorded_at": datetime(2026, 2, 28, 14, 0, 0, tzinfo=UTC)},
-    {"ship_id": 4, "name": "SIM V2 油轮 004", "longitude": 56.8, "latitude": 26.5,
-     "recorded_at": datetime(2026, 2, 28, 16, 0, 0, tzinfo=UTC)},
-]
+PASSAGE_ROWS = [{
+    "ship_id": 4, "name": "样本油轮 004", "side": "east", "previous_side": "west",
+    "longitude": 56.8, "latitude": 26.5,
+    "recorded_at": datetime(2026, 2, 28, 16, 0, 0, tzinfo=UTC),
+    "previous_lon": 56.1, "previous_lat": 26.5,
+    "previous_at": datetime(2026, 2, 28, 14, 0, 0, tzinfo=UTC),
+    "left_corridor": False,
+}]
 PASSAGE_ANSWER = (
-    "默认封锁窗口内有 1 艘模拟船完成西向东完整通行（SIM V2 油轮 004），"
+    "默认查询窗口内有 1 艘 AIS 船符合西向东虚拟门线通行规则（样本油轮 004），"
     "观测完成时刻为 2026-02-28T16:00Z。"
 )
 
@@ -207,7 +215,7 @@ def test_passage_expressions_use_strait_tool(question):
     assert envelope["status"] == "ok"
     assert envelope["query_summary"]["passage_count"] == 1
     assert envelope["evidence"][0]["direction"] == "west_to_east"
-    assert envelope["ships"][0]["name"] == "SIM V2 油轮 004"
+    assert envelope["ships"][0]["name"] == "样本油轮 004"
 
 
 # ------------------------------------------------------------ 澄清（多表述 → 追问，不调工具）

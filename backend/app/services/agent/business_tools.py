@@ -132,11 +132,12 @@ def make_business_tools(
     def _window_args(args: dict) -> dict:
         return {key: value for key, value in args.items() if value is not None}
 
-    def _query_strait_passages(closure_at: str | None = None, end_at: str | None = None) -> str:
+    def _query_strait_passages(closure_at: str | None = None, end_at: str | None = None,
+                              ship_id: int | None = None) -> str:
         def run():
             args = _window_args({"closure_at": closure_at, "end_at": end_at})
             window = _resolve_window(True, args, globals_closure_at, globals_end_at, forced_window)
-            return tool_payload(query_strait_passages(db, window[0], window[1]))
+            return tool_payload(query_strait_passages(db, window[0], window[1], ship_id=ship_id))
         return _execute_guarded(state, "query_strait_passages", run)
 
     def _search_ships(keyword: str, limit: int | None = None) -> str:
@@ -230,19 +231,22 @@ def make_business_tools(
             func=_query_strait_passages,
             name="query_strait_passages",
             description=(
-                "查询数据库中在 [closure_at, end_at) 窗口内观测完成的海峡完整通行"
-                "（仅当前教学模拟批次，只读查询）。回答任何通行/「多少船通过」类问题前必须调用；"
+                "以历史 AIS 报位查询 [closure_at, end_at) 内的海峡虚拟双门线观测通行"
+                "（有界只读查询，疑似跳点/长间隔分列）。回答通行/「多少船通过」类问题前必须调用；"
                 "用户没给时间时不要反问，不带时间参数调用，后端自动用默认封锁时刻和 24 小时窗口"
             ),
             args_schema=args_model("query_strait_passages", {
-                "type": "object", "properties": window_params,
+                "type": "object", "properties": {
+                    **window_params,
+                    "ship_id": {"type": "integer", "description": "可选：仅判断一艘数据库船；先用 search_ships 确认 ID"},
+                },
             }),
         ),
         StructuredTool.from_function(
             func=_search_ships,
             name="search_ships",
             description=(
-                "按关键字检索教学模拟批次的船舶（匹配船名/MMSI/IMO/callsign/船型/船旗），"
+                "按关键字检索有 nnu_ais 历史 AIS 报位的船舶（匹配船名/MMSI/IMO/callsign/船型/船旗），"
                 "返回 ship_id 等字段；轨迹或通行问题先用它确认船 ID"
             ),
             args_schema=args_model("search_ships", {
@@ -258,7 +262,7 @@ def make_business_tools(
             func=_get_ship_track,
             name="get_ship_track",
             description=(
-                "查询指定模拟船只在窗口内的全部轨迹报位（时间/经纬度/航速/航向，只读）；"
+                "查询指定船只在窗口内的 nnu_ais 实测轨迹报位（时间/经纬度/航速/航向，只读）；"
                 "轨迹问题先用 search_ships 拿 ship_id 再调用"
             ),
             args_schema=args_model("get_ship_track", {
@@ -276,7 +280,7 @@ def make_business_tools(
             name="get_event_context",
             description=(
                 "查询新闻聚合事件及关联真实报道（事件 ID 精确查询或关键字模糊查询，"
-                "可选事件时间窗）；事件是真实新闻数据，与模拟船相互独立，不得按船名关联"
+                "可选事件时间窗）；事件为报道聚合，不能仅凭船名与 AIS 船舶关联"
             ),
             args_schema=args_model("get_event_context", {
                 "type": "object",
@@ -303,7 +307,7 @@ def make_business_tools(
             func=_query_ship_dwell,
             name="query_ship_dwell",
             description=(
-                "只读查询停留派生层（ship_dwell）的预计算停留段：哪些模拟船在何时"
+                "只读查询停留派生层（ship_dwell）的预计算停留段：哪些船在何时"
                 "锚泊/漂航/慢速航行及持续时长；阈值由构建参数决定，查询层不可调整，"
                 "不触发任何重建；status=not_built 时表示派生层尚未构建，如实说明"
             ),
@@ -322,7 +326,7 @@ def make_business_tools(
             func=_query_encounters,
             name="query_encounters",
             description=(
-                "只读查询相遇派生层（encounters）的预计算船对：哪些模拟船在何时段内"
+                "只读查询相遇派生层（encounters）的预计算船对：哪些船在何时段内"
                 "时空接近、最近距离多少；接近不等于有交互；max_distance_nm 只能小于等于"
                 "构建阈值（超过会被拒绝而不是返回零结果）；只读，绝不触发相遇重建"
             ),
@@ -341,16 +345,16 @@ def make_business_tools(
             name="query_event_ship_links",
             description=(
                 "只读查询事件—船舶关联派生层（event_ship_links）：按事件查原文提及船名"
-                "（mentioned，文本证据，无 ship_id）或模拟船时空邻近（observed），"
-                "或按模拟船反查被哪些事件 observed 关联；只读，不触发重建"
+                "（mentioned，文本证据，无 ship_id）或已构建的时空邻近（observed），"
+                "或按船反查 observed 关联；七日 AIS 的 observed 尚未重建；只读"
             ),
             args_schema=args_model("query_event_ship_links", {
                 "type": "object",
                 "properties": {
                     "event_id": {"type": "string", "description": "事件 ID（如 evt_001），与 ship_id 二选一；查询该事件下的 mentioned/observed 关联"},
-                    "ship_id": {"type": "integer", "description": "模拟船 ID（ships.id，先用 search_ships 检索确认），与 event_id 二选一；反查该船被哪些事件 observed 关联"},
+                    "ship_id": {"type": "integer", "description": "船 ID（ships.id，先用 search_ships 检索确认），与 event_id 二选一；反查该船被哪些事件 observed 关联"},
                     "link_type": {"type": "string", "enum": ["observed", "mentioned"],
-                                  "description": "关联类型：observed=模拟轨迹时空邻近演示；mentioned=新闻原文提及的真实船名（仅支持 event_id 方向）；省略默认 observed"},
+                                  "description": "关联类型：observed=已构建轨迹时空邻近；mentioned=新闻原文船名文本（仅支持 event_id 方向）；省略默认 observed"},
                     "start_at": {**time_param, "description": "可选窗口开始，仅按船反查（ship_id）时可用，与 end_at 成对，窗口最长 24 小时"},
                     "end_at": time_param,
                 },
