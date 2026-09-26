@@ -1,5 +1,7 @@
 # 智能体接入契约与任务
 
+> 2026-09-26 前端分支 `codex/agent-chat-ui-main`：`AgentPanel.vue` 已按现有 v4 非流式响应实现聊天消息流、Enter/Shift+Enter、Markdown 消毒渲染、等待计时和可折叠 `results` 工具过程；后端接口、schema 与路由未变。前端构建、工作台检查及浏览器模拟响应通过；真实模型问答和 SSE 流式输出未验证/未实现，不能把展开的工具结果称为模型思考链。分支尚未合入 `main`，任务记录见[开发计划](agent_development_plan.md)。
+
 > 2026-09-25 真实 AIS 适配（`208f39d`、`7f1b89a` 已合入本地 main）：船舶搜索、单船轨迹、来源说明和项目知识已改为 `nnu_ais`；通行工具沿用现有 56.2°E / 56.7°E 虚拟双门线，但限定纬度 25.8–27.1°N、经度 55.8–57.1°E 和最多 24 小时查询窗 + 24 小时前置观察。数据库只向应用返回聚合与侧别变化，最多扫描 100 万门线侧别报位、最多返回 5000 个变化候选，超限报错；可选 ship_id。中间报位离开判定区域、6 小时长间隔或 30 kn 跳点列为不确定候选，不计入确定通行。阈值尚未用真实 AIS 独立校准，未观测到不等于未通过。当前应用库只读验证和未验证项见[开发任务](agent_development_plan.md)。下文标有“模拟批次”的实施与验收数字均属历史记录，不代表当前 AIS 口径。
 
 2026-09-25 起 SQL 三工具经 catalog v2 重新向真实 AIS 主链开放（本机已启用）：`016_agent_views_nnu_ais.sql` 重建 `agent_data` 语义视图（`v_ships` 一船一行、仅含 ≥1 条 `nnu_ais` 报位的船；`v_events`/`v_news` 定义与 v1 逐字一致）与 `agent_view_owner`/`agent_reader`/`agent_reader_login` 只读角色；`query_analytics_catalog_v2.json` 记录视图哈希（按 `search_path=pg_catalog` 口径计算）与 `data_source_scope: nnu_ais`。`sql_tools_enabled()` 要求 catalog 口径与 `SHIP_DATA_SOURCE` 一致且执行器配置完整（fail-closed）。含 TimescaleDB 的集群须为读者角色设 `timescaledb.disable_load=on`（016 已内置），否则聚合查询报 `_timescaledb_functions` 权限错误。原始报位不在 catalog 内（5 秒语句超时下大范围聚合不可行），报位级分析走业务工具。历史 v1 catalog 与 013 保留为旧批次资料，不得重放。

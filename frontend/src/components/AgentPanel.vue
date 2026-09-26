@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import MarkdownIt from 'markdown-it'
+import DOMPurify from 'dompurify'
+import {
+  IconChevronDown, IconCopy, IconRefresh, IconSend, IconSettings,
+  IconSparkles, IconSquareFilled, IconTool, IconTrash,
+} from '@tabler/icons-vue'
 import {
   fetchAgentAnalyze,
   describeApiError,
@@ -11,8 +17,9 @@ import {
   type AgentToolShipSearchResult,
   type AgentToolShipTrackResult,
   type AgentToolAnalyticsResult,
+  type AgentToolResult,
 } from '../api'
-import { eventKind } from '../domain/maritime'
+import { eventKind, safeNewsUrl } from '../domain/maritime'
 
 // 智能体问答是独立异步请求：不放入 computed，由本组件管理加载/取消/超时/错误状态。
 // 前端 75 秒超时覆盖后端 60 秒预算，与新闻查询的 20 秒惯例无关（见 api.ts fetchAgentAnalyze）。
@@ -27,6 +34,12 @@ interface AgentTurnState {
   response: AgentAnalyzeResponse | null
 }
 
+const markdown = new MarkdownIt({ html: false, linkify: false, breaks: true })
+
+function renderAnswer(value: string): string {
+  return DOMPurify.sanitize(markdown.render(value), { USE_PROFILES: { html: true } })
+}
+
 const question = ref('')
 const closureAt = ref('')
 const endAt = ref('')
@@ -35,9 +48,38 @@ const turns = ref<AgentTurnState[]>([])
 const error = ref('')
 const errorRequestId = ref('')
 const notice = ref('')
+const elapsedSeconds = ref(0)
+const messageFlow = ref<HTMLElement | null>(null)
+const userReadingHistory = ref(false)
 let request: AbortController | null = null
+let elapsedTimer: ReturnType<typeof setInterval> | null = null
 
 const canSubmit = computed(() => question.value.trim().length > 0 && !loading.value)
+
+function stopClock() {
+  if (elapsedTimer) clearInterval(elapsedTimer)
+  elapsedTimer = null
+}
+
+async function scrollToLatest(force = false) {
+  await nextTick()
+  const flow = messageFlow.value
+  if (flow && (force || !userReadingHistory.value)) {
+    flow.scrollTop = flow.scrollHeight
+    userReadingHistory.value = false
+  }
+}
+
+function trackScroll() {
+  const flow = messageFlow.value
+  if (flow) userReadingHistory.value = flow.scrollHeight - flow.scrollTop - flow.clientHeight > 72
+}
+
+function onQuestionKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return
+  event.preventDefault()
+  void submit()
+}
 
 const statusMeta: Record<string, { label: string; tone: 'ok' | 'warn' | 'info' }> = {
   ok: { label: '成功', tone: 'ok' },
@@ -57,6 +99,10 @@ const toolLabels: Record<string, string> = {
   query_encounters: '相遇分析',
   query_event_ship_links: '事件—船舶关联',
   query_analytics: '受限分析',
+  search_project_knowledge: '项目知识',
+  get_database_schema: '数据库结构',
+  check_sql: 'SQL 安全检查',
+  execute_sql: '只读 SQL 查询',
 }
 
 function agentErrorMessage(e: unknown): string {
@@ -95,24 +141,31 @@ async function submit() {
   request?.abort()
   const controller = new AbortController()
   request = controller
+  const asked = question.value.trim()
+  const history = buildHistory()
+  const turnIndex = turns.value.push({ question: asked, response: null }) - 1
+  question.value = ''
   loading.value = true
   error.value = ''
   errorRequestId.value = ''
   notice.value = ''
-  const asked = question.value.trim()
+  elapsedSeconds.value = 0
+  stopClock()
+  elapsedTimer = setInterval(() => { elapsedSeconds.value += 1 }, 1000)
+  void scrollToLatest()
   try {
     const response = await fetchAgentAnalyze(
       {
         question: asked,
         closure_at: parseTime(closureAt.value),
         end_at: parseTime(endAt.value),
-        history: buildHistory(),
+        history,
       },
       controller.signal,
     )
     if (request === controller && !controller.signal.aborted) {
-      turns.value.push({ question: asked, response })
-      question.value = ''
+      turns.value[turnIndex]!.response = response
+      void scrollToLatest()
     }
   } catch (e) {
     if (request === controller && !controller.signal.aborted) {
@@ -120,23 +173,72 @@ async function submit() {
       error.value = agentErrorMessage(e)
     }
   } finally {
-    if (request === controller) loading.value = false
+    if (request === controller) {
+      loading.value = false
+      request = null
+      stopClock()
+      void scrollToLatest()
+    }
   }
 }
 
 function cancel() {
   request?.abort()
+  request = null
   loading.value = false
+  stopClock()
   notice.value = '已取消本次智能体请求。'
+  void scrollToLatest()
 }
 
 function reset() {
   request?.abort()
+  request = null
   loading.value = false
+  stopClock()
   turns.value = []
   error.value = ''
   errorRequestId.value = ''
   notice.value = ''
+  userReadingHistory.value = false
+}
+
+function retry() {
+  const last = turns.value.at(-1)
+  if (!last || last.response || loading.value) return
+  question.value = last.question
+  turns.value.pop()
+  void submit()
+}
+
+async function copyAnswer(answer: string) {
+  try {
+    await navigator.clipboard.writeText(answer)
+    notice.value = '回答已复制。'
+  } catch {
+    notice.value = '复制失败，请选中文本复制。'
+  }
+}
+
+function toolEntries(response: AgentAnalyzeResponse): [string, AgentToolResult][] {
+  return Object.entries(response.results ?? {})
+}
+
+function toolDetail(result: AgentToolResult): string {
+  const record = result as Record<string, unknown>
+  const parts: string[] = []
+  if (typeof record.keyword === 'string') parts.push(`关键词：${record.keyword}`)
+  if (typeof record.ship_id === 'number') parts.push(`船 ID：${record.ship_id}`)
+  if (typeof record.event_id === 'string') parts.push(`事件 ID：${record.event_id}`)
+  if (typeof record.direction === 'string') parts.push(`方向：${record.direction}`)
+  if (typeof record.kind === 'string') parts.push(`类别：${record.kind}`)
+  if (typeof record.returned_count === 'number') parts.push(`返回 ${record.returned_count} 条`)
+  if (typeof record.matched_count === 'number') parts.push(`匹配 ${record.matched_count} 条`)
+  if (typeof record.returned_event_count === 'number') parts.push(`返回 ${record.returned_event_count} 个事件`)
+  if (typeof record.fix_count === 'number') parts.push(`报位 ${record.fix_count} 条`)
+  if (typeof record.returned_row_count === 'number') parts.push(`结果 ${record.returned_row_count} 行`)
+  if (record.truncated === true) parts.push('已截断')
+  return parts.join(' · ') || '服务端未返回可展示的参数或计数'
 }
 
 function directionLabel(direction: string): string {
@@ -183,73 +285,50 @@ function cellText(value: unknown): string {
   return String(value)
 }
 
-onBeforeUnmount(() => request?.abort())
+onBeforeUnmount(() => { request?.abort(); stopClock() })
 </script>
 
 <template>
   <section class="panel-content agent-panel">
-    <header class="panel-heading">
-      <p>向智能体提问海峡通行、船舶轨迹或新闻事件；回答附带船只、证据或报道来源。</p>
-      <p class="caption">船位来源以实际接入数据为准；新闻事件为已采集报道的聚合，两者相互独立。</p>
+    <header class="chat-heading">
+      <div><strong>智能体问答</strong><span>船位观测与新闻报道分别呈现</span></div>
+      <button v-if="turns.length || error" type="button" class="icon-button" aria-label="清空对话" title="清空对话" @click="reset"><IconTrash :size="17" aria-hidden="true" /></button>
     </header>
-
-    <form class="agent-form" @submit.prevent="submit">
-      <label class="question-label">
-        问题（必填）
-        <textarea
-          v-model="question"
-          rows="3"
-          maxlength="2000"
-          placeholder="例如：封锁后有哪些船还通过了海峡？"
-          aria-label="智能体问题"
-        ></textarea>
-      </label>
-      <details class="advanced">
-        <summary>高级：封锁窗口（可留空，留空用后端默认）</summary>
-        <label>
-          封锁开始时间
-          <input v-model="closureAt" type="text" placeholder="默认 2026-02-28T15:00:00Z" aria-label="封锁开始时间" />
-        </label>
-        <label>
-          封锁结束时间
-          <input v-model="endAt" type="text" placeholder="默认 2026-03-01T15:00:00Z" aria-label="封锁结束时间" />
-        </label>
-        <p class="caption">时间须带时区（如 2026-03-01T00:00:00Z），窗口不超过 24 小时。</p>
-      </details>
-      <div class="actions">
-        <button type="submit" class="primary" :disabled="!canSubmit">
-          {{ loading ? '智能体分析中…' : turns.length ? '继续提问' : '提问' }}
-        </button>
-        <button v-if="loading" type="button" @click="cancel">取消</button>
-        <button v-if="turns.length || error" type="button" @click="reset">清空对话</button>
+    <div ref="messageFlow" class="message-flow" @scroll.passive="trackScroll">
+      <div v-if="!turns.length && !loading" class="chat-empty">
+        <IconSparkles :size="22" aria-hidden="true" />
+        <strong>从一个问题开始</strong>
+        <p>可询问海峡通行、船舶轨迹或新闻事件。回答会附上可用证据和来源。</p>
       </div>
-    </form>
-
-    <p v-if="notice" class="empty" role="status">{{ notice }}</p>
-    <div v-if="loading" class="empty" role="status">正在等待智能体回答（最长约 75 秒）…</div>
-    <div v-else-if="error" class="empty error" role="alert">
-      {{ error }}<span v-if="errorRequestId" class="request-id">请求标识：{{ errorRequestId }}</span>
-    </div>
-
-    <article v-for="(turn, turnIndex) in turns" :key="turnIndex" class="agent-result">
-      <p class="turn-question">{{ turn.question }}</p>
-      <template v-if="turn.response">
+      <article v-for="(turn, turnIndex) in turns" :key="turnIndex" class="chat-turn">
+        <p class="turn-question">{{ turn.question }}</p>
+        <div v-if="turn.response" class="agent-result">
         <div class="result-head">
           <span class="status-badge" :data-tone="statusMeta[turn.response.status]?.tone ?? 'info'">
             {{ statusMeta[turn.response.status]?.label ?? turn.response.status }}
           </span>
-          <span v-for="tool in turn.response.tools_used" :key="tool" class="tool-chip">
-            {{ toolLabels[tool] ?? tool }}
-          </span>
-          <span class="request-id">请求标识：{{ turn.response.request_id }}</span>
+          <span v-for="tool in turn.response.tools_used" :key="tool" class="tool-chip">{{ toolLabels[tool] ?? tool }}</span>
+          <button type="button" class="icon-button copy-button" aria-label="复制回答" title="复制回答" @click="copyAnswer(turn.response.answer)"><IconCopy :size="16" aria-hidden="true" /></button>
         </div>
+
+        <details v-if="toolEntries(turn.response).length || turn.response.tools_used.length" class="tool-process">
+          <summary><IconTool :size="15" aria-hidden="true" /> 使用了 {{ turn.response.tools_used.map(tool => toolLabels[tool] ?? tool).join(' / ') || '工具' }}<IconChevronDown class="chevron" :size="14" aria-hidden="true" /></summary>
+          <ol v-if="toolEntries(turn.response).length">
+            <li v-for="[callId, result] in toolEntries(turn.response)" :key="callId">
+              <strong>{{ toolLabels[String(result.tool_name ?? '')] ?? result.tool_name ?? '工具调用' }}</strong>
+              <span class="tool-status">{{ result.status ?? '状态未提供' }}</span>
+              <span class="request-id">{{ callId }}</span>
+              <small>{{ toolDetail(result) }}</small>
+            </li>
+          </ol>
+          <p v-else class="caption">服务端只返回工具名，未提供逐次调用结果。</p>
+        </details>
 
         <p v-if="turn.response.status === 'needs_clarification' && turn.response.clarification" class="clarification">
           {{ turn.response.clarification }}
         </p>
         <section v-if="turn.response.answer" class="answer-block">
-          <h3>回答</h3>
-          <p class="answer-text">{{ turn.response.answer }}</p>
+          <div class="answer-text" v-html="renderAnswer(turn.response.answer)"></div>
         </section>
 
         <section v-if="analyticsResult(turn.response)" class="facts-block analytics-block">
@@ -274,8 +353,8 @@ onBeforeUnmount(() => request?.abort())
           <p class="request-id">查询标识：{{ analyticsResult(turn.response)!.query_id }}</p>
         </section>
 
-        <section class="facts-block">
-          <h3>查询上下文</h3>
+        <details class="facts-block collapsible-facts">
+          <summary>查询上下文</summary>
           <dl class="facts">
             <div><dt>批次</dt><dd>{{ turn.response.context.batch }}</dd></div>
             <div><dt>封锁窗口</dt><dd>{{ formatUtc(turn.response.context.closure_at) }} — {{ formatUtc(turn.response.context.end_at) }}</dd></div>
@@ -283,10 +362,10 @@ onBeforeUnmount(() => request?.abort())
             <div><dt>船位来源</dt><dd>{{ turn.response.context.ship_data_source }}</dd></div>
             <div><dt>通行规则</dt><dd>{{ turn.response.context.passage_rule }}</dd></div>
           </dl>
-        </section>
+        </details>
 
-        <section v-if="turn.response.query_summary" class="facts-block">
-          <h3>查询统计</h3>
+        <details v-if="turn.response.query_summary" class="facts-block collapsible-facts">
+          <summary>查询统计</summary>
           <p class="summary-line">
             报位 {{ turn.response.query_summary.position_count }} 条 · 匹配船只 {{ turn.response.query_summary.matched_ship_count }} 艘 ·
             通行 {{ turn.response.query_summary.passage_count }} 次 · 不确定候选 {{ turn.response.query_summary.uncertain_candidate_count }} 个
@@ -295,7 +374,7 @@ onBeforeUnmount(() => request?.abort())
             </template>
             <template v-if="turn.response.query_summary.truncated"> · 结果已截断</template>
           </p>
-        </section>
+        </details>
 
         <section v-if="trackResult(turn.response)" class="facts-block">
           <h3>轨迹查询结果</h3>
@@ -354,7 +433,8 @@ onBeforeUnmount(() => request?.abort())
               <p class="event-summary">{{ event.summary_zh }}</p>
               <ul v-if="event.news.length" class="news-list">
                 <li v-for="story in event.news" :key="story.story_id">
-                  <a :href="story.url" target="_blank" rel="noopener">{{ story.title_zh }}</a>
+                  <a v-if="safeNewsUrl(story.url)" :href="safeNewsUrl(story.url)" target="_blank" rel="noopener noreferrer">{{ story.title_zh }}</a>
+                  <span v-else>{{ story.title_zh }}</span>
                   <span class="summary-line">
                     {{ story.media_name }} · {{ story.publish_date ?? '日期未知' }} · 视角 {{ story.perspective }}
                   </span>
@@ -388,8 +468,34 @@ onBeforeUnmount(() => request?.abort())
             <li v-for="(item, index) in turn.response.limitations" :key="index">{{ item }}</li>
           </ul>
         </section>
-      </template>
-    </article>
+        <span class="request-id">请求标识：{{ turn.response.request_id }}</span>
+        </div>
+      </article>
+      <div v-if="loading" class="waiting-bubble" role="status">
+        <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>正在分析…已等待 {{ elapsedSeconds }} 秒</span>
+        <button type="button" @click="cancel">停止</button>
+      </div>
+      <div v-else-if="error" class="chat-alert error" role="alert">
+        <span>{{ error }}</span><span v-if="errorRequestId" class="request-id">请求标识：{{ errorRequestId }}</span>
+        <button type="button" @click="retry"><IconRefresh :size="15" aria-hidden="true" /> 重试</button>
+      </div>
+      <p v-if="notice" class="chat-notice" role="status">{{ notice }}</p>
+    </div>
+    <form class="agent-form" @submit.prevent="submit">
+      <details class="advanced">
+        <summary><IconSettings :size="17" aria-hidden="true" /> 高级设置：封锁窗口（可留空）<IconChevronDown class="chevron" :size="14" aria-hidden="true" /></summary>
+        <label>封锁开始时间<input v-model="closureAt" type="text" placeholder="默认 2026-02-28T15:00:00Z" aria-label="封锁开始时间" /></label>
+        <label>封锁结束时间<input v-model="endAt" type="text" placeholder="默认 2026-03-01T15:00:00Z" aria-label="封锁结束时间" /></label>
+        <p class="caption">时间须带时区，窗口不超过 24 小时。</p>
+      </details>
+      <div class="composer">
+        <textarea v-model="question" rows="2" maxlength="2000" placeholder="询问海峡通行、船舶轨迹或新闻事件…" aria-label="智能体问题" @keydown="onQuestionKeydown"></textarea>
+        <button v-if="loading" type="button" class="send-button" aria-label="停止生成" title="停止生成" @click="cancel"><IconSquareFilled :size="14" aria-hidden="true" /></button>
+        <button v-else type="submit" class="send-button" :disabled="!canSubmit" aria-label="发送提问" title="发送提问"><IconSend :size="19" aria-hidden="true" /></button>
+      </div>
+      <p class="composer-hint">Enter 发送 · Shift+Enter 换行</p>
+    </form>
   </section>
 </template>
 
@@ -619,4 +725,120 @@ onBeforeUnmount(() => request?.abort())
 .facts dd {
   overflow-wrap: anywhere;
 }
+.agent-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--panel);
+}
+.chat-heading {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.chat-heading div { display: flex; flex-direction: column; gap: 3px; }
+.chat-heading strong { font-size: 13px; }
+.chat-heading span, .composer-hint { color: var(--muted); font-size: 11px; }
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+.icon-button:hover, .icon-button:focus-visible { color: var(--ink); background: var(--wash); border-color: var(--line); }
+.message-flow {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.chat-empty { margin: auto; max-width: 260px; display: grid; gap: 10px; justify-items: center; text-align: center; color: var(--muted); line-height: 1.6; }
+.chat-empty strong { color: var(--ink); font-size: 14px; }
+.chat-empty p { font-size: 12px; }
+.chat-turn { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+.turn-question {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 9px 12px;
+  border-radius: 14px 14px 4px 14px;
+  border: 1px solid var(--line);
+  background: var(--wash);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.agent-result {
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px 14px 14px 4px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgb(0 0 0 / .08);
+}
+.copy-button { margin-left: auto; }
+.tool-process, .collapsible-facts { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.tool-process summary, .collapsible-facts summary, .advanced summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+.tool-process summary::-webkit-details-marker, .collapsible-facts summary::-webkit-details-marker, .advanced summary::-webkit-details-marker { display: none; }
+.tool-process .chevron, .advanced .chevron { margin-left: auto; transition: transform .18s ease; }
+.tool-process[open] .chevron, .advanced[open] .chevron { transform: rotate(180deg); }
+.tool-process ol { margin: 9px 0 0; padding-left: 19px; display: grid; gap: 8px; }
+.tool-process li { font-size: 11px; overflow-wrap: anywhere; }
+.tool-process li strong { margin-right: 7px; }
+.tool-process li small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+.tool-status { padding: 1px 5px; border-radius: 5px; background: var(--wash); }
+.collapsible-facts { margin: 0; }
+.collapsible-facts .facts, .collapsible-facts .summary-line { margin-top: 9px; }
+.answer-block { min-width: 0; }
+.answer-text { white-space: normal; font-size: 13px; line-height: 1.7; }
+.answer-text :deep(p) { margin: 0 0 9px; }
+.answer-text :deep(p:last-child) { margin-bottom: 0; }
+.answer-text :deep(ul), .answer-text :deep(ol) { padding-left: 20px; margin: 6px 0 10px; }
+.answer-text :deep(strong) { color: var(--ink); }
+.answer-text :deep(a) { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; }
+.answer-text :deep(pre) { overflow-x: auto; padding: 9px; border-radius: 6px; background: var(--wash); }
+.answer-text :deep(code) { font-family: ui-monospace, Consolas, monospace; font-size: .92em; }
+.answer-text :deep(table) { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 12px; }
+.answer-text :deep(th), .answer-text :deep(td) { padding: 5px 7px; border: 1px solid var(--line); text-align: left; }
+.answer-text :deep(blockquote) { margin: 8px 0; padding-left: 10px; border-left: 2px solid var(--blue); color: var(--muted); }
+.waiting-bubble, .chat-alert, .chat-notice {
+  align-self: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px 12px 12px 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.waiting-bubble { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.waiting-bubble button, .chat-alert button { background: transparent; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); cursor: pointer; padding: 3px 7px; }
+.chat-alert button { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; }
+.typing-dots { display: inline-flex; gap: 3px; align-items: center; height: 14px; }
+.typing-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--blue); animation: typing-bounce .75s infinite alternate; }
+.typing-dots i:nth-child(2) { animation-delay: .15s; }
+.typing-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes typing-bounce { to { transform: translateY(-4px); opacity: .35; } }
+.agent-form { flex: none; padding: 10px 12px 8px; border-top: 1px solid var(--line); border-bottom: 0; background: var(--panel); }
+.advanced { display: block; }
+.advanced[open] { display: grid; }
+.advanced label { margin-top: 5px; }
+.composer { display: flex; align-items: flex-end; gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 11px; background: var(--wash); }
+.agent-form .composer textarea { flex: 1; min-height: 43px; max-height: 130px; resize: vertical; border: 0; background: transparent; padding: 8px; font-size: 12px; line-height: 1.5; }
+.agent-form .composer textarea:focus-visible { outline: 0; }
+.composer:focus-within { outline: 2px solid var(--blue); outline-offset: 1px; }
+.send-button { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 8px; background: var(--blue); color: #062032; cursor: pointer; }
+.send-button:disabled { opacity: .45; cursor: not-allowed; }
+.composer-hint { margin: 0; text-align: right; }
+@media (prefers-reduced-motion: reduce) { .typing-dots i { animation: none; } .chevron { transition: none; } }
 </style>
