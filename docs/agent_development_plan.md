@@ -2,10 +2,11 @@
 
 ## 2026-09-26 智能体聊天面板 A 档交互
 
-状态：**已实现并通过前端构建、工作台检查与浏览器模拟响应验证；待真实后端问答验收，尚未合入 main**。负责人 Codex；基线 `main` / `7f69663`，主目录新分支 `codex/agent-chat-ui-main`（用户指定不使用独立 worktree）。允许修改范围：`frontend/src/components/AgentPanel.vue`、前端依赖清单及本节相关文档；不改后端契约、数据库、密钥或其他会话文件。预览端口 5178，未启动后端；数据库未连接。
+状态：**已实现并快进合入本地 main；前端构建、工作台检查、浏览器模拟响应与 5174 页面打开面板已验证；待真实模型浏览器问答验收**。负责人 Codex；基线 `main` / `7f69663`，实现提交 `1d1ae41`，开发分支 `codex/agent-chat-ui-main` 位于主目录（用户指定不使用独立 worktree）。修改范围：`frontend/src/components/AgentPanel.vue`、前端依赖清单及本节相关文档；后端契约、数据库、密钥未改。5178 为已结束的模拟响应预览；本地 5174 使用现有 8000 后端。
 
 - 实现：固定输入区与滚动消息流；Enter 发送、Shift+Enter 换行，IME 组字不提交；发送/停止/清空/设置等图标使用 `@tabler/icons-vue`，等待三点动效参考 Amicro 后以 CSS 实现。回答 Markdown 使用 `markdown-it`（禁用原始 HTML）与 DOMPurify 消毒；新闻来源链接经过安全 URL 过滤。v4 `results` 按 call_id 显示工具名称、服务端状态与实际返回的关键字段；没有返回的参数不补造。上下文和统计折叠，保留结构化证据与地图定位；错误可重试原问题。
 - 验证（2026-09-26）：`frontend` 中 `npm run build` 与 `npm run check:workbench` 均通过；Playwright 在 `http://127.0.0.1:5178/` 以模拟 v4 `/agent/analyze` 响应验证 Shift+Enter 换行、Enter 提交、等待计时与停止、Markdown 表格、恶意脚本未执行、`javascript:` 链接未渲染成可点击链接、工具过程展开、503 错误后重试成功，以及长对话向上阅读时新消息不强制滚动。模拟请求不验证后端模型质量、真实工具结果或跨会话持久化。背景地图与事件请求因该端口未连接后端产生连接错误，非智能体 UI 新增错误。
+- 本地 main 合入复核（2026-09-26）：`git merge --ff-only codex/agent-chat-ui-main` 将实现提交 `1d1ae41` 合入本地 `main`；现有 `http://localhost:5174/` 和 `http://127.0.0.1:8000/health` 均返回 200。Playwright 在 5174 打开地图工具栏「智能体」并看到新输入区，实际 AIS/新闻正常加载，浏览器控制台 0 error / 0 warning；同页在应用内浏览器再次确认面板可打开。未发送真实模型请求，故工具选择和回答质量未验收；未推送远端或部署。
 - 未实现/待验收：SSE 流式输出、模型内部推理展示、真实后端/真实 DeepSeek 浏览器问答与移动端布局。历史 `results` 仅在完整响应返回后可展示。
 
 ## 2026-09-25 受限 SQL 三工具 nnu_ais 适配

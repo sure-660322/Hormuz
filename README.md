@@ -134,7 +134,7 @@ npm run dev -- --port 5174
 
 设计见[智能体接入契约与任务](docs/agent_integration.md)。POST /agent/analyze 已注册，前端地图工具栏的「智能体」按钮打开右侧详情浮层，支持多轮提问；回答带船只/事件引用与「地图定位」按钮。船定位到当前回放快照；新闻事件仅在发生时间已进入当前回放帧且有代表坐标时按自身位置定位。
 
-2026-09-26 前端交互分支 `codex/agent-chat-ui-main`（主目录工作区，尚未合入 `main`）：智能体面板改为消息流和固定输入区，Enter 发送、Shift+Enter 换行；回答用 Markdown 渲染并消毒，真实 v4 `results` 可展开查看工具调用，等待时显示计时与取消。`npm run build`、`npm run check:workbench` 和模拟响应的浏览器交互已验证；真实后端/模型问答及 SSE 流式输出未在本轮验收或实现。详细记录见[前端工作台](FRONTEND_WORKBENCH.md)与[开发计划](docs/agent_development_plan.md)。
+2026-09-26 前端交互改动已从 `codex/agent-chat-ui-main` 快进合入本地 `main`（实现提交 `1d1ae41`）：智能体面板改为消息流和固定输入区，Enter 发送、Shift+Enter 换行；回答用 Markdown 渲染并消毒，真实 v4 `results` 可展开查看工具调用，等待时显示计时与取消。`npm run build`、`npm run check:workbench` 和模拟响应的浏览器交互已验证；本地 5174 页面已打开智能体面板且控制台无错误。真实后端/模型浏览器问答及 SSE 流式输出未在本轮验收或实现。详细记录见[前端工作台](FRONTEND_WORKBENCH.md)与[开发计划](docs/agent_development_plan.md)。
 
 > **2026-09-23 修复记录**：`f14eceb` 复核发现候选实现可重复执行 SQL、超时后后台继续触库、联调脚本导入旧入口。已在本地 `main` 合入修复并通过离线回归：SQL 三工具、知识库和业务工具共用 8 次请求预算；第一次 SQL 成功或终止失败后关闭执行分支，只有第一次未执行的普通语法错误允许一次修正；整体超时取消后等待工作线程退出，再由路由释放请求 Session。联调脚本已切换到 `run_lc_agent`；无密钥返回 SKIP。真实 DeepSeek、独立 PostgreSQL 和浏览器仍待验证。
 
