@@ -1,6 +1,6 @@
 # 数据库与环境交接
 
-> 2026-09-25 当前状态：本机应用库 `aisdb` 已导入 UTC+8 文件日 2026-02-25 至 2026-03-03 七天真实 AIS，现有 4,462 艘、17,921,533 条报位，新闻 290 条、事件 65 个保留。逐日备份、来源审计、导入与接口证据见[七日导入记录](real_ais_seven_day_import.md)。用户在执行中取消独立测试库验证；此前 2 月 25 日的独立试点库及前端浏览器验收见[历史单日记录](real_ais_import_pilot.md)。Git 跟踪的模拟船舶交接文件及旧 manifest 已移除，旧四表交接流程依然缺少完整数据包。
+> 当前入口（2026-09-26 文档核对）：本机应用库 `aisdb` 已导入 UTC+8 文件日 2026-02-25 至 2026-03-03 七天真实 AIS；2026-09-25 导入核验为 4,462 艘、17,921,533 条报位。随后导入中新网 67 条中文报道，本机当日核验为新闻 357 条、事件 78 个，见[中新网批次记录](chinanews_news_import.md)。下表的 65/290 是旧 Git 交接快照，不能作为当前应用库数量。逐日备份、来源审计、导入与接口证据见[七日导入记录](real_ais_seven_day_import.md)。用户在执行中取消独立测试库验证；此前 2 月 25 日的独立试点库及前端浏览器验收见[历史单日记录](real_ais_import_pilot.md)。Git 跟踪的模拟船舶交接文件及旧 manifest 已移除，旧四表交接流程依然缺少完整数据包。
 
 历史状态：2026-09-14 曾提供独立 Docker Compose、四表 JSONL 交接数据、空库导入与核验脚本，并在新容器、新数据卷上演练。脚本保留，当前缺少完整数据包。Git 不会同步运行中的数据库。
 
@@ -8,14 +8,15 @@
 
 | 路径 | 内容与用途 |
 | --- | --- |
-| data/handoff/current/events.jsonl | 65 个新闻聚合事件及加工字段 |
-| data/handoff/current/news.jsonl | 290 条报道的来源、日期、摘要及加工字段；223 条关联事件，67 条无关联 |
+| data/handoff/current/events.jsonl | 旧交接快照：65 个新闻聚合事件及加工字段 |
+| data/handoff/current/news.jsonl | 旧交接快照：290 条报道的来源、日期、摘要及加工字段；223 条关联事件，67 条无关联 |
+| _analysis_chinanews/chinanews_霍尔木兹_20260223-20260303/ | 后加中文批次的原始 JSON（67 条）及 `images/` 中 65 张配图；是来源资料，不是可直接恢复当前应用库的四表交接包 |
 | sim_ais_demo/output_news_aligned/ | 旧模拟批次的历史报告；船舶和报位数据文件已删除 |
 | sim_ais_demo/config/news_aligned_config.json | 旧模拟配置，仅供历史参考 |
 
 保留的新闻文件不包含 .env、账户、数据库角色或 pg_dump 恢复备份。news 不含文章全文；来源链接与摘要不代表取得原始报道的再许可，使用时保留来源。已有 data/news_data 是历史采集资料，不是当前四表导入入口。
 
-事件封面图单独保存在新闻原始资料的 `images/` 子目录，不在上述 JSONL 或 Git 数据包中。运行后端前可设置环境变量 `NEWS_IMAGE_ROOT` 为该子目录的上一级目录，例如本机 `D:\my_project\news_raw_data`，后端按 `events.image_path` 中的 `images/<文件名>` 读取。未设置时默认使用仓库上一级的 `news_raw_data`；服务器部署时应显式设置服务器自己的目录，并单独传输图片。`GET /events/{event_id}/cover` 在图片缺失或路径无效时返回 404；目前没有图片上传、对象存储或自动同步流程。历史交接数据的图片文件是否齐全需在目标机器另行核验。
+事件封面图由后端从 `NEWS_IMAGE_ROOT/images/` 读取。新增中新网批次的原始图片已纳入上述 Git 目录，但 Git 不会自动把图片放到服务目录，也不会同步数据库中的 `events.image_path`；部署者需把所需图片复制到服务器的新闻图片目录，并将 `NEWS_IMAGE_ROOT` 设为该目录的上一级。本机旧路径示例为 `D:\my_project\news_raw_data`；未设置时默认使用仓库上一级的 `news_raw_data`。旧批次图片仍在本机新闻原始资料目录，未包含在当前四表 Git 交接包中；目标机器需分别核验文件是否齐全。`GET /events/{event_id}/cover` 在图片缺失或路径无效时返回 404；目前没有图片上传、对象存储或自动同步流程。
 
 历史四表交接设计保留 ships.id、ship_positions.ship_id、events.id、news.event_id 的数据库关系；events.event_id 是业务字符串，和 news.event_id 的整数外键不同。当前缺少船舶文件，不能按旧流程导入。
 
