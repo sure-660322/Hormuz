@@ -137,9 +137,14 @@ export function eventTimeText(e: ApiEvent) {
 }
 export function eventOccurredBy(e: Pick<ApiEvent, 'occurred_at'>, at: string | null): boolean {
   if (!e.occurred_at || !at) return false
-  const occurred = Date.parse(e.occurred_at)
+  const eventDay = e.occurred_at.slice(0, 10)
   const current = Date.parse(at)
-  return Number.isFinite(occurred) && Number.isFinite(current) && occurred <= current
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDay) || !Number.isFinite(Date.parse(e.occurred_at)) || !Number.isFinite(current)) return false
+  if (new Date(`${eventDay}T00:00:00Z`).toISOString().slice(0, 10) !== eventDay) return false
+  // Event timestamps often encode a calendar day without an observed hour.
+  // Keep that source day fixed; compare it with the replay day in the chosen display zone.
+  const offset = displayZone.value === 'Asia/Shanghai' ? 8 * 60 * 60 * 1000 : 0
+  return eventDay <= new Date(current + offset).toISOString().slice(0, 10)
 }
 export function eventCoordinates(e: ApiEvent) {
   return hasEventLocation(e) ? `${e.latitude.toFixed(4)}, ${e.longitude.toFixed(4)}` : '暂无可定位坐标'

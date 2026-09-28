@@ -138,15 +138,17 @@ const filteredEvents = computed(() =>
     (eventType.value === 'all' || e.event_type === eventType.value) && eventOccurredBy(e, time.value),
   )
     .sort((a, b) => {
-      const left = Date.parse(a.occurred_at!), right = Date.parse(b.occurred_at!)
-      return (left - right || a.event_id.localeCompare(b.event_id)) * (eventSort.value === 'asc' ? 1 : -1)
+      const left = a.occurred_at!.slice(0, 10), right = b.occurred_at!.slice(0, 10)
+      return (left.localeCompare(right) || a.event_id.localeCompare(b.event_id)) * (eventSort.value === 'asc' ? 1 : -1)
     }),
 )
 // 地图与列表共用事件发生时间门控；无代表坐标的已发生事件只进入列表。
 const mapEvents = computed(() => filteredEvents.value.filter(hasEventLocation))
-const untimedEvents = computed(() => events.value.filter(e => !e.occurred_at).length)
-watch(time, () => {
-  if (!selectedEvent.value || eventOccurredBy(selectedEvent.value, time.value)) return
+const untimedEvents = computed(() => events.value.filter(e =>
+  !e.occurred_at && (eventType.value === 'all' || e.event_type === eventType.value),
+))
+watch([time, displayZone], () => {
+  if (!selectedEvent.value || !selectedEvent.value.occurred_at || eventOccurredBy(selectedEvent.value, time.value)) return
   selectedEvent.value = null
   if (panel.value === 'events') panelOpen.value = false
 })
@@ -342,10 +344,8 @@ function focusShipById(shipId: number) {
   if (ship) chooseShip(ship)
 }
 function chooseEvent(event: ApiEvent) {
-  if (!eventOccurredBy(event, time.value)) {
-    notice.value = event.occurred_at
-      ? '该新闻事件尚未到达发生日期，请向后拖动时间轴。'
-      : '该新闻事件没有可用于回放的发生时间，不能按时间轴定位。'
+  if (event.occurred_at && !eventOccurredBy(event, time.value)) {
+    notice.value = '该新闻事件尚未到达发生日期，请向后拖动时间轴。'
     return
   }
   clearShip()
@@ -358,7 +358,8 @@ function chooseEvent(event: ApiEvent) {
   panelOpen.value = true
   sidebarOpen.value = false
   layers.value.events = true
-  if (!hasEventLocation(event)) notice.value = '该新闻事件没有可定位的代表坐标，详情仍可阅读。'
+  if (!event.occurred_at) notice.value = '发生日期未明确：可阅读详情，但地图回放不显示此事件点。'
+  else if (!hasEventLocation(event)) notice.value = '该新闻事件没有可定位的代表坐标，详情仍可阅读。'
 }
 // 智能体回答中的「地图定位」只定位当前回放时刻已出现的事件和船位。
 function locateAgentShip(shipId: number) {
@@ -628,7 +629,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :ships="currentShips"
         :events="mapEvents"
         :selected-ship-id="selectedShipId"
-        :selected-event="selectedEvent"
+        :selected-event="selectedEvent && eventOccurredBy(selectedEvent, time) ? selectedEvent : null"
         :track="selectedTrack"
         :track-visible="trackVisible"
         :speed-segments="speedColorOn ? speedSegments : null"

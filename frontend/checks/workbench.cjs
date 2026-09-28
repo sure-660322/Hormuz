@@ -71,9 +71,14 @@ async function main() {
   assert.equal(eventTimeText(unknownEvent), '时间未明确')
   assert.equal(eventTimeText({ event_time_text: '3月初' }), '3月初')
   const datedEvent = { occurred_at: '2026-03-01T06:27:00Z' }
-  assert.equal(eventOccurredBy(datedEvent, '2026-03-01T06:26:59Z'), false, 'Future event stays hidden')
-  assert.equal(eventOccurredBy(datedEvent, '2026-03-01T06:27:00Z'), true, 'Event appears at its timestamp')
+  displayZone.value = 'UTC'
+  assert.equal(eventOccurredBy(datedEvent, '2026-02-28T23:59:59Z'), false, 'Future calendar day stays hidden')
+  assert.equal(eventOccurredBy(datedEvent, '2026-03-01T00:00:00Z'), true, 'Day-level event appears at day start')
   assert.equal(eventOccurredBy(datedEvent, '2026-03-02T00:00:00Z'), true, 'Past event remains visible')
+  displayZone.value = 'Asia/Shanghai'
+  assert.equal(eventOccurredBy(datedEvent, '2026-02-28T15:59:59Z'), false, 'UTC+8 day has not begun')
+  assert.equal(eventOccurredBy(datedEvent, '2026-02-28T16:00:00Z'), true, 'UTC+8 midnight reveals the source day')
+  displayZone.value = 'UTC'
   assert.equal(eventOccurredBy({ occurred_at: null }, '2026-03-02T00:00:00Z'), false, 'Unknown occurrence is not invented from report date')
   assert.equal(eventOccurredBy(datedEvent, null), false, 'No playback time means no revealed event')
   assert.equal(eventOccurredBy({ occurred_at: 'invalid' }, '2026-03-02T00:00:00Z'), false)
