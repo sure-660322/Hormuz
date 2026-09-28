@@ -1721,6 +1721,8 @@ button.primary:hover {
 .explorer-item.selected { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, var(--panel)); }
 .explorer-item-title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; line-height: 1.5; min-height: 3em; font-size: 12px; font-weight: 600; }
 .explorer-item-meta { display: flex; gap: 10px; justify-content: space-between; margin-top: 8px; color: var(--muted); font-size: 10px; }
+.event-category { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.event-category img { flex: none; width: 18px; height: 18px; object-fit: contain; }
 .explorer-message { padding: 14px 20px; color: var(--muted); font-size: 12px; }
 .dayline-scroll { position: relative; }
 .dayline { position: relative; padding: 5px 16px 20px; }

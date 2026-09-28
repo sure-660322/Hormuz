@@ -107,7 +107,7 @@ watch(eventView, view => { if (view === 'timeline') void nextTick(scrollToCurren
           </span>
           <span class="explorer-item-copy">
             <span class="explorer-item-title">{{ event.title }}</span>
-            <span class="explorer-item-meta"><time :title="eventTimeText(event)">发生日期 {{ event.occurred_at?.slice(0, 10) }}</time><span :style="{ color: eventKind(event.event_type).color }">{{ eventKind(event.event_type).label }}</span><span>{{ event.coverage_count }} 篇</span></span>
+            <span class="explorer-item-meta"><time :title="eventTimeText(event)">发生日期 {{ event.occurred_at?.slice(0, 10) }}</time><span class="event-category" :style="{ color: eventKind(event.event_type).color }"><img :src="eventKind(event.event_type).icon" alt="" />{{ eventKind(event.event_type).label }}</span><span>{{ event.coverage_count }} 篇</span></span>
           </span>
         </button>
         <p v-if="!currentTime" class="explorer-message">回放时间不可用，暂无法按发生时间显示新闻事件。</p>
@@ -122,7 +122,7 @@ watch(eventView, view => { if (view === 'timeline') void nextTick(scrollToCurren
             <h3><time :datetime="group.day">{{ dayLabel(group.day) }}</time><small>{{ group.events.length }} 条</small></h3>
             <div class="dayline-cards">
               <button v-for="(event, i) in group.events" :key="event.event_id" class="dayline-card" :class="{ right: i % 2 === 1, selected: selectedEventId === event.event_id }" :title="eventTimeText(event)" @click="selectEvent(event)">
-                <span class="dayline-card-kind" :style="{ color: eventKind(event.event_type).color }">{{ eventKind(event.event_type).label }}</span>
+                <span class="event-category dayline-card-kind" :style="{ color: eventKind(event.event_type).color }"><img :src="eventKind(event.event_type).icon" alt="" />{{ eventKind(event.event_type).label }}</span>
                 <strong>{{ event.title }}</strong><small>{{ event.coverage_count }} 篇报道</small>
               </button>
             </div>
