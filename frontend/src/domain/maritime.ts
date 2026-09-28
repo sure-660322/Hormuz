@@ -26,7 +26,7 @@ export function projectPosition(point: GeoPoint, bearing: number, nauticalMiles:
   return { latitude: nextLat / rad, longitude: ((nextLon / rad + 540) % 360) - 180 }
 }
 
-// 事件类别与 Logo/ 八类设计图对应（01-08）；颜色取自各设计图主色。
+// 事件类别共八类（military…other）；颜色取自原设计图主色（八类设计源图已于 2026-09-28 移出仓库）。
 // 图标置于 public/event-kinds/，以根路径引用（避免 workbench 裸 tsc/require 检查引入资源导入）。
 export const eventKinds: Record<
   string,

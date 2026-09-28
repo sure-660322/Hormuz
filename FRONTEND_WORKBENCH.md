@@ -29,6 +29,7 @@
 验证（2026-09-25，独立 worktree）：`frontend` 下 `npm ci`、`npm run build`、`npm run check:workbench` 均通过；`git diff --check` 通过。此轮只改前端文案，未导入真实 AIS，未做浏览器端到端验收。
 
 2026-09-21 整合：P3 停留图层、P4 相遇面板和 P5 数据健康区块已有代码。用户确认 Kimi 地图渲染优化已结束；本轮重新运行 build 与 check:workbench 均通过，未重跑浏览器性能测量。优化历史测量见 [性能报告](docs/map_rendering_optimization.md)，交接边界见 [协作说明](docs/collaboration.md)。
+2026-09-28 清理：比赛相关素材移出仓库——Logo/ 仅保留工具栏两个图标源文件（图层图标.png、智能体图标.png，未跟踪）；八类设计源图（01-08）与项目logo源图已删除，比赛通知 docs/aic_competition/ 目录已移除。顶栏运行资产 frontend/src/assets/logo.png 与事件图标 public/event-kinds/ 不受影响，保留。
 2026-09-21 UI 优化：顶栏接入项目 Logo（Logo/项目logo.png 压缩副本 frontend/src/assets/logo.png）；事件图标改为半透明毛玻璃圆底（去除纯白底板），屏幕显示尺寸基本固定、极端缩放级别仅 ±20% 微调；点击事件图标改为在图标附近弹出轻量信息卡（类型/标题/时间/摘要 + 查看详情），点击空白处关闭、切换事件即切换卡片，「查看详情」再打开右侧侧边栏。范围仅限前端展示与地图交互，未改数据契约。
 
 文档核对：2026-09-20，按当前前端代码核对，本次未重跑构建或浏览器验收；2026-09-19 增补 P1/P2 派生层前端能力（速度着色、事件×船舶关联）。全项目状态见 [README](README.md)，智能体契约与接入记录见 [智能体接入](docs/agent_integration.md)。
