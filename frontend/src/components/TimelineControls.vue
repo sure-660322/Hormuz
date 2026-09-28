@@ -31,7 +31,6 @@ const dragStart = ref<number | null>(null)
 const dragEnd = ref<number | null>(null)
 const expanded = ref(false)
 const rangeEnd = computed(() => Math.min(last.value, zoomEnd.value ?? last.value))
-const visibleFrames = computed(() => props.frameTimes.slice(zoomStart.value, rangeEnd.value + 1))
 function resetZoom() { zoomStart.value = 0; zoomEnd.value = null }
 function pointerPercent(event: PointerEvent) {
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
@@ -86,21 +85,53 @@ const percent = (value: string) =>
     ),
   )
 const progress = computed(() => (current.value ? percent(current.value) : 0))
+const DAY_MS = 24 * 60 * 60 * 1000
+const HOUR_MS = 60 * 60 * 1000
+const multiDayScale = computed(() => end.value - start.value > 36 * HOUR_MS)
 const ticks = computed(() => {
-  const indexes = [
-    ...new Set(
-      Array.from({ length: Math.min(7, visibleFrames.value.length) }, (_, i) =>
-        zoomStart.value + Math.round(
-          (i * (rangeEnd.value - zoomStart.value)) /
-            Math.max(1, Math.min(7, visibleFrames.value.length) - 1),
-        ),
-      ),
-    ),
-  ]
-  return indexes.map((i) => ({
-    time: props.frameTimes[i]!,
-    left: percent(props.frameTimes[i]!),
-  }))
+  if (!Number.isFinite(start.value) || !Number.isFinite(end.value) || end.value <= start.value) return []
+  const offset = displayZone.value === 'Asia/Shanghai' ? 8 * HOUR_MS : 0
+  const compact = laneWidth.value < 550
+  const firstYear = new Date(start.value + offset).getUTCFullYear()
+  const lastYear = new Date(end.value + offset).getUTCFullYear()
+  const yearChanges = firstYear !== lastYear
+  const result: { time: string; left: number; label: string; yearLabel: string; fullLabel: string; major: boolean }[] = []
+  if (multiDayScale.value) {
+    const firstMidnight = Math.ceil((start.value + offset) / DAY_MS) * DAY_MS - offset
+    // The range can begin partway through a day; show that partial day when space permits.
+    if ((firstMidnight - start.value) / (end.value - start.value) > (compact ? 0.09 : 0.06)) {
+      const date = new Date(start.value + offset)
+      const label = compact ? `${date.getUTCMonth() + 1}/${date.getUTCDate()}` : `${date.getUTCMonth() + 1}月${date.getUTCDate()}日`
+      result.push({ time: new Date(start.value).toISOString(), left: 0, label, yearLabel: yearChanges ? String(date.getUTCFullYear()) : '', fullLabel: `${date.getUTCFullYear()}年${date.getUTCMonth() + 1}月${date.getUTCDate()}日`, major: true })
+    }
+    for (let at = firstMidnight; at <= end.value; at += DAY_MS) {
+      const date = new Date(at + offset)
+      const month = date.getUTCMonth() + 1, day = date.getUTCDate(), year = date.getUTCFullYear()
+      result.push({ time: new Date(at).toISOString(), left: (at - start.value) / (end.value - start.value) * 100,
+        label: compact ? `${month}/${day}` : `${month}月${day}日`,
+        yearLabel: yearChanges && (result.length === 0 || (month === 1 && day === 1)) ? String(year) : '',
+        fullLabel: `${year}年${month}月${day}日 00:00 ${zoneLabel()}`, major: true })
+    }
+  } else {
+    const spanHours = (end.value - start.value) / HOUR_MS
+    const stepHours = spanHours <= 6 ? 1 : spanHours <= 12 ? 2 : spanHours <= 24 ? 4 : 6
+    const step = stepHours * HOUR_MS
+    for (let at = Math.ceil((start.value + offset) / step) * step - offset; at <= end.value; at += step) {
+      const date = new Date(at + offset)
+      const hour = date.getUTCHours(), month = date.getUTCMonth() + 1, day = date.getUTCDate()
+      result.push({ time: new Date(at).toISOString(), left: (at - start.value) / (end.value - start.value) * 100,
+        label: `${String(hour).padStart(2, '0')}:00`, yearLabel: hour === 0 ? `${month}/${day}` : '',
+        fullLabel: `${date.getUTCFullYear()}年${month}月${day}日 ${String(hour).padStart(2, '0')}:00 ${zoneLabel()}`, major: hour === 0 })
+    }
+    if (!result.length) {
+      const date = new Date(start.value + offset)
+      const hour = String(date.getUTCHours()).padStart(2, '0'), minute = String(date.getUTCMinutes()).padStart(2, '0')
+      result.push({ time: new Date(start.value).toISOString(), left: 0, label: `${hour}:${minute}`,
+        yearLabel: `${date.getUTCMonth() + 1}/${date.getUTCDate()}`,
+        fullLabel: `${date.getUTCFullYear()}年${date.getUTCMonth() + 1}月${date.getUTCDate()}日 ${hour}:${minute} ${zoneLabel()}`, major: true })
+    }
+  }
+  return result
 })
 const lanes = computed(() =>
   Object.entries(eventKinds).filter(([type]) => type === props.eventType).map(([type, kind]) => {
@@ -273,14 +304,16 @@ onBeforeUnmount(() => {
         <div v-if="events.length" class="timeline-options"><select aria-label="时间轴事件类别" :value="eventType" @change="emit('typeChange', ($event.target as HTMLSelectElement).value)"><option value="all">全部 · 密度概览</option><option v-for="(kind, type) in eventKinds" :key="type" :value="type">{{ kind.label }} · 展开节点</option></select><button :disabled="!nextEvent" @click="nextEvent && emit('selectEvent', nextEvent)">下一事件</button><button :disabled="zoomStart === 0 && zoomEnd === null" @click="resetZoom">恢复全时段</button><span>{{ zoneLabel() }} · 拖动柱图缩放</span></div>
       <div ref="body" class="timeline-body">
         <div class="timeline-scale">
-          <span>时间</span>
+          <span>{{ multiDayScale ? '日期' : '时间' }}</span>
           <div class="tick-track">
             <time
-              v-for="(tick, i) in ticks"
+              v-for="tick in ticks"
               :key="tick.time"
               :style="{ left: tick.left + '%' }"
-              :class="{ first: i === 0, last: i === ticks.length - 1 }"
-              >{{ formatTime(tick.time) }}</time
+              :class="{ first: tick.left < 2, last: tick.left > 98, major: tick.major }"
+              :title="tick.fullLabel"
+              :aria-label="tick.fullLabel"
+              ><span>{{ tick.label }}</span><small v-if="tick.yearLabel">{{ tick.yearLabel }}</small></time
             >
           </div>
         </div>
