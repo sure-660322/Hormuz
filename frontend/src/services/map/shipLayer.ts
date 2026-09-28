@@ -15,7 +15,6 @@ export interface ShipRenderContext {
   isolated: boolean
   time: string | null
   vectorMinutes: number
-  picking: boolean
 }
 
 interface ShipEntry {
@@ -119,7 +118,7 @@ export class ShipLayerManager {
             bubblingMouseEvents: false,
           })
             .on('click', () => {
-              if (!this.lastCtx?.picking) map.setView([lat, lon], Math.min(19, map.getZoom() + 2))
+              map.setView([lat, lon], Math.min(19, map.getZoom() + 2))
             })
             .addTo(this.options.clusterLayer)
         }
@@ -179,7 +178,7 @@ export class ShipLayerManager {
       })
       marker.on('click', () => {
         const current = this.lastCtx?.ships.find((s) => s.id === ship.id)
-        if (current && !this.lastCtx?.picking) onSelectShip(current)
+        if (current) onSelectShip(current)
       })
       entry = {
         marker,

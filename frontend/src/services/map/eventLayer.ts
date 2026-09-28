@@ -11,7 +11,6 @@ export interface EventRenderContext {
   selectedEvent: ApiEvent | null
   layers: LayerState
   isolated: boolean
-  picking: boolean
 }
 
 interface EventEntry {
@@ -201,7 +200,7 @@ export class EventLayerManager {
     marker.on('click', () => {
       const ctx = this.lastCtx
       const map = getMap()
-      if (!ctx || !map || ctx.picking) return
+      if (!ctx || !map) return
       const currentGroup = this.groupFor(key)
       if (!currentGroup.length) return
       const representative = currentGroup.find((item) => item.id === ctx.selectedEvent?.id) ?? currentGroup[0]!

@@ -122,16 +122,6 @@ async function main() {
     heading: null,
     recorded_at: '2026-08-30T00:10:00Z',
   }
-  const oldEvent = {
-    id: 1,
-    title: '模拟事件',
-    description: '',
-    event_type: 'navigation_control',
-    ...center,
-    occurred_at: '2026-08-30T00:00:00Z',
-    source_name: null,
-    source_url: null,
-  }
   const projected = projectPosition(center, 90, 1)
   assert.ok(Math.abs(distanceNm(center, projected) - 1) < 0.00001, '10 kn for 6 minutes is exactly 1 NM')
   assert.ok(projected.longitude > 0 && Math.abs(projected.latitude) < 0.00001, 'COG 90 projects east')
@@ -143,27 +133,6 @@ async function main() {
   displayZone.value = 'Asia/Shanghai'
   assert.match(formatTime('2026-08-30T00:10:00Z'), /08:10/)
   displayZone.value = 'UTC'
-  const futureEvent = {
-    ...oldEvent,
-    id: 2,
-    occurred_at: '2026-08-30T00:10:00Z',
-  }
-  const distantEvent = { ...oldEvent, id: 3, latitude: 1 }
-  const result = localWorkbench.queryArea(
-    { center, radiusNm: 10, at: '2026-08-30T00:05:00Z' },
-    [ship, { ...ship, id: 8, latitude: 1 }],
-    [oldEvent, futureEvent, distantEvent],
-  )
-  assert.deepEqual(
-    result.ships.map((s) => s.id),
-    [7],
-  )
-  assert.deepEqual(
-    result.events.map((e) => e.id),
-    [1],
-    'Exclude future events and distant events',
-  )
-  assert.equal(result.source, 'local-simulation')
   assert.equal(localWorkbench.searchShips(' 900000007 ', [ship]).length, 1)
   assert.equal(localWorkbench.searchShips('集装箱', [ship]).length, 1)
   assert.equal(localWorkbench.searchShips('missing', [ship]).length, 0)

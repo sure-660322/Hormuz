@@ -12,7 +12,7 @@
 | README、AGENTS、相关 docs/ | 同步 Kimi 已结束、当前验收边界与后续分支/worktree 规则 |
 | 后端 P3/P4/P5、SQL、验证报告 | 保留实现和历史证据；当前只读 API 冒烟通过；未执行迁移或派生重建 |
 | data/handoff/current/events.jsonl、news.jsonl | 保留分类变更；与 manifest 哈希不一致，作为待修复快照记录，禁止宣称可导入 |
-| Logo/、前端图标 | 保留原始素材与实际运行资产，不因未跟踪而删除 |
+| Logo/、前端图标 | 2026-09-28 清理：Logo/ 仅保留工具栏两个图标源文件（图层/智能体，未跟踪）；比赛设计图与通知已移出仓库；前端实际运行资产（frontend/src/assets、public/event-kinds/）保留 |
 
 本地提交用于保存现有成果，不代表每个功能都完成独立验收。AG-00 尚缺交接包重新导出及独立空库验证：逐行对照整合起点 2e6adf3，events 仅 64 行 event_type 变化，news 仅 247 行 event_type 变化，行数及其他字段未变；本轮不更新清单哈希来绕过这一问题。下一项功能开发必须离开共享 main，使用独立分支与独立 worktree。
 

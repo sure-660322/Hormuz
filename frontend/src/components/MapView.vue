@@ -8,7 +8,6 @@ import 'leaflet/dist/leaflet.css'
 import type { ApiEvent, ApiMapShip, ApiShipPosition, ApiDwellResponse, ApiEncounter } from '../api'
 import {
   displayZone,
-  type GeoPoint,
   type LayerState,
   type ViewBounds,
 } from '../domain/maritime'
@@ -32,15 +31,10 @@ const props = defineProps<{
   globalViewRequest: number
   focusShipRequest: number
   nearbyShipIds: number[]
-  areaCenter: GeoPoint | null
-  radiusNm: number
-  picking: boolean
   theme: 'dark' | 'light'
   time: string | null
   vectorMinutes: number
   trackRecent24h: boolean
-  shareRequest: number
-  sharedView: { lat: number; lon: number; zoom: number } | null
   dwell: ApiDwellResponse | null
   encounters: ApiEncounter[] | null
   selectedEncounter: ApiEncounter | null
@@ -49,11 +43,9 @@ const emit = defineEmits<{
   selectShip: [ship: ApiMapShip]
   selectEvent: [event: ApiEvent]
   boundsChange: [bounds: ViewBounds]
-  pickCenter: [point: GeoPoint]
   harbourStatus: [status: string]
   countryStatus: [status: string]
   clearSelection: []
-  shareView: [view: { lat: number; lon: number; zoom: number }]
   selectEncounter: [encounter: ApiEncounter]
 }>()
 const container = ref<HTMLElement | null>(null)
@@ -64,7 +56,6 @@ let observer: ResizeObserver | undefined
 let shipLayer: L.LayerGroup,
   eventLayer: L.LayerGroup,
   trackLayer: L.LayerGroup,
-  areaLayer: L.LayerGroup,
   harbourLayer: L.LayerGroup,
   dwellLayer: L.LayerGroup,
   encounterLayer: L.LayerGroup
@@ -97,7 +88,6 @@ function scheduleShips() {
       isolated: props.isolated,
       time: props.time,
       vectorMinutes: props.vectorMinutes,
-      picking: props.picking,
     })
     if (!initialFitDone && props.ships.length) {
       initialFitDone = true
@@ -112,7 +102,6 @@ function scheduleEvents() {
       selectedEvent: props.selectedEvent,
       layers: props.layers,
       isolated: props.isolated,
-      picking: props.picking,
     })
   })
 }
@@ -205,7 +194,7 @@ function renderEncounters() {
       if (!entry) {
         const circle = L.circleMarker([lat, lng], { bubblingMouseEvents: false })
           .on('click', () => {
-            if (!props.picking) emit('selectEncounter', enc)
+            emit('selectEncounter', enc)
           })
         entry = { circle, signature: '' }
         encounterMarkers.set(key, entry)
@@ -259,19 +248,6 @@ function renderEncounters() {
     encounterSelectionCircle = null
   }
 }
-function renderArea() {
-  if (!map) return
-  areaLayer.clearLayers()
-  if (props.areaCenter)
-    L.circle([props.areaCenter.latitude, props.areaCenter.longitude], {
-      radius: props.radiusNm * 1852,
-      color: '#386d99',
-      weight: 1.5,
-      dashArray: '5 5',
-      fillOpacity: 0.06,
-      interactive: false,
-    }).addTo(areaLayer)
-}
 function emitBounds() {
   if (!map) return
   const b = map.getBounds()
@@ -296,12 +272,6 @@ function smoothlyCenterOn(point: L.LatLngExpression) {
 function focusShip() {
   const ship = props.ships.find((s) => s.id === props.selectedShipId)
   if (ship) smoothlyCenterOn([ship.latitude, ship.longitude])
-}
-function pickViewCenter(event: KeyboardEvent) {
-  if (!props.picking || !map || event.target !== container.value) return
-  event.preventDefault()
-  const point = map.getCenter()
-  emit('pickCenter', { latitude: point.lat, longitude: point.lng })
 }
 async function loadHarbours() {
   harbourRequest?.abort()
@@ -389,7 +359,6 @@ watch(
 )
 watch(() => [props.events, props.selectedEvent, props.time, displayZone.value], scheduleEvents)
 watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, props.windowSegments, props.windowSpeedColor, props.windowPointsVisible, displayZone.value], scheduleTrack)
-watch(() => props.shareRequest, () => { if (map) { const c = map.getCenter(); emit('shareView', { lat: c.lat, lon: c.lng, zoom: map.getZoom() }) } })
 watch(() => [props.dwell, props.encounters, props.selectedEncounter, props.isolated], scheduleDerived)
 // 从概览面板选中相遇时，地图飞到最近接近点并保证相遇图层可见。
 watch(() => props.selectedEncounter, (enc) => {
@@ -397,21 +366,8 @@ watch(() => props.selectedEncounter, (enc) => {
   const [lng, lat] = enc.closest_point.coordinates
   map.flyTo([lat, lng], Math.max(map.getZoom(), 9), { duration: 0.6 })
 })
-watch(() => props.sharedView, view => { if (view) map?.setView([view.lat, view.lon], view.zoom, { animate: false }) }, { flush: 'post' })
 watch(() => [props.layers, props.isolated], syncLayers, { deep: true })
-watch(() => [props.areaCenter, props.radiusNm], renderArea)
 watch(() => props.focusShipRequest, focusShip)
-watch(
-  () => props.picking,
-  (active) => {
-    if (active) {
-      shipLayer.eachLayer((layer) => {
-        if (layer instanceof L.Marker) layer.closeTooltip()
-      })
-      container.value?.focus()
-    }
-  },
-)
 watch(
   () => props.selectedEvent,
   (event) => {
@@ -488,7 +444,6 @@ onMounted(() => {
   vectorLayer = L.layerGroup().addTo(map)
   clusterLayer = L.layerGroup().addTo(map)
   trackLayer = L.layerGroup().addTo(map)
-  areaLayer = L.layerGroup().addTo(map)
   shipLayer = L.layerGroup().addTo(map)
   eventLayer = L.layerGroup().addTo(map)
   harbourLayer = L.layerGroup()
@@ -500,7 +455,7 @@ onMounted(() => {
     vectorLayer,
     canvas,
     getMap: () => map,
-    onSelectShip: (ship) => { if (!props.picking) emit('selectShip', ship) },
+    onSelectShip: (ship) => { emit('selectShip', ship) },
   })
   eventManager = new EventLayerManager({
     eventLayer,
@@ -515,10 +470,8 @@ onMounted(() => {
   })
   map.on('zoomend', () => { eventManager.setZoom(map!.getZoom()); scheduleShips(); scheduleEvents() })
   map.on('popupclose', () => { eventManager.onPopupClosed(); scheduleEvents() })
-  map.on('click', (e: L.LeafletMouseEvent) => {
-    if (props.picking)
-      emit('pickCenter', { latitude: e.latlng.lat, longitude: e.latlng.lng })
-    else emit('clearSelection')
+  map.on('click', () => {
+    emit('clearSelection')
   })
   observer = new ResizeObserver(() => {
     map?.invalidateSize({ pan: false })
@@ -526,7 +479,6 @@ onMounted(() => {
   })
   observer.observe(container.value)
   syncLayers()
-  renderArea()
   emitBounds()
 })
 onBeforeUnmount(() => {
@@ -548,10 +500,9 @@ onBeforeUnmount(() => {
   <div
     ref="container"
     class="maritime-map"
-    :class="{ picking, spotlight: !!selectedEvent, 'dark-map': theme === 'dark' }"
+    :class="{ spotlight: !!selectedEvent, 'dark-map': theme === 'dark' }"
     aria-label="交互地图"
     tabindex="0"
-    @keydown.enter="pickViewCenter"
   ></div>
   <div v-if="tileError" class="tile-notice" role="status">
     部分在线底图加载失败，船舶数据仍可使用

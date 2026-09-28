@@ -26,7 +26,7 @@ export function projectPosition(point: GeoPoint, bearing: number, nauticalMiles:
   return { latitude: nextLat / rad, longitude: ((nextLon / rad + 540) % 360) - 180 }
 }
 
-// 事件类别与 Logo/ 八类设计图对应（01-08）；颜色取自各设计图主色。
+// 事件类别共八类（military…other）；颜色取自原设计图主色（八类设计源图已于 2026-09-28 移出仓库）。
 // 图标置于 public/event-kinds/，以根路径引用（避免 workbench 裸 tsc/require 检查引入资源导入）。
 export const eventKinds: Record<
   string,
@@ -86,16 +86,6 @@ export interface ViewBounds {
   west: number
   east: number
 }
-export interface AreaQuery {
-  center: GeoPoint
-  radiusNm: number
-  at: string
-}
-export interface AreaResult {
-  ships: ApiMapShip[]
-  events: ApiEvent[]
-  source: 'local-simulation' | 'local-ais-snapshot'
-}
 export interface LayerState {
   countries: boolean
   ships: boolean
@@ -106,7 +96,7 @@ export interface LayerState {
   dwell: boolean
   encounters: boolean
 }
-export type Panel = 'overview' | 'events' | 'ships' | 'agent' | 'analysis'
+export type Panel = 'overview' | 'events' | 'ships' | 'agent'
 export function distanceNm(a: GeoPoint, b: GeoPoint) {
   const rad = Math.PI / 180
   const dlat = (b.latitude - a.latitude) * rad
