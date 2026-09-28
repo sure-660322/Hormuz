@@ -86,16 +86,6 @@ export interface ViewBounds {
   west: number
   east: number
 }
-export interface AreaQuery {
-  center: GeoPoint
-  radiusNm: number
-  at: string
-}
-export interface AreaResult {
-  ships: ApiMapShip[]
-  events: ApiEvent[]
-  source: 'local-simulation' | 'local-ais-snapshot'
-}
 export interface LayerState {
   countries: boolean
   ships: boolean
@@ -106,7 +96,7 @@ export interface LayerState {
   dwell: boolean
   encounters: boolean
 }
-export type Panel = 'overview' | 'events' | 'ships' | 'agent' | 'analysis'
+export type Panel = 'overview' | 'events' | 'ships' | 'agent'
 export function distanceNm(a: GeoPoint, b: GeoPoint) {
   const rad = Math.PI / 180
   const dlat = (b.latitude - a.latitude) * rad

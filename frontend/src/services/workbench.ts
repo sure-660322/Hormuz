@@ -1,15 +1,8 @@
-import type { ApiMapShip, ApiEvent } from '../api'
-import { hasEventLocation, distanceNm, type AreaQuery, type AreaResult } from '../domain/maritime'
+import type { ApiMapShip } from '../api'
 
 // These adapters operate on the currently loaded ship snapshot.
 export interface WorkbenchService {
   searchShips(query: string, ships: ApiMapShip[]): ApiMapShip[]
-  queryArea(
-    query: AreaQuery,
-    ships: ApiMapShip[],
-    events: ApiEvent[],
-    source?: AreaResult['source'],
-  ): AreaResult
 }
 export const localWorkbench: WorkbenchService = {
   searchShips(query, ships) {
@@ -19,20 +12,6 @@ export const localWorkbench: WorkbenchService = {
         value.toLocaleLowerCase().includes(q),
       ),
     )
-  },
-  queryArea(query, ships, events, source = 'local-simulation') {
-    return {
-      ships: ships.filter(
-        (ship) => distanceNm(query.center, ship) <= query.radiusNm,
-      ),
-      events: events.filter(
-        (event) =>
-          hasEventLocation(event) && event.occurred_at !== null &&
-          Date.parse(event.occurred_at) <= Date.parse(query.at) &&
-          distanceNm(query.center, event) <= query.radiusNm,
-      ),
-      source,
-    }
   },
 }
 

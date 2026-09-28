@@ -104,16 +104,11 @@ export function createCountryLayer(map: L.Map, status: (value: string) => void) 
   }
 
   map.on('moveend zoomend resize', renderLabels)
-  const refreshPrintLayout = () => { map.invalidateSize({ pan: false }); renderLabels() }
-  window.addEventListener('beforeprint', refreshPrintLayout)
-  window.addEventListener('afterprint', refreshPrintLayout)
   return {
     setVisible,
     destroy() {
       disposed = true; abort.abort()
       map.off('moveend zoomend resize', renderLabels)
-      window.removeEventListener('beforeprint', refreshPrintLayout)
-      window.removeEventListener('afterprint', refreshPrintLayout)
       borders.remove(); labels.remove()
       map.attributionControl?.removeAttribution(attribution)
     },

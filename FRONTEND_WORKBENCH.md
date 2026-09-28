@@ -30,6 +30,7 @@
 
 2026-09-21 整合：P3 停留图层、P4 相遇面板和 P5 数据健康区块已有代码。用户确认 Kimi 地图渲染优化已结束；本轮重新运行 build 与 check:workbench 均通过，未重跑浏览器性能测量。优化历史测量见 [性能报告](docs/map_rendering_optimization.md)，交接边界见 [协作说明](docs/collaboration.md)。
 2026-09-28 清理：比赛相关素材移出仓库——Logo/ 仅保留工具栏两个图标源文件（图层图标.png、智能体图标.png，未跟踪）；八类设计源图（01-08）与项目logo源图已删除，比赛通知 docs/aic_competition/ 目录已移除。顶栏运行资产 frontend/src/assets/logo.png 与事件图标 public/event-kinds/ 不受影响，保留。
+2026-09-28 工具栏改造（issue #10）：工具栏仅保留图层、智能体两个入口，改为新图标（Logo/ 源图 144px 缩小版，frontend/public/icons/）+ 文字标签；移除分享视图、半径分析、导出 PDF（打印）三项功能及全部关联逻辑（WorkspaceTools.vue、workbench.queryArea、电子围栏、打印样式与分享 hash 恢复）；顶栏「⋯」菜单的「停留分析试验」外链移除。layers.dwell 停留识别图层保留。`npm run build`、`npm run check:workbench` 通过；未做浏览器端到端验收。
 2026-09-21 UI 优化：顶栏接入项目 Logo（Logo/项目logo.png 压缩副本 frontend/src/assets/logo.png）；事件图标改为半透明毛玻璃圆底（去除纯白底板），屏幕显示尺寸基本固定、极端缩放级别仅 ±20% 微调；点击事件图标改为在图标附近弹出轻量信息卡（类型/标题/时间/摘要 + 查看详情），点击空白处关闭、切换事件即切换卡片，「查看详情」再打开右侧侧边栏。范围仅限前端展示与地图交互，未改数据契约。
 
 文档核对：2026-09-20，按当前前端代码核对，本次未重跑构建或浏览器验收；2026-09-19 增补 P1/P2 派生层前端能力（速度着色、事件×船舶关联）。全项目状态见 [README](README.md)，智能体契约与接入记录见 [智能体接入](docs/agent_integration.md)。
@@ -59,29 +60,28 @@
 
 - 2026-09-20 批次记录为 30 艘、9,354 条模拟船位，来自 output_news_aligned；本轮未重查数据库数量，数量不在前端写死。
 - 2026-09-20 历史批次的船舶为模拟；独立试点库当时只有 2026-02-25 AIS、没有新闻表；当前应用库同时保留七日 AIS 和新闻。两类资料仍独立浏览，不能由时空接近推断关联。
-- 选择新闻不会跳转模拟回放；区域查询仍不接入事件（空事件集不等于范围内无真实新闻）。事件详情另有演示级 observed 关联（模拟数据时空邻近，明确标注不构成真实因果）与 mentioned 原文船名，二者不按名称互通。
+- 选择新闻不会跳转模拟回放；事件详情另有演示级 observed 关联（模拟数据时空邻近，明确标注不构成真实因果）与 mentioned 原文船名，二者不按名称互通。
 - 2026-09-23 版本中地图新闻点与模拟时间轴独立显示；该规则已被 2026-09-24 时间回放修正取代。新闻报道日期与事件发生时间不可混用，模拟船位仍是教学数据。
 - 本轮以 `event_datetime` 为事件进入回放的时间；空值或无法解析时不使用首次报道日期补造发生时刻。日期级记录以存储的 UTC 日期起点进入回放，只表达日期顺序，不代表事件发生在 00:00。当前历史批次 65 个事件中 38 个缺此字段，另有 1 个晚于当前船位回放终点；这些事件暂不在回放窗口出现。无代表坐标但有发生时间的事件仍在列表中，代表点并非完整事件影响范围。
 - 封面取事件记录的 `image_path`，它是关联报道配图，不据此宣称为事件现场照片；后端 `GET /events/{event_id}/cover` 从 `NEWS_IMAGE_ROOT` 指定目录读取，找不到或路径不合规则返回 404。图片目录不随 Git 代码自动同步，服务器部署时需另行提供文件并配置目录。
 - 回放不使用 /ships/map 的最新位置代替历史位置。真实 AIS 快照接口对每艘船只返回所选时刻前 1 小时内最新报位，保留真实记录时间；此阈值仅为当前单日展示规则。
 - 多地点新闻完整绘制、真实 AIS 与新闻船舶身份关联、自动新闻风险判定、通用双地图及密度分析尚未实现。真实 AIS 已有单船抽稀轨迹，但没有 MobilityDB 派生停留、相遇或逐点回放联动。
-- WorkspaceTools 中“单日模拟回放”的旧规划提示尚未随多日回放更新；本次仅改文档，未修改页面文案。
 
 ## 代码职责
 
 | 路径 | 作用 |
 | --- | --- |
-| frontend/src/App.vue | 选择、面板、回放、图层、分享与区域状态 |
+| frontend/src/App.vue | 选择、面板、回放与图层状态 |
 | frontend/src/api.ts | 后端请求、响应类型、事件展示字段适配 |
 | frontend/src/composables/usePlayback.ts | 时间范围加载及最近报位回放 |
 | frontend/src/components/MapView.vue | 地图对象、船位、轨迹（含派生层速度着色渲染）、事件代表点、就地信息卡与参考图层 |
 | frontend/src/components/ExplorerSidebar.vue | 左侧新闻/模拟船舶探索列表、筛选及搜索入口 |
 | frontend/src/components/EventPanel.vue | 事件筛选、详情、关联报道与事件×船舶关联区 |
 | frontend/src/components/ShipInspector.vue | 船舶详情、航速曲线与派生层速度着色开关 |
-| frontend/src/components/WorkspaceTools.vue | 图层与本地区域查询 |
+| frontend/src/components/ToolRail.vue | 地图工具栏（图层、智能体入口，图标+文字标签） |
 | frontend/src/components/TimelineControls.vue | 回放控件 |
 | frontend/src/domain/maritime.ts | 时间格式、展示类型和距离计算 |
-| frontend/src/services/workbench.ts | 本地同步查询及尚未实现的服务契约 |
+| frontend/src/services/workbench.ts | 本地船舶搜索及尚未实现的服务契约 |
 | frontend/src/services/countryLayer.ts | 国家边界与标签 |
 | frontend/checks/workbench.cjs | 工作台轻量语义检查 |
 
