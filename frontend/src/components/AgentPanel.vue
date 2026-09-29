@@ -11,6 +11,7 @@ import {
   describeApiError,
   AgentRequestError,
   type AgentAnalyzeResponse,
+  type AgentMapAction,
   type AgentEvidence,
   type AgentTurn,
   type AgentToolEventContextResult,
@@ -28,10 +29,12 @@ const emit = defineEmits<{
   'locate-ship': [shipId: number]
   'locate-event': [eventId: string]
 }>()
+const props = defineProps<{ executeMapAction: (action: AgentMapAction) => Promise<string> }>()
 
 interface AgentTurnState {
   question: string
   response: AgentAnalyzeResponse | null
+  mapMessage?: string
 }
 
 const markdown = new MarkdownIt({ html: false, linkify: false, breaks: true })
@@ -136,12 +139,22 @@ function parseTime(value: string): string | null {
   return trimmed ? trimmed : null
 }
 
+function explicitTrackWindow(text: string): [string, string] | null {
+  if (!text.includes('轨迹')) return null
+  const values = text.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})/g)
+  if (values?.length !== 2) return null
+  const start = Date.parse(values[0]!), end = Date.parse(values[1]!)
+  return Number.isFinite(start) && Number.isFinite(end) && start < end && end - start <= 86400000
+    ? [new Date(start).toISOString(), new Date(end).toISOString()] : null
+}
+
 async function submit() {
   if (!canSubmit.value) return
   request?.abort()
   const controller = new AbortController()
   request = controller
   const asked = question.value.trim()
+  const inferredWindow = explicitTrackWindow(asked)
   const history = buildHistory()
   const turnIndex = turns.value.push({ question: asked, response: null }) - 1
   question.value = ''
@@ -157,14 +170,16 @@ async function submit() {
     const response = await fetchAgentAnalyze(
       {
         question: asked,
-        closure_at: parseTime(closureAt.value),
-        end_at: parseTime(endAt.value),
+        closure_at: parseTime(closureAt.value) ?? inferredWindow?.[0] ?? null,
+        end_at: parseTime(endAt.value) ?? inferredWindow?.[1] ?? null,
         history,
       },
       controller.signal,
     )
     if (request === controller && !controller.signal.aborted) {
       turns.value[turnIndex]!.response = response
+      const automatic = response.map_actions?.find(action => action.trigger === 'automatic')
+      if (automatic) void runMapAction(turnIndex, automatic)
       void scrollToLatest()
     }
   } catch (e) {
@@ -179,6 +194,17 @@ async function submit() {
       stopClock()
       void scrollToLatest()
     }
+  }
+}
+
+async function runMapAction(turnIndex: number, action: AgentMapAction) {
+  const turn = turns.value[turnIndex]
+  if (!turn) return
+  turn.mapMessage = '正在地图加载并核对目标…'
+  try {
+    turn.mapMessage = await props.executeMapAction(action)
+  } catch (e) {
+    turn.mapMessage = describeApiError(e, '地图操作失败')
   }
 }
 
@@ -329,6 +355,13 @@ onBeforeUnmount(() => { request?.abort(); stopClock() })
         </p>
         <section v-if="turn.response.answer" class="answer-block">
           <div class="answer-text" v-html="renderAnswer(turn.response.answer)"></div>
+        </section>
+        <section v-if="turn.response.map_actions?.length" class="facts-block">
+          <h3>地图操作</h3>
+          <button v-for="(action, actionIndex) in turn.response.map_actions" :key="actionIndex" type="button" class="locate-btn" @click="runMapAction(turnIndex, action)">
+            {{ action.type === 'ship_track' ? '在地图显示轨迹' : '在地图显示事件' }}
+          </button>
+          <p v-if="turn.mapMessage" role="status" class="caption">{{ turn.mapMessage }}</p>
         </section>
 
         <section v-if="analyticsResult(turn.response)" class="facts-block analytics-block">

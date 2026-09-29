@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.app.services.agent import results, sql_tools
+from backend.app.services.agent.map_actions import build_map_actions
 from backend.app.services.agent.business_tools import (
     make_business_tools,
     record_envelope,
@@ -271,4 +272,5 @@ def run_lc_agent(
     )
     if answer_limitation and answer_limitation not in outcome["limitations"]:
         outcome["limitations"].append(answer_limitation)
+    outcome["map_actions"] = build_map_actions(question, state["results"], forced_window=forced_window)
     return outcome

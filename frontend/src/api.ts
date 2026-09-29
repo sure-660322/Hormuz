@@ -381,7 +381,12 @@ export interface AgentAnalyzeResponse {
   results: Record<string, AgentToolResult>  // 各工具结构化结果，按服务端 call_id
   limitations: string[]
   clarification: string | null
+  map_actions: AgentMapAction[]
 }
+
+export type AgentMapAction =
+  | { type: 'ship_track'; trigger: 'automatic' | 'suggested'; ship_id: number; start_at: string; end_at: string; source: 'nnu_ais' }
+  | { type: 'event'; trigger: 'suggested'; event_id: string; source: 'news' }
 
 // 非通行工具的结构化结果（字段定义见 docs/agent_integration.md 与后端工具模块）
 export interface AgentToolEnvelope {

@@ -180,4 +180,5 @@ def build_result(
         "results": results,
         "limitations": limitations,
         "clarification": clarification,
+        "map_actions": [],
     }

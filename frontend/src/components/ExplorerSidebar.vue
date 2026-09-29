@@ -123,7 +123,14 @@ watch(eventView, view => { if (view === 'timeline') void nextTick(scrollToCurren
             <div class="dayline-cards">
               <button v-for="(event, i) in group.events" :key="event.event_id" class="dayline-card" :class="{ right: i % 2 === 1, selected: selectedEventId === event.event_id }" :title="eventTimeText(event)" @click="selectEvent(event)">
                 <span class="event-category dayline-card-kind" :style="{ color: eventKind(event.event_type).color }"><img :src="eventKind(event.event_type).icon" alt="" />{{ eventKind(event.event_type).label }}</span>
-                <strong>{{ event.title }}</strong><small>{{ event.coverage_count }} 篇报道</small>
+                <span class="dayline-card-content">
+                  <span class="dayline-card-cover" aria-hidden="true">
+                    <img v-if="!failedCovers.has(event.event_id)" :src="eventCoverUrl(event.event_id)" alt="" loading="lazy" decoding="async" @error="failedCovers.add(event.event_id)" />
+                    <img v-else class="cover-fallback" :src="eventKind(event.event_type).icon" alt="" />
+                  </span>
+                  <strong>{{ event.title }}</strong>
+                </span>
+                <small>{{ event.coverage_count }} 篇报道</small>
               </button>
             </div>
           </section>
