@@ -4,7 +4,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SCHEMA_VERSION = "3"
 # 多轮 history 携带上限，与 backend/app/services/agent/langchain_runner.py 的 MAX_HISTORY_TURNS 一致
@@ -110,6 +110,17 @@ class AgentAnalyzeResponse(BaseModel):
     results: dict[str, Any]  # 各工具的结构化结果（按服务端 call_id），供前端展示与追溯
     limitations: list[str]
     clarification: str | None  # 非澄清状态为空
+    map_actions: list["AgentMapAction"] = Field(default_factory=list)
+
+
+class AgentMapAction(BaseModel):
+    type: Literal["ship_track", "event"]
+    trigger: Literal["automatic", "suggested"]
+    ship_id: int | None = None
+    event_id: str | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    source: Literal["nnu_ais", "news"]
 
 
 class AgentErrorDetail(BaseModel):

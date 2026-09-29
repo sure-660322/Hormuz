@@ -30,6 +30,7 @@ const props = defineProps<{
   layers: LayerState
   globalViewRequest: number
   focusShipRequest: number
+  focusTrackRequest: number
   nearbyShipIds: number[]
   theme: 'dark' | 'light'
   time: string | null
@@ -368,6 +369,13 @@ watch(() => props.selectedEncounter, (enc) => {
 })
 watch(() => [props.layers, props.isolated], syncLayers, { deep: true })
 watch(() => props.focusShipRequest, focusShip)
+watch(() => props.focusTrackRequest, () => {
+  const points = (props.windowSegments ?? []).flatMap(segment => segment.points)
+  if (map && points.length) map.fitBounds(
+    L.latLngBounds(points.map(point => [point.latitude, point.longitude] as L.LatLngTuple)),
+    { padding: [70, 70], maxZoom: 11, animate: false },
+  )
+})
 watch(
   () => props.selectedEvent,
   (event) => {

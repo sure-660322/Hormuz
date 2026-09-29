@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { fetchEvents, fetchShipTracks, fetchShipTrackWindow, fetchDwell, fetchEncounters, analyzeEncounters, fetchDataHealth, describeApiError, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiTrackWindow, type ApiDwellResponse, type ApiEncounter, type ApiDataHealth } from './api'
+import { fetchEvents, fetchShipTracks, fetchShipTrackWindow, fetchDwell, fetchEncounters, analyzeEncounters, fetchDataHealth, describeApiError, type AgentMapAction, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiTrackWindow, type ApiDwellResponse, type ApiEncounter, type ApiDataHealth } from './api'
 import { usePlayback } from './composables/usePlayback'
 import {
   inBounds,
@@ -37,6 +37,7 @@ const {
   snapshotLoading,
   snapshotError,
   load,
+  seek,
   retrySnapshot,
 } = usePlayback()
 const events = ref<ApiEvent[]>([])
@@ -57,6 +58,18 @@ const isolated = ref(false)
 const trackVisible = ref(false)
 const globalViewRequest = ref(0)
 const focusShipRequest = ref(0)
+const focusTrackRequest = ref(0)
+const agentTrack = ref<ApiTrackWindow | null>(null)
+let mapActionVersion = 0
+watch(time, at => {
+  if (!agentTrack.value || !at) return
+  const current = Date.parse(at)
+  if (current < Date.parse(agentTrack.value.from) || current > Date.parse(agentTrack.value.to)) {
+    agentTrack.value = null
+    trackVisible.value = false
+    mapActionVersion++
+  }
+})
 const seekRequest = ref(0)
 const bounds = ref<ViewBounds | null>(null)
 const harbourStatus = ref('按需加载')
@@ -264,6 +277,8 @@ async function reanalyzeEncounters() {
   }
 }
 function chooseShip(ship: ApiMapShip) {
+  agentTrack.value = null
+  mapActionVersion++
   if (selectedShipId.value !== ship.id) {
     trackVisible.value = false
     if (isRealAis.value) {
@@ -282,6 +297,8 @@ function chooseShip(ship: ApiMapShip) {
   focusShipRequest.value++
 }
 function clearShip() {
+  agentTrack.value = null
+  mapActionVersion++
   selectedShipId.value = null
   trackVisible.value = false
   realPointsVisible.value = false
@@ -330,6 +347,48 @@ function locateAgentEvent(eventId: string) {
     return
   }
   chooseEvent(event)
+}
+async function executeMapAction(action: AgentMapAction): Promise<string> {
+  if (action.type === 'event') {
+    if (action.source !== 'news' || !action.event_id) return '事件标识或来源无效。'
+    const event = events.value.find(item => item.event_id === action.event_id)
+    if (!event) return `未找到事件 ${action.event_id}。`
+    if (!hasEventLocation(event)) return `事件 ${action.event_id} 没有可定位的代表坐标。`
+    if (!event.occurred_at || !eventOccurredBy(event, time.value)) return '事件发生日期尚未进入当前回放范围；请调整时间轴。'
+    chooseEvent(event)
+    return selectedEvent.value?.event_id === action.event_id ? '事件已在地图选中。' : '事件未能选中。'
+  }
+  if (action.source !== 'nnu_ais' || !Number.isSafeInteger(action.ship_id) || action.ship_id <= 0) return '船舶标识或来源无效。'
+  const start = Date.parse(action.start_at), end = Date.parse(action.end_at)
+  const first = Date.parse(times.value[0] ?? ''), last = Date.parse(times.value.at(-1) ?? '')
+  if (![start, end, first, last].every(Number.isFinite) || start >= end || end - start > 86400000 || start < first || end > last)
+    return '轨迹时间窗无效或超出本批 AIS 覆盖；单次最多 24 小时。'
+  const version = ++mapActionVersion
+  let loaded: ApiTrackWindow
+  try {
+    loaded = await fetchShipTrackWindow(action.ship_id, new Date(start).toISOString(), new Date(end).toISOString(), 300)
+  } catch (e) { return describeApiError(e, '轨迹加载失败') }
+  if (version !== mapActionVersion) return '地图目标已变更，本次操作已取消。'
+  const points = loaded.segments.flatMap(segment => segment.points)
+  if (points.length < 2) return points.length
+    ? '指定时间窗只有一个采样报位，无法绘制轨迹。'
+    : '指定时间窗没有该船报位，无法显示轨迹。'
+  const latest = points.at(-1)!
+  seek(latest.recorded_at)
+  const deadline = Date.now() + 20000
+  while (version === mapActionVersion && !snapshotError.value && !frameReady.value && Date.now() < deadline)
+    await new Promise(resolve => setTimeout(resolve, 100))
+  const ready = frameReady.value && !snapshotError.value && requestedTime.value !== null && Date.parse(requestedTime.value) >= Date.parse(latest.recorded_at)
+  if (version !== mapActionVersion) return '地图目标已变更，本次操作已取消。'
+  if (!ready) return snapshotError.value || '回放快照未能加载，轨迹未选中。'
+  const ship = currentShips.value.find(item => item.id === action.ship_id)
+  if (!ship) return '轨迹有报位，但所选回放帧没有该船的有效快照。'
+  chooseShip(ship)
+  agentTrack.value = loaded
+  trackVisible.value = true
+  layers.value.tracks = true
+  focusTrackRequest.value++
+  return `已在地图显示船 ID ${action.ship_id} 的轨迹（${new Date(start).toISOString()} 至 ${new Date(end).toISOString()}）。`
 }
 function restore() {
   clearShip()
@@ -548,13 +607,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :track="selectedTrack"
         :track-visible="trackVisible"
         :speed-segments="speedColorOn ? speedSegments : null"
-        :window-segments="isRealAis ? (realTrack?.segments ?? []) : null"
+        :window-segments="agentTrack ? agentTrack.segments : (isRealAis ? (realTrack?.segments ?? []) : null)"
         :window-speed-color="isRealAis && speedColorOn"
         :window-points-visible="isRealAis && realPointsVisible"
         :isolated="isolated"
         :layers="layers"
         :global-view-request="globalViewRequest"
         :focus-ship-request="focusShipRequest"
+        :focus-track-request="focusTrackRequest"
         :nearby-ship-ids="nearbyShipIds"
         :theme="theme"
         :time="time"
@@ -652,6 +712,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           {{ headTitle
           }}<span v-if="headContext" :title="headContext">· {{ headContext }}</span>
         </h2>
+        <button v-if="panel !== 'agent'" type="button" class="locate-btn" @click="panel = 'agent'">返回对话</button>
         <button class="detail-close" aria-label="关闭详情" @click="backToOverview">×</button>
       </header>
       <EventPanel
@@ -702,7 +763,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @locate="focusShipRequest++"
       />
       <AgentPanel
-        v-if="panel === 'agent'"
+        v-show="panel === 'agent'"
+        :execute-map-action="executeMapAction"
         @locate-ship="locateAgentShip"
         @locate-event="locateAgentEvent"
       />
