@@ -170,3 +170,22 @@ SQL-02～06 的阶段验收文档继续保留，但不再作为当前任务看�
 - 文档和页面不得把方案写成已实现功能。
 - 第一版按学生比赛项目控制复杂度；不为尚未出现的商业部署问题增加框架。
 - 依赖版本、模型 Tool Calling 和 SQL Agent 行为必须实际测试后锁定。
+
+## Issue #24 轨迹模型上下文优化（2026-09-30）
+
+- 状态：后端实现及离线回归已验证；浏览器夹具联动已验证；待 PR 评审、未合入 main、未部署。真实模型 token/费用对比未验证。
+- 负责人：Codex；基线 `e9518fea2291b6d42436beaae1a995506213b73a`；分支 `codex/issue-24-track-summary`；worktree `D:/my_project/Hormuz-worktrees/codex-issue-24-track-summary`。本任务负责 business_tools.py、langchain_runner.py、新增 track_observation.py/model_usage.py、对应测试及 README/本计划/接入契约的任务段落。未改其他会话 worktree。
+- 本轮未启动服务，未连接或修改数据库。浏览器使用现有 5174 前端与 8000 只读地图 API；仅本任务独立浏览器会话拦截 `/agent/analyze`，响应由本 worktree 的 run_lc_agent + ScriptedFakeLLM + 轨迹夹具生成，无收费模型调用。完整夹具报位不代表真实 AIS 观测。
+- 实现：record_envelope 将完整轨迹留在 state/results，仅给模型发送有界 JSON 摘要。包含查询/覆盖时间、身份、数量、首末报位、来源及限制，无完整 fixes。地图位置动作仍读取末报位 recorded_at，轨迹动作仍读取身份与窗口；响应 v4/前端类型不变。
+- 用量：每个模型 run 的完成/失败记录与问答汇总通过 Uvicorn INFO 日志输出，按 run_id 去重，优先供应商标准 usage_metadata、兼容 token_usage；缺失为 null/unavailable。model_calls 为 LangChain 调用数，SDK 内部重试不可见，network_attempts=null。某轮缺失时完整累计为 null，不把已知的部分用量冒充总量；缓存数据独立标明缺失。不输出原始消息、错误正文、密钥，不估算费用。
+- 本轮命令：主目录后端 venv Python 在该 worktree 执行 `-m pytest backend/tests -q`：286 passed / 12 skipped。新增测试覆盖 0/2/50,000 条夹具、大小上限、长文本及限制省略、两次后续模型轮次均无 fixes、完整服务端证据、轨迹/定位动作、usage 缺失/失败/缓存/去重及请求汇总。沿用地图测试覆盖歧义、代词、否定、无数据、时间窗口等边界。未修改 Vue/TypeScript，未重跑无关前端构建。
+
+| 相同字段的轨迹夹具 | 原结果字符/UTF-8 字节 | 模型摘要字符/UTF-8 字节 |
+| --- | --- | --- |
+| 0 条 | 298 / 298 | 495 / 617 |
+| 2 条 | 563 / 563 | 789 / 911 |
+| 50,000 条 | 6,800,295 / 6,800,295 | 793 / 915 |
+
+以上为固定测试夹具的 JSON 大小，不是 tokenizer 或供应商实际 token；少量报位的摘要有说明开销，大量报位时长度不随报位数量线性增长。不声称具体费用节省比例。
+
+浏览器：Playwright 独立会话 `issue24`，两次提问后聊天面板和上一轮结果保留；显示 FAIR TIGER（ID 360）14:00–15:00 UTC 轨迹成功，第二轮定位/高亮成功（界面以真实地图 API 返回的 14:58:39Z 报位时间为准）。`/ships/360/track-window` 与 `/ships/snapshot-window` 返回 200。控制台 0 errors、1 条现有 ECharts 零尺寸 warning；未将该图表警告归因于本任务。临时证据在 worktree 的 `output/playwright/`（track/position-snapshot.txt、track/position-network.txt、generate_fixture.py、生成响应）及 `.playwright-cli/`，不提交原始数据与临时输出。后端真实模型日志、原始 9 次账单归因、真实供应商缓存/费用及全量端到端模型验收未验证。
