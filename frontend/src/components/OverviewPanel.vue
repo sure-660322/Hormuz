@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import type { ApiEvent, ApiMapShip, ApiEncounter, ApiDataHealth } from '../api'
 import { eventKind, formatTime, shipType } from '../domain/maritime'
 import { BRENT_SOURCE_URL } from '../domain/brentPrices'
-import BrentPriceChart from './BrentPriceChart.vue'
+import MarketTrendChart from './MarketTrendChart.vue'
 const props = defineProps<{
   time: string | null
   viewShips: ApiMapShip[]
@@ -64,16 +64,17 @@ const derivedTables = computed(() => props.health?.derived ?? [])
         >平均航速 <strong>{{ averageSpeed }}</strong> kn</span
       >
     </div>
-    <section class="overview-section overview-chart" aria-label="布伦特原油价格">
+    <section class="overview-section overview-chart" aria-label="油价与油轮通行量">
       <div class="section-title">
-        <h3>Brent 原油现货价</h3>
-        <span>回放窗口前后各一周 · 美元/桶</span>
+        <h3>油价 · 油轮通行量</h3>
+        <span>回放窗口前后各一周 · 双轴折线</span>
       </div>
-      <BrentPriceChart />
+      <MarketTrendChart />
       <p class="chart-source">
         数据来源：<a :href="BRENT_SOURCE_URL" target="_blank" rel="noopener noreferrer">EIA · Europe Brent Spot Price FOB (Daily)</a>
+        · 油轮通行量为本机 AIS 观测统计（UTC 归日，虚拟门线口径，详见 docs/daily_tanker_passages_2026-09-30.md）
       </p>
-      <p class="chart-source chart-note">注：Brent 现货价仅工作日发布，周末无报价，横轴日期间隔两天属正常情况。</p>
+      <p class="chart-source chart-note">注：Brent 现货价仅工作日发布，周末无报价显示为断点；通行量 02-24 与 03-03 为部分日窗，03-03 的 0 表示“无确定通行”，不证明实际零通行。</p>
     </section>
     <section class="overview-section" aria-label="热点事件">
       <div class="section-title">
