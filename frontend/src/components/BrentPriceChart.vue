@@ -46,7 +46,7 @@ onMounted(() => {
     grid: { top: 28, right: 18, bottom: 28, left: 52 },
     tooltip: {
       trigger: 'axis',
-      valueFormatter: (value) => `$${Number(value).toFixed(2)}/bbl`,
+      valueFormatter: (value) => `${Number(value).toFixed(2)} 美元/桶`,
     },
     xAxis: {
       type: 'category',
