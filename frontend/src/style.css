@@ -646,6 +646,29 @@ button.primary:hover {
   background: transparent;
   text-decoration: underline;
 }
+/* 数据展板：Brent 原油价格折线图（issue #21） */
+.overview-chart {
+  grid-column: 1 / -1;
+}
+.brent-chart {
+  width: 100%;
+  height: 240px;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+.chart-source {
+  margin: 0;
+  padding: 6px 20px 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.chart-source a {
+  color: var(--muted);
+  text-decoration: underline;
+}
+.chart-source a:hover {
+  color: var(--ink);
+}
 .layers-popover {
   position: absolute;
   left: 64px;

@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import type { ApiEvent, ApiMapShip, ApiEncounter, ApiDataHealth } from '../api'
 import { eventKind, formatTime, shipType } from '../domain/maritime'
+import { BRENT_SOURCE_URL } from '../domain/brentPrices'
+import BrentPriceChart from './BrentPriceChart.vue'
 const props = defineProps<{
   time: string | null
   viewShips: ApiMapShip[]
@@ -62,6 +64,16 @@ const derivedTables = computed(() => props.health?.derived ?? [])
         >平均航速 <strong>{{ averageSpeed }}</strong> kn</span
       >
     </div>
+    <section class="overview-section overview-chart" aria-label="布伦特原油价格">
+      <div class="section-title">
+        <h3>Brent 原油现货价</h3>
+        <span>回放窗口前后各一周 · 美元/桶</span>
+      </div>
+      <BrentPriceChart />
+      <p class="chart-source">
+        数据来源：<a :href="BRENT_SOURCE_URL" target="_blank" rel="noopener noreferrer">EIA · Europe Brent Spot Price FOB (Daily)</a>
+      </p>
+    </section>
     <section class="overview-section" aria-label="热点事件">
       <div class="section-title">
         <h3>热点事件</h3>
