@@ -4,7 +4,7 @@
 
 2026-09-30，负责人 Codex。基线 `937556b`，分支 `codex/arctic-ocean-case`，独立工作区 `D:/my_project/Hormuz-worktrees/codex-arctic-ocean-case`。允许修改案例 API、CSV 导入、回放范围、地图/智能体联动与对应文档；共享文件由本任务整合。预览前端 5176、后端 8002；原 5174/8000 服务未停止。独立验证库 `hormuz_arctic_case_test`，应用目标 `aisdb`；不包含凭据。
 
-当前状态：**已实现并完成本轮验收，待 PR 评审**。没有合入 main 或部署。
+当前状态：**已验证，PR #27 已合入 main，本地同步和清理完成**。合并提交`2830ae6`（2026-09-30）；用户授权整合。本任务本地/远端分支及工作区已删除，未正式部署。原工作区路径仅为历史记录；验收资料保存在`D:/my_project/Hormuz/local-archive/arctic-case-pr27/evidence/`，Playwright记录在同级`playwright/`，数据库备份在主目录`data/db_backups/hormuz-before-case-20260930.dump`，复制后SHA256一致。预览5176/8002及本任务浏览器已关闭，其他工作区与共享依赖保留。
 
 案例独立于新闻事件：一条案例绑定经核对的 MMSI/IMO，阶段包含浏览窗口与多篇报道引用。第一版定义在 `backend/app/routers/cases.py`，用响应 schema 和前端类型约束，不新增业务表或迁移。报道保存标题、媒体、发布日期、来源链接和简短阶段摘要，不复制全文；不补造发生时间或坐标，不把相邻报位当作新闻因果。当前六篇引用是案例资料，不代表六条新闻已插入 news 表。
 
@@ -79,3 +79,7 @@ python -m backend.import_case_ais <本机CSV绝对路径> --report local-archive
 ### 2026-09-30 方向箭头与默认着色增量
 
 前端build/check:workbench、git diff --check通过。纯函数回归覆盖稀疏密度、东西方向、跨缺报段不补箭头及静止微小抖动。Chrome实测案例速度着色默认true，阶段日期及精简标识正确；地图探索真实船YAM 14，24h窗口263采样点显示6个方向箭头且速度着色默认true。缩放触发布置更新，隐藏轨迹清除箭头；截图local-archive/arctic-arrows.png。修正首次进入案例时初始船位自动聚焦覆盖完整轨迹视野的问题。此次仅前端调整，无数据库变更；后端294/12为此前验证，未冒充本轮重跑。
+
+### 合并与清理核验（2026-09-30）
+
+GitHub确认PR #27状态MERGED、base=main；`git merge --ff-only origin/main`同步本地主目录，`git merge-base --is-ancestor 2830ae65d20bd56b0ae1cabefd3a81e23923f176 origin/main`通过。本任务目录实际不存在、git worktree list已无该项、本地与远端分支已删除。首次批量清理被自动审批策略拒绝；随后分步仅移除依赖junction并使用Git普通移除。Git遇到浏览器目录占用，关闭本任务浏览器后删除空目录成功；共享frontend/node_modules仍存在。本轮仅整合、归档与文档更新，没有再次导入或修改数据库；此前测试记录保留原验证范围。
