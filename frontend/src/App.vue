@@ -20,6 +20,9 @@ import ToolRail from './components/ToolRail.vue'
 import OverviewPanel from './components/OverviewPanel.vue'
 import LayersPopover from './components/LayersPopover.vue'
 import ExplorerSidebar from './components/ExplorerSidebar.vue'
+import CasePanel from './components/CasePanel.vue'
+import { fetchArcticOceanCase, type ApiMaritimeCase } from './api'
+import { caseTrackChunks, mergeCaseTracks, clipCaseTracks } from './domain/casePlayback'
 
 const {
   tracks,
@@ -40,6 +43,153 @@ const {
   seek,
   retrySnapshot,
 } = usePlayback()
+const caseOpen = ref(false)
+const caseDetailsOpen = ref(true)
+const caseData = ref<ApiMaritimeCase | null>(null)
+const caseLoading = ref(false)
+const caseError = ref('')
+const caseActive = ref(false)
+const caseStageId = ref('overview')
+const caseFullTrack = ref<ApiTrackWindow | null>(null)
+const caseAgentWindow = computed(() => {
+  const stage = caseData.value?.stages.find(s => s.id === caseStageId.value)
+  return stage ? { start_at: stage.start_at, end_at: stage.end_at } : caseWindow.value
+})
+const caseHighlight = computed(() => {
+  if (!time.value || !caseAgentWindow.value) return []
+  const end = new Date(Math.min(Date.parse(time.value), Date.parse(caseAgentWindow.value.end_at))).toISOString()
+  return clipCaseTracks(caseFullTrack.value, caseAgentWindow.value.start_at, end)
+})
+const caseWindow = ref<{ start_at: string; end_at: string } | null>(null)
+const caseSwitching = ref(false)
+const savedCaseView = ref<{
+  time: string | null; view: ReturnType<InstanceType<typeof MapView>['captureView']>
+  ship: number | null; event: ApiEvent | null; panel: Panel; panelOpen: boolean
+  workspace: 'overview' | 'explore'; layers: LayerState; isolated: boolean; trackVisible: boolean
+  sidebarOpen: boolean; category: 'events' | 'ships'
+} | null>(null)
+let caseVersion = 0
+async function loadCase() {
+  caseLoading.value = true
+  caseError.value = ''
+  try { caseData.value = await fetchArcticOceanCase() }
+  catch (e) { caseError.value = describeApiError(e, '案例加载失败') }
+  finally { caseLoading.value = false }
+}
+async function openCase() {
+  caseDetailsOpen.value = true
+  if (caseOpen.value) return
+  if (!savedCaseView.value) savedCaseView.value = {
+    time: time.value, view: mapView.value?.captureView() ?? null, ship: selectedShipId.value,
+    event: selectedEvent.value, panel: panel.value, panelOpen: panelOpen.value,
+    workspace: workspaceMode.value, layers: { ...layers.value }, isolated: isolated.value,
+    trackVisible: trackVisible.value, sidebarOpen: sidebarOpen.value, category: exploreCategory.value,
+  }
+  caseOpen.value = true
+  workspaceMode.value = 'explore'
+  panelOpen.value = false
+  if (!caseData.value) await loadCase()
+  if (caseOpen.value) await initializeCase()
+}
+async function initializeCase() {
+  const data = caseData.value
+  if (!caseOpen.value || !data?.ready || !data.ship_id || !data.start_at || !data.end_at) return
+  const version = ++caseVersion
+  caseSwitching.value = true
+  caseError.value = ''
+  clearShip()
+  caseFullTrack.value = null
+  selectedEvent.value = null
+  panelOpen.value = false
+  caseActive.value = true
+  caseStageId.value = 'overview'
+  caseWindow.value = { start_at: data.start_at, end_at: data.end_at }
+  try {
+    const windows = caseTrackChunks(data.start_at, data.end_at)
+    const [, results] = await Promise.all([
+      load({ ...caseWindow.value, ship_id: data.ship_id }),
+      Promise.all(windows.map(([from, to]) => fetchShipTrackWindow(data.ship_id!, from, to, 120))),
+    ])
+    if (version !== caseVersion || !caseOpen.value) return
+    if (error.value) throw new Error(error.value)
+    caseFullTrack.value = mergeCaseTracks(results)
+    seek(data.end_at)
+    seekRequest.value++
+    selectedShipId.value = data.ship_id
+    trackVisible.value = true
+    realPointsVisible.value = false
+    speedColorOn.value = true
+    isolated.value = false
+    layers.value.ships = true
+    layers.value.tracks = true
+    layers.value.dwell = false
+    layers.value.encounters = false
+    await nextTick()
+    focusTrackRequest.value++
+  } catch (e) {
+    if (version === caseVersion) caseError.value = describeApiError(e, '完整案例加载失败')
+  } finally { if (version === caseVersion) caseSwitching.value = false }
+}
+async function selectCaseStage(id: string) {
+  caseStageId.value = id
+  if (!caseActive.value || caseSwitching.value) return
+  const version = ++caseVersion
+  cancelMapAction()
+  agentTrack.value = null
+  const stage = caseData.value?.stages.find(s => s.id === id)
+  const end = stage?.end_at ?? caseWindow.value!.end_at
+  // Use the last existing frame within the phase, rather than the next day's frame.
+  seek(times.value.filter(at => Date.parse(at) <= Date.parse(end)).at(-1) ?? end)
+  seekRequest.value++
+  selectedShipId.value = caseData.value!.ship_id
+  trackVisible.value = true
+  await nextTick()
+  const deadline = Date.now() + 20000
+  while (version === caseVersion && !frameReady.value && !snapshotError.value && Date.now() < deadline)
+    await new Promise(resolve => setTimeout(resolve, 100))
+  if (version === caseVersion && caseOpen.value) focusTrackRequest.value++
+}
+async function exitCase() {
+  const version = ++caseVersion
+  const previous = savedCaseView.value
+  const reload = caseActive.value
+  clearShip()
+  caseActive.value = false
+  caseOpen.value = false
+  caseSwitching.value = false
+  caseWindow.value = null
+  caseFullTrack.value = null
+  if (reload) { await load(); if (version !== caseVersion) return }
+  if (previous) {
+    if (previous.time && reload) seek(previous.time)
+    selectedShipId.value = previous.ship
+    selectedEvent.value = previous.event
+    panel.value = previous.panel
+    panelOpen.value = previous.panelOpen
+    workspaceMode.value = previous.workspace
+    layers.value = previous.layers
+    isolated.value = previous.isolated
+    trackVisible.value = previous.trackVisible
+    sidebarOpen.value = previous.sidebarOpen
+    exploreCategory.value = previous.category
+    await nextTick()
+    mapView.value?.restoreView(previous.view)
+  }
+  savedCaseView.value = null
+}
+async function changeWorkspace(mode: 'overview' | 'explore') {
+  if (savedCaseView.value) await exitCase()
+  workspaceMode.value = mode
+  if (mode === 'overview') panelOpen.value = false
+}
+async function retryCase() {
+  await loadCase()
+  if (caseOpen.value && !caseError.value) await initializeCase()
+}
+async function retryPlayback() {
+  if (caseActive.value) await initializeCase()
+  else await load()
+}
 const events = ref<ApiEvent[]>([])
 const eventsLoading = ref(true)
 const eventsError = ref('')
@@ -102,12 +252,13 @@ const realTrack = ref<ApiTrackWindow | null>(null)
 const realTrackLoading = ref(false)
 const realTrackError = ref('')
 watch(
-  () => [isRealAis.value, selectedShipId.value, trackVisible.value, time.value, realTrackHours.value] as const,
+  () => [isRealAis.value, selectedShipId.value, trackVisible.value, time.value, realTrackHours.value, caseActive.value, caseWindow.value] as const,
   (state, _old, onCleanup) => {
     const [real, shipId, visible, at, hours] = state
     realTrack.value = null
     realTrackError.value = ''
     realTrackLoading.value = false
+    if (caseActive.value) return
     if (!real || shipId === null || !visible || !at || !times.value.length) return
     const end = Date.parse(at)
     const start = Math.max(Date.parse(times.value[0]!), end - hours * 3600_000)
@@ -116,8 +267,12 @@ watch(
     const timer = setTimeout(async () => {
       realTrackLoading.value = true
       try {
-        realTrack.value = await fetchShipTrackWindow(shipId, new Date(start).toISOString(), at,
-          hours === 1 ? 30 : hours === 6 ? 120 : 300, controller.signal)
+        const windows = caseTrackChunks(new Date(start).toISOString(), at)
+        const results = await Promise.all(windows.map(([from,to]) => fetchShipTrackWindow(shipId, from, to,
+          hours === 1 ? 30 : hours === 6 ? 120 : 300, controller.signal)))
+        if (controller.signal.aborted) return
+        realTrack.value = mergeCaseTracks(results)
+
       } catch (e) {
         if (!controller.signal.aborted) realTrackError.value = describeApiError(e, '单船轨迹加载失败')
       } finally {
@@ -302,7 +457,7 @@ function chooseShip(ship: ApiMapShip, keepChat = false) {
     trackVisible.value = false
     if (isRealAis.value) {
       realPointsVisible.value = false
-      speedColorOn.value = false
+      speedColorOn.value = true
     }
   }
   selectedShipId.value = ship.id
@@ -371,6 +526,8 @@ function locateAgentEvent(eventId: string) {
 async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Promise<string> {
   cancelMapAction()
   if (signal.aborted) return '地图操作已取消。'
+  if (caseActive.value && (action.type === 'event' || action.ship_id !== caseData.value?.ship_id))
+    return '该操作目标不属于当前单船案例。请退出案例后在地图探索中执行。'
   if (action.type === 'event') {
     if (action.source !== 'news' || !action.event_id) return '事件标识或来源无效。'
     const event = events.value.find(item => item.event_id === action.event_id)
@@ -384,6 +541,8 @@ async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Pr
   }
   if (action.source !== 'nnu_ais' || !Number.isSafeInteger(action.ship_id) || action.ship_id <= 0) return '船舶标识或来源无效。'
   const start = Date.parse(action.start_at), end = Date.parse(action.end_at)
+  if (caseActive.value && caseAgentWindow.value && (start < Date.parse(caseAgentWindow.value.start_at) || end > Date.parse(caseAgentWindow.value.end_at)))
+    return '轨迹窗口超出当前阶段。请返回案例概况或选择对应阶段。'
   const first = Date.parse(times.value[0] ?? ''), last = Date.parse(times.value.at(-1) ?? '')
   if (![start, end, first, last].every(Number.isFinite) || start >= end || end - start > 86400000 || start < first || end > last)
     return '轨迹时间窗无效或超出本批 AIS 覆盖；单次最多 24 小时。'
@@ -473,7 +632,7 @@ function toggleTrack() {
   layers.value.tracks = true
 }
 // P1 速度着色：消费 /api/tracks 派生层（数据库插值 + 实测速度序列）。
-const speedColorOn = ref(false)
+const speedColorOn = ref(true)
 // 开启后只着色回放时刻前 24 小时；关闭则与显示的轨迹同范围（超出 24h 的部分分片取回）。
 const speedColorRecent24h = ref(false)
 const speedSegments = ref<ApiTrackSegment[]>([])
@@ -580,7 +739,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <main class="workbench" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen }">
+  <main class="workbench" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen, 'case-mode': caseOpen }">
     <header class="topbar">
       <div class="brand">
         <img class="brand-logo" :src="logoUrl" alt="" aria-hidden="true" />
@@ -589,8 +748,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
       </div>
       <nav class="workspace-nav" aria-label="工作视图">
-        <button :class="{ active: workspaceMode === 'overview' }" :aria-current="workspaceMode === 'overview' ? 'page' : undefined" @click="workspaceMode = 'overview'; panelOpen = false">态势总览</button>
-        <button :class="{ active: workspaceMode === 'explore' }" :aria-current="workspaceMode === 'explore' ? 'page' : undefined" @click="workspaceMode = 'explore'">地图探索</button>
+        <button :class="{ active: workspaceMode === 'overview' && !caseOpen }" :aria-current="workspaceMode === 'overview' && !caseOpen ? 'page' : undefined" @click="changeWorkspace('overview')">态势总览</button>
+        <button :class="{ active: workspaceMode === 'explore' && !caseOpen }" :aria-current="workspaceMode === 'explore' && !caseOpen ? 'page' : undefined" @click="changeWorkspace('explore')">地图探索</button>
+        <button :class="{ active: caseOpen }" :aria-current="caseOpen ? 'page' : undefined" @click="openCase">典型案例</button>
       </nav>
       <div class="top-status">
         <span class="simulation-label">{{ isRealAis ? '历史 AIS 船位 · 新闻独立' : '船舶轨迹 · 新闻事件' }}</span>
@@ -600,6 +760,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <button class="sidebar-toggle" :aria-expanded="sidebarOpen" @click="sidebarOpen = !sidebarOpen; workspaceMode = 'explore'">{{ sidebarOpen ? '收起列表' : '查找' }}</button>
     </header>
     <ExplorerSidebar
+      v-show="!caseOpen"
       v-model="exploreCategory"
       class="explorer-placement"
       :class="{ 'mobile-open': sidebarOpen }"
@@ -629,6 +790,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @open-layers="layersOpen = !layersOpen"
         @open-agent="togglePanel('agent')"
       />
+      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" @select="selectCaseStage" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
+      <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开案例阶段与报道</button>
       <LayersPopover
         v-if="layersOpen"
         v-model:layers="layers"
@@ -642,14 +805,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       />
       <MapView
         ref="mapView"
-        :ships="currentShips"
-        :events="mapEvents"
+        :ships="caseOpen && (!caseActive || caseSwitching) ? [] : currentShips"
+        :events="caseOpen ? [] : mapEvents"
         :selected-ship-id="selectedShipId"
-        :selected-event="selectedEvent && eventOccurredBy(selectedEvent, time) ? selectedEvent : null"
+        :selected-event="!caseOpen && selectedEvent && eventOccurredBy(selectedEvent, time) ? selectedEvent : null"
         :track="selectedTrack"
         :track-visible="trackVisible"
         :speed-segments="speedColorOn ? speedSegments : null"
-        :window-segments="agentTrack ? agentTrack.segments : (isRealAis ? (realTrack?.segments ?? []) : null)"
+        :window-segments="agentTrack ? agentTrack.segments : (caseActive ? caseHighlight : isRealAis ? (realTrack?.segments ?? []) : null)"
+        :background-segments="caseActive ? caseFullTrack?.segments ?? null : null"
         :window-speed-color="isRealAis && speedColorOn"
         :window-points-visible="isRealAis && realPointsVisible"
         :isolated="isolated"
@@ -682,10 +846,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           ⌖ 全局视野
         </button>
       </div>
-      <div v-if="isRealAis" class="ais-snapshot-strip" role="status">
+      <div v-if="isRealAis && (!caseOpen || caseActive) && !caseSwitching && !loading" class="ais-snapshot-strip" role="status">
+        <strong v-if="caseActive">案例窗口：仅中海北冰洋，非海峡全量船舶</strong>
         <strong>历史 AIS · {{ formatTime(time, true) }} {{ zoneLabel() }}</strong>
         <span>快照 {{ currentShips.length }} 艘，视野内 {{ viewShips.length }} 艘</span>
         <span>仅采用此前 1 小时内的最新报位</span>
+        <span v-if="caseActive && !currentShips.length">该时刻缺少有效报位，不表示船舶不存在</span>
         <span v-if="snapshotLoading && requestedTime !== time">正在获取 {{ formatTime(requestedTime, true) }} 的快照</span>
       </div>
       <div v-if="notice" class="alert-toast" role="status"><span>{{ notice }}</span><button @click="notice = ''" aria-label="关闭提醒">×</button></div>
@@ -724,7 +890,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
       <div v-if="loading || error || snapshotLoading || snapshotError" class="map-data-status" role="status">
         {{ error || snapshotError || (isRealAis ? '正在查询所选时刻的船位快照…' : '正在载入船舶与历史采样…')
-        }}<button v-if="error || snapshotError" @click="error ? load() : retrySnapshot()">重试</button>
+        }}<button v-if="error || snapshotError" @click="error ? retryPlayback() : retrySnapshot()">重试</button>
       </div>
     </section>
     <section class="overview-stage" aria-label="态势总览">
@@ -744,7 +910,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         v-model="index" :frame-times="times" :events="[]" :snapshot-mode="isRealAis" :frame-ready="frameReady" :frame-error="snapshotError"
         :selected-event-id="selectedEvent?.id ?? null" :seek-request="seekRequest"
         :loading="loading" :error-message="error" :event-type="eventType"
-        @speed-change="playbackSpeed = $event" @retry="load"
+        @speed-change="playbackSpeed = $event" @retry="retryPlayback"
         @select-event="chooseEvent" @type-change="changeEventType"
       />
     </div>
@@ -805,6 +971,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @locate="focusShipRequest++"
       />
       <AgentPanel
+        :case-context="caseActive && caseAgentWindow && caseData?.ship_id ? { ship_id: caseData.ship_id, title: caseData.title, start_at: caseAgentWindow.start_at, end_at: caseAgentWindow.end_at } : null"
         v-show="panel === 'agent'"
         :execute-map-action="executeMapAction"
         :cancel-map-action="cancelMapAction"

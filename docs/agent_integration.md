@@ -178,3 +178,6 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 历史 SQL-01～06 已完成并在旧 v4 循环注册默认关闭的 `query_analytics`。SQL-06 曾验证真实 DeepSeek 工具 schema、固定 fixture 人工 SQL 对照和浏览器交互，不能视为当前版本已重验。当前版本已用 LangChain 单智能体复用 SQL 底座，SQL 三工具默认关闭；第一版不直接编写 LangGraph，复杂恢复或持久化需求出现后再评估。
 
 最小版（v2）已实现并联调：后端 /agent/analyze 与前端智能体面板已跑通默认问题（返回 1 艘 SIM V2 化学品船 019，证据 P1，观测完成于 2026-02-28T18:14:54Z）；npm run build 与 npm run check:workbench 已通过。v3 多工具版历史联调记录（原标注日期晚于本次文档核对日，实际验收日期待核对；以下不代表本次重新验证）：通行回归问题 1 次工具调用 4.1s；「油轮 SIM V2 油轮 004 轨迹」问题链式调用 search_ships + get_ship_track 共 2 次 5.7s；「evt_001 事件与报道」1 次 get_event_context 3.1s，回答均保留来源链接与模拟边界声明。环境交接见 [database_setup.md](database_setup.md)。
+# Issue #26 案例上下文增量（2026-09-30）
+
+案例内提问复用v4请求字段：`map_context.target_ship_id` 为案例船，`playback_at` 为回放时刻；缺省 `closure_at/end_at` 为选中阶段内、当前回放之前最多24h（回放早于阶段时用阶段末界）；概况用完整案例内当前回放之前最多24h。显式问题/高级设置优先；其他船的地图动作提示退出案例，越出阶段提示返回概况或选择对应阶段。v4响应与服务端工具契约不变；真实AIS来源说明包含原七日及独立单船补充，不能把单船覆盖解释为全海峡覆盖。阶段切换取消旧请求，普通上下文对象刷新不取消。后端全量294 passed / 12 skipped、真实模型北冰洋号阶段轨迹自动动作与浏览器选中聚焦通过，详见[案例记录](arctic_ocean_case.md)。本节为待PR评审的分支增量，未合入main或部署。

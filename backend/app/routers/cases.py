@@ -1,0 +1,58 @@
+"""Curated case evidence, kept separate from inferred news events."""
+from fastapi import APIRouter, Depends
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from backend.app.database import get_db
+from backend.app.schemas import MaritimeCaseResponse
+
+router = APIRouter(prefix="/cases", tags=["cases"])
+
+STAGES = [
+    dict(id="first-attempt", title="首次尝试与折返", date="2026-03-27", start_at="2026-03-26T16:01:33Z", end_at="2026-03-27T15:59:59Z",
+         summary="报道记录两船尝试驶离波斯湾后折返。查看当天报位，并与中远海运当日回应对照；折返原因不能仅凭轨迹认定。",
+         articles=[dict(title="Chinese ships halt attempt to exit Hormuz despite Iran safe passage assurances",media="路透社（The Economic Times 刊载）",publish_date="2026-03-27",url="https://economictimes.indiatimes.com/news/international/world-news/chinese-ships-halt-attempt-to-exit-hormuz-despite-iran-safe-passage-assurances/articleshow/129849179.cms"),
+                   dict(title="两艘集装箱船穿越霍尔木兹海峡？中远海运集运最新回应",media="上海证券报（新浪转载）",publish_date="2026-03-27",url="https://finance.sina.com.cn/wm/2026-03-27/doc-inhsmnzp9465557.shtml")]),
+    dict(id="waiting",title="两次尝试之间",date="2026-03-28",start_at="2026-03-27T16:00:00Z",end_at="2026-03-29T15:59:59Z",
+         summary="查看再次过航前的报位。部分时段缺报，轨迹断线表示观测空缺，不能解释为船舶停留或消失。此阶段没有单独的点名报道。",articles=[]),
+    dict(id="second-attempt",title="再次尝试并通过",date="2026-03-30",start_at="2026-03-29T16:00:00Z",end_at="2026-03-30T15:59:59Z",
+         summary="Kpler 的3月30日文章点名两船，并引用 MarineTraffic 数据确认成功通过。这里展示当天观测轨迹，不预设精确过航时刻。",
+         articles=[dict(title="The 1 million TEU question: Do Gulf ports have capacity?",media="Kpler",publish_date="2026-03-30",url="https://cn.kpler.com/blog/the-1-million-teu-question-do-gulf-overland-ports-have-the-capacity"),
+                   dict(title="三艘中国船舶通过霍尔木兹海峡（图）",media="银柿财经（新浪转载）",publish_date="2026-03-30",url="https://finance.sina.com.cn/stock/marketresearch/2026-03-30/doc-inhsuknu9624238.shtml")]),
+    dict(id="confirmation",title="后续报道与官方回应",date="2026-03-31",start_at="2026-03-30T16:00:00Z",end_at="2026-03-31T15:59:51Z",
+         summary="外交部称近日中方有3艘船舶经协调过航，没有公布船名。与北冰洋号的关联来自点名报道的交叉对照。新闻日期不代表轨迹中的发生时刻。",
+         articles=[dict(title="两艘中国巨轮顺利通过霍尔木兹海峡",media="财联社",publish_date="2026-03-31",url="https://www.cls.cn/detail/2330131"),
+                   dict(title="2026年3月31日外交部发言人毛宁主持例行记者会",media="外交部",publish_date="2026-03-31",url="https://www.mfa.gov.cn/wjdt_674879/fyrbt_674889/202603/t20260331_11884120.shtml")]),
+]
+
+
+# Original-page illustrations checked 2026-09-30; they are article evidence,
+# not verified portraits of this vessel. No logo/sidebar image is substituted.
+ARTICLE_IMAGES = {
+    STAGES[0]['articles'][0]['url']: ('https://img.etimg.com/thumb/msid-129849211,width-1200,height-630,imgsize-193652,overlay-economictimes/articleshow.jpg', 'page_cover'),
+    STAGES[0]['articles'][1]['url']: ('https://n.sinaimg.cn/spider20260327/151/w554h397/20260327/44e2-9d9fae15e2db8c4974872a2e342a828e.png', 'body_image'),
+    STAGES[2]['articles'][0]['url']: ('https://cdn.prod.website-files.com/65059ad784ac02253c62356c/69ca7321fc52142445edddf2_Screenshot%202026-03-30%20at%2013.56.31.webp', 'page_cover'),
+    STAGES[2]['articles'][1]['url']: ('https://n.sinaimg.cn/finance/crawl/68/w550h318/20260330/9179-bc28d114fa7475c033ec659a7b8d9567.png', 'body_image'),
+}
+for stage in STAGES:
+    for article in stage['articles']:
+        image = ARTICLE_IMAGES.get(article['url'])
+        article.update(image_url=image[0] if image else None,
+                       image_source_url=article['url'] if image else None,
+                       image_kind=image[1] if image else None)
+
+
+@router.get("/arctic-ocean", response_model=MaritimeCaseResponse)
+def arctic_ocean(db: Session = Depends(get_db)):
+    row = db.execute(text("""SELECT s.id, min(p.recorded_at) AS start_at,max(p.recorded_at) AS end_at,count(*) AS position_count
+      FROM ships s JOIN ship_positions p ON p.ship_id=s.id
+      JOIN ais_import_batches b ON b.id=p.source_batch_id
+      WHERE s.mmsi='477967700' AND s.imo='9695169' AND b.source_file LIKE 'case/arctic-ocean/%'
+      GROUP BY s.id""")).mappings().first()
+    return dict(id="arctic-ocean",title="中海北冰洋：两次过航尝试",mmsi="477967700",imo="9695169",
+                data_source="nnu_ais",supplier="船讯网（用户确认）",ready=bool(row),
+                ship_id=row["id"] if row else None,start_at=row["start_at"] if row else None,
+                end_at=row["end_at"] if row else None,position_count=row["position_count"] if row else 0,
+                stages=STAGES,limitations=["阶段窗口按北京时间日界线划分，不是自动识别的折返或通行时刻。",
+                    "同秒冲突两条报位隔离；超过90分钟的报位间隔断线；船位仅在此前1小时内有效。",
+                    "中文报道与追踪平台的时间表述存在差异，精确过航时刻尚未独立核定。",
+                    "案例报道以独立引用保存，不补造新闻发生位置，不据空间邻近建立因果。"])

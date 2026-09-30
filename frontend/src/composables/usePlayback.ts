@@ -11,6 +11,7 @@ import {
 } from '../api'
 
 export function usePlayback() {
+  const scopeShipId = ref<number | null>(null)
   const ships = ref<ApiMapShip[]>([])
   const snapshotShips = ref<ApiMapShip[]>([])
   const snapshotAt = ref<string | null>(null)
@@ -49,6 +50,7 @@ export function usePlayback() {
   let snapshotRequest: AbortController | null = null
   let snapshotTimer: ReturnType<typeof setTimeout> | undefined
   let requestVersion = 0
+  let loadVersion = 0
   const snapshotCache = new Map<string, ApiMapShip[]>()
   let windowRequest: { times: string[]; controller: AbortController; promise: Promise<void> } | null = null
   function remember(at: string, shipsAt: ApiMapShip[]) {
@@ -57,7 +59,7 @@ export function usePlayback() {
     while (snapshotCache.size > 12) snapshotCache.delete(snapshotCache.keys().next().value!)
   }
   function commit(at: string, shipsAt: ApiMapShip[]) {
-    snapshotShips.value = shipsAt
+    snapshotShips.value = scopeShipId.value === null ? shipsAt : shipsAt.filter(s => s.id === scopeShipId.value)
     snapshotAt.value = at
     snapshotLoading.value = false
     snapshotError.value = ''
@@ -148,7 +150,9 @@ export function usePlayback() {
     snapshotRequest?.abort()
     windowRequest?.controller.abort()
   })
-  async function load() {
+  async function load(scope?: { start_at: string; end_at: string; ship_id: number }) {
+    const version = ++loadVersion
+    scopeShipId.value = scope?.ship_id ?? null
     loading.value = true
     error.value = ''
     clearTimeout(snapshotTimer)
@@ -159,11 +163,13 @@ export function usePlayback() {
     ++requestVersion
     try {
       const meta = await fetchSimulationMeta()
-      if (!meta.start_at || !meta.end_at || !meta.frame_count)
+      if (version !== loadVersion) return
+      if (!scope && (!meta.start_at || !meta.end_at || !meta.frame_count))
         throw new Error('暂无可回放的船位数据')
-      const start = Date.parse(meta.start_at)
-      const end = Date.parse(meta.end_at)
-      isRealAis.value = meta.is_simulated === false
+      const start = Date.parse(scope?.start_at ?? meta.start_at!)
+      const end = Date.parse(scope?.end_at ?? meta.end_at!)
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) throw new Error('回放窗口无效')
+      isRealAis.value = !!scope || meta.is_simulated === false
       hasEvents.value = meta.has_events !== false
       hasDerived.value = meta.has_derived !== false
       const step = Math.max(1, meta.frame_interval_seconds) * 1000
@@ -207,6 +213,7 @@ export function usePlayback() {
       frames.value = displayTimes.map((at) => ({ time: new Date(at).toISOString(), positions: [] }))
       index.value = 0
     } catch (e) {
+      if (version !== loadVersion) return
       ships.value = []
       frames.value = []
       tracks.value = {}
@@ -215,7 +222,7 @@ export function usePlayback() {
       index.value = 0
       error.value = describeApiError(e, '回放数据加载失败')
     } finally {
-      loading.value = false
+      if (version === loadVersion) loading.value = false
     }
   }
   function seek(at: string) {
@@ -249,5 +256,6 @@ export function usePlayback() {
     load,
     seek,
     retrySnapshot,
+    scopeShipId,
   }
 }

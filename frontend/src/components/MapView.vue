@@ -24,6 +24,7 @@ const props = defineProps<{
   trackVisible: boolean
   speedSegments: ApiTrackSegment[] | null
   windowSegments: ApiTrackWindow['segments'] | null
+  backgroundSegments?: ApiTrackWindow['segments'] | null
   windowSpeedColor: boolean
   windowPointsVisible: boolean
   isolated: boolean
@@ -92,7 +93,7 @@ function scheduleShips() {
     })
     if (!initialFitDone && props.ships.length) {
       initialFitDone = true
-      globalView()
+      if (!props.backgroundSegments) globalView()
     }
   })
 }
@@ -121,6 +122,7 @@ function scheduleTrack() {
       layersTracks: props.layers.tracks,
       speedSegments: props.speedSegments,
       windowSegments: props.windowSegments,
+      backgroundSegments: props.backgroundSegments,
       windowSpeedColor: props.windowSpeedColor,
       windowPointsVisible: props.windowPointsVisible,
     })
@@ -282,12 +284,14 @@ function focusShip() {
 function focusPadding() {
   const area = container.value?.getBoundingClientRect()
   const panel = container.value?.closest('.workbench')?.querySelector('.inspector')?.getBoundingClientRect()
-  let right = 40, bottom = 40
+  const casePanel = container.value?.closest('.workbench')?.querySelector('.case-panel')?.getBoundingClientRect()
+  let left = 40, right = 40, bottom = 40
+  if (area && casePanel && casePanel.width) left = Math.min(area.width * 0.55, casePanel.right - area.left + 25)
   if (area && panel && panel.width && panel.height && panel.left < area.right && panel.top < area.bottom) {
     if (panel.height > area.height * 0.7) right = Math.min(area.width - 100, area.right - panel.left + 30)
     else bottom = Math.min(area.height - 100, area.bottom - panel.top + 30)
   }
-  return { paddingTopLeft: L.point(40, 40), paddingBottomRight: L.point(right, bottom) }
+  return { paddingTopLeft: L.point(left, 40), paddingBottomRight: L.point(right, bottom) }
 }
 async function confirmFocus(shipId: number, withTrack: boolean): Promise<boolean> {
   // Wait for the existing render queue and camera animation before reporting success.
@@ -307,7 +311,15 @@ async function confirmFocus(shipId: number, withTrack: boolean): Promise<boolean
   }
   return false
 }
-defineExpose({ confirmFocus })
+function captureView() {
+  if (!map) return null
+  const c = map.getCenter()
+  return { latitude: c.lat, longitude: c.lng, zoom: map.getZoom() }
+}
+function restoreView(view: { latitude: number; longitude: number; zoom: number } | null) {
+  if (map && view) { map.stop(); map.setView([view.latitude, view.longitude], view.zoom, { animate: false }) }
+}
+defineExpose({ confirmFocus, captureView, restoreView })
 async function loadHarbours() {
   harbourRequest?.abort()
   if (!map || !props.layers.harbours || props.isolated) return
@@ -393,7 +405,7 @@ watch(
   scheduleShips,
 )
 watch(() => [props.events, props.selectedEvent, props.time, displayZone.value], scheduleEvents)
-watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, props.windowSegments, props.windowSpeedColor, props.windowPointsVisible, displayZone.value], scheduleTrack)
+watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, props.windowSegments, props.backgroundSegments, props.windowSpeedColor, props.windowPointsVisible, displayZone.value], scheduleTrack)
 watch(() => [props.dwell, props.encounters, props.selectedEncounter, props.isolated], scheduleDerived)
 // 从概览面板选中相遇时，地图飞到最近接近点并保证相遇图层可见。
 watch(() => props.selectedEncounter, (enc) => {
@@ -504,8 +516,9 @@ onMounted(() => {
     getMap: () => map,
     onSelectEvent: (event) => emit('selectEvent', event),
   })
-  trackManager = new TrackLayerManager({ trackLayer, canvas })
+  trackManager = new TrackLayerManager({ trackLayer, canvas, map })
   map.on('moveend', () => {
+    scheduleTrack()
     emitBounds()
     clearTimeout(harbourTimer)
     if (props.layers.harbours) harbourTimer = setTimeout(loadHarbours, 350)
@@ -542,6 +555,11 @@ onBeforeUnmount(() => {
   <div
     ref="container"
     class="maritime-map"
+    :data-background-point-count="(backgroundSegments ?? []).reduce((count, segment) => count + segment.points.length, 0)"
+    :data-speed-color="windowSpeedColor"
+    :data-points-visible="windowPointsVisible"
+    :data-track-point-count="(windowSegments ?? []).reduce((count, segment) => count + segment.points.length, 0)"
+    :data-track-end="windowSegments?.at(-1)?.points.at(-1)?.recorded_at ?? ''"
     :class="{ spotlight: !!selectedEvent, 'dark-map': theme === 'dark' }"
     aria-label="交互地图"
     tabindex="0"

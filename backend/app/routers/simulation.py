@@ -16,12 +16,15 @@ router = APIRouter(
 
 @router.get("/meta", response_model=SimulationMetaResponse)
 def get_simulation_meta(db: Session = Depends(get_db)):
+    # Curated single-vessel supplements have their own replay window.
+    # Keep them out of the default fleet coverage; do not stretch across gaps.
+    normal_scope = text("NOT EXISTS (SELECT 1 FROM ais_import_batches b WHERE b.id = ship_positions.source_batch_id AND b.source_file LIKE 'case/%')")
     position_summary = db.execute(
         select(
             func.min(ShipPosition.recorded_at),
             func.max(ShipPosition.recorded_at),
             func.count(ShipPosition.id),
-        )
+        ).where(normal_scope)
     ).one()
 
     ship_count = db.scalar(select(func.count(Ship.id))) or 0

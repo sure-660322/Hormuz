@@ -33,7 +33,7 @@ PASSAGE_RULE = (
     "门线之间保留状态，完成侧首个报位时间 ∈ [closure_at, end_at)；"
     "前置侧别最多回看 24 小时，长间隔和疑似跳点不计入确定结果"
 )
-BATCH_DESCRIPTION = "2026-02-25 至 2026-03-03 七日历史 AIS（ship_data_source=nnu_ais；以实际数据库覆盖为准）"
+BATCH_DESCRIPTION = "nnu_ais 历史 AIS：原七日全船批次与独立单船案例补充；实际查询覆盖以工具结果为准，不能将单船覆盖解释为海峡全量覆盖"
 
 # get_data_health 随结果返回的固定限制（AG-02）：stale 只是时间启发式，
 # 不能包装成完整数据一致性证明；来源缺失不等于真实数量为零；工具只读。

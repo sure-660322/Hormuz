@@ -14,6 +14,8 @@ execFileSync(
     'src/domain/countryLabels.ts',
     'src/services/workbench.ts',
     'src/composables/usePlayback.ts',
+    'src/domain/casePlayback.ts',
+    'src/domain/trackArrows.ts',
     '--ignoreConfig',
     '--target',
     'ES2022',
@@ -40,6 +42,13 @@ const { nextTick } = require('vue')
 const { hasEventLocation, eventOccurredBy, eventTimeText, safeNewsUrl } = require(path.join(out, 'domain/maritime.js'))
 
 async function main() {
+  const { sparseTrackArrows } = require(path.join(out, 'domain/trackArrows.js'))
+  const east = Array.from({ length: 100 }, (_, i) => ({ x: i * 10, y: 50, speed: 10 }))
+  const arrows = sparseTrackArrows([east], 1000, 200)
+  assert.ok(arrows.length > 0 && arrows.length < 15, 'Directions must be sparse')
+  assert.ok(arrows.every(a => a.angle === 90), 'Arrow follows chronological direction')
+  assert.equal(sparseTrackArrows([[east[0]], [east[99]]], 1000, 200).length, 0, 'No arrow across observation gaps')
+  assert.equal(sparseTrackArrows([[{ x: 20, y: 20, speed: 0 }, { x: 20.1, y: 20.1, speed: 0 }]], 1000, 200).length, 0, 'No direction for stationary jitter')
   const { countryLabelPosition } = require(path.join(out, 'domain/countryLabels.js'))
   const countryData = JSON.parse(require('node:fs').readFileSync(path.join(root, 'public/data/gulf-countries.geojson'), 'utf8'))
   assert.equal(countryData.features.length, 13)
@@ -267,6 +276,25 @@ async function main() {
   await nextTick()
   assert.equal(realPlayback.frameReady.value, true, 'Adjacent cached frame is ready without a new request')
   assert.equal(realPlayback.currentShips.value[0].speed, 10)
+  const { caseTrackChunks, mergeCaseTracks, clipCaseTracks } = require(path.join(out, 'domain/casePlayback.js'))
+  const chunks = caseTrackChunks('2026-03-27T16:00:00Z','2026-03-29T15:59:59Z')
+  assert.equal(chunks.length,2)
+  assert.ok(chunks.every(([a,b]) => Date.parse(b)-Date.parse(a) <= 86400000))
+  const point = (id, at) => ({id,recorded_at:at,latitude:26,longitude:56,speed:10})
+  const window = (points) => ({ship_id:1,from:points[0].recorded_at,to:points.at(-1).recorded_at,bucket_seconds:120,gap_minutes:90,source_count:points.length,point_count:points.length,segments:[{segment_no:0,points}],gaps:[]})
+  const a = point(1,'2026-03-28T15:55:00Z'), b = point(2,'2026-03-28T16:00:00Z'), c = point(3,'2026-03-28T20:00:00Z')
+  const merged = mergeCaseTracks([window([a,b]),window([b,c])])
+  assert.equal(merged.point_count,3,'Repeated chunk endpoint must be deduplicated')
+  assert.equal(merged.segments.length,2,'Gap across chunk boundary must not be connected')
+  assert.equal(merged.gaps.length,1)
+  const clipped = clipCaseTracks(merged, a.recorded_at, b.recorded_at)
+  assert.deepEqual(clipped.flatMap(s => s.points.map(p => p.id)), [1,2], 'No future point in playback highlight')
+  assert.equal(clipCaseTracks(merged, a.recorded_at, c.recorded_at).length, 2, 'Clipping must preserve gaps')
+  assert.equal(caseTrackChunks('2026-03-26T16:01:33Z','2026-03-31T15:59:51Z').length, 5, 'Full case uses five bounded requests')
+  api.fetchShipSnapshot = async () => [{...ship,id:1},{...ship,id:2}]
+  await realPlayback.load({start_at:'2026-03-30T00:00:00Z',end_at:'2026-03-30T00:10:00Z',ship_id:2})
+  assert.deepEqual(realPlayback.currentShips.value.map(s => s.id),[2],'Case snapshot must contain only its vessel')
+  assert.equal(realPlayback.times.value[0],'2026-03-30T00:00:00.000Z')
   console.log(
     'PASS: spatial distance, temporal filtering, search, identity, replay ordering/seeking, bounded real AIS snapshots, empty/error/retry states',
   )
