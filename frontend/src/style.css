@@ -669,6 +669,10 @@ button.primary:hover {
 .chart-source a:hover {
   color: var(--ink);
 }
+.chart-note {
+  margin-top: -6px;
+  padding-top: 0;
+}
 .layers-popover {
   position: absolute;
   left: 64px;

@@ -73,6 +73,7 @@ const derivedTables = computed(() => props.health?.derived ?? [])
       <p class="chart-source">
         数据来源：<a :href="BRENT_SOURCE_URL" target="_blank" rel="noopener noreferrer">EIA · Europe Brent Spot Price FOB (Daily)</a>
       </p>
+      <p class="chart-source chart-note">注：Brent 现货价仅工作日发布，周末无报价，横轴日期间隔两天属正常情况。</p>
     </section>
     <section class="overview-section" aria-label="热点事件">
       <div class="section-title">
