@@ -1,5 +1,7 @@
 # 霍尔木兹海峡船舶态势地图
 
+> 2026-09-30 Issue #24（独立分支，待 PR 评审）：轨迹工具给模型返回有界摘要，完整报位保留在服务端结果和地图链路；新增请求级模型用量日志。离线回归与浏览器夹具联动已验证，真实模型 token/费用对比未验证。详见[智能体开发任务](docs/agent_development_plan.md#issue-24-轨迹模型上下文优化2026-09-30)。
+
 当前交付：2026-09-30 [PR #23](https://github.com/sure-660322/Hormuz/pull/23)（Issue #21，油价 × 油轮通行量双轴展板）已合入 `main`（`7447fcb`），任务 worktree 与本地/远端分支已清理；5174 可用最新 main 查看。上一个交付：[PR #22](https://github.com/sure-660322/Hormuz/pull/22) 已合入 `main`（`ac46b10`）。未正式部署。
 
 > 2026-09-30 Issue #21（PR #23 已合入 main，浏览器可视验收待用户在 5174 确认）：态势总览新增数据展板「油价 · 油轮通行量」双轴折线图（ECharts 按需引入），覆盖 AIS 回放窗口（2026-02-25 至 2026-03-03）前后各一周。油价数据取自 [EIA RBRTED 日度现货价](https://www.eia.gov/dnav/pet/hist/RBRTED.htm) 并于当日对照官网核对；通行量为本机 AIS 观测统计（UTC 归日、虚拟门线口径，独立 SQL 复核一致，报告 [daily_tanker_passages_2026-09-30](docs/daily_tanker_passages_2026-09-30.md)）。横轴为连续日历日，油价周末无报价显示断点；两条序列有开关控制，开启时以描线动画渐入，底图（坐标轴/网格/回放窗口高亮）常驻。静态数据在 `frontend/src/domain/brentPrices.ts` 与 `frontend/src/domain/tankerPassages.ts`。`npm run build` 与 `npm run check:workbench` 通过，开关交互经 DOM 验证。观测量下降不能单凭本统计解释为实际通行下降或新闻因果。

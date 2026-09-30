@@ -1,3 +1,5 @@
+> 2026-09-30 Issue #24（独立分支，待 PR 评审）：`get_ship_track` 的模型 observation 改为 `track_summary`，无完整 `fixes` 数组，只含身份、UTC 查询/覆盖窗口、报位数、首末报位及限制。JSON UTF-8 上限 8192 字节，字符串字段最多 80 字符，原限制最多保留 8 条并给出省略计数；首末报位不是采样轨迹，不能用于精确通行/停留推断。完整 envelope 继续保存在服务端 state 和 v4 `results`，地图动作仍从完整证据生成，前端按 ID/窗口读取轨迹，HTTP 契约不变。后端 `uvicorn.error.agent_usage` 在 INFO 记录 `agent_model_usage`（每次调用）与 `agent_request_usage`（整次问答）；缺失 token/cache 数值为 null、usage_status 为 unavailable，缓存缺失不单独影响输入/输出完整性。model_calls 是 LangChain 模型调用数；SDK 内部网络重试次数不可见，network_attempts 为 null，不能当作供应商 HTTP 请求次数。无价格估算；日志不含提示词、工具原始数据、错误正文或密钥。验证范围见[开发任务](agent_development_plan.md#issue-24-轨迹模型上下文优化2026-09-30)。
+
 # 智能体接入契约与任务
 
 > 当前增量（2026-09-30 Issue #20，PR #22 已合入 main，用户测试通过）：v4 增加可选请求 `map_context={playback_at:带时区时间,target_ship_id:正整数或null}`，动作支持 `ship_position`；ship_position/ship_track 追加 `window_source`，位置动作另有 `recorded_at`。明确自然语言显示指令可使用回放附近的有界默认窗口，无需填写 UTC 双端点；前端保持聊天面板、核验高亮/轨迹与可见视野后反馈完成，可取消。接口字段、时间优先级、边界与当前验收见[地图联动记录](agent_map_actions_issue20.md)。下方 #16 描述为 PR #19 已合入 main 的历史实现，不代表 #20 当前窗口限制。
@@ -83,7 +85,7 @@ history 可选，为此前对话的消息列表（role 限 user/assistant，cont
 | --- | --- | --- |
 | query_strait_passages | closure_at, end_at, ship_id（可选） | `nnu_ais` 历史报位的有界虚拟双门线观测通行；长间隔/跳点分列；不读取全部源报位到应用 |
 | search_ships | keyword（必填）, limit | 按关键字检索有 `nnu_ais` 报位的船（船名/MMSI/IMO/callsign/船型/船旗），返回 ship_id 等；limit 默认 10、上限 20 |
-| get_ship_track | ship_id（必填）, start_at, end_at | 单船窗口内全部轨迹报位（时间/经纬度/航速/航向）；时间缺省用默认封锁窗口 |
+| get_ship_track | ship_id（必填）, start_at, end_at | 服务端保留窗口内全部报位；模型只收到身份、数量、时间覆盖与首末报位摘要；时间缺省用默认封锁窗口 |
 | get_event_context | event_id 或 keyword（二选一）, start_at, end_at | 新闻聚合事件及关联报道；不能仅凭船名与 AIS 船认定同一实体 |
 | get_data_health | 无 | 复用 P5 /api/data-health 服务：各 data_source 报位数/船数/覆盖区间/中位间隔 + 四张派生表行数/built_at/params/stale（含未构建标记）；stale 仅为时间启发式，stale=false 不证明历史数据未被修改；来源缺失表示未导入，不得解释为真实数量为零；工具只读，不触发迁移、导入或派生层重建。派生层无源时间基准时 stale 返回 null（不可判定），不报 false |
 | query_ship_dwell | kind, start_at/end_at, limit | 只读既有 ship_dwell；kind 限 at_anchor/drift/slow_transit，窗口成对且 ≤24h，缺省为全批次；返回阈值快照、stale、真实匹配数与截断状态，不重建 |

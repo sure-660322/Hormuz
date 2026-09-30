@@ -30,6 +30,7 @@ from backend.app.services.agent.ship_search import (
     search_ships,
 )
 from backend.app.services.agent.ship_tracks import get_ship_track
+from backend.app.services.agent.track_observation import track_observation
 from backend.app.services.agent.strait_passages import query_strait_passages
 
 _JSON_TYPE_MAP = {
@@ -76,6 +77,8 @@ def record_envelope(state: dict, tool_name: str, payload: dict) -> str:
         if tool_name not in state["tools_used"]:
             state["tools_used"].append(tool_name)
         state["results"][call_id] = envelope
+    if tool_name == "get_ship_track":
+        return track_observation(envelope)
     return json.dumps(envelope, ensure_ascii=False)
 
 

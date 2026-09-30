@@ -49,6 +49,7 @@ from backend.app.services.agent.model_client import (
     default_model,
 )
 from backend.app.services.agent.request_guard import new_state, reserve_tool
+from backend.app.services.agent.model_usage import ModelUsageRecorder
 
 # 整体执行预算（秒），与 v4 契约一致；单模型请求超时见 model_client
 OVERALL_BUDGET_SECONDS = 60.0
@@ -226,12 +227,13 @@ def run_lc_agent(
     map_command = display_intent(question) and bool(map_context)
     input_messages = ([] if map_command else _history_messages(history)) + [HumanMessage(content=question)]
 
+    usage_recorder = ModelUsageRecorder(request_id)
     pool = ThreadPoolExecutor(max_workers=1)
     try:
         future = pool.submit(
             agent.invoke,
             {"messages": input_messages},
-            config={"recursion_limit": RECURSION_LIMIT},
+            config={"recursion_limit": RECURSION_LIMIT, "callbacks": [usage_recorder]},
         )
         try:
             result = future.result(timeout=budget_seconds)
@@ -259,6 +261,7 @@ def run_lc_agent(
             ) from exc
     finally:
         pool.shutdown(wait=True)
+        usage_recorder.log_summary()
 
     if state["cancel_event"].is_set():
         raise results.AgentTimeoutError(f"智能体执行超过 {budget_seconds:.0f} 秒整体预算")
