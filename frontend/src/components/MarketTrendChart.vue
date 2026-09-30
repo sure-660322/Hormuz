@@ -63,18 +63,17 @@ let chart: ReturnType<typeof echarts.init> | null = null
 let resizeObserver: ResizeObserver | null = null
 
 function buildOption(): ChartOption {
-  const series: LineSeriesOption[] = []
-  if (showPrice.value) {
-    series.push({
+  const series: LineSeriesOption[] = [
+    // 常驻底图序列：不画线，只承载 AIS 回放窗口高亮带，开关切换时保持不变。
+    {
       type: 'line',
-      name: 'Brent 现货价',
-      yAxisIndex: 0,
-      data: categories.map((d) => priceByDate.get(d) ?? null),
-      smooth: false,
-      symbol: 'circle',
-      symbolSize: 5,
-      lineStyle: { width: 2, color: PRICE_COLOR },
-      itemStyle: { color: PRICE_COLOR },
+      name: '回放窗口',
+      data: [],
+      silent: true,
+      animation: false,
+      showSymbol: false,
+      lineStyle: { opacity: 0 },
+      tooltip: { show: false },
       markArea: {
         silent: true,
         itemStyle: { color: 'rgba(232, 177, 78, 0.10)' },
@@ -92,6 +91,19 @@ function buildOption(): ChartOption {
           ],
         ],
       },
+    },
+  ]
+  if (showPrice.value) {
+    series.push({
+      type: 'line',
+      name: 'Brent 现货价',
+      yAxisIndex: 0,
+      data: categories.map((d) => priceByDate.get(d) ?? null),
+      smooth: false,
+      symbol: 'circle',
+      symbolSize: 5,
+      lineStyle: { width: 2, color: PRICE_COLOR },
+      itemStyle: { color: PRICE_COLOR },
     })
   }
   if (showTraffic.value) {
@@ -147,7 +159,6 @@ function buildOption(): ChartOption {
       {
         type: 'value',
         min: 0,
-        show: showTraffic.value,
         position: 'right',
         axisLabel: { color: '#8B98A8', fontSize: 10 },
         splitLine: { show: false },
