@@ -2,6 +2,8 @@
 
 ## 状态与范围（2026-09-30）
 
+交付：实现提交 `ccaa91e` 已推送到 `origin/codex/issue-20-agent-map`；[PR #22](https://github.com/sure-660322/Hormuz/pull/22) 指向 `main`，已打开待评审，尚未合并或部署。本记录的交付状态同步另作文档提交；5174 运行当前任务分支供用户查看。
+
 已实现并通过下述本机验证，待 PR 评审。工作目录 `D:/my_project/Hormuz`，分支 `codex/issue-20-agent-map`，基线 `7136bea`，负责人 Codex。用户明确要求本轮在主目录独立分支开发，不新增 worktree。允许修改：agent 路由/schema、地图动作与 LangChain 编排、对应测试，前端 App/API/AgentPanel/MapView/船舶图层，以及 README、接入契约、开发计划、工作台说明和本记录。复用 5174 Vite 与 8000 reload 后端、本机现有应用库；未迁移、导入或重建数据库，未修改密钥、API/CORS、瓦片服务或依赖。
 
 ## 当前行为
