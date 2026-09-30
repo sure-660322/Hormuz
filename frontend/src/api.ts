@@ -9,6 +9,26 @@ export interface ApiShip{   //描述FastAPI/ships返回的数据结构
     callsign:string | null
 }
 
+export interface ApiCaseStage {
+  id: string
+  title: string
+  date: string
+  start_at: string
+  end_at: string
+  summary: string
+  articles: { title: string; media: string; publish_date: string; url: string }[]
+}
+export interface ApiMaritimeCase {
+  id: string; title: string; mmsi: string; imo: string; data_source: string; supplier: string
+  ready: boolean; ship_id: number | null; start_at: string | null; end_at: string | null
+  position_count: number; stages: ApiCaseStage[]; limitations: string[]
+}
+export async function fetchArcticOceanCase(): Promise<ApiMaritimeCase> {
+  const response = await fetch(`${API_BASE_URL}/cases/arctic-ocean`, { signal: AbortSignal.timeout(20_000) })
+  if (!response.ok) throw new Error(`案例加载失败：${response.status}`)
+  return response.json()
+}
+
 export interface ApiShipPosition {
   id: number
   ship_id: number

@@ -282,12 +282,14 @@ function focusShip() {
 function focusPadding() {
   const area = container.value?.getBoundingClientRect()
   const panel = container.value?.closest('.workbench')?.querySelector('.inspector')?.getBoundingClientRect()
-  let right = 40, bottom = 40
+  const casePanel = container.value?.closest('.workbench')?.querySelector('.case-panel')?.getBoundingClientRect()
+  let left = 40, right = 40, bottom = 40
+  if (area && casePanel && casePanel.width) left = Math.min(area.width * 0.55, casePanel.right - area.left + 25)
   if (area && panel && panel.width && panel.height && panel.left < area.right && panel.top < area.bottom) {
     if (panel.height > area.height * 0.7) right = Math.min(area.width - 100, area.right - panel.left + 30)
     else bottom = Math.min(area.height - 100, area.bottom - panel.top + 30)
   }
-  return { paddingTopLeft: L.point(40, 40), paddingBottomRight: L.point(right, bottom) }
+  return { paddingTopLeft: L.point(left, 40), paddingBottomRight: L.point(right, bottom) }
 }
 async function confirmFocus(shipId: number, withTrack: boolean): Promise<boolean> {
   // Wait for the existing render queue and camera animation before reporting success.
@@ -307,7 +309,15 @@ async function confirmFocus(shipId: number, withTrack: boolean): Promise<boolean
   }
   return false
 }
-defineExpose({ confirmFocus })
+function captureView() {
+  if (!map) return null
+  const c = map.getCenter()
+  return { latitude: c.lat, longitude: c.lng, zoom: map.getZoom() }
+}
+function restoreView(view: { latitude: number; longitude: number; zoom: number } | null) {
+  if (map && view) { map.stop(); map.setView([view.latitude, view.longitude], view.zoom, { animate: false }) }
+}
+defineExpose({ confirmFocus, captureView, restoreView })
 async function loadHarbours() {
   harbourRequest?.abort()
   if (!map || !props.layers.harbours || props.isolated) return
@@ -542,6 +552,8 @@ onBeforeUnmount(() => {
   <div
     ref="container"
     class="maritime-map"
+    :data-track-point-count="(windowSegments ?? []).reduce((count, segment) => count + segment.points.length, 0)"
+    :data-track-end="windowSegments?.at(-1)?.points.at(-1)?.recorded_at ?? ''"
     :class="{ spotlight: !!selectedEvent, 'dark-map': theme === 'dark' }"
     aria-label="交互地图"
     tabindex="0"

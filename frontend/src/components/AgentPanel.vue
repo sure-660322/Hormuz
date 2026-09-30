@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
 import {
@@ -33,6 +33,7 @@ const props = defineProps<{
   executeMapAction: (action: AgentMapAction, signal: AbortSignal) => Promise<string>
   cancelMapAction: () => void
   playbackAt: string | null
+  caseContext?: { ship_id: number; title: string; start_at: string; end_at: string } | null
 }>()
 
 interface AgentTurnState {
@@ -180,8 +181,11 @@ async function submit() {
   request = controller
   const asked = question.value.trim()
   const inferredWindow = explicitTrackWindow(asked)
+  const scopeEnd = props.caseContext ? Math.min(Date.parse(props.caseContext.end_at), Date.parse(props.playbackAt ?? props.caseContext.end_at)) : NaN
+  const scopeStart = props.caseContext ? Math.max(Date.parse(props.caseContext.start_at), scopeEnd - 86400000) : NaN
+  const scopedWindow = scopeStart < scopeEnd ? [new Date(scopeStart).toISOString(), new Date(scopeEnd).toISOString()] : null
   const history = buildHistory()
-  const targetShipId = referenceShip()
+  const targetShipId = props.caseContext?.ship_id ?? referenceShip()
   const turnIndex = turns.value.push({ question: asked, response: null }) - 1
   question.value = ''
   loading.value = true
@@ -196,8 +200,8 @@ async function submit() {
     const response = await fetchAgentAnalyze(
       {
         question: asked,
-        closure_at: parseTime(closureAt.value) ?? inferredWindow?.[0] ?? null,
-        end_at: parseTime(endAt.value) ?? inferredWindow?.[1] ?? null,
+        closure_at: parseTime(closureAt.value) ?? inferredWindow?.[0] ?? scopedWindow?.[0] ?? null,
+        end_at: parseTime(endAt.value) ?? inferredWindow?.[1] ?? scopedWindow?.[1] ?? null,
         history,
         ...(props.playbackAt ? { map_context: { playback_at: props.playbackAt, target_ship_id: targetShipId } } : {}),
       },
@@ -356,6 +360,9 @@ function cellText(value: unknown): string {
   return String(value)
 }
 
+watch(() => props.caseContext ? `${props.caseContext.ship_id}|${props.caseContext.start_at}|${props.caseContext.end_at}` : '', () => {
+  cancel()
+})
 onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
 </script>
 
@@ -563,6 +570,7 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
       <p v-if="notice" class="chat-notice" role="status">{{ notice }}</p>
     </div>
     <form class="agent-form" @submit.prevent="submit">
+      <p v-if="caseContext" class="caption">当前案例：{{ caseContext.title }} · 船舶 ID {{ caseContext.ship_id }}。默认查询当前回放时刻前最多24小时，限定在阶段内；可明确指定另一窗口。其他船舶或阶段外地图操作需退出案例。</p>
       <details class="advanced">
         <summary><IconSettings :size="17" aria-hidden="true" /> 高级设置：封锁窗口（可留空）<IconChevronDown class="chevron" :size="14" aria-hidden="true" /></summary>
         <label>封锁开始时间<input v-model="closureAt" type="text" placeholder="例如 2026-02-28T14:00:00Z" aria-label="封锁开始时间" /></label>

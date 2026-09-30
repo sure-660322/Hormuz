@@ -21,6 +21,17 @@
   --green: #3FB950;
   --shadow-overlay: 0 8px 24px rgb(0 0 0 / .35);
 }
+.workbench.case-mode { grid-template-columns: 0 minmax(0, 1fr); }
+.case-mode .map-top-tools { left: 380px; }
+.case-mode .ais-snapshot-strip { left: 380px; max-width: calc(100% - 398px); }
+.case-reopen { position: absolute; top: 18px; left: 18px; z-index: 900; padding: 9px 12px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; }
+@media (max-width: 760px) {
+  .workbench.case-mode { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  .case-mode .ais-snapshot-strip { left: 10px; top: 58px; max-width: calc(100% - 20px); }
+  .case-mode .map-top-tools { display: none; }
+}
 * {
   box-sizing: border-box;
 }

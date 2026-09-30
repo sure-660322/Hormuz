@@ -120,3 +120,36 @@ class SimulationMetaResponse(BaseModel):
     is_simulated: bool
     has_events: bool = True
     has_derived: bool = True
+
+
+class CaseArticleResponse(BaseModel):
+    title: str
+    media: str
+    publish_date: date
+    url: str
+
+
+class CaseStageResponse(BaseModel):
+    id: str
+    title: str
+    date: date
+    start_at: datetime
+    end_at: datetime
+    summary: str
+    articles: list[CaseArticleResponse]
+
+
+class MaritimeCaseResponse(BaseModel):
+    id: str
+    title: str
+    mmsi: str
+    imo: str
+    data_source: str
+    supplier: str
+    ready: bool
+    ship_id: int | None
+    start_at: datetime | None
+    end_at: datetime | None
+    position_count: int
+    stages: list[CaseStageResponse]
+    limitations: list[str]
