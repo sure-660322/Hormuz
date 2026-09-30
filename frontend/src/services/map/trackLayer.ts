@@ -1,4 +1,5 @@
 import * as L from 'leaflet'
+import { sparseTrackArrows } from '../../domain/trackArrows'
 import type { ApiShipPosition, ApiTrackSegment, ApiTrackWindow } from '../../api'
 import { formatTime, riskColors } from '../../domain/maritime'
 
@@ -22,6 +23,7 @@ interface SpeedRun {
 interface TrackLayerManagerOptions {
   trackLayer: L.LayerGroup
   canvas: L.Canvas
+  map: L.Map
 }
 
 const safeText = (value: string) => {
@@ -63,10 +65,12 @@ export class TrackLayerManager {
   private renderedBackground: ApiTrackWindow['segments'] | null | undefined = null
   private renderedWindowSpeedColor = false
   private renderedWindowPointsVisible = false
+  private arrows: L.LayerGroup
   private options: TrackLayerManagerOptions
 
   constructor(options: TrackLayerManagerOptions) {
     this.options = options
+    this.arrows = L.layerGroup().addTo(options.map)
   }
 
   update(ctx: TrackRenderContext) {
@@ -74,11 +78,12 @@ export class TrackLayerManager {
       this.clear()
       return
     }
+    this.updateArrows(ctx)
     if (ctx.windowSegments !== null) {
       if (ctx.backgroundSegments === this.renderedBackground && ctx.windowSegments === this.renderedWindowSegments &&
           ctx.windowSpeedColor === this.renderedWindowSpeedColor &&
           ctx.windowPointsVisible === this.renderedWindowPointsVisible) return
-      this.clear()
+      this.clear(false)
       for (const segment of ctx.backgroundSegments ?? []) {
         if (segment.points.length > 1) L.polyline(segment.points.map(p => [p.latitude, p.longitude] as L.LatLngTuple), {
           renderer: this.options.canvas, color: '#8198ac', weight: 2, opacity: 0.35, interactive: false,
@@ -158,7 +163,7 @@ export class TrackLayerManager {
   }
 
   private rebuild(ctx: TrackRenderContext) {
-    this.clear()
+    this.clear(false)
     const points = ctx.track
     if (points.length > 1) {
       this.polyline = L.polyline(
@@ -244,7 +249,25 @@ export class TrackLayerManager {
     }
   }
 
-  clear() {
+  private updateArrows(ctx: TrackRenderContext) {
+    this.arrows.clearLayers()
+    const segments = ctx.windowSegments?.map(s => s.points) ?? [ctx.track]
+    const map = this.options.map, size = map.getSize()
+    const projected = segments.map(points => points.map(point => {
+      const p = map.latLngToContainerPoint([point.latitude, point.longitude])
+      return { x: p.x, y: p.y, speed: point.speed }
+    }))
+    for (const arrow of sparseTrackArrows(projected, size.x, size.y)) {
+      const color = ctx.windowSpeedColor || ctx.speedSegments !== null ? speedBucketColor(arrow.speed) : riskColors.selected
+      const icon = L.divIcon({ className: 'track-direction-arrow', iconSize: [18,18], iconAnchor: [9,9],
+        html: `<svg width="18" height="18" viewBox="0 0 18 18" style="transform:rotate(${arrow.angle}deg)" aria-hidden="true"><path d="M4 13 L9 4 L14 13" fill="none" stroke="#101820" stroke-width="5" stroke-linejoin="round"/><path d="M4 13 L9 4 L14 13" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/></svg>`,
+      })
+      L.marker(map.containerPointToLatLng([arrow.x, arrow.y]), { icon, interactive: false, keyboard: false }).addTo(this.arrows)
+    }
+  }
+
+  clear(clearArrows = true) {
+    if (clearArrows) this.arrows.clearLayers()
     if (this.renderedWindowSegments !== null) {
       this.options.trackLayer.clearLayers()
       this.renderedWindowSegments = null

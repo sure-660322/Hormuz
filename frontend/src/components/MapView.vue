@@ -93,7 +93,7 @@ function scheduleShips() {
     })
     if (!initialFitDone && props.ships.length) {
       initialFitDone = true
-      globalView()
+      if (!props.backgroundSegments) globalView()
     }
   })
 }
@@ -516,8 +516,9 @@ onMounted(() => {
     getMap: () => map,
     onSelectEvent: (event) => emit('selectEvent', event),
   })
-  trackManager = new TrackLayerManager({ trackLayer, canvas })
+  trackManager = new TrackLayerManager({ trackLayer, canvas, map })
   map.on('moveend', () => {
+    scheduleTrack()
     emitBounds()
     clearTimeout(harbourTimer)
     if (props.layers.harbours) harbourTimer = setTimeout(loadHarbours, 350)
@@ -555,6 +556,7 @@ onBeforeUnmount(() => {
     ref="container"
     class="maritime-map"
     :data-background-point-count="(backgroundSegments ?? []).reduce((count, segment) => count + segment.points.length, 0)"
+    :data-speed-color="windowSpeedColor"
     :data-points-visible="windowPointsVisible"
     :data-track-point-count="(windowSegments ?? []).reduce((count, segment) => count + segment.points.length, 0)"
     :data-track-end="windowSegments?.at(-1)?.points.at(-1)?.recorded_at ?? ''"

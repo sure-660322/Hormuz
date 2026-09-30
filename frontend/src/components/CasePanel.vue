@@ -14,7 +14,7 @@ function imageFailed(url: string) { failedImages.value = new Set([...failedImage
 <template>
   <aside class="case-panel" aria-label="中海北冰洋过航案例">
     <header><div><small>2026年3月27—31日 · 典型案例</small><h2>中海北冰洋</h2><p>从首次折返到再次通过</p></div><button @click="$emit('close')" aria-label="关闭案例面板">×</button></header>
-    <p class="case-identity" v-if="data">MMSI {{ data.mmsi }} · IMO {{ data.imo }}<br>{{ data.supplier }} · {{ data.position_count.toLocaleString() }} 条报位</p>
+    <p class="case-identity" v-if="data">MMSI {{ data.mmsi }} · IMO {{ data.imo }}<br>{{ data.position_count.toLocaleString() }} 条报位</p>
     <p v-if="loading" role="status">正在加载完整案例…</p>
     <p v-if="error" role="alert">{{ error }} <button @click="$emit('retry')">重试</button></p>
     <template v-if="data">
@@ -25,7 +25,7 @@ function imageFailed(url: string) { failedImages.value = new Set([...failedImage
       </div>
       <nav class="case-stages" aria-label="航行阶段">
         <button v-for="(item, i) in navigation" :key="item.id" :aria-pressed="activeStage === item.id" :disabled="loading" @click="$emit('select', item.id)">
-          <span>{{ i + 1 }} · {{ item.id === 'waiting' ? '3/28—29' : item.date.slice(5).replace('-', '/') }}</span>
+          <span>{{ item.id === 'waiting' ? '03.28–03.29' : item.date.slice(5).replace('-', '.') }}</span>
           <strong>{{ ['首次尝试', '等待', '再次通过'][i] }}</strong>
         </button>
       </nav>

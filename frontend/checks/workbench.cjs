@@ -15,6 +15,7 @@ execFileSync(
     'src/services/workbench.ts',
     'src/composables/usePlayback.ts',
     'src/domain/casePlayback.ts',
+    'src/domain/trackArrows.ts',
     '--ignoreConfig',
     '--target',
     'ES2022',
@@ -41,6 +42,13 @@ const { nextTick } = require('vue')
 const { hasEventLocation, eventOccurredBy, eventTimeText, safeNewsUrl } = require(path.join(out, 'domain/maritime.js'))
 
 async function main() {
+  const { sparseTrackArrows } = require(path.join(out, 'domain/trackArrows.js'))
+  const east = Array.from({ length: 100 }, (_, i) => ({ x: i * 10, y: 50, speed: 10 }))
+  const arrows = sparseTrackArrows([east], 1000, 200)
+  assert.ok(arrows.length > 0 && arrows.length < 15, 'Directions must be sparse')
+  assert.ok(arrows.every(a => a.angle === 90), 'Arrow follows chronological direction')
+  assert.equal(sparseTrackArrows([[east[0]], [east[99]]], 1000, 200).length, 0, 'No arrow across observation gaps')
+  assert.equal(sparseTrackArrows([[{ x: 20, y: 20, speed: 0 }, { x: 20.1, y: 20.1, speed: 0 }]], 1000, 200).length, 0, 'No direction for stationary jitter')
   const { countryLabelPosition } = require(path.join(out, 'domain/countryLabels.js'))
   const countryData = JSON.parse(require('node:fs').readFileSync(path.join(root, 'public/data/gulf-countries.geojson'), 'utf8'))
   assert.equal(countryData.features.length, 13)

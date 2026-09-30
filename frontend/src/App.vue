@@ -118,6 +118,7 @@ async function initializeCase() {
     selectedShipId.value = data.ship_id
     trackVisible.value = true
     realPointsVisible.value = false
+    speedColorOn.value = true
     isolated.value = false
     layers.value.ships = true
     layers.value.tracks = true
@@ -456,7 +457,7 @@ function chooseShip(ship: ApiMapShip, keepChat = false) {
     trackVisible.value = false
     if (isRealAis.value) {
       realPointsVisible.value = false
-      speedColorOn.value = false
+      speedColorOn.value = true
     }
   }
   selectedShipId.value = ship.id
@@ -631,7 +632,7 @@ function toggleTrack() {
   layers.value.tracks = true
 }
 // P1 速度着色：消费 /api/tracks 派生层（数据库插值 + 实测速度序列）。
-const speedColorOn = ref(false)
+const speedColorOn = ref(true)
 // 开启后只着色回放时刻前 24 小时；关闭则与显示的轨迹同范围（超出 24h 的部分分片取回）。
 const speedColorRecent24h = ref(false)
 const speedSegments = ref<ApiTrackSegment[]>([])
