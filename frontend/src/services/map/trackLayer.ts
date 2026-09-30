@@ -9,6 +9,7 @@ export interface TrackRenderContext {
   layersTracks: boolean
   speedSegments: ApiTrackSegment[] | null
   windowSegments: ApiTrackWindow['segments'] | null
+  backgroundSegments?: ApiTrackWindow['segments'] | null
   windowSpeedColor: boolean
   windowPointsVisible: boolean
 }
@@ -59,6 +60,7 @@ export class TrackLayerManager {
   private pointMarkers: L.CircleMarker[] = []
   private speedRuns = new Map<string, SpeedRun>()
   private renderedWindowSegments: ApiTrackWindow['segments'] | null = null
+  private renderedBackground: ApiTrackWindow['segments'] | null | undefined = null
   private renderedWindowSpeedColor = false
   private renderedWindowPointsVisible = false
   private options: TrackLayerManagerOptions
@@ -73,10 +75,15 @@ export class TrackLayerManager {
       return
     }
     if (ctx.windowSegments !== null) {
-      if (ctx.windowSegments === this.renderedWindowSegments &&
+      if (ctx.backgroundSegments === this.renderedBackground && ctx.windowSegments === this.renderedWindowSegments &&
           ctx.windowSpeedColor === this.renderedWindowSpeedColor &&
           ctx.windowPointsVisible === this.renderedWindowPointsVisible) return
       this.clear()
+      for (const segment of ctx.backgroundSegments ?? []) {
+        if (segment.points.length > 1) L.polyline(segment.points.map(p => [p.latitude, p.longitude] as L.LatLngTuple), {
+          renderer: this.options.canvas, color: '#8198ac', weight: 2, opacity: 0.35, interactive: false,
+        }).addTo(this.options.trackLayer)
+      }
       for (const segment of ctx.windowSegments) {
         const points = segment.points
         if (points.length > 1) {
@@ -105,7 +112,7 @@ export class TrackLayerManager {
             }).addTo(this.options.trackLayer)
           }
         }
-        for (const point of ctx.windowPointsVisible ? points : points.length === 1 ? points : []) {
+        for (const point of ctx.windowPointsVisible ? points : []) {
           L.circleMarker([point.latitude, point.longitude], {
             radius: 3, color: riskColors.selected, weight: 1, fillColor: '#fff', fillOpacity: 1,
           }).bindTooltip(safeText(
@@ -113,6 +120,7 @@ export class TrackLayerManager {
           )).addTo(this.options.trackLayer)
         }
       }
+      this.renderedBackground = ctx.backgroundSegments
       this.renderedWindowSegments = ctx.windowSegments
       this.renderedWindowSpeedColor = ctx.windowSpeedColor
       this.renderedWindowPointsVisible = ctx.windowPointsVisible

@@ -181,7 +181,7 @@ async function submit() {
   request = controller
   const asked = question.value.trim()
   const inferredWindow = explicitTrackWindow(asked)
-  const scopeEnd = props.caseContext ? Math.min(Date.parse(props.caseContext.end_at), Date.parse(props.playbackAt ?? props.caseContext.end_at)) : NaN
+  const scopeEnd = props.caseContext ? (Date.parse(props.playbackAt ?? '') < Date.parse(props.caseContext.start_at) ? Date.parse(props.caseContext.end_at) : Math.min(Date.parse(props.caseContext.end_at), Date.parse(props.playbackAt ?? props.caseContext.end_at))) : NaN
   const scopeStart = props.caseContext ? Math.max(Date.parse(props.caseContext.start_at), scopeEnd - 86400000) : NaN
   const scopedWindow = scopeStart < scopeEnd ? [new Date(scopeStart).toISOString(), new Date(scopeEnd).toISOString()] : null
   const history = buildHistory()
@@ -570,7 +570,7 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
       <p v-if="notice" class="chat-notice" role="status">{{ notice }}</p>
     </div>
     <form class="agent-form" @submit.prevent="submit">
-      <p v-if="caseContext" class="caption">当前案例：{{ caseContext.title }} · 船舶 ID {{ caseContext.ship_id }}。默认查询当前回放时刻前最多24小时，限定在阶段内；可明确指定另一窗口。其他船舶或阶段外地图操作需退出案例。</p>
+      <p v-if="caseContext" class="caption">当前案例：{{ caseContext.title }} · 船舶 ID {{ caseContext.ship_id }}。默认查询当前回放时刻前最多24小时，限定在阶段内；可明确指定另一窗口。其他船舶需退出案例；阶段外地图操作可返回案例概况。</p>
       <details class="advanced">
         <summary><IconSettings :size="17" aria-hidden="true" /> 高级设置：封锁窗口（可留空）<IconChevronDown class="chevron" :size="14" aria-hidden="true" /></summary>
         <label>封锁开始时间<input v-model="closureAt" type="text" placeholder="例如 2026-02-28T14:00:00Z" aria-label="封锁开始时间" /></label>

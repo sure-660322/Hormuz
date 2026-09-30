@@ -32,3 +32,15 @@ export function mergeCaseTracks(windows: ApiTrackWindow[]): ApiTrackWindow | nul
   return { ...first, to: last.to, source_count: windows.reduce((n,w) => n+w.source_count,0)-duplicateCount,
     point_count: points.length, segments, gaps }
 }
+
+// Clip each original segment separately: observation gaps remain gaps.
+export function clipCaseTracks(track: ApiTrackWindow | null, from: string, to: string): ApiTrackWindow['segments'] {
+  const start = Date.parse(from), end = Date.parse(to)
+  if (!track || !Number.isFinite(start) || !Number.isFinite(end) || start > end) return []
+  return track.segments.map(segment => ({ ...segment,
+    points: segment.points.filter(point => {
+      const at = Date.parse(point.recorded_at)
+      return at >= start && at <= end
+    }),
+  })).filter(segment => segment.points.length > 0)
+}

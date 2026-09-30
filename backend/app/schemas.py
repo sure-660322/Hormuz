@@ -123,6 +123,9 @@ class SimulationMetaResponse(BaseModel):
 
 
 class CaseArticleResponse(BaseModel):
+    image_url: str | None = None
+    image_source_url: str | None = None
+    image_kind: str | None = None
     title: str
     media: str
     publish_date: date

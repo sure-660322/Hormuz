@@ -16,7 +16,7 @@ export interface ApiCaseStage {
   start_at: string
   end_at: string
   summary: string
-  articles: { title: string; media: string; publish_date: string; url: string }[]
+  articles: { title: string; media: string; publish_date: string; url: string; image_url: string | null; image_source_url: string | null; image_kind: string | null }[]
 }
 export interface ApiMaritimeCase {
   id: string; title: string; mmsi: string; imo: string; data_source: string; supplier: string

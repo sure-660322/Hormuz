@@ -24,6 +24,7 @@ const props = defineProps<{
   trackVisible: boolean
   speedSegments: ApiTrackSegment[] | null
   windowSegments: ApiTrackWindow['segments'] | null
+  backgroundSegments?: ApiTrackWindow['segments'] | null
   windowSpeedColor: boolean
   windowPointsVisible: boolean
   isolated: boolean
@@ -121,6 +122,7 @@ function scheduleTrack() {
       layersTracks: props.layers.tracks,
       speedSegments: props.speedSegments,
       windowSegments: props.windowSegments,
+      backgroundSegments: props.backgroundSegments,
       windowSpeedColor: props.windowSpeedColor,
       windowPointsVisible: props.windowPointsVisible,
     })
@@ -403,7 +405,7 @@ watch(
   scheduleShips,
 )
 watch(() => [props.events, props.selectedEvent, props.time, displayZone.value], scheduleEvents)
-watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, props.windowSegments, props.windowSpeedColor, props.windowPointsVisible, displayZone.value], scheduleTrack)
+watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, props.windowSegments, props.backgroundSegments, props.windowSpeedColor, props.windowPointsVisible, displayZone.value], scheduleTrack)
 watch(() => [props.dwell, props.encounters, props.selectedEncounter, props.isolated], scheduleDerived)
 // 从概览面板选中相遇时，地图飞到最近接近点并保证相遇图层可见。
 watch(() => props.selectedEncounter, (enc) => {
@@ -552,6 +554,8 @@ onBeforeUnmount(() => {
   <div
     ref="container"
     class="maritime-map"
+    :data-background-point-count="(backgroundSegments ?? []).reduce((count, segment) => count + segment.points.length, 0)"
+    :data-points-visible="windowPointsVisible"
     :data-track-point-count="(windowSegments ?? []).reduce((count, segment) => count + segment.points.length, 0)"
     :data-track-end="windowSegments?.at(-1)?.points.at(-1)?.recorded_at ?? ''"
     :class="{ spotlight: !!selectedEvent, 'dark-map': theme === 'dark' }"

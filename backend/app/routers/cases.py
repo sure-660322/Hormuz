@@ -25,6 +25,22 @@ STAGES = [
 ]
 
 
+# Original-page illustrations checked 2026-09-30; they are article evidence,
+# not verified portraits of this vessel. No logo/sidebar image is substituted.
+ARTICLE_IMAGES = {
+    STAGES[0]['articles'][0]['url']: ('https://img.etimg.com/thumb/msid-129849211,width-1200,height-630,imgsize-193652,overlay-economictimes/articleshow.jpg', 'page_cover'),
+    STAGES[0]['articles'][1]['url']: ('https://n.sinaimg.cn/spider20260327/151/w554h397/20260327/44e2-9d9fae15e2db8c4974872a2e342a828e.png', 'body_image'),
+    STAGES[2]['articles'][0]['url']: ('https://cdn.prod.website-files.com/65059ad784ac02253c62356c/69ca7321fc52142445edddf2_Screenshot%202026-03-30%20at%2013.56.31.webp', 'page_cover'),
+    STAGES[2]['articles'][1]['url']: ('https://n.sinaimg.cn/finance/crawl/68/w550h318/20260330/9179-bc28d114fa7475c033ec659a7b8d9567.png', 'body_image'),
+}
+for stage in STAGES:
+    for article in stage['articles']:
+        image = ARTICLE_IMAGES.get(article['url'])
+        article.update(image_url=image[0] if image else None,
+                       image_source_url=article['url'] if image else None,
+                       image_kind=image[1] if image else None)
+
+
 @router.get("/arctic-ocean", response_model=MaritimeCaseResponse)
 def arctic_ocean(db: Session = Depends(get_db)):
     row = db.execute(text("""SELECT s.id, min(p.recorded_at) AS start_at,max(p.recorded_at) AS end_at,count(*) AS position_count

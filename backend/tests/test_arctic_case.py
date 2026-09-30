@@ -79,7 +79,11 @@ def test_isolated_import_and_routes():
             assert repeat["state"] == "already_imported"
             case = client.get("/cases/arctic-ocean").json()
             assert case["ready"] and case["position_count"] == 11640
-            assert len(case["stages"]) == 4
+            assert len(case["stages"]) == 4  # Three voyage phases plus follow-up evidence.
+            articles = [a for stage in case['stages'] for a in stage['articles']]
+            assert sum(bool(a['image_url']) for a in articles) == 4
+            assert all(a['image_source_url'] == a['url'] for a in articles if a['image_url'])
+            assert all(a['image_kind'] in ('body_image', 'page_cover') for a in articles if a['image_url'])
             assert client.get("/simulation/meta").json()["position_count"] == 0
             track = client.get(f"/ships/{result['ship_id']}/track-window",params={"from":"2026-03-28T00:00:00Z","to":"2026-03-29T00:00:00Z","bucket_seconds":120})
             assert track.status_code == 200 and track.json()["gaps"]
