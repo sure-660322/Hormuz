@@ -1,5 +1,7 @@
 # 霍尔木兹海峡船舶态势地图
 
+> 2026-09-30 Issue #20（`codex/issue-20-agent-map`，本地已实现并验证，待 PR 评审）：智能体自然语言轨迹/定位指令返回结构化地图动作，支持回放附近默认窗口、最近 N 小时与唯一历史指代；自动高亮/绘制并聚焦，保持聊天面板。后端 276 passed / 12 skipped，前端 build/check:workbench、真实模型与 5174 浏览器成功/无数据/503/取消样本通过。范围、时间规则与未验证项见[地图联动记录](docs/agent_map_actions_issue20.md)。PR #19 已合入 main；下方 #13/#16 的待评审及必须显式 UTC 窗口描述属于 2026-09-29 历史版本。
+
 > 2026-09-29 Issue #13（分支 `codex/issue-13-map-agent`，待 PR 评审）：#14 时间线卡片复用事件封面并在失败时回退类型图标；#15 的 [12 题真实模型能力评测](docs/agent_capability_eval_issue15.md)已完成，工具扩展待开始；#16 的结构化地图动作在已核实工具结果上生成，明确单船 UTC 窗口可自动加载轨迹，建议动作由用户点击，切换详情后可返回同一对话。前端 build/check:workbench、后端动作测试、实时模型与浏览器样本已验证；其他样本和整周连续回放未逐项验收。下文旧版状态描述以本条为当前增量入口。
 
 本项目以 Vue 地图工作台展示船舶轨迹及已采集的真实新闻报道，后端使用 FastAPI、PostgreSQL 和 PostGIS。新闻聚合事件用于浏览和情景说明，不代表已核实的船舶风险结论。
@@ -126,7 +128,7 @@ npm run dev -- --port 5174
 | GET | `/events/{event_id}/cover` | 按业务事件 ID 读取关联报道配图；从 `NEWS_IMAGE_ROOT` 下受限的 `images/` 路径返回图片，缺失时 404 |
 | GET | `/events/{event_id}/news` | 使用业务事件字符串 ID 查询关联报道，不是数据库整数主键 |
 | GET | `/simulation/meta` | 模拟船位范围及刻度；`event_count=0` 指不含回放模拟事件，不是新闻数为零 |
-| POST | `/agent/analyze` | 智能体问答：问题 + 可选封锁窗口（带时区、≤24 小时）+ 可选多轮 history（≤10 条消息，user/assistant 各计一条）；返回回答、船只、通行证据、统计、tools_used 与各工具结构化结果；错误统一为 detail{code,message,request_id} |
+| POST | `/agent/analyze` | 智能体问答：问题 + 可选封锁窗口（带时区、≤24 小时）+ 可选多轮 history（≤10 条消息）+ 可选 map_context（回放时刻、唯一参考船 ID）；返回回答、船只、证据、工具结果与 map_actions（轨迹/位置/事件）；错误统一为 detail{code,message,request_id} |
 | GET | `/mobility-demo` | 停留分析独立试验页 |
 | GET | `/mobility-demo/analysis?area=strait` | 固定两个时窗；区域可选 `strait` 或 `approach` |
 | GET | `/mobility-demo/tracks` | 派生轨迹 GeoJSON |

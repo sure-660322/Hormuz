@@ -272,8 +272,42 @@ function smoothlyCenterOn(point: L.LatLngExpression) {
 }
 function focusShip() {
   const ship = props.ships.find((s) => s.id === props.selectedShipId)
-  if (ship) smoothlyCenterOn([ship.latitude, ship.longitude])
+  if (ship && map) {
+    map.stop()
+    map.fitBounds(L.latLngBounds([[ship.latitude, ship.longitude]]), {
+      ...focusPadding(), maxZoom: Math.max(map.getZoom(), 10), animate: false,
+    })
+  }
 }
+function focusPadding() {
+  const area = container.value?.getBoundingClientRect()
+  const panel = container.value?.closest('.workbench')?.querySelector('.inspector')?.getBoundingClientRect()
+  let right = 40, bottom = 40
+  if (area && panel && panel.width && panel.height && panel.left < area.right && panel.top < area.bottom) {
+    if (panel.height > area.height * 0.7) right = Math.min(area.width - 100, area.right - panel.left + 30)
+    else bottom = Math.min(area.height - 100, area.bottom - panel.top + 30)
+  }
+  return { paddingTopLeft: L.point(40, 40), paddingBottomRight: L.point(right, bottom) }
+}
+async function confirmFocus(shipId: number, withTrack: boolean): Promise<boolean> {
+  // Wait for the existing render queue and camera animation before reporting success.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (!map || props.selectedShipId !== shipId) return false
+    const ship = props.ships.find(item => item.id === shipId)
+    const points = withTrack ? (props.windowSegments ?? []).flatMap(segment => segment.points) : []
+    const padding = focusPadding().paddingBottomRight
+    const visible = (latitude: number, longitude: number) => {
+      const point = map!.latLngToContainerPoint([latitude, longitude]), size = map!.getSize()
+      return point.x >= 0 && point.y >= 0 && point.x <= size.x - padding.x + 30 && point.y <= size.y - padding.y + 30
+    }
+    if (ship && container.value?.querySelector('.vessel-marker.selected') && props.layers.ships &&
+        visible(ship.latitude, ship.longitude) &&
+        (!withTrack || (props.trackVisible && props.layers.tracks && trackLayer.getLayers().length > 0 && points.length >= 2 && points.every(point => visible(point.latitude, point.longitude))))) return true
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  return false
+}
+defineExpose({ confirmFocus })
 async function loadHarbours() {
   harbourRequest?.abort()
   if (!map || !props.layers.harbours || props.isolated) return
@@ -371,10 +405,10 @@ watch(() => [props.layers, props.isolated], syncLayers, { deep: true })
 watch(() => props.focusShipRequest, focusShip)
 watch(() => props.focusTrackRequest, () => {
   const points = (props.windowSegments ?? []).flatMap(segment => segment.points)
-  if (map && points.length) map.fitBounds(
+  if (map && points.length) { map.stop(); map.fitBounds(
     L.latLngBounds(points.map(point => [point.latitude, point.longitude] as L.LatLngTuple)),
-    { padding: [70, 70], maxZoom: 11, animate: false },
-  )
+    { ...focusPadding(), maxZoom: 11, animate: false },
+  ) }
 })
 watch(
   () => props.selectedEvent,

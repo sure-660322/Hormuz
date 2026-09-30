@@ -29,7 +29,11 @@ const emit = defineEmits<{
   'locate-ship': [shipId: number]
   'locate-event': [eventId: string]
 }>()
-const props = defineProps<{ executeMapAction: (action: AgentMapAction) => Promise<string> }>()
+const props = defineProps<{
+  executeMapAction: (action: AgentMapAction, signal: AbortSignal) => Promise<string>
+  cancelMapAction: () => void
+  playbackAt: string | null
+}>()
 
 interface AgentTurnState {
   question: string
@@ -55,6 +59,8 @@ const elapsedSeconds = ref(0)
 const messageFlow = ref<HTMLElement | null>(null)
 const userReadingHistory = ref(false)
 let request: AbortController | null = null
+let mapRequest: AbortController | null = null
+const mapLoadingTurn = ref<number | null>(null)
 let elapsedTimer: ReturnType<typeof setInterval> | null = null
 
 const canSubmit = computed(() => question.value.trim().length > 0 && !loading.value)
@@ -134,6 +140,24 @@ function buildHistory(): AgentTurn[] {
   return history.slice(-10)
 }
 
+function referenceShip(): number | null {
+  const response = turns.value.filter(turn => turn.response).at(-1)?.response
+  if (!response) return null
+  const actionIds = new Set(response.map_actions?.filter(action => action.type !== 'event').map(action => action.ship_id))
+  if (actionIds.size === 1) return [...actionIds][0]!
+  const ids = new Set<number>()
+  for (const result of Object.values(response.results ?? {})) {
+    if (result.status !== 'ok') continue
+    if (result.tool_name === 'get_ship_track' && 'ship_id' in result) ids.add(result.ship_id as number)
+    if (result.tool_name === 'search_ships' && 'matches' in result) {
+      const search = result as AgentToolShipSearchResult
+      if (search.matched_count !== 1 || search.truncated) return null
+      search.matches.forEach(match => ids.add(match.ship_id))
+    }
+  }
+  return ids.size === 1 ? [...ids][0]! : null
+}
+
 function parseTime(value: string): string | null {
   const trimmed = value.trim()
   return trimmed ? trimmed : null
@@ -151,11 +175,13 @@ function explicitTrackWindow(text: string): [string, string] | null {
 async function submit() {
   if (!canSubmit.value) return
   request?.abort()
+  cancelMap()
   const controller = new AbortController()
   request = controller
   const asked = question.value.trim()
   const inferredWindow = explicitTrackWindow(asked)
   const history = buildHistory()
+  const targetShipId = referenceShip()
   const turnIndex = turns.value.push({ question: asked, response: null }) - 1
   question.value = ''
   loading.value = true
@@ -173,6 +199,7 @@ async function submit() {
         closure_at: parseTime(closureAt.value) ?? inferredWindow?.[0] ?? null,
         end_at: parseTime(endAt.value) ?? inferredWindow?.[1] ?? null,
         history,
+        ...(props.playbackAt ? { map_context: { playback_at: props.playbackAt, target_ship_id: targetShipId } } : {}),
       },
       controller.signal,
     )
@@ -200,15 +227,32 @@ async function submit() {
 async function runMapAction(turnIndex: number, action: AgentMapAction) {
   const turn = turns.value[turnIndex]
   if (!turn) return
+  cancelMap()
+  const controller = new AbortController()
+  mapRequest = controller
+  mapLoadingTurn.value = turnIndex
   turn.mapMessage = '正在地图加载并核对目标…'
   try {
-    turn.mapMessage = await props.executeMapAction(action)
+    const message = await props.executeMapAction(action, controller.signal)
+    if (!controller.signal.aborted) turn.mapMessage = message
   } catch (e) {
-    turn.mapMessage = describeApiError(e, '地图操作失败')
+    if (!controller.signal.aborted) turn.mapMessage = describeApiError(e, '地图操作失败')
+  } finally {
+    if (mapRequest === controller) { mapRequest = null; mapLoadingTurn.value = null }
   }
 }
 
+function cancelMap() {
+  if (!mapRequest) return
+  mapRequest.abort()
+  props.cancelMapAction()
+  if (mapLoadingTurn.value !== null) turns.value[mapLoadingTurn.value]!.mapMessage = '地图操作已取消。'
+  mapRequest = null
+  mapLoadingTurn.value = null
+}
+
 function cancel() {
+  cancelMap()
   request?.abort()
   request = null
   loading.value = false
@@ -218,6 +262,7 @@ function cancel() {
 }
 
 function reset() {
+  cancelMap()
   request?.abort()
   request = null
   loading.value = false
@@ -311,7 +356,7 @@ function cellText(value: unknown): string {
   return String(value)
 }
 
-onBeforeUnmount(() => { request?.abort(); stopClock() })
+onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
 </script>
 
 <template>
@@ -359,8 +404,10 @@ onBeforeUnmount(() => { request?.abort(); stopClock() })
         <section v-if="turn.response.map_actions?.length" class="facts-block">
           <h3>地图操作</h3>
           <button v-for="(action, actionIndex) in turn.response.map_actions" :key="actionIndex" type="button" class="locate-btn" @click="runMapAction(turnIndex, action)">
-            {{ action.type === 'ship_track' ? '在地图显示轨迹' : '在地图显示事件' }}
+            {{ action.type === 'ship_track' ? '在地图显示轨迹' : action.type === 'ship_position' ? '在地图定位船位' : '在地图显示事件' }}
           </button>
+          <p v-for="(action, actionIndex) in turn.response.map_actions.filter(item => item.type !== 'event')" :key="`window-${actionIndex}`" class="caption">{{ `${action.start_at} — ${action.end_at} · ${action.window_source || '工具核实时间窗'} · ${action.source}` }}</p>
+          <button v-if="mapLoadingTurn === turnIndex" type="button" class="locate-btn" @click="cancelMap">取消地图操作</button>
           <p v-if="turn.mapMessage" role="status" class="caption">{{ turn.mapMessage }}</p>
         </section>
 
@@ -518,9 +565,9 @@ onBeforeUnmount(() => { request?.abort(); stopClock() })
     <form class="agent-form" @submit.prevent="submit">
       <details class="advanced">
         <summary><IconSettings :size="17" aria-hidden="true" /> 高级设置：封锁窗口（可留空）<IconChevronDown class="chevron" :size="14" aria-hidden="true" /></summary>
-        <label>封锁开始时间<input v-model="closureAt" type="text" placeholder="默认 2026-02-28T15:00:00Z" aria-label="封锁开始时间" /></label>
-        <label>封锁结束时间<input v-model="endAt" type="text" placeholder="默认 2026-03-01T15:00:00Z" aria-label="封锁结束时间" /></label>
-        <p class="caption">时间须带时区，窗口不超过 24 小时。</p>
+        <label>封锁开始时间<input v-model="closureAt" type="text" placeholder="例如 2026-02-28T14:00:00Z" aria-label="封锁开始时间" /></label>
+        <label>封锁结束时间<input v-model="endAt" type="text" placeholder="例如 2026-02-28T15:00:00Z" aria-label="封锁结束时间" /></label>
+        <p class="caption">时间须带时区，窗口不超过 24 小时。船位/轨迹问题留空时按地图回放时刻附近窗口查询，实际起止以结果为准。</p>
       </details>
       <div class="composer">
         <textarea v-model="question" rows="2" maxlength="2000" placeholder="询问海峡通行、船舶轨迹或新闻事件…" aria-label="智能体问题" @keydown="onQuestionKeydown"></textarea>

@@ -325,6 +325,7 @@ export interface AgentAnalyzeRequest {
   closure_at: string | null
   end_at: string | null
   history?: AgentTurn[]  // 多轮对话历史，最多最近 10 轮；单轮不传
+  map_context?: { playback_at: string; target_ship_id: number | null }
 }
 
 export interface AgentContext {
@@ -385,7 +386,7 @@ export interface AgentAnalyzeResponse {
 }
 
 export type AgentMapAction =
-  | { type: 'ship_track'; trigger: 'automatic' | 'suggested'; ship_id: number; start_at: string; end_at: string; source: 'nnu_ais' }
+  | { type: 'ship_track' | 'ship_position'; trigger: 'automatic' | 'suggested'; ship_id: number; start_at: string; end_at: string; source: 'nnu_ais'; recorded_at?: string; window_source?: string }
   | { type: 'event'; trigger: 'suggested'; event_id: string; source: 'news' }
 
 // 非通行工具的结构化结果（字段定义见 docs/agent_integration.md 与后端工具模块）
