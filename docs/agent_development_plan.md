@@ -173,7 +173,7 @@ SQL-02～06 的阶段验收文档继续保留，但不再作为当前任务看�
 
 ## Issue #24 轨迹模型上下文优化（2026-09-30）
 
-- 状态：后端实现及离线回归已验证；浏览器夹具联动已验证；待 PR 评审、未合入 main、未部署。真实模型 token/费用对比未验证。
+- 状态：后端实现及离线回归已验证；浏览器夹具联动已验证；PR #25 已合入 main（af41d37），本地 main 已同步；本次任务 worktree、本地和远端分支已清理，未部署。真实模型 token/费用对比未验证。
 - 负责人：Codex；基线 `e9518fea2291b6d42436beaae1a995506213b73a`；分支 `codex/issue-24-track-summary`；worktree `D:/my_project/Hormuz-worktrees/codex-issue-24-track-summary`。本任务负责 business_tools.py、langchain_runner.py、新增 track_observation.py/model_usage.py、对应测试及 README/本计划/接入契约的任务段落。未改其他会话 worktree。
 - 本轮未启动服务，未连接或修改数据库。浏览器使用现有 5174 前端与 8000 只读地图 API；仅本任务独立浏览器会话拦截 `/agent/analyze`，响应由本 worktree 的 run_lc_agent + ScriptedFakeLLM + 轨迹夹具生成，无收费模型调用。完整夹具报位不代表真实 AIS 观测。
 - 实现：record_envelope 将完整轨迹留在 state/results，仅给模型发送有界 JSON 摘要。包含查询/覆盖时间、身份、数量、首末报位、来源及限制，无完整 fixes。地图位置动作仍读取末报位 recorded_at，轨迹动作仍读取身份与窗口；响应 v4/前端类型不变。
@@ -188,4 +188,6 @@ SQL-02～06 的阶段验收文档继续保留，但不再作为当前任务看�
 
 以上为固定测试夹具的 JSON 大小，不是 tokenizer 或供应商实际 token；少量报位的摘要有说明开销，大量报位时长度不随报位数量线性增长。不声称具体费用节省比例。
 
-浏览器：Playwright 独立会话 `issue24`，两次提问后聊天面板和上一轮结果保留；显示 FAIR TIGER（ID 360）14:00–15:00 UTC 轨迹成功，第二轮定位/高亮成功（界面以真实地图 API 返回的 14:58:39Z 报位时间为准）。`/ships/360/track-window` 与 `/ships/snapshot-window` 返回 200。控制台 0 errors、1 条现有 ECharts 零尺寸 warning；未将该图表警告归因于本任务。临时证据在 worktree 的 `output/playwright/`（track/position-snapshot.txt、track/position-network.txt、generate_fixture.py、生成响应）及 `.playwright-cli/`，不提交原始数据与临时输出。后端真实模型日志、原始 9 次账单归因、真实供应商缓存/费用及全量端到端模型验收未验证。
+浏览器：Playwright 独立会话 `issue24`，两次提问后聊天面板和上一轮结果保留；显示 FAIR TIGER（ID 360）14:00–15:00 UTC 轨迹成功，第二轮定位/高亮成功（界面以真实地图 API 返回的 14:58:39Z 报位时间为准）。`/ships/360/track-window` 与 `/ships/snapshot-window` 返回 200。控制台 0 errors、1 条现有 ECharts 零尺寸 warning；未将该图表警告归因于本任务。临时证据原在任务 worktree 的 `output/playwright/` 与 `.playwright-cli/`；清理前已复制保存到主目录本地忽略路径 `local-archive/issue24-2026-09-30/playwright/` 和 `playwright-cli/`（含 snapshot、network、generate_fixture.py 和生成响应），不提交原始数据与临时输出。后端真实模型日志、原始 9 次账单归因、真实供应商缓存/费用及全量端到端模型验收未验证。
+
+2026-09-30 合并与同步核验：`gh pr view 25` 确认 base=main、state=MERGED；fetch 后 `git merge-base --is-ancestor af41d37 origin/main` 及任务提交 19e3cba 对本地 HEAD 的祖先检查通过，主目录 fast-forward。用户授权合并、清理与同步，本会话作为整合者仅同步本任务共享文档段落。旧 8000 reloader/worker 未自动加载变更，因此核对精确进程后停止并从主目录重启；启动日志确认监听主目录、Application startup complete。新运行日志位于上述本地归档的 `runtime/`。8000 `/health`、`/docs` 与 5174 首页均 HTTP 200；在最新主目录执行 `backend/.venv/Scripts/python.exe -m pytest backend/tests/test_agent_track_observation.py backend/tests/test_agent_map_actions.py -q`，29 passed。该检查是合入后相关回归，不冒充重新执行全量 286 项，也未调用收费模型。当前 5174 的后续问答使用修复后端，原有回答不重算；其他会话 worktree/服务保留。
