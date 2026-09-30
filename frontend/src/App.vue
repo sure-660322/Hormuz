@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { fetchEvents, fetchShipTracks, fetchShipTrackWindow, fetchDwell, fetchEncounters, analyzeEncounters, fetchDataHealth, describeApiError, type AgentMapAction, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiTrackWindow, type ApiDwellResponse, type ApiEncounter, type ApiDataHealth } from './api'
 import { usePlayback } from './composables/usePlayback'
 import {
@@ -61,6 +61,24 @@ const focusShipRequest = ref(0)
 const focusTrackRequest = ref(0)
 const agentTrack = ref<ApiTrackWindow | null>(null)
 let mapActionVersion = 0
+let pendingMapController: AbortController | null = null
+let pendingFrame: string | null = null
+let agentSelectedShipId: number | null = null
+const mapView = ref<InstanceType<typeof MapView> | null>(null)
+function cancelMapAction() {
+  pendingMapController?.abort()
+  pendingMapController = null
+  pendingFrame = null
+  mapActionVersion++
+  if (agentSelectedShipId !== null && selectedShipId.value === agentSelectedShipId) {
+    agentTrack.value = null
+    trackVisible.value = false
+    realTrack.value = null
+    selectedShipId.value = null
+  }
+  agentSelectedShipId = null
+}
+watch(requestedTime, at => { if (pendingFrame && at !== pendingFrame) cancelMapAction() })
 watch(time, at => {
   if (!agentTrack.value || !at) return
   const current = Date.parse(at)
@@ -276,7 +294,8 @@ async function reanalyzeEncounters() {
     encountersLoading.value = false
   }
 }
-function chooseShip(ship: ApiMapShip) {
+function chooseShip(ship: ApiMapShip, keepChat = false) {
+  cancelMapAction()
   agentTrack.value = null
   mapActionVersion++
   if (selectedShipId.value !== ship.id) {
@@ -288,7 +307,7 @@ function chooseShip(ship: ApiMapShip) {
   }
   selectedShipId.value = ship.id
   selectedEvent.value = null
-  panel.value = 'ships'
+  if (!keepChat) panel.value = 'ships'
   workspaceMode.value = 'explore'
   exploreCategory.value = 'ships'
   panelOpen.value = true
@@ -297,6 +316,7 @@ function chooseShip(ship: ApiMapShip) {
   focusShipRequest.value++
 }
 function clearShip() {
+  cancelMapAction()
   agentTrack.value = null
   mapActionVersion++
   selectedShipId.value = null
@@ -334,7 +354,7 @@ function locateAgentShip(shipId: number) {
     notice.value = `当前回放时刻没有 ID ${shipId} 的船位；地图显示的是当前时刻快照，可调整时间后再定位。`
     return
   }
-  chooseShip(ship)
+  chooseShip(ship, true)
 }
 function locateAgentEvent(eventId: string) {
   const event = events.value.find((item) => item.event_id === eventId)
@@ -348,14 +368,18 @@ function locateAgentEvent(eventId: string) {
   }
   chooseEvent(event)
 }
-async function executeMapAction(action: AgentMapAction): Promise<string> {
+async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Promise<string> {
+  cancelMapAction()
+  if (signal.aborted) return '地图操作已取消。'
   if (action.type === 'event') {
     if (action.source !== 'news' || !action.event_id) return '事件标识或来源无效。'
     const event = events.value.find(item => item.event_id === action.event_id)
     if (!event) return `未找到事件 ${action.event_id}。`
     if (!hasEventLocation(event)) return `事件 ${action.event_id} 没有可定位的代表坐标。`
     if (!event.occurred_at || !eventOccurredBy(event, time.value)) return '事件发生日期尚未进入当前回放范围；请调整时间轴。'
+    const previousPanel = panel.value
     chooseEvent(event)
+    panel.value = previousPanel
     return selectedEvent.value?.event_id === action.event_id ? '事件已在地图选中。' : '事件未能选中。'
   }
   if (action.source !== 'nnu_ais' || !Number.isSafeInteger(action.ship_id) || action.ship_id <= 0) return '船舶标识或来源无效。'
@@ -364,31 +388,48 @@ async function executeMapAction(action: AgentMapAction): Promise<string> {
   if (![start, end, first, last].every(Number.isFinite) || start >= end || end - start > 86400000 || start < first || end > last)
     return '轨迹时间窗无效或超出本批 AIS 覆盖；单次最多 24 小时。'
   const version = ++mapActionVersion
+  pendingMapController?.abort()
+  const controller = new AbortController()
+  pendingMapController = controller
+  signal.addEventListener('abort', () => controller.abort(), { once: true })
+  const cancelled = () => signal.aborted || controller.signal.aborted || version !== mapActionVersion
   let loaded: ApiTrackWindow
   try {
-    loaded = await fetchShipTrackWindow(action.ship_id, new Date(start).toISOString(), new Date(end).toISOString(), 300)
+    loaded = await fetchShipTrackWindow(action.ship_id, new Date(start).toISOString(), new Date(end).toISOString(), 300, controller.signal)
   } catch (e) { return describeApiError(e, '轨迹加载失败') }
-  if (version !== mapActionVersion) return '地图目标已变更，本次操作已取消。'
+  if (cancelled()) return '地图目标已变更，本次操作已取消。'
   const points = loaded.segments.flatMap(segment => segment.points)
-  if (points.length < 2) return points.length
+  if (points.length < (action.type === 'ship_position' ? 1 : 2)) return points.length
     ? '指定时间窗只有一个采样报位，无法绘制轨迹。'
     : '指定时间窗没有该船报位，无法显示轨迹。'
   const latest = points.at(-1)!
+  const targetIndex = times.value.findIndex(at => Date.parse(at) >= Date.parse(latest.recorded_at))
+  pendingFrame = times.value[targetIndex] ?? times.value.at(-1) ?? null
   seek(latest.recorded_at)
+  await nextTick()
   const deadline = Date.now() + 20000
-  while (version === mapActionVersion && !snapshotError.value && !frameReady.value && Date.now() < deadline)
+  while (!cancelled() && !snapshotError.value && !frameReady.value && Date.now() < deadline)
     await new Promise(resolve => setTimeout(resolve, 100))
   const ready = frameReady.value && !snapshotError.value && requestedTime.value !== null && Date.parse(requestedTime.value) >= Date.parse(latest.recorded_at)
-  if (version !== mapActionVersion) return '地图目标已变更，本次操作已取消。'
+  if (cancelled()) return '地图目标已变更，本次操作已取消。'
   if (!ready) return snapshotError.value || '回放快照未能加载，轨迹未选中。'
   const ship = currentShips.value.find(item => item.id === action.ship_id)
   if (!ship) return '轨迹有报位，但所选回放帧没有该船的有效快照。'
-  chooseShip(ship)
-  agentTrack.value = loaded
-  trackVisible.value = true
-  layers.value.tracks = true
-  focusTrackRequest.value++
-  return `已在地图显示船 ID ${action.ship_id} 的轨迹（${new Date(start).toISOString()} 至 ${new Date(end).toISOString()}）。`
+  pendingMapController = null
+  pendingFrame = null
+  chooseShip(ship, true)
+  agentSelectedShipId = ship.id
+  trackVisible.value = action.type === 'ship_track'
+  agentTrack.value = trackVisible.value ? loaded : null
+  if (trackVisible.value) { layers.value.tracks = true; focusTrackRequest.value++ }
+  const committedVersion = mapActionVersion
+  await nextTick()
+  const focused = await mapView.value?.confirmFocus(action.ship_id, trackVisible.value)
+  if (signal.aborted || committedVersion !== mapActionVersion) return '地图目标已变更，本次操作已取消。'
+  if (!focused) return '目标已加载，但地图聚焦未能完成，请重试。'
+  return action.type === 'ship_position'
+    ? `已在地图定位并高亮 ${ship.name}（ID ${ship.id}）；AIS 报位时刻 ${ship.recorded_at}，地图回放时刻 ${time.value}。`
+    : `已在地图显示 ${ship.name}（ID ${ship.id}）的轨迹（${new Date(start).toISOString()} 至 ${new Date(end).toISOString()}）。`
 }
 function restore() {
   clearShip()
@@ -600,6 +641,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @close="layersOpen = false"
       />
       <MapView
+        ref="mapView"
         :ships="currentShips"
         :events="mapEvents"
         :selected-ship-id="selectedShipId"
@@ -765,6 +807,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <AgentPanel
         v-show="panel === 'agent'"
         :execute-map-action="executeMapAction"
+        :cancel-map-action="cancelMapAction"
+        :playback-at="requestedTime"
         @locate-ship="locateAgentShip"
         @locate-event="locateAgentEvent"
       />

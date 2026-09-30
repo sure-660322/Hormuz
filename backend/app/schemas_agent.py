@@ -27,11 +27,24 @@ class AgentTurn(BaseModel):
         return trimmed
 
 
+class AgentMapContext(BaseModel):
+    playback_at: datetime
+    target_ship_id: int | None = Field(default=None, gt=0)
+
+    @field_validator("playback_at")
+    @classmethod
+    def timezone_required(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("地图回放时刻必须带时区")
+        return value
+
+
 class AgentAnalyzeRequest(BaseModel):
     question: str  # 必填，去除首尾空白后 1–2000 字符
     closure_at: datetime | None = None  # 可省略，须带时区，统一 UTC
     end_at: datetime | None = None
     history: list[AgentTurn] | None = None  # 多轮对话历史，可省略（单轮问答）
+    map_context: AgentMapContext | None = None
 
     @field_validator("question")
     @classmethod
@@ -114,13 +127,15 @@ class AgentAnalyzeResponse(BaseModel):
 
 
 class AgentMapAction(BaseModel):
-    type: Literal["ship_track", "event"]
+    type: Literal["ship_track", "ship_position", "event"]
     trigger: Literal["automatic", "suggested"]
     ship_id: int | None = None
     event_id: str | None = None
     start_at: datetime | None = None
     end_at: datetime | None = None
     source: Literal["nnu_ais", "news"]
+    recorded_at: datetime | None = None
+    window_source: str | None = None
 
 
 class AgentErrorDetail(BaseModel):

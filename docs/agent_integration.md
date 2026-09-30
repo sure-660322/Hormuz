@@ -1,5 +1,7 @@
 # 智能体接入契约与任务
 
+> 当前增量（2026-09-30 Issue #20，分支已实现并通过本机样本验证，待 PR 评审）：v4 增加可选请求 `map_context={playback_at:带时区时间,target_ship_id:正整数或null}`，动作支持 `ship_position`；ship_position/ship_track 追加 `window_source`，位置动作另有 `recorded_at`。明确自然语言显示指令可使用回放附近的有界默认窗口，无需填写 UTC 双端点；前端保持聊天面板、核验高亮/轨迹与可见视野后反馈完成，可取消。接口字段、时间优先级、边界与当前验收见[地图联动记录](agent_map_actions_issue20.md)。下方 #16 描述为 PR #19 已合入 main 的历史实现，不代表 #20 当前窗口限制。
+
 > 2026-09-29 Issue #16 分支 `codex/issue-13-map-agent`：v4 响应新增可选 `map_actions` 列表（旧字段保留）。`ship_track` 含 `ship_id`、`start_at`、`end_at`、`source=nnu_ais`；`event` 含 `event_id`、`source=news`；`trigger` 为 `automatic` 或 `suggested`。服务端只从单一成功且有报位、≤24 小时的 `get_ship_track` 结果产生轨迹动作；必须有用户明确 UTC 双端点（或请求明确窗口），并且有显示意图才自动执行，没有显示意图时给按钮；时间不明确或多目标不生成动作，需继续澄清。仅从唯一有日期和代表点的成功 `get_event_context` 结果建议事件动作。前端校验覆盖/身份/时窗并请求有界轨迹、目标回放帧，失败提示原因；成功加载、选中和开图层之后才提示完成。事件继续使用原有时间门控和坐标规则。聊天面板保持挂载，可从船/事件详情返回对话。2026-09-29 本分支后端动作测试 3 passed、前端 build/check:workbench 通过；8001 真实模型与 5176 浏览器只验收 ID 360 的一小时自动轨迹样本，其他失败分支和事件建议的浏览器端到端待验收。#15 能力评测见[12 题报告](agent_capability_eval_issue15.md)。下文 2026-09-26 的“真实模型浏览器未验收”是当时版本的历史状态。
 
 > 2026-09-26 前端分支 `codex/agent-chat-ui-main` 已快进合入本地 `main`（实现提交 `1d1ae41`）：`AgentPanel.vue` 已按现有 v4 非流式响应实现聊天消息流、Enter/Shift+Enter、Markdown 消毒渲染、等待计时和可折叠 `results` 工具过程；后端接口、schema 与路由未变。前端构建、工作台检查及浏览器模拟响应通过，本地 5174 页面已验证智能体面板可打开；真实模型浏览器问答和 SSE 流式输出未验证/未实现，不能把展开的工具结果称为模型思考链。任务记录见[开发计划](agent_development_plan.md)。

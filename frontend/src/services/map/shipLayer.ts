@@ -225,6 +225,10 @@ export class ShipLayerManager {
     }
     // 弱化态只切换 CSS class，不触碰 icon DOM
     const muted = ctx.selectedShipId !== null && !selected
+    // Attach before applying DOM state: newly unclustered selected markers have no element yet.
+    const markerVisible = layerVisible && (!ctx.isolated || selected)
+    if (markerVisible && !shipLayer.hasLayer(entry.marker)) entry.marker.addTo(shipLayer)
+    else if (!markerVisible && shipLayer.hasLayer(entry.marker)) shipLayer.removeLayer(entry.marker)
     const element = entry.marker.getElement()
     if (element) {
       element.classList.toggle('selected', selected)
@@ -250,10 +254,6 @@ export class ShipLayerManager {
     }
 
     // 可见性：整层关闭或隔离模式下的非选中船只移出图层，Marker 保留复用
-    const markerVisible = layerVisible && (!ctx.isolated || selected)
-    if (markerVisible && !shipLayer.hasLayer(entry.marker)) entry.marker.addTo(shipLayer)
-    else if (!markerVisible && shipLayer.hasLayer(entry.marker)) shipLayer.removeLayer(entry.marker)
-
     this.updateVector(ship, ctx, zoom, map, entry)
   }
 
