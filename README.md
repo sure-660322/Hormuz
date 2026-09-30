@@ -1,10 +1,10 @@
 # 霍尔木兹海峡船舶态势地图
 
-当前交付：2026-09-30 用户测试通过后，[PR #22](https://github.com/sure-660322/Hormuz/pull/22) 已合入 `main`（`ac46b10`），本地主目录已快进同步，5174 使用最新 main。本任务未创建 worktree，本地/远端任务分支已清理；其他任务工作树保留。未正式部署。
+当前交付：2026-09-30 [PR #23](https://github.com/sure-660322/Hormuz/pull/23)（Issue #21，油价 × 油轮通行量双轴展板）已合入 `main`（`7447fcb`），任务 worktree 与本地/远端分支已清理；5174 可用最新 main 查看。上一个交付：[PR #22](https://github.com/sure-660322/Hormuz/pull/22) 已合入 `main`（`ac46b10`）。未正式部署。
+
+> 2026-09-30 Issue #21（PR #23 已合入 main，浏览器可视验收待用户在 5174 确认）：态势总览新增数据展板「油价 · 油轮通行量」双轴折线图（ECharts 按需引入），覆盖 AIS 回放窗口（2026-02-25 至 2026-03-03）前后各一周。油价数据取自 [EIA RBRTED 日度现货价](https://www.eia.gov/dnav/pet/hist/RBRTED.htm) 并于当日对照官网核对；通行量为本机 AIS 观测统计（UTC 归日、虚拟门线口径，独立 SQL 复核一致，报告 [daily_tanker_passages_2026-09-30](docs/daily_tanker_passages_2026-09-30.md)）。横轴为连续日历日，油价周末无报价显示断点；两条序列有开关控制，开启时以描线动画渐入，底图（坐标轴/网格/回放窗口高亮）常驻。静态数据在 `frontend/src/domain/brentPrices.ts` 与 `frontend/src/domain/tankerPassages.ts`。`npm run build` 与 `npm run check:workbench` 通过，开关交互经 DOM 验证。观测量下降不能单凭本统计解释为实际通行下降或新闻因果。
 
 > 2026-09-30 Issue #20（PR #22 已合入 main，用户测试通过）：智能体自然语言轨迹/定位指令返回结构化地图动作，支持回放附近默认窗口、最近 N 小时与唯一历史指代；自动高亮/绘制并聚焦，保持聊天面板。后端 276 passed / 12 skipped，前端 build/check:workbench、真实模型与 5174 浏览器成功/无数据/503/取消样本通过。范围、时间规则与未验证项见[地图联动记录](docs/agent_map_actions_issue20.md)。PR #19 已合入 main；下方 #13/#16 的待评审及必须显式 UTC 窗口描述属于 2026-09-29 历史版本。
-
-> 2026-09-30 Issue #21（分支 `kimi/issue-21-brent-chart`，待 PR 评审）：态势总览新增数据展板「油价 · 油轮通行量」双轴折线图（ECharts 按需引入），覆盖 AIS 回放窗口（2026-02-25 至 2026-03-03）前后各一周。油价数据取自 [EIA RBRTED 日度现货价](https://www.eia.gov/dnav/pet/hist/RBRTED.htm) 并于当日对照官网核对；通行量为本机 AIS 观测统计（UTC 归日、虚拟门线口径，独立 SQL 复核一致，报告 [daily_tanker_passages_2026-09-30](docs/daily_tanker_passages_2026-09-30.md)）。横轴为连续日历日，油价周末无报价显示断点；两条序列有开关控制，开启时以描线动画渐入。静态数据在 `frontend/src/domain/brentPrices.ts` 与 `frontend/src/domain/tankerPassages.ts`，markArea 高亮 AIS 回放窗口。`npm run build` 与 `npm run check:workbench` 通过，开关交互经 DOM 验证；浏览器可视验收待 PR 后进行。观测量下降不能单凭本统计解释为实际通行下降或新闻因果。
 
 > 2026-09-29 Issue #13（分支 `codex/issue-13-map-agent`，待 PR 评审）：#14 时间线卡片复用事件封面并在失败时回退类型图标；#15 的 [12 题真实模型能力评测](docs/agent_capability_eval_issue15.md)已完成，工具扩展待开始；#16 的结构化地图动作在已核实工具结果上生成，明确单船 UTC 窗口可自动加载轨迹，建议动作由用户点击，切换详情后可返回同一对话。前端 build/check:workbench、后端动作测试、实时模型与浏览器样本已验证；其他样本和整周连续回放未逐项验收。下文旧版状态描述以本条为当前增量入口。
 
