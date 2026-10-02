@@ -226,21 +226,29 @@ onBeforeUnmount(() => {
       type="button"
       class="chart-toggle"
       :class="{ active: showPrice }"
-      :aria-pressed="showPrice"
+      role="switch"
+      aria-label="Brent 油价（左轴）"
+      :aria-checked="showPrice"
       @click="togglePrice"
     >
       <i class="toggle-dot" :style="{ background: PRICE_COLOR }"></i>
       Brent 油价（左轴）
+      <span class="toggle-state">{{ showPrice ? '显示' : '隐藏' }}</span>
+      <span class="toggle-track" aria-hidden="true"><span></span></span>
     </button>
     <button
       type="button"
       class="chart-toggle"
       :class="{ active: showTraffic }"
-      :aria-pressed="showTraffic"
+      role="switch"
+      aria-label="油轮通行量（右轴）"
+      :aria-checked="showTraffic"
       @click="toggleTraffic"
     >
       <i class="toggle-dot" :style="{ background: TRAFFIC_COLOR }"></i>
       油轮通行量（右轴）
+      <span class="toggle-state">{{ showTraffic ? '显示' : '隐藏' }}</span>
+      <span class="toggle-track" aria-hidden="true"><span></span></span>
     </button>
   </div>
   <div class="traffic-direction" role="group" aria-label="油轮通行方向">

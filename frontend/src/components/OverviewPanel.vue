@@ -6,6 +6,7 @@ import { BRENT_SOURCE_URL } from '../domain/brentPrices'
 import KeyEventBand from './KeyEventBand.vue'
 import { shipComposition, type ShipGroup } from '../domain/overview'
 import MarketTrendChart from './MarketTrendChart.vue'
+import ShipCompositionChart from './ShipCompositionChart.vue'
 const props = defineProps<{
   time: string | null
   viewShips: ApiMapShip[]
@@ -96,10 +97,7 @@ const composition = computed(() => shipComposition(props.viewShips))
     <section class="overview-section composition-section" aria-label="当前快照船舶构成">
       <div class="section-title"><h3>当前快照船舶构成</h3><span>{{ viewShips.length }} 艘 · 全部快照</span></div>
       <p class="composition-time">{{ formatTime(time, true) }} {{ zoneLabel() }} · 不随地图视野筛选</p>
-      <div class="composition-bar" aria-hidden="true"><i v-for="group in composition" :key="group.key" :style="{ width: group.percent + '%', background: group.color }"></i></div>
-      <button v-for="group in composition" :key="group.key" class="composition-row" :disabled="!group.count" @click="emit('openShipGroup', group.key)">
-        <i :style="{ background: group.color }"></i><span>{{ group.label }}</span><strong>{{ group.count }} 艘</strong><small>{{ group.percent.toFixed(1) }}%</small><span>›</span>
-      </button>
+      <ShipCompositionChart :groups="composition" @select="emit('openShipGroup', $event)" />
       <p v-if="!viewShips.length" class="empty compact">当前时刻暂无船位快照。</p>
       <p class="composition-note">货船含集装箱与散货船；缺失或未识别船型归为类型未知。</p>
       <button class="overview-more" @click="emit('openShips')">查看全部船舶 ›</button>
