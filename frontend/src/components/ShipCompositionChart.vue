@@ -14,14 +14,22 @@ const description = computed(() => props.groups.map(group => `${group.label} ${g
 const chartEl = ref<HTMLElement | null>(null)
 let chart: ReturnType<typeof echarts.init> | null = null
 let observer: ResizeObserver | null = null
+// 减少动态偏好：饼图关闭入场动画与高亮缩放（issue #31）。
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+const motionAllowed = ref(!motionQuery.matches)
+function onMotionPreferenceChange() {
+  motionAllowed.value = !motionQuery.matches
+  updateChart()
+}
 
 function updateChart() {
   const series: PieSeriesOption = {
     type: 'pie', radius: '80%', showEmptyCircle: false,
+    animation: motionAllowed.value,
     label: { position: 'inside', formatter: params => `${props.groups.find(group => group.label === params.name)?.percent.toFixed(1)}%`, color: '#fff', fontSize: 13 },
     minShowLabelAngle: 12,
     itemStyle: { borderColor: '#161d25', borderWidth: 2 },
-    emphasis: { scaleSize: 5 },
+    emphasis: { scaleSize: motionAllowed.value ? 5 : 0 },
     data: props.groups.filter(group => group.count > 0).map(group => ({
       name: group.label, value: group.count, itemStyle: { color: group.color },
     })),
@@ -41,11 +49,12 @@ function resizeChart() {
 }
 watch(() => props.groups, updateChart)
 onMounted(() => {
+  motionQuery.addEventListener('change', onMotionPreferenceChange)
   observer = new ResizeObserver(resizeChart)
   if (chartEl.value) observer.observe(chartEl.value)
   resizeChart()
 })
-onBeforeUnmount(() => { observer?.disconnect(); chart?.dispose() })
+onBeforeUnmount(() => { motionQuery.removeEventListener('change', onMotionPreferenceChange); observer?.disconnect(); chart?.dispose() })
 </script>
 
 <template>

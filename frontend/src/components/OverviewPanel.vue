@@ -65,7 +65,7 @@ const composition = computed(() => shipComposition(props.viewShips))
       <MarketTrendChart :time="time" :range-start="rangeStart" :range-end="rangeEnd" />
       <p class="chart-source">
         数据来源：<a :href="BRENT_SOURCE_URL" target="_blank" rel="noopener noreferrer">EIA · Europe Brent Spot Price FOB (Daily)</a>
-        · 油轮通行量为本机 AIS 观测统计（UTC 归日，虚拟门线口径，详见 docs/daily_tanker_passages_2026-09-30.md）
+        · 油轮通行量为本机 AIS 观测统计（UTC 归日，虚拟门线口径，按日统计已核对的观测记录）
       </p>
       <p class="chart-source chart-note">注：Brent 现货价仅工作日发布，周末无报价显示为断点；通行量 02-24 与 03-03 为部分日窗，03-03 的 0 表示“无确定通行”，不证明实际零通行。</p>
       <KeyEventBand :events="allEvents" :start="rangeStart" :end="rangeEnd" :loading="eventsLoading" @select="emit('selectKeyEvent', $event)" />

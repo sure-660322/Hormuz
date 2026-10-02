@@ -10,11 +10,13 @@ const props = defineProps<{
   snapshotMode?: boolean
   frameReady?: boolean
   frameError?: string
+  compact?: boolean
 }>()
 const emit = defineEmits<{
   'update:modelValue': [index: number]
   retry: []
   speedChange: [speed: number]
+  toggleCompact: []
 }>()
 const playing = ref(false)
 const speed = ref(1)
@@ -199,6 +201,14 @@ onBeforeUnmount(() => {
         </div>
         <output class="current-time"
           >{{ fullCurrentTime }}<small>{{ zoneLabel() }}</small></output
+        ><button
+          class="timeline-compact-toggle"
+          type="button"
+          :aria-pressed="compact"
+          :title="compact ? '展开日期刻度' : '收起日期刻度，保留播放与时间滑块'"
+          @click="emit('toggleCompact')"
+        >
+          {{ compact ? '展开轴' : '紧凑轴' }}</button
         ><span class="frame-count"
           >{{ modelValue + 1 }} / {{ frameTimes.length }} 帧</span
         >

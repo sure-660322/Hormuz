@@ -26,6 +26,9 @@ const emit = defineEmits<{
   typeChange: [type: string]
   sortChange: [sort: 'asc' | 'desc']
   retry: []
+  resizeDrag: [event: PointerEvent]
+  resizeKey: [delta: number]
+  collapse: []
 }>()
 const category = defineModel<'events' | 'ships'>({ default: 'events' })
 const shipFilter = defineModel<ShipGroup | 'all'>('shipFilter', { default: 'all' })
@@ -158,5 +161,16 @@ watch(eventView, view => { if (view === 'timeline') void nextTick(scrollToCurren
         <p v-if="!filteredShips.length" class="explorer-message">当前分类暂无船位，可清除筛选或调整上方回放时间。</p>
       </div>
     </template>
+    <button
+      class="sidebar-resize-handle"
+      type="button"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="调整列表宽度，左右方向键微调"
+      @pointerdown="emit('resizeDrag', $event)"
+      @keydown.left.prevent="emit('resizeKey', -24)"
+      @keydown.right.prevent="emit('resizeKey', 24)"
+    ></button>
+    <button class="sidebar-collapse-btn" type="button" title="收起列表，扩大地图区域" @click="emit('collapse')">收起侧栏 ‹</button>
   </aside>
 </template>
