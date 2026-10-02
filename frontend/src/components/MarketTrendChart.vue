@@ -39,7 +39,7 @@ type ChartOption = ComposeOption<
   | TooltipComponentOption
 >
 
-import { formatTime, zoneLabel, displayZone } from '../domain/maritime'
+import { formatTime, zoneLabel } from '../domain/maritime'
 const props = defineProps<{ time: string | null; rangeStart: string | undefined; rangeEnd: string | undefined }>()
 const direction = ref<'passages' | 'inbound' | 'outbound'>('passages')
 const directions = { passages: '总次数', inbound: '入湾', outbound: '出湾' }
@@ -74,6 +74,7 @@ function buildOption(): ChartOption {
   const series: LineSeriesOption[] = [
     // 常驻底图序列：不画线，只承载 AIS 回放窗口高亮带，开关切换时保持不变。
     {
+      id: 'replay-window',
       type: 'line',
       name: '回放窗口',
       data: [],
@@ -109,6 +110,7 @@ function buildOption(): ChartOption {
   ]
   if (showPrice.value) {
     series.push({
+      id: 'brent-price',
       type: 'line',
       name: 'Brent 现货价',
       yAxisIndex: 0,
@@ -122,6 +124,7 @@ function buildOption(): ChartOption {
   }
   if (showTraffic.value) {
     series.push({
+      id: 'tanker-traffic',
       type: 'line',
       name: `油轮${directions[direction.value]}`,
       yAxisIndex: 1,
@@ -183,27 +186,50 @@ function buildOption(): ChartOption {
   }
 }
 
-function applyOption() {
-  // replaceMerge 让重新开启的序列按新实例入场，触发描线动画。
-  chart?.setOption(buildOption(), { replaceMerge: ['series'] })
+function applySeries(changedId: 'brent-price' | 'tanker-traffic') {
+  // 稳定 id 保留未变化曲线；只让重新加入的曲线播放入场动画。
+  const series = (buildOption().series as LineSeriesOption[]).map(series => ({
+    ...series, animation: series.id === changedId,
+  }))
+  chart?.setOption({ series }, { replaceMerge: ['series'] })
+}
+
+function applyWindow() {
+  const window = (buildOption().series as LineSeriesOption[])[0]!
+  chart?.setOption({ series: [
+    { id: 'replay-window', markLine: window.markLine, markArea: window.markArea },
+    ...staticCurves(),
+  ] })
+}
+
+function staticCurves(): LineSeriesOption[] {
+  return [
+    ...(showPrice.value ? [{ id: 'brent-price', animation: false }] : []),
+    ...(showTraffic.value ? [{ id: 'tanker-traffic', animation: false }] : []),
+  ]
 }
 
 function togglePrice() {
   showPrice.value = !showPrice.value
-  applyOption()
+  applySeries('brent-price')
 }
 
 function toggleTraffic() {
   showTraffic.value = !showTraffic.value
-  applyOption()
+  applySeries('tanker-traffic')
 }
 
 function resizeChart() {
   if (!chartEl.value || !chartEl.value.clientWidth || !chartEl.value.clientHeight) return
-  if (!chart) { chart = echarts.init(chartEl.value); applyOption() }
-  else { chart.resize(); applyOption() }
+  if (!chart) { chart = echarts.init(chartEl.value); chart.setOption(buildOption()) }
+  else {
+    chart.setOption({ series: staticCurves() })
+    chart.resize()
+    chart.setOption({ xAxis: { splitNumber: chartEl.value.clientWidth < 550 ? 4 : 10 } })
+  }
 }
-watch([() => props.time, () => props.rangeStart, () => props.rangeEnd, direction, displayZone], applyOption)
+watch([() => props.time, () => props.rangeStart, () => props.rangeEnd], applyWindow)
+watch(direction, () => applySeries('tanker-traffic'))
 onMounted(() => {
   if (!chartEl.value) return
   resizeObserver = new ResizeObserver(resizeChart)

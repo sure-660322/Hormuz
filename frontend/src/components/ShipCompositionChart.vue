@@ -26,7 +26,7 @@ function updateChart() {
       name: group.label, value: group.count, itemStyle: { color: group.color },
     })),
   }
-  chart?.setOption({ tooltip: { trigger: 'item', valueFormatter: (value: unknown) => `${value} 艘` }, series: [series] })
+  chart?.setOption({ tooltip: { trigger: 'item', confine: true, valueFormatter: (value: unknown) => `${value} 艘` }, series: [series] })
 }
 function resizeChart() {
   if (!chartEl.value?.clientWidth || !chartEl.value.clientHeight) return
