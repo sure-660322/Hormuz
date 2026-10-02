@@ -65,6 +65,9 @@ const passageByDate = new Map(tankerPassagesUtc.map((d) => [d.date, d]))
 
 const showPrice = ref(true)
 const showTraffic = ref(true)
+type CurveId = 'brent-price' | 'tanker-traffic'
+const exits = new Map<CurveId, { frame: number; started: number; opacity: number }>()
+const EXIT_DURATION = 400
 
 const chartEl = ref<HTMLElement | null>(null)
 let chart: ReturnType<typeof echarts.init> | null = null
@@ -108,7 +111,7 @@ function buildOption(): ChartOption {
       },
     },
   ]
-  if (showPrice.value) {
+  if (showPrice.value || exits.has('brent-price')) {
     series.push({
       id: 'brent-price',
       type: 'line',
@@ -118,11 +121,11 @@ function buildOption(): ChartOption {
       smooth: false,
       symbol: 'circle',
       symbolSize: 5,
-      lineStyle: { width: 2, color: PRICE_COLOR },
-      itemStyle: { color: PRICE_COLOR },
+      lineStyle: { width: 2, color: PRICE_COLOR, opacity: exits.get('brent-price')?.opacity ?? 1 },
+      itemStyle: { color: PRICE_COLOR, opacity: exits.get('brent-price')?.opacity ?? 1 },
     })
   }
-  if (showTraffic.value) {
+  if (showTraffic.value || exits.has('tanker-traffic')) {
     series.push({
       id: 'tanker-traffic',
       type: 'line',
@@ -132,8 +135,8 @@ function buildOption(): ChartOption {
       smooth: false,
       symbol: 'diamond',
       symbolSize: 6,
-      lineStyle: { width: 2, color: TRAFFIC_COLOR },
-      itemStyle: { color: TRAFFIC_COLOR },
+      lineStyle: { width: 2, color: TRAFFIC_COLOR, opacity: exits.get('tanker-traffic')?.opacity ?? 1 },
+      itemStyle: { color: TRAFFIC_COLOR, opacity: exits.get('tanker-traffic')?.opacity ?? 1 },
     })
   }
   return {
@@ -186,10 +189,10 @@ function buildOption(): ChartOption {
   }
 }
 
-function applySeries(changedId: 'brent-price' | 'tanker-traffic') {
+function applySeries(changedId: CurveId) {
   // 稳定 id 保留未变化曲线；只让重新加入的曲线播放入场动画。
   const series = (buildOption().series as LineSeriesOption[]).map(series => ({
-    ...series, animation: series.id === changedId,
+    ...series, animation: series.id === changedId && !exits.has(changedId),
   }))
   chart?.setOption({ series }, { replaceMerge: ['series'] })
 }
@@ -204,19 +207,46 @@ function applyWindow() {
 
 function staticCurves(): LineSeriesOption[] {
   return [
-    ...(showPrice.value ? [{ id: 'brent-price', animation: false }] : []),
-    ...(showTraffic.value ? [{ id: 'tanker-traffic', animation: false }] : []),
+    ...(showPrice.value || exits.has('brent-price') ? [{ id: 'brent-price', animation: false }] : []),
+    ...(showTraffic.value || exits.has('tanker-traffic') ? [{ id: 'tanker-traffic', animation: false }] : []),
   ]
+}
+
+function transitionCurve(id: CurveId, visible: boolean) {
+  const previousExit = exits.get(id)
+  if (previousExit) cancelAnimationFrame(previousExit.frame)
+  exits.delete(id)
+  if (visible || !chart) { applySeries(id); return }
+  const exit = { frame: 0, started: performance.now(), opacity: 1 }
+  exits.set(id, exit)
+  applySeries(id)
+  const fade = (now: number) => {
+    if (exits.get(id) !== exit || !chart) return
+    const progress = Math.min((now - exit.started) / EXIT_DURATION, 1)
+    exit.opacity = (1 - progress) ** 2
+    // 两条序列使用独立固定颜色，只改变目标线与符号的透明度。
+    const color = id === 'brent-price' ? PRICE_COLOR : TRAFFIC_COLOR
+    for (const element of chart.getZr().storage.getDisplayList()) {
+      const style = element.style as { stroke?: string; fill?: string }
+      if (style.stroke === color || style.fill === color) {
+        element.style.opacity = exit.opacity
+        element.dirty()
+      }
+    }
+    if (progress < 1) exit.frame = requestAnimationFrame(fade)
+    else { exits.delete(id); applySeries(id) }
+  }
+  exit.frame = requestAnimationFrame(fade)
 }
 
 function togglePrice() {
   showPrice.value = !showPrice.value
-  applySeries('brent-price')
+  transitionCurve('brent-price', showPrice.value)
 }
 
 function toggleTraffic() {
   showTraffic.value = !showTraffic.value
-  applySeries('tanker-traffic')
+  transitionCurve('tanker-traffic', showTraffic.value)
 }
 
 function resizeChart() {
@@ -238,6 +268,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  for (const exit of exits.values()) cancelAnimationFrame(exit.frame)
+  exits.clear()
   resizeObserver?.disconnect()
   resizeObserver = null
   chart?.dispose()
