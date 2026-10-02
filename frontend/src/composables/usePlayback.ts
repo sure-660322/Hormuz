@@ -182,7 +182,7 @@ export function usePlayback() {
         snapshotShips.value = []
         snapshotAt.value = null
         frames.value = displayTimes.map((at) => ({ time: new Date(at).toISOString(), positions: [] }))
-        index.value = frames.value.length - 1
+        index.value = 0
         await nextTick()
         clearTimeout(snapshotTimer)
         await loadSnapshot(requestedTime.value!)

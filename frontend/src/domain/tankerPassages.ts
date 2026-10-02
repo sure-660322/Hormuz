@@ -7,15 +7,17 @@ export interface TankerPassageDay {
   date: string
   /** 当日确定通行次数 */
   passages: number
+  inbound: number
+  outbound: number
 }
 
 export const tankerPassagesUtc: TankerPassageDay[] = [
-  { date: '2026-02-24', passages: 16 },
-  { date: '2026-02-25', passages: 53 },
-  { date: '2026-02-26', passages: 68 },
-  { date: '2026-02-27', passages: 65 },
-  { date: '2026-02-28', passages: 43 },
-  { date: '2026-03-01', passages: 7 },
-  { date: '2026-03-02', passages: 1 },
-  { date: '2026-03-03', passages: 0 },
+  { date: '2026-02-24', passages: 16, inbound: 13, outbound: 3 },
+  { date: '2026-02-25', passages: 53, inbound: 24, outbound: 29 },
+  { date: '2026-02-26', passages: 68, inbound: 46, outbound: 22 },
+  { date: '2026-02-27', passages: 65, inbound: 32, outbound: 33 },
+  { date: '2026-02-28', passages: 43, inbound: 17, outbound: 26 },
+  { date: '2026-03-01', passages: 7, inbound: 0, outbound: 7 },
+  { date: '2026-03-02', passages: 1, inbound: 0, outbound: 1 },
+  { date: '2026-03-03', passages: 0, inbound: 0, outbound: 0 },
 ]

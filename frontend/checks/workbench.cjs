@@ -16,6 +16,8 @@ execFileSync(
     'src/composables/usePlayback.ts',
     'src/domain/casePlayback.ts',
     'src/domain/trackArrows.ts',
+    'src/domain/overview.ts',
+    'src/domain/tankerPassages.ts',
     '--ignoreConfig',
     '--target',
     'ES2022',
@@ -42,6 +44,28 @@ const { nextTick } = require('vue')
 const { hasEventLocation, eventOccurredBy, eventTimeText, safeNewsUrl } = require(path.join(out, 'domain/maritime.js'))
 
 async function main() {
+  const { shipComposition, shipGroup, keyEvents, eventSeekTime } = require(path.join(out, 'domain/overview.js'))
+  const { tankerPassagesUtc } = require(path.join(out, 'domain/tankerPassages.js'))
+  assert.deepEqual(tankerPassagesUtc.map(d => [d.inbound, d.outbound]), [[13,3],[24,29],[46,22],[32,33],[17,26],[0,7],[0,1],[0,0]], 'Audited UTC direction counts')
+  assert.ok(tankerPassagesUtc.every(d => d.passages === d.inbound + d.outbound))
+  assert.equal(shipGroup('集装箱'), 'cargo')
+  assert.equal(shipGroup('油轮'), 'tanker')
+  assert.equal(shipGroup('拖引'), 'other')
+  assert.equal(shipGroup('unrecognized'), 'unknown')
+  assert.equal(shipGroup(null), 'unknown')
+  const composition = shipComposition(['油轮','货船','集装箱','拖轮',null,'未知'].map(ship_type => ({ship_type})))
+  assert.deepEqual(composition.map(g => g.count), [1,2,1,2])
+  assert.equal(composition.reduce((n,g) => n + g.count,0), 6)
+  assert.ok(shipComposition([]).every(g => g.percent === 0))
+  const story = (id, day, count) => ({event_id: id, occurred_at: day, coverage_count: count})
+  const stories = Array.from({length:8}, (_,i) => story(String(i),'2026-02-28T00:00:00Z',i))
+  const selected = keyEvents([...stories,story('undated',null,100),story('bad','2026-02-30T00:00:00Z',100),story('out','2026-04-01T00:00:00Z',100)],'2026-02-24T16:00:00Z','2026-03-03T15:59:59Z')
+  assert.equal(selected.length,6)
+  assert.deepEqual(selected.map(e => e.event_id),['2','3','4','5','6','7'])
+  assert.equal(eventSeekTime(stories[0],'2026-02-24T16:00:00Z','Asia/Shanghai'),'2026-02-27T16:00:00.000Z')
+  assert.equal(eventSeekTime(stories[0],'2026-02-24T16:00:00Z','UTC'),'2026-02-28T00:00:00.000Z')
+  assert.equal(eventSeekTime(story('first','2026-02-24T00:00:00Z',1),'2026-02-24T16:00:00Z','UTC'),'2026-02-24T16:00:00.000Z')
+
   const { sparseTrackArrows } = require(path.join(out, 'domain/trackArrows.js'))
   const east = Array.from({ length: 100 }, (_, i) => ({ x: i * 10, y: 50, speed: 10 }))
   const arrows = sparseTrackArrows([east], 1000, 200)
@@ -246,19 +270,21 @@ async function main() {
     frame_count: 3, frame_interval_seconds: 300,
     is_simulated: false, has_events: false, has_derived: false,
   })
-  api.fetchShipSnapshot = async () => [{ ...ship, speed: 12, recorded_at: last.recorded_at }]
+  api.fetchShipSnapshot = async () => [{ ...ship, speed: 8, recorded_at: first.recorded_at }]
   let resolveWindow
   api.fetchShipSnapshotWindow = async () => new Promise((resolve) => { resolveWindow = resolve })
   const realPlayback = usePlayback()
   await realPlayback.load()
   assert.equal(realPlayback.isRealAis.value, true)
   assert.equal(realPlayback.frameReady.value, true)
-  assert.equal(realPlayback.currentShips.value[0].speed, 12)
-  realPlayback.index.value = 0
+  assert.equal(realPlayback.index.value, 0, 'Real AIS opens at the start of the playback range')
+  assert.equal(realPlayback.time.value, new Date(first.recorded_at).toISOString())
+  assert.equal(realPlayback.currentShips.value[0].speed, 8)
+  realPlayback.index.value = 2
   await nextTick()
   assert.equal(realPlayback.frameReady.value, false)
-  assert.equal(realPlayback.time.value, new Date(last.recorded_at).toISOString(), 'Keep displayed time while the target frame loads')
-  assert.equal(realPlayback.currentShips.value[0].speed, 12, 'Keep the previous map snapshot during loading')
+  assert.equal(realPlayback.time.value, new Date(first.recorded_at).toISOString(), 'Keep displayed time while the target frame loads')
+  assert.equal(realPlayback.currentShips.value[0].speed, 8, 'Keep the previous map snapshot during loading')
   await new Promise((resolve) => setTimeout(resolve, 150))
   resolveWindow({
     frames: [
@@ -270,8 +296,8 @@ async function main() {
   })
   await new Promise((resolve) => setTimeout(resolve, 0))
   assert.equal(realPlayback.frameReady.value, true)
-  assert.equal(realPlayback.time.value, new Date(first.recorded_at).toISOString())
-  assert.equal(realPlayback.currentShips.value[0].speed, 8)
+  assert.equal(realPlayback.time.value, new Date(last.recorded_at).toISOString())
+  assert.equal(realPlayback.currentShips.value[0].speed, 12)
   realPlayback.index.value = 1
   await nextTick()
   assert.equal(realPlayback.frameReady.value, true, 'Adjacent cached frame is ready without a new request')
