@@ -2,6 +2,7 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { eventCoverUrl, type ApiEvent, type ApiMapShip } from '../api'
 import { displayZone, eventKind, eventKinds, eventTimeText, shipType } from '../domain/maritime'
+import { shipGroup, shipGroups, type ShipGroup } from '../domain/overview'
 import ShipSearch from './ShipSearch.vue'
 
 const props = defineProps<{
@@ -27,12 +28,14 @@ const emit = defineEmits<{
   retry: []
 }>()
 const category = defineModel<'events' | 'ships'>({ default: 'events' })
+const shipFilter = defineModel<ShipGroup | 'all'>('shipFilter', { default: 'all' })
+const filteredShips = computed(() => props.ships.filter(ship => shipFilter.value === 'all' || shipGroup(ship.ship_type) === shipFilter.value))
 const eventView = ref<'timeline' | 'list'>('timeline')
 const failedCovers = reactive(new Set<string>())
-const sortedShips = computed(() => [...props.ships].sort((a, b) => (a.name ?? a.mmsi).localeCompare(b.name ?? b.mmsi, 'zh-CN')))
+const sortedShips = computed(() => [...filteredShips.value].sort((a, b) => (a.name ?? a.mmsi).localeCompare(b.name ?? b.mmsi, 'zh-CN')))
 const shipListLimit = ref(100)
 const visibleShips = computed(() => sortedShips.value.slice(0, shipListLimit.value))
-watch(() => props.ships, () => { shipListLimit.value = 100 })
+watch([() => props.ships, shipFilter], () => { shipListLimit.value = 100 })
 function selectEvent(event: ApiEvent) { category.value = 'events'; emit('selectEvent', event) }
 function selectShip(ship: ApiMapShip) { category.value = 'ships'; emit('selectShip', ship) }
 const dayGroups = computed(() => {
@@ -75,7 +78,7 @@ watch(eventView, view => { if (view === 'timeline') void nextTick(scrollToCurren
     <div class="explorer-intro">
       <h2>海峡动态</h2>
       <p>查找历史新闻与船舶，点选后在地图中查看。</p>
-      <ShipSearch :ships="ships" :events="[...events, ...untimedEvents]" :loading="shipsLoading" @select="selectShip" @select-event="selectEvent" />
+      <ShipSearch :ships="filteredShips" :events="[...events, ...untimedEvents]" :loading="shipsLoading" @select="selectShip" @select-event="selectEvent" />
     </div>
     <div class="explorer-tabs" role="group" aria-label="探索类别">
       <button :class="{ active: category === 'events' }" :aria-pressed="category === 'events'" @click="category = 'events'">新闻事件</button>
@@ -144,14 +147,15 @@ watch(eventView, view => { if (view === 'timeline') void nextTick(scrollToCurren
       <button v-if="!eventsLoading && !eventsError && eventView === 'timeline' && dayGroups.length" class="dayline-jump" @click="scrollToCurrentDay">回到当前日期</button>
     </template>
     <template v-else>
-      <p class="explorer-count">当前船位快照 · {{ ships.length }} 艘船舶</p>
+      <div class="explorer-filters single"><select v-model="shipFilter" aria-label="船舶构成分类"><option value="all">全部船型</option><option v-for="group in shipGroups" :key="group.key" :value="group.key">{{ group.label }}</option></select></div>
+      <p class="explorer-count">当前船位快照 · {{ filteredShips.length }} / {{ ships.length }} 艘船舶 <button v-if="shipFilter !== 'all'" class="ship-filter-clear" @click="shipFilter = 'all'">清除筛选</button></p>
       <div class="explorer-list">
         <button v-for="ship in visibleShips" :key="ship.id" class="explorer-item" :class="{ selected: selectedShipId === ship.id }" @click="selectShip(ship)">
           <span class="explorer-item-title">{{ ship.name ?? ship.mmsi }}</span>
           <span class="explorer-item-meta"><span>{{ shipType(ship.ship_type) }}</span><span>{{ ship.speed.toFixed(1) }} kn</span></span>
         </button>
-        <button v-if="shipListLimit < ships.length" class="overview-more" @click="shipListLimit += 100">再显示 100 艘（已显示 {{ visibleShips.length }} / {{ ships.length }}）</button>
-        <p v-if="!ships.length" class="explorer-message">当前时刻暂无船位，可调整底部回放时间。</p>
+        <button v-if="shipListLimit < filteredShips.length" class="overview-more" @click="shipListLimit += 100">再显示 100 艘（已显示 {{ visibleShips.length }} / {{ filteredShips.length }}）</button>
+        <p v-if="!filteredShips.length" class="explorer-message">当前分类暂无船位，可清除筛选或调整上方回放时间。</p>
       </div>
     </template>
   </aside>

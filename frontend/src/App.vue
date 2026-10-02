@@ -10,6 +10,7 @@ import {
   type Panel,
   type ViewBounds,
 } from './domain/maritime'
+import { eventSeekTime, type ShipGroup } from './domain/overview'
 import logoUrl from './assets/logo.png'
 import MapView from './components/MapView.vue'
 import EventPanel from './components/EventPanel.vue'
@@ -178,6 +179,7 @@ async function exitCase() {
   savedCaseView.value = null
 }
 async function changeWorkspace(mode: 'overview' | 'explore') {
+  pendingKeyEvent.value = null
   if (savedCaseView.value) await exitCase()
   workspaceMode.value = mode
   if (mode === 'overview') panelOpen.value = false
@@ -196,6 +198,9 @@ const eventsError = ref('')
 const panel = ref<Panel>('overview')
 const panelOpen = ref(false)
 const workspaceMode = ref<'overview' | 'explore'>('explore')
+const shipFilter = ref<ShipGroup | 'all'>('all')
+const pendingKeyEvent = ref<ApiEvent | null>(null)
+let pendingKeyEventFrame: string | null = null
 const exploreCategory = ref<'events' | 'ships'>('events')
 const sidebarOpen = ref(false)
 const layersOpen = ref(false)
@@ -416,6 +421,7 @@ function chooseEncounter(enc: ApiEncounter) {
   layers.value.encounters = true
 }
 function chooseShip(ship: ApiMapShip, keepChat = false) {
+  pendingKeyEvent.value = null
   cancelMapAction()
   agentTrack.value = null
   mapActionVersion++
@@ -451,6 +457,7 @@ function focusShipById(shipId: number) {
   if (ship) chooseShip(ship)
 }
 function chooseEvent(event: ApiEvent) {
+  pendingKeyEvent.value = null
   if (event.occurred_at && !eventOccurredBy(event, time.value)) {
     notice.value = '该新闻事件尚未到达发生日期，请向后拖动时间轴。'
     return
@@ -467,6 +474,31 @@ function chooseEvent(event: ApiEvent) {
   layers.value.events = true
   if (!event.occurred_at) notice.value = '发生日期未明确：可阅读详情，但地图回放不显示此事件点。'
   else if (!hasEventLocation(event)) notice.value = '该新闻事件没有可定位的代表坐标，详情仍可阅读。'
+}
+function chooseKeyEvent(event: ApiEvent) {
+  if (eventOccurredBy(event, time.value)) { chooseEvent(event); return }
+  const target = times.value[0] && eventSeekTime(event, times.value[0], displayZone.value)
+  if (!target) return
+  pendingKeyEvent.value = event
+  selectedEvent.value = null
+  workspaceMode.value = 'explore'
+  seekRequest.value++
+  seek(target)
+  pendingKeyEventFrame = requestedTime.value
+}
+watch(requestedTime, at => {
+  if (pendingKeyEvent.value && at !== pendingKeyEventFrame) pendingKeyEvent.value = null
+})
+watch([time, frameReady, snapshotError, displayZone], () => {
+  const event = pendingKeyEvent.value
+  if (!event) return
+  if (snapshotError.value) { pendingKeyEvent.value = null; notice.value = '事件日期快照加载失败，请重试后打开详情。'; return }
+  if (frameReady.value && eventOccurredBy(event, time.value)) chooseEvent(event)
+})
+function openShipGroup(group: ShipGroup) {
+  openExplorer('ships')
+  shipFilter.value = group
+  sidebarOpen.value = true
 }
 // 智能体回答中的「地图定位」只定位当前回放时刻已出现的事件和船位。
 function locateAgentShip(shipId: number) {
@@ -585,6 +617,8 @@ function backToOverview() {
   panelOpen.value = false
 }
 function openExplorer(category: 'events' | 'ships') {
+  pendingKeyEvent.value = null
+  if (category === 'ships') shipFilter.value = 'all'
   workspaceMode.value = 'explore'
   exploreCategory.value = category
   backToOverview()
@@ -728,6 +762,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <ExplorerSidebar
       v-show="!caseOpen"
       v-model="exploreCategory"
+      v-model:ship-filter="shipFilter"
       class="explorer-placement"
       :class="{ 'mobile-open': sidebarOpen }"
       :events="filteredEvents"
@@ -862,10 +897,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <section class="overview-stage" aria-label="态势总览">
       <header class="overview-stage-head"><div><p class="eyebrow">霍尔木兹海峡 · 历史船位与新闻</p><h2>从海峡动态，进入地图调查</h2><p>{{ isRealAis ? `当前接入历史 AIS：${formatTime(times[0], true)} 至 ${formatTime(times.at(-1), true)} ${zoneLabel()}；地图为所选时刻前 1 小时内的最新报位。` : '计划接入船位时段：2026-02-25 至 2026-03-03（UTC）；实际回放范围以入库数据为准。' }} 新闻事件来自独立报道，两类资料分别浏览，不据时空邻近推断真实关联。</p></div><button class="primary" @click="workspaceMode = 'explore'">进入地图探索</button></header>
       <OverviewPanel
-        :time="time" :view-ships="currentShips" :view-events="mapEvents" :events="filteredEvents"
+        :time="time" :view-ships="currentShips" :view-events="mapEvents" :events="filteredEvents" :all-events="events" :range-start="times[0]" :range-end="times.at(-1)"
         :total-ships="currentShips.length" :total-events="events.length" :average-speed="snapshotAverageSpeed"
         :events-loading="eventsLoading"
-        @select-ship="chooseShip" @select-event="chooseEvent"
+        @select-event="chooseEvent" @select-key-event="chooseKeyEvent" @open-ship-group="openShipGroup"
         @open-events="openExplorer('events')" @open-ships="openExplorer('ships')"
       />
     </section>

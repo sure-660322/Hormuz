@@ -1774,3 +1774,34 @@ button.primary:hover {
   .overview-stage .overview-panel { grid-template-columns: minmax(0, 1fr); }
   .overview-stage .panel-heading, .overview-stage .overview-chips { grid-column: 1; }
 }
+
+/* Overview: full-window evidence above, current snapshot composition below. */
+.overview-stage .overview-chart { grid-column: 1 / -1; }
+.chart-window-note { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 18px 12px; font-size: 11px; color: var(--muted); }
+.traffic-direction { display: flex; gap: 3px; margin: 8px 18px; }
+.traffic-direction button { font-size: 11px; padding: 5px 14px; }
+.traffic-direction button.active { background: var(--blue-soft); color: var(--ink); border-color: var(--blue); }
+.key-event-band { margin: 20px 18px 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.key-event-band header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.key-event-band h4 { margin: 0; font-size: 13px; }
+.key-event-band header span, .key-event-band .chart-note { font-size: 11px; color: var(--muted); }
+.event-date-track { position: relative; height: 20px; margin: 16px 34px 12px 42px; border-top: 1px solid var(--line); }
+.event-date-track a { position: absolute; top: -11px; transform: translateX(-50%); color: var(--blue); text-decoration: none; }
+.key-event-groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.key-event-groups details { min-width: 0; border-left: 2px solid var(--line); padding-left: 10px; scroll-margin-top: 12px; }
+.key-event-groups summary { cursor: pointer; font-size: 11px; color: var(--muted); }
+.key-event-groups summary span { margin-left: 10px; }
+.key-event-card { display: flex; flex-direction: column; align-items: start; gap: 7px; width: 100%; text-align: left; border: 0; border-radius: 0; padding: 10px 0; background: transparent; }
+.key-event-card span, .key-event-card small { font-size: 10px; }
+.key-event-card strong { font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.key-event-card small { color: var(--muted); }
+.composition-time, .composition-note { margin: 12px 18px; color: var(--muted); font-size: 11px; }
+.composition-bar { display: flex; height: 8px; overflow: hidden; margin: 18px; border-radius: 4px; background: var(--line); }
+.composition-bar i { display: block; }
+.composition-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 18px; border: 0; border-top: 1px solid var(--line); border-radius: 0; text-align: left; background: transparent; }
+.composition-row i { width: 8px; height: 8px; border-radius: 50%; }
+.composition-row > span:first-of-type { flex: 1; }
+.composition-row strong { font-size: 13px; }
+.composition-row small { width: 52px; text-align: right; color: var(--muted); }
+.ship-filter-clear { font-size: 10px; margin-left: 6px; padding: 2px 6px; }
+@media (max-width: 760px) { .key-event-groups { grid-template-columns: 1fr; } .chart-window-note { flex-direction: column; } }

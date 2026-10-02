@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import {
   GridComponent,
   MarkAreaComponent,
+  MarkLineComponent,
   TooltipComponent,
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -13,10 +14,10 @@ import type { LineSeriesOption } from 'echarts/charts'
 import type {
   GridComponentOption,
   MarkAreaComponentOption,
+  MarkLineComponentOption,
   TooltipComponentOption,
 } from 'echarts/components'
 import {
-  AIS_WINDOW,
   brentDailyPrices,
 } from '../domain/brentPrices'
 import { tankerPassagesUtc } from '../domain/tankerPassages'
@@ -25,6 +26,7 @@ echarts.use([
   LineChart,
   GridComponent,
   MarkAreaComponent,
+  MarkLineComponent,
   TooltipComponent,
   CanvasRenderer,
 ])
@@ -33,8 +35,14 @@ type ChartOption = ComposeOption<
   | LineSeriesOption
   | GridComponentOption
   | MarkAreaComponentOption
+  | MarkLineComponentOption
   | TooltipComponentOption
 >
+
+import { formatTime, zoneLabel, displayZone } from '../domain/maritime'
+const props = defineProps<{ time: string | null; rangeStart: string | undefined; rangeEnd: string | undefined }>()
+const direction = ref<'passages' | 'inbound' | 'outbound'>('passages')
+const directions = { passages: '总次数', inbound: '入湾', outbound: '出湾' }
 
 const PRICE_COLOR = '#E8B14E'
 const TRAFFIC_COLOR = '#5AA2E8'
@@ -53,7 +61,7 @@ function dateRange(start: string, end: string): string[] {
 // 连续日历日横轴：油价周末无报价显示为断点，通行量按自然日覆盖。
 const categories = dateRange('2026-02-18', '2026-03-10')
 const priceByDate = new Map(brentDailyPrices.map((d) => [d.date, d.price]))
-const passageByDate = new Map(tankerPassagesUtc.map((d) => [d.date, d.passages]))
+const passageByDate = new Map(tankerPassagesUtc.map((d) => [d.date, d]))
 
 const showPrice = ref(true)
 const showTraffic = ref(true)
@@ -74,6 +82,12 @@ function buildOption(): ChartOption {
       showSymbol: false,
       lineStyle: { opacity: 0 },
       tooltip: { show: false },
+      markLine: props.time ? {
+        silent: true, symbol: 'none',
+        lineStyle: { color: '#A8B6C6', type: 'dashed', width: 1 },
+        label: { show: true, position: 'insideEndTop', formatter: '当前回放', color: '#A8B6C6', fontSize: 10 },
+        data: [{ xAxis: Date.parse(props.time) }],
+      } : undefined,
       markArea: {
         silent: true,
         itemStyle: { color: 'rgba(232, 177, 78, 0.10)' },
@@ -86,8 +100,8 @@ function buildOption(): ChartOption {
         },
         data: [
           [
-            { xAxis: AIS_WINDOW.start.slice(5) },
-            { xAxis: AIS_WINDOW.end.slice(5) },
+            { xAxis: Date.parse(props.rangeStart ?? '2026-02-24T16:00:00Z') },
+            { xAxis: Date.parse(props.rangeEnd ?? '2026-03-03T15:59:59Z') },
           ],
         ],
       },
@@ -98,7 +112,7 @@ function buildOption(): ChartOption {
       type: 'line',
       name: 'Brent 现货价',
       yAxisIndex: 0,
-      data: categories.map((d) => priceByDate.get(d) ?? null),
+      data: categories.map((d) => [Date.parse(d + 'T00:00:00Z'), priceByDate.get(d) ?? null]),
       smooth: false,
       symbol: 'circle',
       symbolSize: 5,
@@ -109,9 +123,9 @@ function buildOption(): ChartOption {
   if (showTraffic.value) {
     series.push({
       type: 'line',
-      name: '油轮通行量',
+      name: `油轮${directions[direction.value]}`,
       yAxisIndex: 1,
-      data: categories.map((d) => passageByDate.get(d) ?? null),
+      data: categories.map((d) => [Date.parse(d + 'T00:00:00Z'), passageByDate.get(d)?.[direction.value] ?? null]),
       smooth: false,
       symbol: 'diamond',
       symbolSize: 6,
@@ -131,22 +145,23 @@ function buildOption(): ChartOption {
           marker: string
           seriesName: string
           axisValue: string
-          value: number | null
+          value: [number, number | null]
         }>
-        const header = list.length ? list[0].axisValue : ''
+        const header = list.length ? new Date(Number(list[0].axisValue)).toISOString().slice(0, 10) + ' UTC' : ''
         const lines = list.map((p) => {
-          const unit = p.seriesName === '油轮通行量' ? '次' : '美元/桶'
-          const value = p.value == null ? '—' : `${p.value} ${unit}`
+          const unit = p.seriesName.startsWith('油轮') ? '次' : '美元/桶'
+          const value = p.value[1] == null ? '—' : `${p.value[1]} ${unit}`
           return `${p.marker} ${p.seriesName}：<b>${value}</b>`
         })
         return [header, ...lines].join('<br/>')
       },
     },
     xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: categories.map((d) => d.slice(5)),
-      axisLabel: { color: '#8B98A8', fontSize: 10 },
+      type: 'time',
+      splitNumber: (chartEl.value?.clientWidth ?? 800) < 550 ? 4 : 10,
+      min: Date.parse(categories[0]! + 'T00:00:00Z'),
+      max: Date.parse(categories.at(-1)! + 'T00:00:00Z'),
+      axisLabel: { color: '#8B98A8', fontSize: 10, formatter: (value: number) => new Date(value).toISOString().slice(5, 10) },
       axisLine: { lineStyle: { color: '#28323F' } },
     },
     yAxis: [
@@ -183,12 +198,17 @@ function toggleTraffic() {
   applyOption()
 }
 
+function resizeChart() {
+  if (!chartEl.value || !chartEl.value.clientWidth || !chartEl.value.clientHeight) return
+  if (!chart) { chart = echarts.init(chartEl.value); applyOption() }
+  else { chart.resize(); applyOption() }
+}
+watch([() => props.time, () => props.rangeStart, () => props.rangeEnd, direction, displayZone], applyOption)
 onMounted(() => {
   if (!chartEl.value) return
-  chart = echarts.init(chartEl.value)
-  chart.setOption(buildOption())
-  resizeObserver = new ResizeObserver(() => chart?.resize())
+  resizeObserver = new ResizeObserver(resizeChart)
   resizeObserver.observe(chartEl.value)
+  resizeChart()
 })
 
 onBeforeUnmount(() => {
@@ -200,6 +220,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <p class="chart-window-note">完整历史窗口 · 日统计按 UTC 归日<span>当前回放 {{ formatTime(time, true) }} {{ zoneLabel() }}</span></p>
   <div class="chart-toggles">
     <button
       type="button"
@@ -221,6 +242,9 @@ onBeforeUnmount(() => {
       <i class="toggle-dot" :style="{ background: TRAFFIC_COLOR }"></i>
       油轮通行量（右轴）
     </button>
+  </div>
+  <div class="traffic-direction" role="group" aria-label="油轮通行方向">
+    <button v-for="(label, key) in directions" :key="key" :aria-pressed="direction === key" :class="{ active: direction === key }" @click="direction = key">{{ label }}</button>
   </div>
   <div
     ref="chartEl"

@@ -1,24 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ApiEvent, ApiMapShip } from '../api'
-import { eventKind, formatTime, shipType } from '../domain/maritime'
+import { eventKind, formatTime, zoneLabel } from '../domain/maritime'
 import { BRENT_SOURCE_URL } from '../domain/brentPrices'
+import KeyEventBand from './KeyEventBand.vue'
+import { shipComposition, type ShipGroup } from '../domain/overview'
 import MarketTrendChart from './MarketTrendChart.vue'
 const props = defineProps<{
   time: string | null
   viewShips: ApiMapShip[]
   viewEvents: ApiEvent[]
   events: ApiEvent[]
+  allEvents: ApiEvent[]
+  rangeStart: string | undefined
+  rangeEnd: string | undefined
   totalShips: number
   totalEvents: number
   averageSpeed: string
   eventsLoading: boolean
 }>()
 const emit = defineEmits<{
-  selectShip: [ship: ApiMapShip]
   selectEvent: [event: ApiEvent]
   openEvents: []
   openShips: []
+  openShipGroup: [group: ShipGroup]
+  selectKeyEvent: [event: ApiEvent]
 }>()
 // 热点事件：报道数 coverage_count 降序，并列时按首次报道日期新的在前。
 const hotEvents = computed(() =>
@@ -30,9 +36,7 @@ const hotEvents = computed(() =>
     )
     .slice(0, 5),
 )
-const topShips = computed(() =>
-  [...props.viewShips].sort((a, b) => b.speed - a.speed).slice(0, 5),
-)
+const composition = computed(() => shipComposition(props.viewShips))
 </script>
 <template>
   <section class="panel-content overview-panel">
@@ -55,14 +59,15 @@ const topShips = computed(() =>
     <section class="overview-section overview-chart" aria-label="油价与油轮通行量">
       <div class="section-title">
         <h3>油价 · 油轮通行量</h3>
-        <span>回放窗口前后各一周 · 双轴折线</span>
+        <span>完整历史窗口 · 双轴折线</span>
       </div>
-      <MarketTrendChart />
+      <MarketTrendChart :time="time" :range-start="rangeStart" :range-end="rangeEnd" />
       <p class="chart-source">
         数据来源：<a :href="BRENT_SOURCE_URL" target="_blank" rel="noopener noreferrer">EIA · Europe Brent Spot Price FOB (Daily)</a>
         · 油轮通行量为本机 AIS 观测统计（UTC 归日，虚拟门线口径，详见 docs/daily_tanker_passages_2026-09-30.md）
       </p>
       <p class="chart-source chart-note">注：Brent 现货价仅工作日发布，周末无报价显示为断点；通行量 02-24 与 03-03 为部分日窗，03-03 的 0 表示“无确定通行”，不证明实际零通行。</p>
+      <KeyEventBand :events="allEvents" :start="rangeStart" :end="rangeEnd" :loading="eventsLoading" @select="emit('selectKeyEvent', $event)" />
     </section>
     <section class="overview-section" aria-label="热点事件">
       <div class="section-title">
@@ -88,24 +93,16 @@ const topShips = computed(() =>
         </button>
       </template>
     </section>
-    <section class="overview-section" aria-label="当前快照船舶">
-      <div class="section-title">
-        <h3>当前快照船舶</h3>
-        <span>按航速降序</span>
-      </div>
-      <button
-        v-for="ship in topShips"
-        :key="ship.id"
-        class="overview-row"
-        @click="emit('selectShip', ship)"
-      >
-        <span class="overview-row-title"
-          >{{ ship.name ?? ship.mmsi }}<small>{{ shipType(ship.ship_type) }}</small></span
-        >
-        <small>{{ ship.speed.toFixed(1) }} kn</small>
+    <section class="overview-section composition-section" aria-label="当前快照船舶构成">
+      <div class="section-title"><h3>当前快照船舶构成</h3><span>{{ viewShips.length }} 艘 · 全部快照</span></div>
+      <p class="composition-time">{{ formatTime(time, true) }} {{ zoneLabel() }} · 不随地图视野筛选</p>
+      <div class="composition-bar" aria-hidden="true"><i v-for="group in composition" :key="group.key" :style="{ width: group.percent + '%', background: group.color }"></i></div>
+      <button v-for="group in composition" :key="group.key" class="composition-row" :disabled="!group.count" @click="emit('openShipGroup', group.key)">
+        <i :style="{ background: group.color }"></i><span>{{ group.label }}</span><strong>{{ group.count }} 艘</strong><small>{{ group.percent.toFixed(1) }}%</small><span>›</span>
       </button>
-      <p v-if="!topShips.length" class="empty compact">当前视野暂无船舶。</p>
-      <button class="overview-more" @click="emit('openShips')">全部船舶 ›</button>
+      <p v-if="!viewShips.length" class="empty compact">当前时刻暂无船位快照。</p>
+      <p class="composition-note">货船含集装箱与散货船；缺失或未识别船型归为类型未知。</p>
+      <button class="overview-more" @click="emit('openShips')">查看全部船舶 ›</button>
     </section>
   </section>
 </template>
