@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ApiEvent, ApiMapShip, ApiEncounter, ApiDataHealth } from '../api'
+import type { ApiEvent, ApiMapShip } from '../api'
 import { eventKind, formatTime, shipType } from '../domain/maritime'
 import { BRENT_SOURCE_URL } from '../domain/brentPrices'
 import MarketTrendChart from './MarketTrendChart.vue'
@@ -13,19 +13,12 @@ const props = defineProps<{
   totalEvents: number
   averageSpeed: string
   eventsLoading: boolean
-  encounters: ApiEncounter[]
-  health: ApiDataHealth | null
-  hasDerived: boolean
-  encountersLoading: boolean
-  encounterError: string
 }>()
 const emit = defineEmits<{
   selectShip: [ship: ApiMapShip]
   selectEvent: [event: ApiEvent]
   openEvents: []
   openShips: []
-  selectEncounter: [encounter: ApiEncounter]
-  reanalyzeEncounters: []
 }>()
 // 热点事件：报道数 coverage_count 降序，并列时按首次报道日期新的在前。
 const hotEvents = computed(() =>
@@ -40,11 +33,6 @@ const hotEvents = computed(() =>
 const topShips = computed(() =>
   [...props.viewShips].sort((a, b) => b.speed - a.speed).slice(0, 5),
 )
-// 相遇列表：按最近距离升序取前 12 对；接近不代表实际交互。
-const nearestEncounters = computed(() =>
-  [...props.encounters].sort((a, b) => a.min_distance_m - b.min_distance_m).slice(0, 12),
-)
-const derivedTables = computed(() => props.health?.derived ?? [])
 </script>
 <template>
   <section class="panel-content overview-panel">
@@ -118,54 +106,6 @@ const derivedTables = computed(() => props.health?.derived ?? [])
       </button>
       <p v-if="!topShips.length" class="empty compact">当前视野暂无船舶。</p>
       <button class="overview-more" @click="emit('openShips')">全部船舶 ›</button>
-    </section>
-    <section v-if="hasDerived" class="overview-section" aria-label="相遇分析">
-      <div class="section-title">
-        <h3>相遇分析</h3>
-        <span>按最近距离排序</span>
-      </div>
-      <p v-if="encountersLoading" class="empty compact" role="status">正在加载相遇分析…</p>
-      <template v-else>
-        <p v-if="encounterError" class="empty compact">{{ encounterError }}</p>
-        <button
-          v-for="enc in nearestEncounters"
-          :key="`${enc.ship_a.id}-${enc.ship_b.id}`"
-          class="overview-row"
-          @click="emit('selectEncounter', enc)"
-        >
-          <span class="overview-row-title"
-            >{{ enc.ship_a.name }}<small>× {{ enc.ship_b.name }}</small></span
-          >
-          <small>{{ enc.min_distance_nm.toFixed(2) }} NM · 重叠 {{ (enc.overlap_minutes / 60).toFixed(1) }} h</small>
-        </button>
-        <p v-if="!nearestEncounters.length && !encounterError" class="empty compact">当前阈值下暂无相遇记录。</p>
-        <button class="overview-more" @click="emit('reanalyzeEncounters')">
-          按默认参数重新分析（3 NM / 30 分钟）›
-        </button>
-        <p class="empty compact">时空接近不代表实际交互。</p>
-      </template>
-    </section>
-    <section v-if="hasDerived" class="overview-section" aria-label="数据健康">
-      <div class="section-title">
-        <h3>数据健康</h3>
-        <span>源覆盖与派生层新鲜度</span>
-      </div>
-      <template v-if="health">
-        <button
-          v-for="d in derivedTables"
-          :key="d.table"
-          class="overview-row"
-          :title="d.built_at ? `构建于 ${formatTime(d.built_at, true)}` : '未构建'"
-        >
-          <span class="overview-row-title">{{ d.table }}</span>
-          <small>{{ d.rows ?? '—' }} 行 · {{ d.stale ? '待重建' : '最新' }}</small>
-        </button>
-        <p class="empty compact">
-          源报位 {{ health.source.totals.positions.toLocaleString() }} 条 / {{ health.source.totals.ships }} 艘；
-          派生层随源数据变化标记为待重建，需显式重新构建。
-        </p>
-      </template>
-      <p v-else class="empty compact">数据健康状态不可用。</p>
     </section>
   </section>
 </template>

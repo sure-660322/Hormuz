@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { fetchEvents, fetchShipTracks, fetchShipTrackWindow, fetchDwell, fetchEncounters, analyzeEncounters, fetchDataHealth, describeApiError, type AgentMapAction, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiTrackWindow, type ApiDwellResponse, type ApiEncounter, type ApiDataHealth } from './api'
+import { fetchEvents, fetchShipTracks, fetchShipTrackWindow, fetchDwell, fetchEncounters, describeApiError, type AgentMapAction, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiTrackWindow, type ApiDwellResponse, type ApiEncounter } from './api'
 import { usePlayback } from './composables/usePlayback'
 import {
   inBounds,
@@ -365,9 +365,7 @@ async function initialize() {
     eventsError.value = '当前试点库未接入新闻事件。'
   }
   if (hasDerived.value) {
-    supplementary.push(loadEncounters(), loadHealth())
-  } else {
-    encountersLoading.value = false
+    supplementary.push(loadEncounters())
   }
   await Promise.all(supplementary)
 }
@@ -383,37 +381,21 @@ async function loadEvents() {
     eventsLoading.value = false
   }
 }
-// P3/P4/P5：MobilityDB 派生层。相遇与健康随初始化加载；停留图层按需加载一次。
+// MobilityDB 派生层：相遇图层数据随初始化加载；停留图层按需加载一次。
 const dwellData = ref<ApiDwellResponse | null>(null)
 const encounterList = ref<ApiEncounter[]>([])
 const selectedEncounter = ref<ApiEncounter | null>(null)
-const health = ref<ApiDataHealth | null>(null)
-const encountersLoading = ref(true)
-const encounterError = ref('')
 
 async function loadEncounters() {
-  encountersLoading.value = true
-  encounterError.value = ''
   try {
     const data = await fetchEncounters()
     if (data.status === 'not_built') {
       encounterList.value = []
-      encounterError.value = data.message
     } else {
       encounterList.value = data.encounters
     }
-  } catch (e) {
-    encounterList.value = []
-    encounterError.value = describeApiError(e, '相遇分析加载失败')
-  } finally {
-    encountersLoading.value = false
-  }
-}
-async function loadHealth() {
-  try {
-    health.value = await fetchDataHealth()
   } catch {
-    health.value = null
+    encounterList.value = []
   }
 }
 async function loadDwellOnce() {
@@ -432,22 +414,6 @@ watch(() => layers.value.dwell, (on) => {
 function chooseEncounter(enc: ApiEncounter) {
   selectedEncounter.value = enc
   layers.value.encounters = true
-}
-// 按默认参数（3 NM / 30 分钟重叠 / 60 秒采样）受控重建相遇派生层，随后刷新列表与健康状态。
-async function reanalyzeEncounters() {
-  if (!hasDerived.value) return
-  encountersLoading.value = true
-  encounterError.value = ''
-  try {
-    const result = await analyzeEncounters({ distance_nm: 3, overlap_min: 30, sample_seconds: 60 })
-    notice.value = `相遇分析重建完成：${result.summary.rows} 对（阈值 ${result.params.distance_nm} NM / 重叠 ${result.params.overlap_min} 分钟）。`
-    await loadEncounters()
-    void loadHealth()
-  } catch (e) {
-    encounterError.value = describeApiError(e, '相遇分析重建失败')
-  } finally {
-    encountersLoading.value = false
-  }
 }
 function chooseShip(ship: ApiMapShip, keepChat = false) {
   cancelMapAction()
@@ -898,20 +864,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <OverviewPanel
         :time="time" :view-ships="currentShips" :view-events="mapEvents" :events="filteredEvents"
         :total-ships="currentShips.length" :total-events="events.length" :average-speed="snapshotAverageSpeed"
-        :events-loading="eventsLoading" :encounters="encounterList" :health="health"
-        :has-derived="hasDerived"
-        :encounters-loading="encountersLoading" :encounter-error="encounterError"
-        @select-ship="chooseShip" @select-event="chooseEvent" @select-encounter="chooseEncounter"
-        @reanalyze-encounters="reanalyzeEncounters" @open-events="openExplorer('events')" @open-ships="openExplorer('ships')"
+        :events-loading="eventsLoading"
+        @select-ship="chooseShip" @select-event="chooseEvent"
+        @open-events="openExplorer('events')" @open-ships="openExplorer('ships')"
       />
     </section>
     <div class="timeline-dock">
       <TimelineControls
-        v-model="index" :frame-times="times" :events="[]" :snapshot-mode="isRealAis" :frame-ready="frameReady" :frame-error="snapshotError"
-        :selected-event-id="selectedEvent?.id ?? null" :seek-request="seekRequest"
-        :loading="loading" :error-message="error" :event-type="eventType"
+        v-model="index" :frame-times="times" :snapshot-mode="isRealAis" :frame-ready="frameReady" :frame-error="snapshotError"
+        :seek-request="seekRequest"
+        :loading="loading" :error-message="error"
         @speed-change="playbackSpeed = $event" @retry="retryPlayback"
-        @select-event="chooseEvent" @type-change="changeEventType"
       />
     </div>
     <aside v-show="panelOpen" class="inspector" aria-label="上下文工作面板">
