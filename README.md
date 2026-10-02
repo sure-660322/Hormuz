@@ -1,16 +1,12 @@
 # 霍尔木兹海峡船舶态势地图
 
-2026-10-02 第三轮审查修正（PR #29）：油价与通行量曲线关闭时，线段和节点先以 400ms 淡出，再移除；开启保留描线入场，另一条曲线保持静止。快速反向开关取消旧退出流程，两条曲线可独立同时退出；卸载时清理动画帧。build/check:workbench/diff 通过；Playwright 验证中间透明度、延迟移除、另一曲线实例/透明度/动画状态不变、快速重开、同时退出及退出中改变方向，控制台 0 error / 0 warning。证据为本地忽略产物 output/playwright/issue28-exit-animation.js。已验证，继续更新 PR #29，预览 5176，未合入 main、未部署。
+2026-10-02：用户审查后，[PR #29](https://github.com/sure-660322/Hormuz/pull/29) 已合入 main（`2e4270a`，Issue #28 已关闭），本地主目录已同步。任务 worktree 与本地/远端 codex/issue-28-overview 分支已清理，5176 预览已关闭；5174/8000 与其他任务目录保留。5174 浏览器核对真实起始快照、饼图、两个开关和三个日期入口通过，控制台 0 error / 0 warning。验收资料归档为本地忽略的 local-archive/issue28-2026-10-02/browser-evidence.zip，原 output/playwright 路径属于清理前的历史证据。未正式部署，原有数据与验证限制保留。
 
-2026-10-02 第二轮审查修正（PR #29）：折线序列采用稳定标识，开关与方向切换仅允许目标曲线动画；回放标记、时区与尺寸变化不重播其他曲线。饼图提示框限制在图表范围内，避免卡片裁切。build/check:workbench/diff 通过；Playwright 核对未变曲线实例与动画状态、目标曲线入场动画，以及 1069px/390px 四个扇区的提示框均完整位于卡片和视口内，控制台 0 error / 0 warning。证据为本地忽略产物 output/playwright/issue28-animation-tooltip.js 与 issue28-tooltip-1069.png、issue28-tooltip-390.png。已验证，继续随 PR #29 更新，未合入 main、未部署。
-
-2026-10-02 审查修正（PR #29）：当前快照船舶构成改为可点击饼图，分类图例保留数量、百分比与键盘筛选；油价/通行量开关增加滑块和“显示/隐藏”状态；原三个点改为发生日期、事件条数及“跳转”入口，可展开已折叠事件组。构建、工作台语义检查及真实/模拟响应浏览器验收通过，1069px/390px 无横向溢出，控制台 0 error / 0 warning。预览仍为 5176，待审查，未合入 main。
-
-> 2026-10-02：Issue #28 分支已实现并验证态势总览第一轮增强（总次数/入湾/出湾切换、完整窗口关键事件带、全快照船舶构成与分类筛选）。统计固定采用 2026-09-30 核验批次并按 UTC 归日；时间标记与构成跟随已完成快照。当前[PR #29](https://github.com/sure-660322/Hormuz/pull/29) 已提交并推送，待审查、未合入 main、未部署；实现/验证范围见[前端工作台](FRONTEND_WORKBENCH.md)与[任务计划](docs/agent_development_plan.md#2026-10-02-issue-28-态势总览第一轮增强)。
+态势总览支持总次数/入湾/出湾趋势、完整窗口关键事件日期导航和全快照船舶构成饼图；序列开关采用独立入场/400ms 淡出动画，提示框避免裁切。复用 2026-09-30 核验批次，按 UTC 归日；构成与时间标记跟随已完成快照。实现与验证见 [前端工作台](FRONTEND_WORKBENCH.md)及[任务计划](docs/agent_development_plan.md#2026-10-02-issue-28-态势总览第一轮增强)。
 
 > 2026-09-30 Issue #24（[PR #25](https://github.com/sure-660322/Hormuz/pull/25) 已合入 main，合并提交 `af41d37`）：轨迹工具给模型返回有界摘要，完整报位保留在服务端结果和地图链路；新增请求级模型用量日志。离线回归与浏览器夹具联动已验证，真实模型 token/费用对比未验证。详见[智能体开发任务](docs/agent_development_plan.md#issue-24-轨迹模型上下文优化2026-09-30)。
 
-当前交付：2026-09-30 [PR #27](https://github.com/sure-660322/Hormuz/pull/27)（Issue #26，中海北冰洋典型案例）已合入`main`（`2830ae6`）；本地已同步，本任务分支/工作区及5176/8002预览已清理，验收资料与数据库备份已保留；未正式部署。上一交付：2026-09-30 [PR #25](https://github.com/sure-660322/Hormuz/pull/25)（Issue #24，轨迹模型上下文优化）已合入 `main`（`af41d37`），本次任务 worktree 与本地/远端分支已清理；8000 后端已重启加载最新代码，5174 可使用优化。未正式部署。上一交付：2026-09-30 [PR #23](https://github.com/sure-660322/Hormuz/pull/23)（Issue #21，油价 × 油轮通行量双轴展板）已合入 `main`（`7447fcb`），任务 worktree 与本地/远端分支已清理；5174 可用最新 main 查看。上一个交付：[PR #22](https://github.com/sure-660322/Hormuz/pull/22) 已合入 `main`（`ac46b10`）。未正式部署。
+上一交付：2026-09-30 [PR #27](https://github.com/sure-660322/Hormuz/pull/27)（Issue #26，中海北冰洋典型案例）已合入`main`（`2830ae6`）；本地已同步，本任务分支/工作区及5176/8002预览已清理，验收资料与数据库备份已保留；未正式部署。上一交付：2026-09-30 [PR #25](https://github.com/sure-660322/Hormuz/pull/25)（Issue #24，轨迹模型上下文优化）已合入 `main`（`af41d37`），本次任务 worktree 与本地/远端分支已清理；8000 后端已重启加载最新代码，5174 可使用优化。未正式部署。上一交付：2026-09-30 [PR #23](https://github.com/sure-660322/Hormuz/pull/23)（Issue #21，油价 × 油轮通行量双轴展板）已合入 `main`（`7447fcb`），任务 worktree 与本地/远端分支已清理；5174 可用最新 main 查看。上一个交付：[PR #22](https://github.com/sure-660322/Hormuz/pull/22) 已合入 `main`（`ac46b10`）。未正式部署。
 
 > 2026-09-30 Issue #21（PR #23 已合入 main，浏览器可视验收待用户在 5174 确认）：态势总览新增数据展板「油价 · 油轮通行量」双轴折线图（ECharts 按需引入），覆盖 AIS 回放窗口（2026-02-25 至 2026-03-03）前后各一周。油价数据取自 [EIA RBRTED 日度现货价](https://www.eia.gov/dnav/pet/hist/RBRTED.htm) 并于当日对照官网核对；通行量为本机 AIS 观测统计（UTC 归日、虚拟门线口径，独立 SQL 复核一致，报告 [daily_tanker_passages_2026-09-30](docs/daily_tanker_passages_2026-09-30.md)）。横轴为连续日历日，油价周末无报价显示断点；两条序列有开关控制，开启时以描线动画渐入，底图（坐标轴/网格/回放窗口高亮）常驻。静态数据在 `frontend/src/domain/brentPrices.ts` 与 `frontend/src/domain/tankerPassages.ts`。`npm run build` 与 `npm run check:workbench` 通过，开关交互经 DOM 验证。观测量下降不能单凭本统计解释为实际通行下降或新闻因果。
 
