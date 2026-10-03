@@ -4,7 +4,7 @@
 
 ## 2026-10-02 Issue #30 UI 与动效升级（分支 `kimi/ui-upgrade`）
 
-状态：**实现完成，待用户浏览器验收；未合并、未部署**。负责人 Kimi。worktree `D:/my_project/Hormuz-worktrees/kimi-ui-upgrade`，基于 main `ea31262`。按 #31→#32→#33→#35→#34→#36 顺序一次性完成父任务全部六项子任务；App.vue / style.css 等共享文件由本会话按顺序整合，无新增依赖，不改数据库、底图、API 地址与 CORS。
+状态：**已合并，[PR #37](https://github.com/sure-660322/Hormuz/pull/37) 合入 main（合并提交 `739793b`），本地已同步，任务 worktree 与本地/远端分支已清理（2026-10-03）；浏览器四尺寸验收未单独补做，遗留未验证项见下**。负责人 Kimi。worktree `D:/my_project/Hormuz-worktrees/kimi-ui-upgrade`（已删除），基于 main `ea31262`。按 #31→#32→#33→#35→#34→#36 顺序一次性完成父任务全部六项子任务；App.vue / style.css 等共享文件由本会话按顺序整合，无新增依赖，不改数据库、底图、API 地址与 CORS。另有 `2f29dba`：vite dev 改为同源 + 代理 `/agent /api /cases /events /ships /simulation` 到 8000，开发服务器任意端口（含预览 7100）不再受后端 CORS 白名单（仅 5174）限制。
 
 - #31 基础规范：style.css 增加 `--dur-feedback/--dur-panel/--dur-map`、`--ease-out`、圆角与 `--accent/--ok/--warn/--danger` 语义令牌；正文/辅助字号整体上移（多处 9–10px → 10–11px，列表条目标题 12→13px）；开关、箭头、选中项接入动效令牌；相遇定位 flyTo 与两张 ECharts 图（趋势折线、构成饼图）响应 `prefers-reduced-motion`，偏好改变时实时切换。
 - #32 布局：回放轴新增「紧凑轴/展开轴」切换（紧凑 96px，保留播放、当前时刻与滑块）；探索侧栏可拖拽调宽（280px–60vw，把手支持左右方向键）并可收起（顶栏重开）；上下文工作面板（详情/智能体）左缘拖拽调宽（300px–60vw，键盘可微调）；Leaflet 尺寸随布局自动 invalidateSize 为既有能力，保持。
