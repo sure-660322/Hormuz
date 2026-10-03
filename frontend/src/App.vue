@@ -188,6 +188,14 @@ async function retryCase() {
   await loadCase()
   if (caseOpen.value && !caseError.value) await initializeCase()
 }
+// issue #35：阶段切换的明确反馈序列（选中 → 等待快照/轨迹 → 调整视野 → 强调阶段轨迹）。
+const caseStageStatus = computed(() => {
+  if (caseSwitching.value) return '正在加载完整案例轨迹…'
+  if (!caseActive.value || caseStageId.value === 'overview') return ''
+  if (snapshotError.value) return '阶段快照加载失败，可点击地图状态中的重试。'
+  if (snapshotLoading.value || !frameReady.value) return '阶段已选中：等待快照与轨迹…'
+  return '已定位到阶段末帧；亮线为阶段内已回放轨迹，淡线为完整观测轨迹。'
+})
 async function retryPlayback() {
   if (caseActive.value) await initializeCase()
   else await load()
@@ -203,6 +211,65 @@ const pendingKeyEvent = ref<ApiEvent | null>(null)
 let pendingKeyEventFrame: string | null = null
 const exploreCategory = ref<'events' | 'ships'>('events')
 const sidebarOpen = ref(false)
+// issue #32：紧凑回放轴与可调整/可收起侧栏。宽度仅保存在会话内，不写入存储。
+const timelineCompact = ref(false)
+const sidebarCollapsed = ref(false)
+const sidebarWidth = ref<number | null>(null)
+const inspectorWidth = ref(390)
+const workbenchEl = ref<HTMLElement | null>(null)
+const workbenchStyle = computed(() => ({
+  ...(sidebarWidth.value ? { '--sidebar-w': `${sidebarWidth.value}px` } : {}),
+}))
+const SIDEBAR_MIN = 280
+const SIDEBAR_MAX_RATIO = 0.6
+function clampSidebarWidth(width: number) {
+  return Math.round(Math.min(Math.max(width, SIDEBAR_MIN), window.innerWidth * SIDEBAR_MAX_RATIO))
+}
+function beginSidebarDrag(event: PointerEvent) {
+  const handle = event.currentTarget as HTMLElement
+  const sidebar = workbenchEl.value?.querySelector('.explorer-sidebar')
+  const startX = event.clientX
+  const startWidth = sidebar?.getBoundingClientRect().width ?? 420
+  handle.classList.add('dragging')
+  handle.setPointerCapture(event.pointerId)
+  const onMove = (move: PointerEvent) => { sidebarWidth.value = clampSidebarWidth(startWidth + move.clientX - startX) }
+  const onUp = () => {
+    handle.classList.remove('dragging')
+    handle.removeEventListener('pointermove', onMove)
+    handle.removeEventListener('pointerup', onUp)
+    handle.removeEventListener('pointercancel', onUp)
+  }
+  handle.addEventListener('pointermove', onMove)
+  handle.addEventListener('pointerup', onUp)
+  handle.addEventListener('pointercancel', onUp)
+}
+function nudgeSidebar(delta: number) {
+  const sidebar = workbenchEl.value?.querySelector('.explorer-sidebar')
+  const current = sidebarWidth.value ?? sidebar?.getBoundingClientRect().width ?? 420
+  sidebarWidth.value = clampSidebarWidth(current + delta)
+}
+function beginInspectorDrag(event: PointerEvent) {
+  const handle = event.currentTarget as HTMLElement
+  const startX = event.clientX
+  const startWidth = inspectorWidth.value
+  handle.classList.add('dragging')
+  handle.setPointerCapture(event.pointerId)
+  const onMove = (move: PointerEvent) => {
+    inspectorWidth.value = Math.round(Math.min(Math.max(startWidth + (startX - move.clientX), 300), window.innerWidth * 0.6))
+  }
+  const onUp = () => {
+    handle.classList.remove('dragging')
+    handle.removeEventListener('pointermove', onMove)
+    handle.removeEventListener('pointerup', onUp)
+    handle.removeEventListener('pointercancel', onUp)
+  }
+  handle.addEventListener('pointermove', onMove)
+  handle.addEventListener('pointerup', onUp)
+  handle.addEventListener('pointercancel', onUp)
+}
+function nudgeInspector(delta: number) {
+  inspectorWidth.value = Math.round(Math.min(Math.max(inspectorWidth.value + delta, 300), window.innerWidth * 0.6))
+}
 const layersOpen = ref(false)
 const legendOpen = ref(false)
 const selectedShipId = ref<number | null>(null)
@@ -521,57 +588,63 @@ function locateAgentEvent(eventId: string) {
   }
   chooseEvent(event)
 }
-async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Promise<string> {
+// 地图动作结果：message 面向用户；outcome 驱动面板中的 正在定位/已定位/失败/已取消 状态反馈（issue #36）。
+type MapActionResult = { message: string; outcome: 'ok' | 'error' | 'cancelled' }
+async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Promise<MapActionResult> {
+  const fail = (message: string): MapActionResult => ({ message, outcome: 'error' })
+  const cancelled = (message = '地图操作已取消。'): MapActionResult => ({ message, outcome: 'cancelled' })
   cancelMapAction()
-  if (signal.aborted) return '地图操作已取消。'
+  if (signal.aborted) return cancelled()
   if (caseActive.value && (action.type === 'event' || action.ship_id !== caseData.value?.ship_id))
-    return '该操作目标不属于当前单船案例。请退出案例后在地图探索中执行。'
+    return fail('该操作目标不属于当前单船案例。请退出案例后在地图探索中执行。')
   if (action.type === 'event') {
-    if (action.source !== 'news' || !action.event_id) return '事件标识或来源无效。'
+    if (action.source !== 'news' || !action.event_id) return fail('事件标识或来源无效。')
     const event = events.value.find(item => item.event_id === action.event_id)
-    if (!event) return `未找到事件 ${action.event_id}。`
-    if (!hasEventLocation(event)) return `事件 ${action.event_id} 没有可定位的代表坐标。`
-    if (!event.occurred_at || !eventOccurredBy(event, time.value)) return '事件发生日期尚未进入当前回放范围；请调整时间轴。'
+    if (!event) return fail(`未找到事件 ${action.event_id}。`)
+    if (!hasEventLocation(event)) return fail(`事件 ${action.event_id} 没有可定位的代表坐标。`)
+    if (!event.occurred_at || !eventOccurredBy(event, time.value)) return fail('事件发生日期尚未进入当前回放范围；请调整时间轴。')
     const previousPanel = panel.value
     chooseEvent(event)
     panel.value = previousPanel
-    return selectedEvent.value?.event_id === action.event_id ? '事件已在地图选中。' : '事件未能选中。'
+    return selectedEvent.value?.event_id === action.event_id
+      ? { message: '事件已在地图选中。', outcome: 'ok' }
+      : fail('事件未能选中。')
   }
-  if (action.source !== 'nnu_ais' || !Number.isSafeInteger(action.ship_id) || action.ship_id <= 0) return '船舶标识或来源无效。'
+  if (action.source !== 'nnu_ais' || !Number.isSafeInteger(action.ship_id) || action.ship_id <= 0) return fail('船舶标识或来源无效。')
   const start = Date.parse(action.start_at), end = Date.parse(action.end_at)
   if (caseActive.value && caseAgentWindow.value && (start < Date.parse(caseAgentWindow.value.start_at) || end > Date.parse(caseAgentWindow.value.end_at)))
-    return '轨迹窗口超出当前阶段。请返回案例概况或选择对应阶段。'
+    return fail('轨迹窗口超出当前阶段。请返回案例概况或选择对应阶段。')
   const first = Date.parse(times.value[0] ?? ''), last = Date.parse(times.value.at(-1) ?? '')
   if (![start, end, first, last].every(Number.isFinite) || start >= end || end - start > 86400000 || start < first || end > last)
-    return '轨迹时间窗无效或超出本批 AIS 覆盖；单次最多 24 小时。'
+    return fail('轨迹时间窗无效或超出本批 AIS 覆盖；单次最多 24 小时。')
   const version = ++mapActionVersion
   pendingMapController?.abort()
   const controller = new AbortController()
   pendingMapController = controller
   signal.addEventListener('abort', () => controller.abort(), { once: true })
-  const cancelled = () => signal.aborted || controller.signal.aborted || version !== mapActionVersion
+  const isCancelled = () => signal.aborted || controller.signal.aborted || version !== mapActionVersion
   let loaded: ApiTrackWindow
   try {
     loaded = await fetchShipTrackWindow(action.ship_id, new Date(start).toISOString(), new Date(end).toISOString(), 300, controller.signal)
-  } catch (e) { return describeApiError(e, '轨迹加载失败') }
-  if (cancelled()) return '地图目标已变更，本次操作已取消。'
+  } catch (e) { return fail(describeApiError(e, '轨迹加载失败')) }
+  if (isCancelled()) return cancelled('地图目标已变更，本次操作已取消。')
   const points = loaded.segments.flatMap(segment => segment.points)
-  if (points.length < (action.type === 'ship_position' ? 1 : 2)) return points.length
+  if (points.length < (action.type === 'ship_position' ? 1 : 2)) return fail(points.length
     ? '指定时间窗只有一个采样报位，无法绘制轨迹。'
-    : '指定时间窗没有该船报位，无法显示轨迹。'
+    : '指定时间窗没有该船报位，无法显示轨迹。')
   const latest = points.at(-1)!
   const targetIndex = times.value.findIndex(at => Date.parse(at) >= Date.parse(latest.recorded_at))
   pendingFrame = times.value[targetIndex] ?? times.value.at(-1) ?? null
   seek(latest.recorded_at)
   await nextTick()
   const deadline = Date.now() + 20000
-  while (!cancelled() && !snapshotError.value && !frameReady.value && Date.now() < deadline)
+  while (!isCancelled() && !snapshotError.value && !frameReady.value && Date.now() < deadline)
     await new Promise(resolve => setTimeout(resolve, 100))
   const ready = frameReady.value && !snapshotError.value && requestedTime.value !== null && Date.parse(requestedTime.value) >= Date.parse(latest.recorded_at)
-  if (cancelled()) return '地图目标已变更，本次操作已取消。'
-  if (!ready) return snapshotError.value || '回放快照未能加载，轨迹未选中。'
+  if (isCancelled()) return cancelled('地图目标已变更，本次操作已取消。')
+  if (!ready) return fail(snapshotError.value || '回放快照未能加载，轨迹未选中。')
   const ship = currentShips.value.find(item => item.id === action.ship_id)
-  if (!ship) return '轨迹有报位，但所选回放帧没有该船的有效快照。'
+  if (!ship) return fail('轨迹有报位，但所选回放帧没有该船的有效快照。')
   pendingMapController = null
   pendingFrame = null
   chooseShip(ship, true)
@@ -582,11 +655,14 @@ async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Pr
   const committedVersion = mapActionVersion
   await nextTick()
   const focused = await mapView.value?.confirmFocus(action.ship_id, trackVisible.value)
-  if (signal.aborted || committedVersion !== mapActionVersion) return '地图目标已变更，本次操作已取消。'
-  if (!focused) return '目标已加载，但地图聚焦未能完成，请重试。'
-  return action.type === 'ship_position'
-    ? `已在地图定位并高亮 ${ship.name}（ID ${ship.id}）；AIS 报位时刻 ${ship.recorded_at}，地图回放时刻 ${time.value}。`
-    : `已在地图显示 ${ship.name}（ID ${ship.id}）的轨迹（${new Date(start).toISOString()} 至 ${new Date(end).toISOString()}）。`
+  if (signal.aborted || committedVersion !== mapActionVersion) return cancelled('地图目标已变更，本次操作已取消。')
+  if (!focused) return fail('目标已加载，但地图聚焦未能完成，请重试。')
+  return {
+    outcome: 'ok',
+    message: action.type === 'ship_position'
+      ? `已在地图定位并高亮 ${ship.name}（ID ${ship.id}）；AIS 报位时刻 ${ship.recorded_at}，地图回放时刻 ${time.value}。`
+      : `已在地图显示 ${ship.name}（ID ${ship.id}）的轨迹（${new Date(start).toISOString()} 至 ${new Date(end).toISOString()}）。`,
+  }
 }
 function restore() {
   clearShip()
@@ -605,6 +681,31 @@ const panelTitles: Record<Panel, string> = {
   agent: '智能体',
 }
 const headTitle = computed(() => panelTitles[panel.value])
+// issue #36：智能体输入区的简短上下文摘要（案例/船舶/事件），详细说明悬停可见。
+const agentContextSummary = computed(() => {
+  if (caseActive.value && caseData.value?.ship_id) {
+    return { label: `当前案例：${caseData.value.title} · 船舶 ID ${caseData.value.ship_id}`, detail: '提问默认限定在当前案例阶段窗口内。' }
+  }
+  if (selectedShip.value) {
+    return { label: `当前船舶：${selectedShip.value.name}（ID ${selectedShip.value.id}）`, detail: '提问可引用该船；地图定位类操作以当前回放时刻为准。' }
+  }
+  if (selectedEvent.value) {
+    return { label: `当前事件：${selectedEvent.value.title}`, detail: '新闻与船位来源独立；提问不会把事件与邻近船舶自动关联。' }
+  }
+  return null
+})
+// issue #33：选中新闻后，详情标题与列表项、地图标记同步强调。
+const headFlash = ref(false)
+let headFlashTimer: ReturnType<typeof setTimeout> | undefined
+watch(selectedEvent, (event) => {
+  if (!event) return
+  headFlash.value = false
+  void nextTick(() => {
+    headFlash.value = true
+    clearTimeout(headFlashTimer)
+    headFlashTimer = setTimeout(() => { headFlash.value = false }, 1300)
+  })
+})
 const headContext = computed(() => {
   if (panel.value === 'events' && selectedEvent.value) return selectedEvent.value.title
   if (panel.value === 'ships' && selectedShip.value) return selectedShip.value.name
@@ -739,7 +840,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <main class="workbench" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen, 'case-mode': caseOpen }">
+  <main ref="workbenchEl" class="workbench" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen, 'case-mode': caseOpen, 'sidebar-collapsed': sidebarCollapsed, 'timeline-compact': timelineCompact }" :style="workbenchStyle">
     <header class="topbar">
       <div class="brand">
         <img class="brand-logo" :src="logoUrl" alt="" aria-hidden="true" />
@@ -757,6 +858,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <button @click="displayZone = displayZone === 'UTC' ? 'Asia/Shanghai' : 'UTC'" aria-label="切换时区">{{ zoneLabel() }}</button>
         <button @click="theme = theme === 'dark' ? 'light' : 'dark'" aria-label="切换地图主题">{{ theme === 'dark' ? '浅色' : '深色' }}</button>
       </div>
+      <button v-if="!caseOpen && sidebarCollapsed" class="sidebar-reopen" @click="sidebarCollapsed = false">新闻与船舶列表 ›</button>
       <button class="sidebar-toggle" :aria-expanded="sidebarOpen" @click="sidebarOpen = !sidebarOpen; workspaceMode = 'explore'">{{ sidebarOpen ? '收起列表' : '查找' }}</button>
     </header>
     <ExplorerSidebar
@@ -783,6 +885,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       @type-change="changeEventType"
       @sort-change="eventSort = $event"
       @retry="loadEvents"
+      @resize-drag="beginSidebarDrag"
+      @resize-key="nudgeSidebar"
+      @collapse="sidebarCollapsed = true"
     />
     <section class="map-workspace" aria-label="霍尔木兹海峡态势地图">
       <ToolRail
@@ -791,7 +896,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @open-layers="layersOpen = !layersOpen"
         @open-agent="togglePanel('agent')"
       />
-      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" @select="selectCaseStage" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
+      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" @select="selectCaseStage" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
       <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开案例阶段与报道</button>
       <LayersPopover
         v-if="layersOpen"
@@ -895,7 +1000,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
     </section>
     <section class="overview-stage" aria-label="态势总览">
-      <header class="overview-stage-head"><div><p class="eyebrow">霍尔木兹海峡 · 历史船位与新闻</p><h2>从海峡动态，进入地图调查</h2><p>{{ isRealAis ? `当前接入历史 AIS：${formatTime(times[0], true)} 至 ${formatTime(times.at(-1), true)} ${zoneLabel()}；地图为所选时刻前 1 小时内的最新报位。` : '计划接入船位时段：2026-02-25 至 2026-03-03（UTC）；实际回放范围以入库数据为准。' }} 新闻事件来自独立报道，两类资料分别浏览，不据时空邻近推断真实关联。</p></div><button class="primary" @click="workspaceMode = 'explore'">进入地图探索</button></header>
+      <header class="overview-stage-head"><div><p class="eyebrow">霍尔木兹海峡 · 历史船位与新闻</p><h2>从海峡动态，进入地图调查</h2><details class="overview-scope"><summary>数据范围与口径说明</summary><p>{{ isRealAis ? `当前接入历史 AIS：${formatTime(times[0], true)} 至 ${formatTime(times.at(-1), true)} ${zoneLabel()}；地图为所选时刻前 1 小时内的最新报位。` : '计划接入船位时段：2026-02-25 至 2026-03-03（UTC）；实际回放范围以入库数据为准。' }} 新闻事件来自独立报道，两类资料分别浏览，不据时空邻近推断真实关联。</p></details></div><button class="primary" @click="workspaceMode = 'explore'">进入地图探索</button></header>
       <OverviewPanel
         :time="time" :view-ships="currentShips" :view-events="mapEvents" :events="filteredEvents" :all-events="events" :range-start="times[0]" :range-end="times.at(-1)"
         :total-ships="currentShips.length" :total-events="events.length" :average-speed="snapshotAverageSpeed"
@@ -904,17 +1009,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @open-events="openExplorer('events')" @open-ships="openExplorer('ships')"
       />
     </section>
-    <div class="timeline-dock">
+    <div class="timeline-dock" :class="{ compact: timelineCompact }">
       <TimelineControls
         v-model="index" :frame-times="times" :snapshot-mode="isRealAis" :frame-ready="frameReady" :frame-error="snapshotError"
         :seek-request="seekRequest"
-        :loading="loading" :error-message="error"
-        @speed-change="playbackSpeed = $event" @retry="retryPlayback"
+        :loading="loading" :error-message="error" :compact="timelineCompact"
+        @speed-change="playbackSpeed = $event" @retry="retryPlayback" @toggle-compact="timelineCompact = !timelineCompact"
       />
     </div>
-    <aside v-show="panelOpen" class="inspector" aria-label="上下文工作面板">
+    <aside v-show="panelOpen" class="inspector" aria-label="上下文工作面板" :style="{ width: `min(${inspectorWidth}px, calc(100vw - 48px))` }">
+      <button
+        class="inspector-resize-handle"
+        role="separator"
+        aria-orientation="vertical"
+        :aria-valuenow="inspectorWidth"
+        aria-label="调整面板宽度，左右方向键微调"
+        @pointerdown="beginInspectorDrag"
+        @keydown.left.prevent="nudgeInspector(-24)"
+        @keydown.right.prevent="nudgeInspector(24)"
+      ></button>
       <header class="inspector-head">
-        <h2>
+        <h2 :class="{ flash: headFlash }">
           {{ headTitle
           }}<span v-if="headContext" :title="headContext">· {{ headContext }}</span>
         </h2>
@@ -970,6 +1085,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       />
       <AgentPanel
         :case-context="caseActive && caseAgentWindow && caseData?.ship_id ? { ship_id: caseData.ship_id, title: caseData.title, start_at: caseAgentWindow.start_at, end_at: caseAgentWindow.end_at } : null"
+        :context-summary="agentContextSummary"
         v-show="panel === 'agent'"
         :execute-map-action="executeMapAction"
         :cancel-map-action="cancelMapAction"

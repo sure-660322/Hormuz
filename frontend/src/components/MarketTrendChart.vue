@@ -65,6 +65,10 @@ const passageByDate = new Map(tankerPassagesUtc.map((d) => [d.date, d]))
 
 const showPrice = ref(true)
 const showTraffic = ref(true)
+// 减少动态偏好：覆盖图表入场/退出动画（issue #31）。
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+const motionAllowed = ref(!motionQuery.matches)
+function onMotionPreferenceChange() { motionAllowed.value = !motionQuery.matches }
 type CurveId = 'brent-price' | 'tanker-traffic'
 const exits = new Map<CurveId, { frame: number; started: number; opacity: number }>()
 const EXIT_DURATION = 400
@@ -123,6 +127,7 @@ function buildOption(): ChartOption {
       symbolSize: 5,
       lineStyle: { width: 2, color: PRICE_COLOR, opacity: exits.get('brent-price')?.opacity ?? 1 },
       itemStyle: { color: PRICE_COLOR, opacity: exits.get('brent-price')?.opacity ?? 1 },
+      emphasis: { lineStyle: { width: 3.5 } },
     })
   }
   if (showTraffic.value || exits.has('tanker-traffic')) {
@@ -137,11 +142,13 @@ function buildOption(): ChartOption {
       symbolSize: 6,
       lineStyle: { width: 2, color: TRAFFIC_COLOR, opacity: exits.get('tanker-traffic')?.opacity ?? 1 },
       itemStyle: { color: TRAFFIC_COLOR, opacity: exits.get('tanker-traffic')?.opacity ?? 1 },
+      emphasis: { lineStyle: { width: 3.5 } },
     })
   }
   return {
     // 开关重新加入序列时，用入场动画（从左描线）而不是直接弹出。
-    animationDuration: 900,
+    animation: motionAllowed.value,
+    animationDuration: motionAllowed.value ? 900 : 0,
     animationEasing: 'cubicOut',
     grid: { top: 28, right: 44, bottom: 28, left: 52 },
     tooltip: {
@@ -216,7 +223,7 @@ function transitionCurve(id: CurveId, visible: boolean) {
   const previousExit = exits.get(id)
   if (previousExit) cancelAnimationFrame(previousExit.frame)
   exits.delete(id)
-  if (visible || !chart) { applySeries(id); return }
+  if (visible || !chart || !motionAllowed.value) { applySeries(id); return }
   const exit = { frame: 0, started: performance.now(), opacity: 1 }
   exits.set(id, exit)
   applySeries(id)
@@ -249,6 +256,15 @@ function toggleTraffic() {
   transitionCurve('tanker-traffic', showTraffic.value)
 }
 
+// 图例悬停/聚焦强调对应曲线（issue #34）；颜色之外用线宽变化传达。
+function hoverCurve(id: CurveId, on: boolean) {
+  if (!chart || !motionAllowed.value) return
+  chart.dispatchAction({ type: on ? 'highlight' : 'downplay', seriesId: id })
+}
+watch(motionAllowed, allowed => {
+  chart?.setOption({ animation: allowed, animationDuration: allowed ? 900 : 0 })
+})
+
 function resizeChart() {
   if (!chartEl.value || !chartEl.value.clientWidth || !chartEl.value.clientHeight) return
   if (!chart) { chart = echarts.init(chartEl.value); chart.setOption(buildOption()) }
@@ -262,12 +278,14 @@ watch([() => props.time, () => props.rangeStart, () => props.rangeEnd], applyWin
 watch(direction, () => applySeries('tanker-traffic'))
 onMounted(() => {
   if (!chartEl.value) return
+  motionQuery.addEventListener('change', onMotionPreferenceChange)
   resizeObserver = new ResizeObserver(resizeChart)
   resizeObserver.observe(chartEl.value)
   resizeChart()
 })
 
 onBeforeUnmount(() => {
+  motionQuery.removeEventListener('change', onMotionPreferenceChange)
   for (const exit of exits.values()) cancelAnimationFrame(exit.frame)
   exits.clear()
   resizeObserver?.disconnect()
@@ -288,6 +306,10 @@ onBeforeUnmount(() => {
       aria-label="Brent 油价（左轴）"
       :aria-checked="showPrice"
       @click="togglePrice"
+      @mouseenter="hoverCurve('brent-price', true)"
+      @mouseleave="hoverCurve('brent-price', false)"
+      @focus="hoverCurve('brent-price', true)"
+      @blur="hoverCurve('brent-price', false)"
     >
       <i class="toggle-dot" :style="{ background: PRICE_COLOR }"></i>
       Brent 油价（左轴）
@@ -302,6 +324,10 @@ onBeforeUnmount(() => {
       aria-label="油轮通行量（右轴）"
       :aria-checked="showTraffic"
       @click="toggleTraffic"
+      @mouseenter="hoverCurve('tanker-traffic', true)"
+      @mouseleave="hoverCurve('tanker-traffic', false)"
+      @focus="hoverCurve('tanker-traffic', true)"
+      @blur="hoverCurve('tanker-traffic', false)"
     >
       <i class="toggle-dot" :style="{ background: TRAFFIC_COLOR }"></i>
       油轮通行量（右轴）

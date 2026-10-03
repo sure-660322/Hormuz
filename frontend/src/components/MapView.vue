@@ -411,7 +411,8 @@ watch(() => [props.dwell, props.encounters, props.selectedEncounter, props.isola
 watch(() => props.selectedEncounter, (enc) => {
   if (!map || !enc?.closest_point) return
   const [lng, lat] = enc.closest_point.coordinates
-  map.flyTo([lat, lng], Math.max(map.getZoom(), 9), { duration: 0.6 })
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  map.flyTo([lat, lng], Math.max(map.getZoom(), 9), { duration: reduceMotion ? 0 : 0.6 })
 })
 watch(() => [props.layers, props.isolated], syncLayers, { deep: true })
 watch(() => props.focusShipRequest, focusShip)

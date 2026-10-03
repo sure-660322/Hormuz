@@ -30,16 +30,19 @@ const emit = defineEmits<{
   'locate-event': [eventId: string]
 }>()
 const props = defineProps<{
-  executeMapAction: (action: AgentMapAction, signal: AbortSignal) => Promise<string>
+  executeMapAction: (action: AgentMapAction, signal: AbortSignal) => Promise<{ message: string; outcome: 'ok' | 'error' | 'cancelled' }>
   cancelMapAction: () => void
   playbackAt: string | null
   caseContext?: { ship_id: number; title: string; start_at: string; end_at: string } | null
+  // issue #36：输入区顶部的简短上下文摘要（当前船舶/事件），详细说明可展开。
+  contextSummary?: { label: string; detail: string } | null
 }>()
 
 interface AgentTurnState {
   question: string
   response: AgentAnalyzeResponse | null
   mapMessage?: string
+  mapOutcome?: 'ok' | 'error' | 'cancelled'
 }
 
 const markdown = new MarkdownIt({ html: false, linkify: false, breaks: true })
@@ -66,6 +69,20 @@ let elapsedTimer: ReturnType<typeof setInterval> | null = null
 
 const canSubmit = computed(() => question.value.trim().length > 0 && !loading.value)
 
+// issue #36：空状态示例问题，与当前案例/船舶上下文相关；点击只填入输入框，由用户主动发送。
+const exampleQuestions = computed<string[]>(() => props.caseContext
+  ? [
+      '当前阶段内这艘船有哪些报位？',
+      '中海北冰洋在等待阶段的航行状态如何？',
+      '这个阶段有哪些报道提及？',
+    ]
+  : [
+      '过去 24 小时有多少艘油轮通过海峡？',
+      '当前回放时刻附近有哪些新闻事件？',
+      '如何查询某艘船的航行轨迹？',
+    ])
+function fillExample(text: string) { question.value = text }
+
 function stopClock() {
   if (elapsedTimer) clearInterval(elapsedTimer)
   elapsedTimer = null
@@ -77,13 +94,20 @@ async function scrollToLatest(force = false) {
   if (flow && (force || !userReadingHistory.value)) {
     flow.scrollTop = flow.scrollHeight
     userReadingHistory.value = false
+    newContentPending.value = false
+  } else if (flow) {
+    // 用户正在阅读历史：不抢滚动，提供可点击的新回答提示。
+    newContentPending.value = true
   }
 }
 
 function trackScroll() {
   const flow = messageFlow.value
-  if (flow) userReadingHistory.value = flow.scrollHeight - flow.scrollTop - flow.clientHeight > 72
+  if (!flow) return
+  userReadingHistory.value = flow.scrollHeight - flow.scrollTop - flow.clientHeight > 72
+  if (!userReadingHistory.value) newContentPending.value = false
 }
+const newContentPending = ref(false)
 
 function onQuestionKeydown(event: KeyboardEvent) {
   if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return
@@ -236,11 +260,18 @@ async function runMapAction(turnIndex: number, action: AgentMapAction) {
   mapRequest = controller
   mapLoadingTurn.value = turnIndex
   turn.mapMessage = '正在地图加载并核对目标…'
+  turn.mapOutcome = undefined
   try {
-    const message = await props.executeMapAction(action, controller.signal)
-    if (!controller.signal.aborted) turn.mapMessage = message
+    const result = await props.executeMapAction(action, controller.signal)
+    if (!controller.signal.aborted) {
+      turn.mapMessage = result.message
+      turn.mapOutcome = result.outcome
+    }
   } catch (e) {
-    if (!controller.signal.aborted) turn.mapMessage = describeApiError(e, '地图操作失败')
+    if (!controller.signal.aborted) {
+      turn.mapMessage = describeApiError(e, '地图操作失败')
+      turn.mapOutcome = 'error'
+    }
   } finally {
     if (mapRequest === controller) { mapRequest = null; mapLoadingTurn.value = null }
   }
@@ -250,9 +281,23 @@ function cancelMap() {
   if (!mapRequest) return
   mapRequest.abort()
   props.cancelMapAction()
-  if (mapLoadingTurn.value !== null) turns.value[mapLoadingTurn.value]!.mapMessage = '地图操作已取消。'
+  if (mapLoadingTurn.value !== null) {
+    turns.value[mapLoadingTurn.value]!.mapMessage = '地图操作已取消。'
+    turns.value[mapLoadingTurn.value]!.mapOutcome = 'cancelled'
+  }
   mapRequest = null
   mapLoadingTurn.value = null
+}
+
+// 恢复能力：撤销最近一次地图定位/轨迹，回到操作前状态。
+function undoMapAction(turnIndex: number) {
+  cancelMap()
+  props.cancelMapAction()
+  const turn = turns.value[turnIndex]
+  if (turn) {
+    turn.mapMessage = '已撤销地图定位，恢复原地图状态。'
+    turn.mapOutcome = undefined
+  }
 }
 
 function cancel() {
@@ -377,6 +422,15 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
         <IconSparkles :size="22" aria-hidden="true" />
         <strong>从一个问题开始</strong>
         <p>可询问海峡通行、船舶轨迹或新闻事件。回答会附上可用证据和来源。</p>
+        <div class="example-questions" aria-label="示例问题">
+          <button
+            v-for="(example, exampleIndex) in exampleQuestions"
+            :key="exampleIndex"
+            type="button"
+            class="example-question"
+            @click="fillExample(example)"
+          >{{ example }}</button>
+        </div>
       </div>
       <article v-for="(turn, turnIndex) in turns" :key="turnIndex" class="chat-turn">
         <p class="turn-question">{{ turn.question }}</p>
@@ -415,7 +469,8 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
           </button>
           <p v-for="(action, actionIndex) in turn.response.map_actions.filter(item => item.type !== 'event')" :key="`window-${actionIndex}`" class="caption">{{ `${action.start_at} — ${action.end_at} · ${action.window_source || '工具核实时间窗'} · ${action.source}` }}</p>
           <button v-if="mapLoadingTurn === turnIndex" type="button" class="locate-btn" @click="cancelMap">取消地图操作</button>
-          <p v-if="turn.mapMessage" role="status" class="caption">{{ turn.mapMessage }}</p>
+          <button v-else-if="turn.mapOutcome === 'ok'" type="button" class="locate-btn" @click="undoMapAction(turnIndex)">撤销地图定位</button>
+          <p v-if="turn.mapMessage" role="status" class="caption map-status" :data-tone="mapLoadingTurn === turnIndex ? 'running' : turn.mapOutcome ?? 'info'">{{ turn.mapMessage }}</p>
         </section>
 
         <section v-if="analyticsResult(turn.response)" class="facts-block analytics-block">
@@ -568,9 +623,14 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
         <button type="button" @click="retry"><IconRefresh :size="15" aria-hidden="true" /> 重试</button>
       </div>
       <p v-if="notice" class="chat-notice" role="status">{{ notice }}</p>
+      <button v-if="newContentPending" type="button" class="new-reply-hint" @click="scrollToLatest(true)">有新回答，回到最新 ↓</button>
     </div>
     <form class="agent-form" @submit.prevent="submit">
-      <p v-if="caseContext" class="caption">当前案例：{{ caseContext.title }} · 船舶 ID {{ caseContext.ship_id }}。默认查询当前回放时刻前最多24小时，限定在阶段内；可明确指定另一窗口。其他船舶需退出案例；阶段外地图操作可返回案例概况。</p>
+      <details v-if="caseContext" class="context-summary">
+        <summary>当前案例：{{ caseContext.title }} · 船舶 ID {{ caseContext.ship_id }}</summary>
+        <p class="caption">默认查询当前回放时刻前最多 24 小时，限定在阶段内；可明确指定另一窗口。其他船舶需退出案例；阶段外地图操作可返回案例概况。</p>
+      </details>
+      <p v-else-if="contextSummary" class="context-chip" :title="contextSummary.detail">{{ contextSummary.label }}</p>
       <details class="advanced">
         <summary><IconSettings :size="17" aria-hidden="true" /> 高级设置：封锁窗口（可留空）<IconChevronDown class="chevron" :size="14" aria-hidden="true" /></summary>
         <label>封锁开始时间<input v-model="closureAt" type="text" placeholder="例如 2026-02-28T14:00:00Z" aria-label="封锁开始时间" /></label>
@@ -929,4 +989,22 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
 .send-button:disabled { opacity: .45; cursor: not-allowed; }
 .composer-hint { margin: 0; text-align: right; }
 @media (prefers-reduced-motion: reduce) { .typing-dots i { animation: none; } .chevron { transition: none; } }
+/* issue #36：示例问题、上下文摘要、地图动作状态与新回答提示 */
+.example-questions { display: flex; flex-direction: column; gap: 7px; width: 100%; margin-top: 4px; }
+.example-question { padding: 7px 11px; border: 1px dashed var(--line); border-radius: 9px; background: transparent; color: var(--ink); font-size: 12px; line-height: 1.5; text-align: left; transition: border-color var(--dur-feedback) var(--ease-out), background var(--dur-feedback) var(--ease-out); }
+.example-question:hover { border-color: var(--accent, var(--blue)); background: var(--wash); }
+.context-summary { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+.context-summary summary { cursor: pointer; list-style: none; color: var(--ink); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.context-summary summary::-webkit-details-marker { display: none; }
+.context-summary .caption { margin-top: 6px; }
+.context-chip { margin: 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-status[data-tone='running'] { color: var(--accent, var(--blue)); }
+.map-status[data-tone='ok'] { color: var(--ok, #7ee2a8); }
+.map-status[data-tone='error'] { color: var(--danger, #f2a09b); }
+.map-status[data-tone='cancelled'] { color: var(--warn, #f2c14e); }
+.new-reply-hint { position: sticky; bottom: 6px; align-self: center; padding: 5px 12px; border: 1px solid var(--accent, var(--blue)); border-radius: 999px; background: var(--panel); color: var(--accent, var(--blue)); font-size: 11px; box-shadow: var(--shadow-overlay); cursor: pointer; }
+.message-flow { position: relative; }
+@keyframes answer-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.agent-result { animation: answer-fade var(--dur-panel) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .agent-result { animation: none; } .example-question, .new-reply-hint { transition: none; } }
 </style>
