@@ -45,16 +45,19 @@ sim_ais_demo/output/old_batch_backup/
 sim_ais_demo/output_news_aligned/database_backups/
 sim_ais_demo/output_news_aligned_repeat_check/
 
-# Previous 150-ship batch: reproducible bulk output, kept locally only.
-# Keep its ships.jsonl (used by the batch replacement script), reports,
-# manifest, anomaly labels and scenario evidence in version control.
+# Retired regional AIS input files; never re-add source observations accidentally.
+/data/ship_data/*.csv
+/data/crossing_data/transit_events.csv
+
+# Retired simulated bulk output. Historical reports and generator inputs remain tracked.
 /sim_ais_demo/output/positions_by_date/
 /sim_ais_demo/output/raw_observations/
-
-# Keep the COMPLETE current output_news_aligned batch: the importer checks
-# manifest hashes for clean positions, raw observations and quarantine files.
-# Keep data/ source material, reference/ inputs, frontend/public/data/ assets,
-# package lockfiles, SQL, documentation and .env.example tracked.
+/sim_ais_demo/output_news_aligned/positions_by_date/
+/sim_ais_demo/output_news_aligned/raw_observations/
+/sim_ais_demo/output_news_aligned/quarantine/
+/sim_ais_demo/output/ships.jsonl
+/sim_ais_demo/output_news_aligned/ships.jsonl
+# Keep runtime map assets, source code, SQL, lockfiles, docs and .env.example.
 
 # Editor settings
 .vscode/

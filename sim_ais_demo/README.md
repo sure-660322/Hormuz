@@ -1,6 +1,6 @@
 # 霍尔木兹海峡教学模拟 AIS 数据批次
 
-> **2026-09-25 当前状态**：模拟船舶和船位已从本机应用数据库及 Git 跟踪的交接/报位文件中删除。主目录中 Git 忽略的旧批次报位和备份文件仍存在，自动审批策略拒绝删除。2026-09-13 的 30 艘批次见 [历史说明](output_news_aligned/README.md)，配置仍留作历史参考；以下正文为旧 150 艘批次的历史说明，不代表当前数据库。
+> **2026-09-25 当前状态**：模拟船舶和船位已从本机应用数据库及 Git 跟踪的交接/报位文件中删除。2026-10-06 用户确认废弃，主目录旧模拟报位、模拟备份与重复生成目录已删除；生成代码、配置及历史报告保留，真实数据库备份未动。2026-09-13 的 30 艘批次见 [历史说明](output_news_aligned/README.md)，配置仍留作历史参考；以下正文为旧 150 艘批次的历史说明，不代表当前数据库。
 
 本目录是**独立输出目录**，不覆盖、不修改项目内任何现有资料。所有产物均由本目录内的脚本生成，可重复运行。
 
@@ -36,6 +36,8 @@ sim_ais_demo/
 │   └── transit_gates.json         # 既有过境文件中的门线
 └── output/                        # 生成产物（见第 8 节）
 ```
+
+> 2026-10-06：以下命令仅供历史生成工具参考；用户不再需要旧模拟批次，未重跑这些命令，勿作为真实应用库的初始化入口。旧区域 AIS 汇总脚本所需四个 CSV 已移除。
 
 ## 2. 快速运行（在项目根目录 `D:\my_project\Hormuz` 执行，PowerShell 7）
 
@@ -108,7 +110,7 @@ sim_ais_demo/
 
 > **精度限制**：1:10m 是制图概化数据，近岸精度约数百米至 1 km，防波堤、填海区、极小岛礁会被简化或缺失。本核验只能筛查"是否明显穿越陆地"，**不构成航道级安全验证**，也不代表这些中心线可以实际航行。
 
-项目内既有的区域 AIS 数据（`data/ship_data/ais_positions.csv`）**不能**用于这项核验：它覆盖 48.0–59.8°E / 22.2–30.0°N，但在海峡最窄段只有 83 个 0.02° 网格有过观测，过于稀疏。该结论与证据保存在 `reference/observed_extent.json`。
+当时的区域 AIS 数据（`data/ship_data/ais_positions.csv`，2026-10-06 已删除）**不能**用于这项核验：它覆盖 48.0–59.8°E / 22.2–30.0°N，但在海峡最窄段只有 83 个 0.02° 网格有过观测，过于稀疏。该结论与证据保存在 `reference/observed_extent.json`。
 
 ## 5. 船舶身份
 
@@ -299,7 +301,7 @@ sim_ais_demo/
    - 移除由 `tools/remove_old_batch.py` 执行，删除前用 `db_before_import.json` 的记录数 + md5 指纹校验旧数据未被改动，并断言 `events`/`news` 指纹不变。该脚本**不属于**本批次交付的生成工具链。
    - `/simulation/meta` 的 `frame_count` 已从"不同 `recorded_at` 计数"改为按实际时段推导（2,005 帧 × 300 秒 ≈ 7 天），原先的口径不一致已消除。
    - `frontend/src/composables/usePlayback.ts` 已按第 2、5 点做适配：回放请求按 24 小时分块，播放帧改为按 `frame_interval_seconds` 生成的展示时间格。
-   - 另有 MobilityDB 演示（`backend/sql/007_mobility_demo_segments.sql`、`backend/build_mobility_demo.py`、`backend/app/routers/mobility.py`、`docs/mobility_demo.md`）。
+   - 另有 MobilityDB 演示（`backend/sql/007_mobility_demo_segments.sql`、`backend/build_mobility_demo.py`、`backend/app/routers/mobility.py`、`docs/archive/mobility_demo.md`）。
    > 这些改动的验证结果见 `output/playback_verification.json`、`db_post_import_verification.json`、`mobility_*.json`，由那次改动自己写出；我这次只读取，未重新核验。
 
 ## 11. 已知限制

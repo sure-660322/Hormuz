@@ -1,49 +1,12 @@
 # 霍尔木兹海峡船舶态势地图
 
-2026-10-02：用户审查后，[PR #29](https://github.com/sure-660322/Hormuz/pull/29) 已合入 main（`2e4270a`，Issue #28 已关闭），本地主目录已同步。任务 worktree 与本地/远端 codex/issue-28-overview 分支已清理，5176 预览已关闭；5174/8000 与其他任务目录保留。5174 浏览器核对真实起始快照、饼图、两个开关和三个日期入口通过，控制台 0 error / 0 warning。验收资料归档为本地忽略的 local-archive/issue28-2026-10-02/browser-evidence.zip，原 output/playwright 路径属于清理前的历史证据。未正式部署，原有数据与验证限制保留。
+Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件及有界智能体问答；后端使用 FastAPI、PostgreSQL、PostGIS/MobilityDB。新闻与 AIS 观测不自动构成身份或因果关联。
 
-2026-10-02（晚）Issue #30 UI 与动效升级（分支 `kimi/ui-upgrade`）：**已合并，[PR #37](https://github.com/sure-660322/Hormuz/pull/37) 合入 main（`739793b`），本地已同步，worktree 与本地/远端分支已清理，7100 预览已停止**。六项子任务 #31–#36 按推荐顺序在单一 worktree 内整合完成，前端构建、工作台检查与 diff 检查通过；内容与未验证范围见 [前端工作台](FRONTEND_WORKBENCH.md)及[任务计划](docs/agent_development_plan.md#2026-10-02-issue-30-ui-与动效升级分支-kimiui-upgrade)。
+当前主线已合入案例、自然语言地图动作、态势图表及 Issue #30 UI 升级；各功能的历史验证和未验证范围见[任务计划](docs/agent_development_plan.md)。未正式部署，认证授权、数据展示许可和公开前整改尚未完成。
 
-> 2026-09-30 Issue #24（[PR #25](https://github.com/sure-660322/Hormuz/pull/25) 已合入 main，合并提交 `af41d37`）：轨迹工具给模型返回有界摘要，完整报位保留在服务端结果和地图链路；新增请求级模型用量日志。离线回归与浏览器夹具联动已验证，真实模型 token/费用对比未验证。详见[智能体开发任务](docs/agent_development_plan.md#issue-24-轨迹模型上下文优化2026-09-30)。
+2026-10-06：任务分支删除废弃 AIS CSV、旧模拟本地输出及示例/中间清单，整理文档入口。验证与整合状态见[清理记录](docs/repository_cleanup_2026-10-06.md)。这不清除 Git 历史，也不改变实际应用数据库。
 
-上一交付：2026-09-30 [PR #27](https://github.com/sure-660322/Hormuz/pull/27)（Issue #26，中海北冰洋典型案例）已合入`main`（`2830ae6`）；本地已同步，本任务分支/工作区及5176/8002预览已清理，验收资料与数据库备份已保留；未正式部署。上一交付：2026-09-30 [PR #25](https://github.com/sure-660322/Hormuz/pull/25)（Issue #24，轨迹模型上下文优化）已合入 `main`（`af41d37`），本次任务 worktree 与本地/远端分支已清理；8000 后端已重启加载最新代码，5174 可使用优化。未正式部署。上一交付：2026-09-30 [PR #23](https://github.com/sure-660322/Hormuz/pull/23)（Issue #21，油价 × 油轮通行量双轴展板）已合入 `main`（`7447fcb`），任务 worktree 与本地/远端分支已清理；5174 可用最新 main 查看。上一个交付：[PR #22](https://github.com/sure-660322/Hormuz/pull/22) 已合入 `main`（`ac46b10`）。未正式部署。
-
-> 2026-09-30 Issue #21（PR #23 已合入 main，浏览器可视验收待用户在 5174 确认）：态势总览新增数据展板「油价 · 油轮通行量」双轴折线图（ECharts 按需引入），覆盖 AIS 回放窗口（2026-02-25 至 2026-03-03）前后各一周。油价数据取自 [EIA RBRTED 日度现货价](https://www.eia.gov/dnav/pet/hist/RBRTED.htm) 并于当日对照官网核对；通行量为本机 AIS 观测统计（UTC 归日、虚拟门线口径，独立 SQL 复核一致，报告 [daily_tanker_passages_2026-09-30](docs/daily_tanker_passages_2026-09-30.md)）。横轴为连续日历日，油价周末无报价显示断点；两条序列有开关控制，开启时以描线动画渐入，底图（坐标轴/网格/回放窗口高亮）常驻。静态数据在 `frontend/src/domain/brentPrices.ts` 与 `frontend/src/domain/tankerPassages.ts`。`npm run build` 与 `npm run check:workbench` 通过，开关交互经 DOM 验证。观测量下降不能单凭本统计解释为实际通行下降或新闻因果。
-
-> 2026-09-30 Issue #20（PR #22 已合入 main，用户测试通过）：智能体自然语言轨迹/定位指令返回结构化地图动作，支持回放附近默认窗口、最近 N 小时与唯一历史指代；自动高亮/绘制并聚焦，保持聊天面板。后端 276 passed / 12 skipped，前端 build/check:workbench、真实模型与 5174 浏览器成功/无数据/503/取消样本通过。范围、时间规则与未验证项见[地图联动记录](docs/agent_map_actions_issue20.md)。PR #19 已合入 main；下方 #13/#16 的待评审及必须显式 UTC 窗口描述属于 2026-09-29 历史版本。
-
-> 2026-09-29 Issue #13（分支 `codex/issue-13-map-agent`，待 PR 评审）：#14 时间线卡片复用事件封面并在失败时回退类型图标；#15 的 [12 题真实模型能力评测](docs/agent_capability_eval_issue15.md)已完成，工具扩展待开始；#16 的结构化地图动作在已核实工具结果上生成，明确单船 UTC 窗口可自动加载轨迹，建议动作由用户点击，切换详情后可返回同一对话。前端 build/check:workbench、后端动作测试、实时模型与浏览器样本已验证；其他样本和整周连续回放未逐项验收。下文旧版状态描述以本条为当前增量入口。
-
-本项目以 Vue 地图工作台展示船舶轨迹及已采集的真实新闻报道，后端使用 FastAPI、PostgreSQL 和 PostGIS。新闻聚合事件用于浏览和情景说明，不代表已核实的船舶风险结论。
-
-> 2026-09-25 真实 AIS 七日接入：本机应用库 `aisdb` 已按 UTC+8 文件日导入 2026-02-25 至 2026-03-03 七天数据，共 4,462 艘、17,921,533 条报位；逐日来源、哈希、行数和接口对账见[七日导入记录](docs/real_ais_seven_day_import.md)。用户在执行中取消独立测试库验证；本轮只在应用库验证，未推送或部署。
-
-> 2026-09-25 中新网中文批次：应用库新增 67 条中文报道（中国新闻网系，2026-02-24 至 2026-03-03），按时间/主题聚类新建 13 个事件（evt_066–evt_078）并归并 45 条到 14 个现有事件；新闻 290→357 条、事件 65→78 个。逐条映射、唯一性规则与前后端验证见[中新网批次导入记录](docs/chinanews_news_import.md)。未推送或部署。
-
-> 2026-09-26 来源文件交接：上述 67 条新闻的原始 JSON 与 65 张配图已纳入 `_analysis_chinanews/chinanews_霍尔木兹_20260223-20260303/` 的 Git 版本管理，67 条记录与 65 个图片路径逐一核对。其他成员拉取代码后仍需单独导入数据库；运行封面接口时需另行配置 `NEWS_IMAGE_ROOT` 并提供图片。见[数据库与环境交接](docs/database_setup.md)。各处“未推送”记录描述的是对应日期的历史状态，远端进度以当前 Git 分支比较为准。
-
-> 2026-09-25 前端真实 AIS 能力：快照、最多四帧的连续播放窗口和有界单船轨迹已在此前独立单日试点做过浏览器验收；本轮七日应用库验证了跨日 API，整周浏览器和并发性能未验收。单日历史证据见[试导记录](docs/real_ais_import_pilot.md)，当前数据对账见[七日导入记录](docs/real_ais_seven_day_import.md)。MobilityDB 派生层未重建，四艘新闻船关联暂缓。
-
-> 2026-09-25 七日应用库页面修复：未构建的相遇派生层会返回 `not_built`，前端现正确显示此状态；点击船只可打开详情，并显示有界单船轨迹与实测航速着色。应用库浏览器单船验证和限制见[前端工作台](FRONTEND_WORKBENCH.md)。
-
-> 2026-09-25 智能体真实 AIS 适配已合入本地 `main`（`208f39d`、`7f1b89a`）：来源说明、船舶搜索和单船轨迹改为 `nnu_ais`；海峡通行使用既有 56.2°E / 56.7°E 虚拟双门线，限定时间与空间，在数据库内筛出侧别变化，可选船 ID。八个业务工具的应用库只读验证及局限见[智能体开发任务](docs/agent_development_plan.md)；真实模型和浏览器问答尚未验收，远端未推送。
-
-
-工作区整合：2026-09-22。SQL-06 已在独立 worktree 完成固定 fixture、一次性 PostgreSQL 17、真实 DeepSeek 和浏览器综合验收；未连接共享业务库，其余业务数量沿用历史核验记录。其他成员的数据库需自行导入，Git 不会同步数据库内容。本地验收不等于远端发布。
-
-当前协作：用户已确认 Kimi 前端优化结束，成果已纳入本轮整理；性能报告见 [地图渲染优化](docs/map_rendering_optimization.md)，性能数值为 Kimi 的历史测量，本轮未重测。另一个未合并的回放试验分支 `kimi/replay-positions-at` 已按用户决定放弃，其改动未进入 main；下文回放能力以 main 代码为准。后续新工作使用独立分支和 worktree，见 [多会话协作与交接](docs/collaboration.md)。LangChain 第一版及 `codex/lc-safety-fix` 安全修复已合入本地 `main`；`f14eceb` 的候选复核事实和本轮验收见 [智能体开发任务](docs/agent_development_plan.md)。远端尚未推送。
-
-2026-09-23 前端布局任务由用户明确指定直接在主目录 `main` 实施，属于本次单项例外；布局改动已在本地 `main` 整合，未推送远端。当前页面结构与当时的验证见 [前端工作台](FRONTEND_WORKBENCH.md)。
-
-2026-09-24 新闻时间回放修正从独立分支 `codex/news-timeline-reveal` 快进合入本地 `main`；地图与左侧新闻列表共用事件发生时间筛选，具体规则和本轮验证见 [前端工作台](FRONTEND_WORKBENCH.md)。远端未推送。
-
-2026-09-24 事件封面图已接入左侧新闻列表和地图事件弹卡；图片由后端按事件编号提供，部署时通过 `NEWS_IMAGE_ROOT` 指向新闻图片目录，见 [前端工作台](FRONTEND_WORKBENCH.md) 和 [环境交接](docs/database_setup.md)。本地已验证代码与页面，远端未部署。
-
-2026-09-25 七日导入由用户明确指定在当前目录从 `da5f4eb` 建立 `codex/ais-seven-day-import` 分支，不创建 worktree；用户随后取消独立测试库验证。应用库导入及验证见[七日记录](docs/real_ais_seven_day_import.md)。此前单日试导仍见[历史记录](docs/real_ais_import_pilot.md)。
-
-2026-09-25 七日导入和船舶详情修复已从 `codex/ais-seven-day-import` 快进合入本地 `main`（功能提交 `ee7b81e`、`5b663bd`）；未推送远端。数据库数据仍只在本机，不随 Git 合并。
-
-交接包注意：模拟船舶文件及旧 manifest 已移除，当前仓库没有可导入的四表交接包。历史导入验收不代表当前可导入；详见 [数据库交接](docs/database_setup.md)。
+文档入口：[当前文档索引](docs/README.md) · [前端工作台](FRONTEND_WORKBENCH.md) · [数据库说明](docs/database_setup.md) · [历史交付记录](docs/archive/delivery_notes_2026-10-03.md)。
 
 ## 当前进度
 
@@ -174,7 +137,7 @@ npm run dev -- --port 5174
 | P1 | 轨迹/速度 API 与着色（`/api/tracks` full/simplified + 前端速度着色） | ✅ **已完成**（2026-09-19）：三分支验证通过，浏览器端到端通过。2026-09-20 增强：着色默认覆盖整条显示轨迹（超 24h 分片取回合并），可切换仅最近 24h |
 | P2 | 事件—船舶关联（010：`event_ship_links` mentioned/observed 分列 + 双向 API + 事件面板关联区） | ✅ **已完成**（2026-09-19）：27 条 mentioned + 29 条 observed，逐条独立重算核对通过 |
 | P3 | 锚地/等待识别（`ship_dwell` 派生表 + 等待区图层） | ✅ **代码已完成**（2026-09-20 历史验收）：`011_ship_dwell.sql` + 构建脚本（阈值入 manifest，默认锚泊 <3 kn/30 min、慢速 <8 kn/60 min），当时库 231 行（199 锚泊/21 漂航/11 慢速）；GET `/api/dwell` 三分支验证通过；前端图层「停留识别」按需加载打点；独立核对 231 行全一致。当前库 0 行，新数据待验证 |
-| P4 | 相遇分析（`encounters` 派生表 + analyze/query API） | ✅ **已完成**（2026-09-20）：`012_encounters.sql` + 构建脚本（候选对时间重叠粗筛 → 等时长重采样 → 逐时刻 geography 距离，默认 3 NM/30 min/60 s），当前库 136 对；GET/POST 三分支验证通过；当时前端概览「相遇分析」列表 + 点击定位与重新分析按钮（2026-09-30 已移除总览入口，地图图层保留）；独立核对最近距离最大差 19 m |
+| P4 | 相遇分析（`encounters` 派生表 + analyze/query API） | ✅ **已完成**（2026-09-20）：`012_encounters.sql` + 构建脚本（候选对时间重叠粗筛 → 等时长重采样 → 逐时刻 geography 距离，默认 3 NM/30 min/60 s），当时模拟库 136 对；真实 AIS 派生层尚未重建；GET/POST 三分支验证通过；当时前端概览「相遇分析」列表 + 点击定位与重新分析按钮（2026-09-30 已移除总览入口，地图图层保留）；独立核对最近距离最大差 19 m |
 | P5 | 回放抽稀层 + data-health（回放主链路切换 simplified 层、覆盖率体检） | ✅ **部分完成**（2026-09-20）：`GET /api/data-health` 已实现（源覆盖统计 + 四张派生表新鲜度），当时前端概览「数据健康」区块（2026-09-30 已移除）；回放主链路切换 simplified 层与抽稀保留规则未实施，真实数据接入前补强 |
 
 历史派生层边界：旧模拟批次的 observed 事件关联只是时空邻近演示，不构成真实因果；当前应用库仅有 mentioned 船名文本提及，未核对真实 AIS ship_id。七日真实 AIS 的停留、相遇和 observed 派生层尚未重建。旧批次实施过程中发现的 MobilityDB 陷阱（`tstzspan` 文本参数静默错解析；`&&` 非保守空间粗筛；`nearestApproachDistance` 离散时刻高估；EPSG:32640 跨 UTM 带失真）见技术方案 §3，不代表当前新数据已验收。
@@ -201,7 +164,7 @@ npm run build
 npm run check:workbench
 ```
 
-后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-22 SQL-06 worktree：`python -m pytest backend/tests -q` 为 207 passed / 13 skipped；`npm run build` 与 `npm run check:workbench` 通过；一次性 PostgreSQL 17 + 真实 DeepSeek 为 57 passed，容器自动删除；浏览器验证成功表格、待澄清和已拒绝，控制台 0 error / 0 warning。验证覆盖固定 fixture 人工 SQL 对照、真实零结果、注入参数、问题矩阵、真实模型工具选择及恶意文本防回显。未连接或修改共享数据库；`query_analytics` 已注册但仍默认关闭。详见 [SQL-06 综合验收](docs/query_analytics_sql06.md)。
+后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-22 SQL-06 worktree：`python -m pytest backend/tests -q` 为 207 passed / 13 skipped；`npm run build` 与 `npm run check:workbench` 通过；一次性 PostgreSQL 17 + 真实 DeepSeek 为 57 passed，容器自动删除；浏览器验证成功表格、待澄清和已拒绝，控制台 0 error / 0 warning。验证覆盖固定 fixture 人工 SQL 对照、真实零结果、注入参数、问题矩阵、真实模型工具选择及恶意文本防回显。未连接或修改共享数据库；`query_analytics` 已注册但仍默认关闭。详见 [SQL-06 综合验收](docs/archive/query_analytics_sql06.md)。
 
 <details>
 <summary>历史验证记录（2026-09-14 至 2026-09-20，不代表当前在途版本已通过）</summary>
@@ -214,11 +177,11 @@ npm run check:workbench
 - [数据库与环境交接](docs/database_setup.md)
 - [智能体接入契约](docs/agent_integration.md)
 - [LangChain 业务智能体第一版技术方案](docs/langchain_agent_v1_plan.md)
-- [MobilityDB 停留试验](docs/mobility_demo.md)
+- [MobilityDB 停留试验](docs/archive/mobility_demo.md)
 - [MobilityDB 时空能力底座方案](docs/mobility_capability_plan.md)（P0–P4 已实现、P5 部分实现，含历史验收与限制）
 - [智能体下一阶段任务与验收](docs/agent_development_plan.md)
 - [多会话协作、工作区交接与文档审计](docs/collaboration.md)
-- [新闻适配阶段记录](docs/event_adaptation_phase1.md)
+- [新闻适配阶段记录](docs/archive/event_adaptation_phase1.md)
 - [006 新闻迁移记录](backend/sql/006_migration_report.md)
 - [项目智能体工作规则](AGENTS.md)
 

@@ -1,5 +1,10 @@
 # 智能体下一阶段开发任务
 
+## 2026-10-06 仓库清理与文档整理
+
+状态：已验证，待整合（独立分支 codex/repository-cleanup，基线49895f9；未推送）。本轮只删除用户确认废弃的数据/示例/中间清单，清理主目录忽略的旧模拟输出，并整理文档和引用；测试、知识库、真实 AIS 导入代码及真实数据库备份保留。验证及整合状态统一维护在[清理记录](repository_cleanup_2026-10-06.md)，未改写历史、公开仓库或部署。
+
+
 2026-10-02：用户审查后，[PR #29](https://github.com/sure-660322/Hormuz/pull/29) 已合入 main（`2e4270a`，Issue #28 已关闭），本地主目录已同步。任务 worktree 与本地/远端 codex/issue-28-overview 分支已清理，5176 预览已关闭；5174/8000 与其他任务目录保留。5174 浏览器核对真实起始快照、饼图、两个开关和三个日期入口通过，控制台 0 error / 0 warning。验收资料归档为本地忽略的 local-archive/issue28-2026-10-02/browser-evidence.zip，原 output/playwright 路径属于清理前的历史证据。未正式部署，原有数据与验证限制保留。
 
 ## 2026-10-02 Issue #30 UI 与动效升级（分支 `kimi/ui-upgrade`）
@@ -200,11 +205,11 @@ LC-04 已按 [第一版方案 §7](langchain_agent_v1_plan.md#7-现有代码去�
 
 SQL-02～06 的阶段验收文档继续保留，但不再作为当前任务看板：
 
-- [SQL-02 语义视图与只读角色](query_analytics_sql02.md)
-- [SQL-03 AST 策略](query_analytics_sql03.md)
-- [SQL-04 独立执行器](query_analytics_sql04.md)
-- [SQL-05 工具循环接入](query_analytics_sql05.md)
-- [SQL-06 综合验收](query_analytics_sql06.md)
+- [SQL-02 语义视图与只读角色](archive/query_analytics_sql02.md)
+- [SQL-03 AST 策略](archive/query_analytics_sql03.md)
+- [SQL-04 独立执行器](archive/query_analytics_sql04.md)
+- [SQL-05 工具循环接入](archive/query_analytics_sql05.md)
+- [SQL-06 综合验收](archive/query_analytics_sql06.md)
 - [受限 Text-to-SQL 历史契约](query_analytics_contract.md)
 
 这些记录证明已有底座当时的实现和验证状态，不表示 LangChain 第一版已经完成。

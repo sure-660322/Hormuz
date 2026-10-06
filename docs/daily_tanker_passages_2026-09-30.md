@@ -60,6 +60,6 @@
 .\backend\.venv\Scripts\python.exe C:\Users\18242\.codex\worktrees\daily-tanker-count\Hormuz\scripts\audit_daily_tanker_passages.py --output C:\Users\18242\.codex\worktrees\daily-tanker-count\Hormuz\docs\evidence\daily_tanker_passages_2026-09-30.json
 ```
 
-证据：[逐日统计与逐船报位](evidence/daily_tanker_passages_2026-09-30.json)、[独立复核 SQL](evidence/daily_tanker_passages_independent.sql)、[统计脚本](../scripts/audit_daily_tanker_passages.py)。
+证据（2026-10-06 路径核对）：上述 JSON、独立 SQL 和统计脚本保存在原任务工作区，未纳入当前 main；因此移除不存在的本地链接。文件名分别为 `daily_tanker_passages_2026-09-30.json`、`daily_tanker_passages_independent.sql`、`audit_daily_tanker_passages.py`。它们不是公开仓库可点击取得的附件，也未在本轮重新执行；前端使用汇总序列，公开前仍需核对数据授权。
 
 复核 SQL 的执行与比较结果保存在 JSON 的 independent_verification 字段；重跑统计脚本仅生成正式统计原始结果，需再次运行独立 SQL 才能更新复核状态。

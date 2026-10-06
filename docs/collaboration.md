@@ -1,5 +1,8 @@
 # 多会话协作与工作区交接
 
+2026-10-06：本轮仓库清理使用独立 codex/repository-cleanup worktree；共享主目录仅清理用户明确授权的 Git 忽略模拟数据，未修改其跟踪文件。当前文档入口见[索引](README.md)，任务范围与验证见[清理记录](repository_cleanup_2026-10-06.md)。
+
+
 > 下方整合状态与文档审计是 2026-09-21 的历史记录，不代表当前工作区数量或智能体架构。2026-09-23 LangChain 第一版与安全修复已合入本地 main；现行状态见 [README](../README.md)、[智能体开发任务](agent_development_plan.md) 与 [接入契约](agent_integration.md)。
 
 ## 历史整合状态（2026-09-21）
@@ -12,7 +15,7 @@
 | README、AGENTS、相关 docs/ | 同步 Kimi 已结束、当前验收边界与后续分支/worktree 规则 |
 | 后端 P3/P4/P5、SQL、验证报告 | 保留实现和历史证据；当前只读 API 冒烟通过；未执行迁移或派生重建 |
 | data/handoff/current/events.jsonl、news.jsonl | 保留分类变更；与 manifest 哈希不一致，作为待修复快照记录，禁止宣称可导入 |
-| Logo/、前端图标 | 2026-09-28 清理：Logo/ 仅保留工具栏两个图标源文件（图层/智能体，未跟踪）；比赛设计图与通知已移出仓库；前端实际运行资产（frontend/src/assets、public/event-kinds/）保留 |
+| Logo/、前端图标 | 2026-09-28 清理：Logo/ 当时保留两个图标源文件；2026-10-06 核对时两个 PNG 均已跟踪（当前运行使用 frontend 的 SVG）；比赛设计图与通知已移出仓库；前端实际运行资产（frontend/src/assets、public/event-kinds/）保留 |
 
 本地提交用于保存现有成果，不代表每个功能都完成独立验收。AG-00 尚缺交接包重新导出及独立空库验证：逐行对照整合起点 2e6adf3，events 仅 64 行 event_type 变化，news 仅 247 行 event_type 变化，行数及其他字段未变；本轮不更新清单哈希来绕过这一问题。下一项功能开发必须离开共享 main，使用独立分支与独立 worktree。
 

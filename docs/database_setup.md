@@ -2,11 +2,13 @@
 
 > 2026-09-30 Issue #26 增量：独立测试库验证后，本机应用库追加中海北冰洋案例 batch 8（11,642原始/11,640接受，2条同秒冲突隔离），复用 ship_id 7194，ships仍4,462，报位总数17,933,173；原七日17,921,533条未覆盖。文件与备份本地保留，不随PR共享；无需新结构迁移，需已有014批次字段与表。按原始/接受数量分别审计，不能复用七日导入脚本的零隔离数量规则。默认态势元数据排除 case/ 批次，真实轨迹和查询工具仍能按窗口读取。详见[案例导入说明](arctic_ocean_case.md)。以下历史数量保留原批次日期。
 
-> 当前入口（2026-09-26 文档核对）：本机应用库 `aisdb` 已导入 UTC+8 文件日 2026-02-25 至 2026-03-03 七天真实 AIS；2026-09-25 导入核验为 4,462 艘、17,921,533 条报位。随后导入中新网 67 条中文报道，本机当日核验为新闻 357 条、事件 78 个，见[中新网批次记录](chinanews_news_import.md)。下表的 65/290 是旧 Git 交接快照，不能作为当前应用库数量。逐日备份、来源审计、导入与接口证据见[七日导入记录](real_ais_seven_day_import.md)。用户在执行中取消独立测试库验证；此前 2 月 25 日的独立试点库及前端浏览器验收见[历史单日记录](real_ais_import_pilot.md)。Git 跟踪的模拟船舶交接文件及旧 manifest 已移除，旧四表交接流程依然缺少完整数据包。
+> 当前入口（2026-09-26 文档核对）：本机应用库 `aisdb` 已导入 UTC+8 文件日 2026-02-25 至 2026-03-03 七天真实 AIS；2026-09-25 导入核验为 4,462 艘、17,921,533 条报位。随后导入中新网 67 条中文报道，本机当日核验为新闻 357 条、事件 78 个，见[中新网批次记录](chinanews_news_import.md)。下表的 65/290 是旧 Git 交接快照，不能作为当前应用库数量。逐日备份、来源审计、导入与接口证据见[七日导入记录](real_ais_seven_day_import.md)。用户在执行中取消独立测试库验证；此前 2 月 25 日的独立试点库及前端浏览器验收见[历史单日记录](archive/real_ais_import_pilot.md)。Git 跟踪的模拟船舶交接文件及旧 manifest 已移除，旧四表交接流程依然缺少完整数据包。
 
 历史状态：2026-09-14 曾提供独立 Docker Compose、四表 JSONL 交接数据、空库导入与核验脚本，并在新容器、新数据卷上演练。脚本保留，当前缺少完整数据包。Git 不会同步运行中的数据库。
 
 ## 仓库提供哪些数据
+
+2026-10-06：废弃的 data/ship_data 三个 CSV 及 data/crossing_data/transit_events.csv 已从任务分支移除；主目录旧模拟输出/备份已清理。它们不是当前七日/案例 AIS 的公开交接包。历史仍可能包含这些文件，真实数据库备份保留，见[清理记录](repository_cleanup_2026-10-06.md)。
 
 | 路径 | 内容与用途 |
 | --- | --- |
@@ -79,7 +81,7 @@ if ($LASTEXITCODE -ne 0) { throw '导入未完成，请检查空库、配置与�
 .\backend\.venv\Scripts\python.exe -m backend.handoff_run build-mobility
 ```
 
-2026-09-14 历史演练预期为 114 段。当前无船位数据，不运行本节命令。主回放仍读取 ship_positions；新源数据接入后需要另行核验并显式重建派生数据。
+2026-09-14 历史演练预期为 114 段。当前缺少旧四表交接包，真实 AIS 派生层尚未重建；不对当前应用库执行本节旧交接命令。主回放仍读取 ship_positions；新源数据接入后需要另行核验并显式重建派生数据。
 
 ## 5. 验证并启动应用
 
@@ -114,14 +116,14 @@ docker compose --env-file deploy/handoff.env -f compose.handoff.yaml stop
 
 ## 脚本边界
 
-- 014_real_ais_import.sql 是真实 AIS 字段扩展迁移；迁移本身不导入数据。单日历史脚本 `backend/import_real_ais_pilot.py` 只写固定试点库；本机应用库七日数据由 `backend/import_real_ais_days.py` 按日事务 COPY 导入。见[七日导入记录](real_ais_seven_day_import.md)和[历史单日试导](real_ais_import_pilot.md)。
+- 014_real_ais_import.sql 是真实 AIS 字段扩展迁移；迁移本身不导入数据。单日历史脚本 `backend/import_real_ais_pilot.py` 只写固定试点库；本机应用库七日数据由 `backend/import_real_ais_days.py` 按日事务 COPY 导入。见[七日导入记录](real_ais_seven_day_import.md)和[历史单日试导](archive/real_ais_import_pilot.md)。
 - 008_fresh_handoff_schema.sql 是新空库入口，由 handoff 脚本在事务和空库保护下执行；不要对已有库直接重放。
 - 001–007 是历史演进，不能无条件顺序执行；006 会重建新闻表。
 - 009_ship_tracks.sql 是 P0 泛化派生层（ship_tracks、track_build_manifest、源表 BRIN/data_source 索引），全部由 backend/build_ship_tracks.py 以幂等 DDL 执行并负责重建与 manifest 留痕；不进交接包，新库首次重建时自动建立。
 - 010_event_ship_links.sql 是 P2 事件×船舶关联派生表，由 backend/build_event_ship_links.py 幂等执行与重建（mentioned 恒不指向模拟船）；同样不进交接包。
 - 011_ship_dwell.sql 是 P3 停留识别派生表（at_anchor/drift/slow_transit），由 backend/build_ship_dwell.py 幂等执行与重建，阈值入 manifest；同样不进交接包。
 - 012_encounters.sql 是 P4 相遇分析派生表（一船对一行 + params 快照），由 backend/build_encounters.py 幂等执行与重建；POST /api/encounters/analyze 是受控同步重建入口；同样不进交接包。
-- 013_agent_analytics_readonly.sql 是旧模拟批次 SQL-02 的历史迁移，会撤销目标数据库 `PUBLIC` 的 TEMP 及 `public` schema 默认权限，并创建只筛 `simulation` 的 `agent_data.v_ships`；不得对当前真实 AIS 应用库重放。015_retire_simulation_agent_view.sql 只在旧视图实际存在时以 `DROP VIEW ... RESTRICT` 退役该视图；本机 `aisdb` 执行前后均无 `agent_data` schema，故为空操作。016_agent_views_nnu_ais.sql 是当前真实 AIS 的语义层迁移：重建 `agent_data` 的 `v_ships`（nnu_ais 一船一行）/ `v_events` / `v_news` 与 `agent_view_owner` / `agent_reader` / `agent_reader_login` 只读角色，收紧本库 PUBLIC 的 TEMP 与扩展 schema 授权（对库属主通过 `pg_database_owner` 显式补授，不影响应用），并为读者角色设 `timescaledb.disable_load=on`（含 TimescaleDB 的集群必需，否则聚合查询报 `_timescaledb_functions` 权限错误）。配对 catalog 为 `backend/app/query_analytics_catalog_v2.json`；本机 `aisdb` 已于 2026-09-25 执行并通过执行器全链路核验。v1 catalog 与 SQL 三工具的历史验收见 [SQL-02 说明](query_analytics_sql02.md)。
+- 013_agent_analytics_readonly.sql 是旧模拟批次 SQL-02 的历史迁移，会撤销目标数据库 `PUBLIC` 的 TEMP 及 `public` schema 默认权限，并创建只筛 `simulation` 的 `agent_data.v_ships`；不得对当前真实 AIS 应用库重放。015_retire_simulation_agent_view.sql 只在旧视图实际存在时以 `DROP VIEW ... RESTRICT` 退役该视图；本机 `aisdb` 执行前后均无 `agent_data` schema，故为空操作。016_agent_views_nnu_ais.sql 是当前真实 AIS 的语义层迁移：重建 `agent_data` 的 `v_ships`（nnu_ais 一船一行）/ `v_events` / `v_news` 与 `agent_view_owner` / `agent_reader` / `agent_reader_login` 只读角色，收紧本库 PUBLIC 的 TEMP 与扩展 schema 授权（对库属主通过 `pg_database_owner` 显式补授，不影响应用），并为读者角色设 `timescaledb.disable_load=on`（含 TimescaleDB 的集群必需，否则聚合查询报 `_timescaledb_functions` 权限错误）。配对 catalog 为 `backend/app/query_analytics_catalog_v2.json`；本机 `aisdb` 已于 2026-09-25 执行并通过执行器全链路核验。v1 catalog 与 SQL 三工具的历史验收见 [SQL-02 说明](archive/query_analytics_sql02.md)。
 - create_tables.py 只补 ORM 表，不准备全部扩展、空间结构和索引。
 - migrate_real_news.py 仍是维护者历史迁移工具，依赖仓库外源路径；新成员使用本页的导入入口。
 - seed_data.py、generate_demo_data.py 使用旧事件语义，不作为当前初始化入口。

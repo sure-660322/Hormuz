@@ -3,7 +3,7 @@
 当前前端入口调整（2026-09-30）：态势总览的相遇分析列表/重新分析按钮与数据健康区块已移除，页面不再初始化请求 data-health；地图相遇图层、后端 API 和智能体工具保留。以下 2026-09-20 的验收数量与前端入口描述属于当时批次。此次 UI 验证见[前端工作台](../FRONTEND_WORKBENCH.md)。
 
 > 2026-09-25 当前状态：**P0–P4 代码已有实现，P5 部分实现**；本机模拟源船位和对应派生记录已删除；应用库现已导入七日真实 AIS 原始船位，但派生表尚未重建。源数据存在 2,922 组同船同秒多报位，部分坐标不同，现有时间序列构建不能静默取舍；派生重建待冲突规则确定。2026-09-19/20 数量及测试为历史验收，不代表当前库。当前源数据与限制见[七日导入记录](real_ais_seven_day_import.md)。
-> 2026-09-25 历史单日阶段另在独立测试库试导 2 月 25 日真实 AIS 3,634,184 条；前端阶段三使用原始报位按船索引查询、分段和时间桶抽稀，未重建 P0–P4 MobilityDB 派生数据，详情见[单日试导记录](real_ais_import_pilot.md)。
+> 2026-09-25 历史单日阶段另在独立测试库试导 2 月 25 日真实 AIS 3,634,184 条；前端阶段三使用原始报位按船索引查询、分段和时间桶抽稀，未重建 P0–P4 MobilityDB 派生数据，详情见[单日试导记录](archive/real_ais_import_pilot.md)。
 > 2026-09-25 真实 AIS 阶段三另接入抽稀轨迹的速度着色和采样点显示：线段使用起点报位的实测 SOG 分档，不属于下文 P1 的 MobilityDB 插值速度着色；两套口径应分别标注。
 >
 > 目标：以 MobilityDB 为核心建立可复用的时空数据能力层，支撑 AIS 船舶轨迹 + 海事事件 + GIS 地图 + 后续真实数据接入。当前应用库没有船位；真实数据接入和兼容性尚待验证。
@@ -201,7 +201,7 @@ GET /api/data-health
 | P1 ✅ | `/api/tracks` + speed 输出 + 速度着色前端 | 展示冲击力最强，打通"派生→API→地图"全链路。已实施：GET /api/tracks/{ship_id}（full=整段几何+对齐 [[epoch,kn]] 速度序列，simplified=时间桶抽稀）；ShipInspector「速度着色」按回放窗口（15 分钟量化）取派生层，四档色带渲染；显示范围超过后端 24h 单窗上限时按 ≤24h 分片并行取回、按 segment_no 去重合并，覆盖整条显示轨迹，另可切换为仅最近 24h 着色；三分支验证与 build/check:workbench 通过（2026-09-19，分片合并 2026-09-20） |
 | P2 ✅ | `event_ship_links` 模型 + 事件/船舶双向 API + 高亮 | 项目核心叙事（事件×船）。已实施：010 迁移（mentioned/observed 分列，mentioned ship_id 恒空）；构建脚本（50 km 半径时空邻近，阈值入 manifest）；双向 API（/api/events/{id}/ships、/api/ships/{id}/events）；事件面板关联区（observed 可定位船）；独立核对逐条重算距离 ≤2 m（2026-09-19） |
 | P3 ✅ | dwell 识别 + 等待区图层 | 复用 P0 管线，纯增量。已实施：`011_ship_dwell.sql`（kind at_anchor/drift/slow_transit、enter/leave_at、duration_min、geom 4326、displacement_radius_m）；`build_ship_dwell.py`（速度档 run + 90 分钟 gap 断开 + 时长过滤 + 位移半径分类，阈值入 manifest，默认锚泊 <3 kn/30 min、慢速 <8 kn/60 min、位移半径 926 m）；GET `/api/dwell?kind=&from=&to=`；前端图层开关「停留识别」按需加载打点（kind 配色 + tooltip）；独立核对 `verify_ship_dwell.py` 纯 Python 重算 231 行全一致（位移容忍 max(60 m, 1%)）。2026-09-20 当时库 231 行（199 锚泊 / 21 漂航 / 11 慢速）；2026-09-25 当前库 0 行 |
-| P4 ✅ | encounters 分析与查询 | 组合复杂度最高，放稳态后。已实施：`012_encounters.sql`（一船对一行：period tstzspan、min_distance_m、closest_point 4326、overlap_minutes 累计、params 快照）；`build_encounters.py`（候选对时间重叠粗筛 → 等时长重采样对齐 → 逐时刻 geography 距离，默认 3 NM / 30 min / 60 s）；GET `/api/encounters?max_distance_nm=` + POST `/api/encounters/analyze`（受控同步重建）；前端概览「相遇分析」列表（最近距离排序、点击地图定位 + 最小距离虚线圈）与「按默认参数重新分析」按钮。独立核对 `verify_encounters.py`：136 对、最近距离最大差 19 m。当前库 136 行（默认参数 manifest id 12）（2026-09-20） |
+| P4 ✅ | encounters 分析与查询 | 组合复杂度最高，放稳态后。已实施：`012_encounters.sql`（一船对一行：period tstzspan、min_distance_m、closest_point 4326、overlap_minutes 累计、params 快照）；`build_encounters.py`（候选对时间重叠粗筛 → 等时长重采样对齐 → 逐时刻 geography 距离，默认 3 NM / 30 min / 60 s）；GET `/api/encounters?max_distance_nm=` + POST `/api/encounters/analyze`（受控同步重建）；前端概览「相遇分析」列表（最近距离排序、点击地图定位 + 最小距离虚线圈）与「按默认参数重新分析」按钮。独立核对 `verify_encounters.py`：136 对、最近距离最大差 19 m。当时模拟库 136 行（默认参数 manifest id 12，2026-09-20）；真实 AIS 派生层未在本轮重建 |
 | P5 部分完成 | 回放抽稀层 + data-health 完善 | data-health API 和前端区块已实现；/api/tracks 的 simplified 输出已由 P1 提供，但主回放未切换，三条特征保留规则尚未实现。stale 启发式限制见 §5；真实数据接入前补强 |
 | 全程 | 每个迁移 `ON_ERROR_STOP`、HTTP 三分支验证、文档同步 | 项目既有验收纪律 |
 

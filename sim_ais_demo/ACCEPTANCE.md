@@ -304,7 +304,7 @@
 **发现的代码 / 迁移 / 实际数据库差异（以实际核验为准，未猜测）**
 
 1. `backend/generate_demo_data.py` 仍在使用旧 `Event` 字段（`title`、`description`、`latitude`、`longitude`、`occurred_at`、`source_name`、`source_url`），而 `006` 迁移后的 `events` 表已没有这些列。该脚本当前**无法运行**，`README.md` 中"重建 80 条模拟事件"的说法已过期。本批次**没有运行它**，也没有使用它的清库选项。
-2. `backend/app/routers/ships.py` 的 `/{ship_id}/nearby-events` 仍在查询 `events.title`、`events.description`、`events.latitude`、`events.longitude`、`events.occurred_at`、`events.source_name`、`events.source_url`，这些列在当前 `events` 表中都不存在。该接口会报错。`docs/event_adaptation_phase1.md` 已记录此问题，本批次未修复、页面也不调用它。
+2. `backend/app/routers/ships.py` 的 `/{ship_id}/nearby-events` 仍在查询 `events.title`、`events.description`、`events.latitude`、`events.longitude`、`events.occurred_at`、`events.source_name`、`events.source_url`，这些列在当前 `events` 表中都不存在。该接口会报错。`docs/archive/event_adaptation_phase1.md` 已记录此问题，本批次未修复、页面也不调用它。
 3. `events.location` 与 `idx_events_location` 已在 `006` 迁移中随旧表移除；`backend/sql/001_add_events_location.sql` 与 `003` 的 events 部分对当前库**不适用**。
 4. `backend/app/routers/simulation.py` 的 `event_count` 被硬编码为 0，`frame_interval_seconds` 固定为 300，但 `frame_count` 取的是不同 `recorded_at` 的数量，口径不一致（见第 8 节）。
 

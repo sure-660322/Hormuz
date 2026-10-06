@@ -1,5 +1,7 @@
 # SQL-03 AST 策略校验器
 
+> 历史阶段文档，2026-10-06 归档；下文验收日期和数量保持原批次。现行说明见 [文档索引](../README.md)。
+
 状态：**已验证**（2026-09-21，worktree `D:/my_project/Hormuz-codex-sql03`，分支 `codex/sql03-ast-validator`，基线 `3d51a5a`）。本任务只实现离线 SQL 解析和策略校验；后续 SQL-04 已通过隔离执行验证，SQL-05 已注册 `query_analytics`（默认关闭）。
 
 ## 固定解析器
@@ -13,7 +15,7 @@
 
 ## 当前边界
 
-按 [SQL-01 契约](query_analytics_contract.md) 实现输入资源门、comment/多语句词法门、参数一一对应、catalog v1 关系与字段、批准 JOIN、函数/操作符/CAST 正向白名单、字面量/通配符/别名规则及 AST 复杂度限制。参数中的 `date` / `timestamptz` 值会校验 ISO 格式及时区；聚合投影、比较类型和函数签名也按冻结规则检查。任何不兼容或未列入白名单的语法默认拒绝。
+按 [SQL-01 契约](../query_analytics_contract.md) 实现输入资源门、comment/多语句词法门、参数一一对应、catalog v1 关系与字段、批准 JOIN、函数/操作符/CAST 正向白名单、字面量/通配符/别名规则及 AST 复杂度限制。参数中的 `date` / `timestamptz` 值会校验 ISO 格式及时区；聚合投影、比较类型和函数签名也按冻结规则检查。任何不兼容或未列入白名单的语法默认拒绝。
 
 ## 验证记录
 

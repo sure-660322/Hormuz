@@ -1,7 +1,7 @@
 # query_analytics 受限 Text-to-SQL 契约（SQL-01）
 
 > 文档状态：**历史实现依据，继续约束现有 SQL 安全底座**。SQL-02～06 已按本契约完成实现与隔离验证；下一版 LangChain SQL Agent 仍复用策略校验和只读执行器，但交互与编排目标改由 [LangChain 第一版方案](langchain_agent_v1_plan.md) 定义。
-> 当前 v4 运行契约见 [agent_integration.md](agent_integration.md)，阶段证据见 [SQL-04](query_analytics_sql04.md)、[SQL-05](query_analytics_sql05.md) 和 [SQL-06](query_analytics_sql06.md)。旧固定问题矩阵和评审过程文档已移除，不再作为下一版设计入口。
+> 当前 v4 运行契约见 [agent_integration.md](agent_integration.md)，阶段证据见 [SQL-04](archive/query_analytics_sql04.md)、[SQL-05](archive/query_analytics_sql05.md) 和 [SQL-06](archive/query_analytics_sql06.md)。旧固定问题矩阵和评审过程文档已移除，不再作为下一版设计入口。
 
 ## 1. 目标与非目标
 
@@ -74,7 +74,7 @@
 ### 2.3 参数与规范化执行规则（评审冻结，R-27 强化）
 
 - 模型只允许提交命名绑定参数，不允许提交已插值的 SQL。
-- **固定解析器（冻结）**：SQL-03 已锁定 SQLGlot `30.18.0`、`postgres` 方言，目标数据库主版本为 PostgreSQL 17；版本不一致或解析器不兼容的语法默认拒绝，不得为通过查询临时换解析器。实现与离线验证见 [SQL-03 说明](query_analytics_sql03.md)。
+- **固定解析器（冻结）**：SQL-03 已锁定 SQLGlot `30.18.0`、`postgres` 方言，目标数据库主版本为 PostgreSQL 17；版本不一致或解析器不兼容的语法默认拒绝，不得为通过查询临时换解析器。实现与离线验证见 [SQL-03 说明](archive/query_analytics_sql03.md)。
 - **禁止手写字符串替换式 tokenizer**：不得用正则或字符串替换预处理 SQL（识别 `:name`、剥离注释、改写字面量等一律禁止）。参数占位符由上述固定解析器的词法/语法阶段识别为占位符节点，词法门与参数校验在同一解析产物上进行。
 - **校验与执行的唯一对应（冻结）**：校验链为「模型 SQL → 固定解析器解析（失败=可纠错一次的语法错误）→ 参数绑定校验 → AST 全树校验 → **从已通过校验的 AST 序列化生成规范化 SQL** → 执行器只执行这份规范化 SQL」。校验对象与执行对象是同一份 AST 产物，不存在「校验的是 A、数据库执行的是 B」；任何参数标记规范化、语法修复、LIMIT 注入或其他改写完成后，都视为一条**新的 SQL**，必须重新通过完整校验链（词法门 → 参数 → AST → 权限 → 限额）才能执行。
 

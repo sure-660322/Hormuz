@@ -28,7 +28,7 @@
 
 2026-09-22 LC-03 状态核对：受限 SQL 工具（`get_database_schema` / `check_sql` / `execute_sql`）已接入，复用 SQL-03/04 策略与独立只读执行器，仅在功能开关完整时向模型暴露；普通筛选/排序/聚合/批准 JOIN 走 schema→check→execute 链路，写入被只读策略拒绝且拒绝后关闭重试。固定短语前置分类已按方案 §7 移除（LC-01/03 完成条件达成），问候、范围外、知识、写库/越权意图和澄清全部交给模型与工具底座处理。LC-02 起已有轻量知识库与 `search_project_knowledge` 工具。统一序列化已修复 `Decimal`（median_gap_minutes）导致的 HTTP 500；工具错误降级为可理解 observation。以下「当前实现」段落中关于自定义工具循环、固定分类与手工 TOOL_REGISTRY 的描述指 LC-01 之前的 v4 实现，旧 `runner.py` 已于 LC-04 清理。
 
-2026-09-22 状态核对（LC-01 之前的事实，保留作契约背景）：data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](query_analytics_sql06.md)。
+2026-09-22 状态核对（LC-01 之前的事实，保留作契约背景）：data-health、停留、相遇、事件—船舶关联与受限 `query_analytics` 均已注册，注册表共 9 个只读工具；`query_analytics` 功能开关默认关闭，关闭时不向模型暴露，只有本地回环绑定和独立只读配置完整时才可启用。SQL-06 已完成一次性 PostgreSQL 17、真实 DeepSeek 与浏览器综合验收，见 [SQL-06 说明](archive/query_analytics_sql06.md)。
 
 历史核对：2026-09-20 的 v3 多工具版采用“大模型 API + 自定义只读查询工具”，当时未引入 LangChain、LangGraph 或扣子平台。POST /agent/analyze 已注册并通过 schemas_agent.py 与统一错误对外提供；前端智能体面板（frontend/src/components/AgentPanel.vue）已接入问答。该段只说明旧版演进背景，不再代表下一步架构决定。
 

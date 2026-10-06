@@ -1,5 +1,7 @@
 # SQL-04 独立只读执行器
 
+> 历史阶段文档，2026-10-06 归档；下文验收日期和数量保持原批次。现行说明见 [文档索引](../README.md)。
+
 状态：**已验证**（2026-09-21，worktree `D:/my_project/Hormuz-codex-sql04`，分支 `codex/sql04-executor`，共同基线 `af888e9`）。本阶段完成执行安全边界；后续 SQL-05 已接入 runner/schema/前端，但功能开关仍默认关闭。
 
 ## 交付内容

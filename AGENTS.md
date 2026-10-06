@@ -7,7 +7,7 @@
 - 仅在当前仓库范围工作，不从 Hormuz-Web 或其他同名项目复制实现事实。
 - 前端为 frontend/（Vue 3、TypeScript、Vite、Leaflet）；后端为 backend/（FastAPI、SQLAlchemy）；数据库为 PostgreSQL / PostGIS。
 - 2026-09-25 本机应用库的教学模拟船舶、船位及其派生数据已删除，随后按日导入 2026-02-25 至 2026-03-03 七日真实 AIS：`ships=4,462`、`ship_positions=17,921,533`（本机当日核验值，非跨环境常量）。events 为新闻聚合事件，news 为已采集的真实报道及加工字段；不得统一称为“全模拟”或“真实 AIS”。来源授权与区域覆盖仍未核实，MobilityDB 派生层未重建。当前证据见 docs/real_ais_seven_day_import.md。
-- sim_ais_demo/output_news_aligned/ 的 Git 跟踪船位已移除，报告属历史记录；主目录仍有 Git 忽略的旧批次报位和备份文件（自动审批拒绝删除）。数量是可变状态，变更前查询实际数据。
+- sim_ais_demo/output_news_aligned/ 的 Git 跟踪船位已移除，报告属历史记录；2026-10-06 经用户授权，主目录 Git 忽略的旧批次报位、模拟备份与重复生成目录已清理；配置、生成工具和历史报告保留。真实数据库备份未清理，Git 历史未改写。记录见 docs/repository_cleanup_2026-10-06.md。
 - MobilityDB/PostGIS 派生能力 P0–P4 已有实现，P5 部分实现（data-health 已接入，主回放尚未切换 simplified 派生层）。TimescaleDB 已安装，业务未使用时序表。
 - `main` 已合入 LangChain `create_agent` 单智能体、知识库、8 个业务工具和默认关闭的 SQL 三工具，以及整合前安全修复；响应继续保持 v4 契约。`f14eceb` 记录的候选缺陷已修复并保留历史复核证据。真实模型、独立数据库 SQL 链路及浏览器验收状态见 docs/agent_development_plan.md；当前契约见 docs/agent_integration.md。
 
@@ -85,7 +85,7 @@ npm run dev -- --port 5174
 - 修改模型后验证导入与元数据；修改数据库后回查系统目录、约束、索引及实际数据。
 - 前后端联调检查浏览器控制台、网络请求和后端日志；无法验证时明确范围和原因。
 - 纯文档修改核对代码、链接、样例与状态，不必重跑不相关业务测试。
-- 前端 API 地址在 frontend/src/api.ts；CORS 当前只允许 http://localhost:5174，方法为 GET 和 POST（POST /agent/analyze）；新增其他方法时同步调整。
+- 前端 API 地址在 frontend/src/api.ts；CORS 当前允许 http://localhost:5174 与 http://localhost:5176；开发默认使用 Vite 同源代理，方法为 GET 和 POST（含 POST /agent/analyze、POST /api/encounters/analyze）；新增其他方法时同步调整。
 - 当前无认证授权、实时推送和正式部署；已有轻量检查，不等于完整自动化测试体系。
 
 ## Windows 沙箱与 Git 权限

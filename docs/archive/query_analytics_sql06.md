@@ -1,5 +1,7 @@
 # SQL-06 综合验收
 
+> 历史阶段文档，2026-10-06 归档；下文验收日期和数量保持原批次。现行说明见 [文档索引](../README.md)。
+
 状态：**已验证**（2026-09-22，worktree `D:/my_project/Hormuz-codex-sql06`，分支 `codex/sql06-validation`，基线 `6b46d64`）。`query_analytics` 已通过固定 fixture、一次性 PostgreSQL 17、真实 DeepSeek Tool Calling 和浏览器展示验收；功能开关仍默认关闭，且远端部署限制不变。
 
 ## 本阶段补强
