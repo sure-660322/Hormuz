@@ -26,7 +26,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 
 ## 技术与目录
 
-- 前端：Vue 3、TypeScript、Vite、Leaflet；底图使用 OpenStreetMap，海事参考使用 OpenSeaMap。
+- 前端：Vue 3、TypeScript、Vite、Leaflet；底图使用 OpenStreetMap（可切换自建本地瓦片服务，见下），海事参考使用 OpenSeaMap。
 - 后端：FastAPI、SQLAlchemy、Psycopg。
 - 本机数据库：PostgreSQL；已核对扩展 PostGIS 3.5.2、MobilityDB 1.3.0、TimescaleDB 2.22.0。
 - 主数据流：数据库 → FastAPI → Vue / Leaflet；区域船舶查询目前在浏览器内计算。
@@ -77,6 +77,18 @@ npm run dev -- --port 5174
 ```
 
 打开 [地图工作台](http://localhost:5174)、[健康检查](http://127.0.0.1:8000/health)、[接口文档](http://127.0.0.1:8000/docs)。
+
+### 本地底图瓦片服务（可选）
+
+OSM 官方瓦片在国内网络不可直接访问，可改用自建本地瓦片服务（数据为 OSM，需保留署名）。状态：**已实现并验证（2026-10-06）——13.6 万张 z0–z12 全框下载完成（0 失败）；nginx 服务健康检查、z0/z8/z12 分层级抽查与浏览器端到端验证通过（页面瓦片全部来自 localhost:8080，含 z12 放大；OpenSeaMap 注记层当时网络可达）**。
+
+```powershell
+cd D:\my_project\Hormuz
+python scripts/download_tiles.py                          # 约 13.6 万张 / 约 3 GB，可断点续传（需代理）
+powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
+```
+
+瓦片源为 OSM 官方（tile.openstreetmap.org）；本机直连会被限速断连，下载脚本默认走本地代理混合端口 `http://127.0.0.1:7897`（可用环境变量 `TILE_PROXY` 覆盖，置空则直连）。范围：z0–z12 全覆盖 bbox 33.5–64°E / 15.5–38°N（全部高亮国家），约 13.6 万张 / 约 3 GB。前端在 `frontend/.env` 设 `VITE_TILE_URL=http://localhost:8080/tiles/{z}/{x}/{y}.png` 即切换（仓库提供 `.env.example`；不设则回退 OSM 官方瓦片）。OpenSeaMap 海事注记层仍为境外服务，未纳入自建范围。部署到服务器时拷贝 `tiles/` 目录与 `deploy/tiles/nginx.conf`（改端口和 alias 路径）即可；若服务器本身可流畅访问国际网络，也可在服务器上直接重跑下载脚本（直连或配代理均可）。
 
 前端 API 地址目前写在 `frontend/src/api.ts`；CORS 目前只允许 `http://localhost:5174`，GET 与智能体 POST 均已放行。
 
