@@ -4,7 +4,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 
 当前主线已合入案例、自然语言地图动作、态势图表及 Issue #30 UI 升级；各功能的历史验证和未验证范围见[任务计划](docs/agent_development_plan.md)。未正式部署，认证授权、数据展示许可和公开前整改尚未完成。
 
-2026-10-06：任务分支删除废弃 AIS CSV、旧模拟本地输出及示例/中间清单，整理文档入口。验证与整合状态见[清理记录](docs/repository_cleanup_2026-10-06.md)。这不清除 Git 历史，也不改变实际应用数据库。
+2026-10-06：废弃 AIS CSV、旧模拟本地输出及示例/中间清单已清理，文档整理已随提交 `2acd881` 合入 main 并推送，任务 worktree 与本地分支已清理。验证和范围见[清理记录](docs/repository_cleanup_2026-10-06.md)。这不清除 Git 历史，也不改变实际应用数据库。
 
 文档入口：[当前文档索引](docs/README.md) · [前端工作台](FRONTEND_WORKBENCH.md) · [数据库说明](docs/database_setup.md) · [历史交付记录](docs/archive/delivery_notes_2026-10-03.md)。
 

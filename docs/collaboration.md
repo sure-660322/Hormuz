@@ -1,6 +1,6 @@
 # 多会话协作与工作区交接
 
-2026-10-06：本轮仓库清理使用独立 codex/repository-cleanup worktree；共享主目录仅清理用户明确授权的 Git 忽略模拟数据，未修改其跟踪文件。当前文档入口见[索引](README.md)，任务范围与验证见[清理记录](repository_cleanup_2026-10-06.md)。
+2026-10-06：本轮仓库清理使用独立 codex/repository-cleanup worktree；共享主目录仅清理用户明确授权的 Git 忽略模拟数据，未修改其跟踪文件。清理提交2acd881已快进合入main并推送；本次worktree已归档移除，本地任务分支已删除，未创建远端任务分支。当前文档入口见[索引](README.md)，任务范围与验证见[清理记录](repository_cleanup_2026-10-06.md)。
 
 
 > 下方整合状态与文档审计是 2026-09-21 的历史记录，不代表当前工作区数量或智能体架构。2026-09-23 LangChain 第一版与安全修复已合入本地 main；现行状态见 [README](../README.md)、[智能体开发任务](agent_development_plan.md) 与 [接入契约](agent_integration.md)。

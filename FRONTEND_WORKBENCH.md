@@ -2,7 +2,7 @@
 
 当前前端由地图、自然日回放、新闻浏览、态势总览、典型案例和智能体面板组成；Issue #30 UI 升级已在2026-10-03经 PR #37 合入 main。历史构建、浏览器样本和未验证范围见[任务计划](docs/agent_development_plan.md)及[历史交付记录](docs/archive/delivery_notes_2026-10-03.md)，不作为本轮复验。
 
-2026-10-06：移除未引用的 Vite 示例组件及其两个 SVG；现行回归检查和运行资产保留。清理与验证状态见[清理记录](docs/repository_cleanup_2026-10-06.md)。
+2026-10-06：未引用的 Vite 示例组件及其两个 SVG 已随 `2acd881` 合入 main 并推送；任务 worktree 与本地分支已清理。现行回归检查和运行资产保留。清理与验证状态见[清理记录](docs/repository_cleanup_2026-10-06.md)。
 
 ## 当前功能
 
