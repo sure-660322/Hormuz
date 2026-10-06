@@ -471,12 +471,18 @@ onMounted(() => {
     })
     .addTo(map)
   L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map)
+  // 底图瓦片地址可配置：本地/自建服务用 VITE_TILE_URL 指向 nginx 瓦片服务；
+  // 不配置时回退到 OSM 官方瓦片。自建瓦片目前只下载到 z12，默认相应限制缩放上限。
+  const tileUrl: string =
+    import.meta.env.VITE_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+  const tileMaxZoom = Number(import.meta.env.VITE_TILE_MAX_ZOOM ?? (import.meta.env.VITE_TILE_URL ? 12 : 19))
   const basemap = L.tileLayer(
-    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    tileUrl,
     {
       className: 'neutral-basemap',
-      maxZoom: 19,
+      maxZoom: tileMaxZoom,
       attribution:
+        import.meta.env.VITE_TILE_ATTRIBUTION ??
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     },
   ).addTo(map)
