@@ -210,3 +210,102 @@ def test_compare_contract(client, stub):
     assert metrics["ships_observed"]["change_rate"] == 0.0
     assert body["windows"]["a"]["days"] == 1 and body["windows"]["b"]["days"] == 1
     assert body["comparability"]["warnings"] == []
+
+
+def test_resolve_area_accepts_custom_rectangle(client):
+    """圈选矩形：结构校验通过后回显 area_id=custom 与四个边界（与查询同一套规则）。"""
+    http, _ = client
+    response = http.post(f"{BASE}/resolve-area", json={
+        "west": 56.0, "south": 26.0, "east": 56.9, "north": 26.8,
+    })
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["area"]["area_id"] == "custom"
+    assert body["area"]["is_default"] is False
+    assert body["area"]["bounds"] == {"south": 26.0, "west": 56.0, "north": 26.8, "east": 56.9}
+    assert body["area"]["span_deg"] == {"lat": 0.8, "lon": 0.9}
+    assert "半开" in body["message"]
+    assert body["limitations"]
+
+
+def test_resolve_area_rejects_invalid_rectangles(client):
+    """无效、跨 180° 与超跨度矩形在这里就拒绝，不留给后续查询。"""
+    http, _ = client
+    for payload, expected in (
+        ({"west": 57.5, "south": 25.8, "east": 55.8, "north": 27.1}, "west < east"),
+        ({"west": 170.0, "south": 20.0, "east": -170.0, "north": 24.0}, "west < east"),
+        ({"west": 50.0, "south": 20.0, "east": 61.0, "north": 24.0}, "跨度"),
+        ({"west": 55.8, "south": 27.1, "east": 57.1, "north": 25.8}, "south < north"),
+    ):
+        response = http.post(f"{BASE}/resolve-area", json=payload)
+        assert response.status_code == 422, payload
+        detail = response.json()["detail"]
+        assert detail["code"] == "INVALID_REQUEST"
+        assert expected in detail["message"]
+        assert detail["request_id"]
+
+
+def test_resolve_area_missing_field_uses_validation_handler(client):
+    http, _ = client
+    response = http.post(f"{BASE}/resolve-area", json={"west": 56.0, "south": 26.0})
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["code"] == "INVALID_REQUEST"
+    assert "request_id" in detail
+
+
+def test_ship_types_catalog_contract(client, monkeypatch):
+    """船型目录来自 ships 真实分布：空值/未知映射到保留值，计数之和等于总数。"""
+    rows = [("货船", 5), ("未知", 2), ("", 2), ("__missing__", 1), ("油轮", 1)]
+
+    class _Result:
+        def fetchall(self):
+            return rows
+
+    class _Session:
+        def execute(self, *args, **kwargs):
+            return _Result()
+
+    http, _ = client
+    main_app.dependency_overrides[get_db] = lambda: _Session()
+    try:
+        response = http.get(f"{BASE}/ship-types")
+    finally:
+        main_app.dependency_overrides.pop(get_db, None)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["source"] == params.SOURCE
+    assert body["total_ships"] == 11
+    assert body["count"] == 4
+    values = {item["value"]: item for item in body["ship_types"]}
+    assert values["__missing__"]["count"] == 3
+    assert sorted(values["__missing__"]["raw_values"]) == ["", "__missing__"]
+    assert values["__unknown__"]["raw_values"] == ["未知"]
+    assert values["__unknown__"]["label"] == "未知"
+    assert sum(item["count"] for item in body["ship_types"]) == body["total_ships"]
+    assert {item["value"] for item in body["reserved"]} == {"__missing__", "__unknown__"}
+    assert body["limitations"]
+
+
+def test_ship_types_catalog_empty_table_is_valid_zero(client):
+    class _Result:
+        def fetchall(self):
+            return []
+
+    class _Session:
+        def execute(self, *args, **kwargs):
+            return _Result()
+
+    http, _ = client
+    main_app.dependency_overrides[get_db] = lambda: _Session()
+    try:
+        response = http.get(f"{BASE}/ship-types")
+    finally:
+        main_app.dependency_overrides.pop(get_db, None)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "no_data"
+    assert body["ship_types"] == [] and body["total_ships"] == 0
+

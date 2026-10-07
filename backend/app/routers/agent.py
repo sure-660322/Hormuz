@@ -59,6 +59,7 @@ def analyze(
             history=[turn.model_dump() for turn in request.history] if request.history else None,
             request_id=request_id,
             map_context=request.map_context.model_dump() if request.map_context else None,
+            area_context=request.area_context.model_dump() if request.area_context else None,
         )
     except AgentTimeoutError as exc:
         _error(504, "AGENT_TIMEOUT", str(exc), request_id)

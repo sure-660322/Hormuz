@@ -12,6 +12,7 @@ import {
   AgentRequestError,
   type AgentAnalyzeResponse,
   type AgentMapAction,
+  type AgentAreaAnalysisAction,
   type AgentEvidence,
   type AgentTurn,
   type AgentToolEventContextResult,
@@ -28,6 +29,8 @@ import { eventKind, safeNewsUrl } from '../domain/maritime'
 const emit = defineEmits<{
   'locate-ship': [shipId: number]
   'locate-event': [eventId: string]
+  // issue #41：本轮回答产生的「查看区域分析」动作，交给 App 暂存并显示入口。
+  'area-analysis-suggested': [action: AgentAreaAnalysisAction]
 }>()
 const props = defineProps<{
   executeMapAction: (action: AgentMapAction, signal: AbortSignal) => Promise<{ message: string; outcome: 'ok' | 'error' | 'cancelled' }>
@@ -36,6 +39,10 @@ const props = defineProps<{
   caseContext?: { ship_id: number; title: string; start_at: string; end_at: string } | null
   // issue #36：输入区顶部的简短上下文摘要（当前船舶/事件），详细说明可展开。
   contextSummary?: { label: string; detail: string } | null
+  // issue #41：当前选定的分析区域；作为本请求区域的权威值传给后端，模型不得悄悄改写。
+  areaContext?: { west: number; south: number; east: number; north: number; area_id?: string | null; label?: string | null } | null
+  // issue #41：把区域面板的条件带入对话（只填入输入框，不自动发送）。
+  pendingDraft?: { text: string; version: number } | null
 }>()
 
 interface AgentTurnState {
@@ -228,6 +235,7 @@ async function submit() {
         end_at: parseTime(endAt.value) ?? inferredWindow?.[1] ?? scopedWindow?.[1] ?? null,
         history,
         ...(props.playbackAt ? { map_context: { playback_at: props.playbackAt, target_ship_id: targetShipId } } : {}),
+        ...(props.areaContext ? { area_context: props.areaContext } : {}),
       },
       controller.signal,
     )
@@ -235,6 +243,10 @@ async function submit() {
       turns.value[turnIndex]!.response = response
       const automatic = response.map_actions?.find(action => action.trigger === 'automatic')
       if (automatic) void runMapAction(turnIndex, automatic)
+      // issue #41：本轮若有区域分析动作，交给父组件暂存并给出「查看区域分析」入口；
+      // 不自动打开面板，用户点击后才切换视图。
+      const areaAction = response.analysis_actions?.find(action => action.type === 'area_activity')
+      if (areaAction) emit('area-analysis-suggested', areaAction)
       void scrollToLatest()
     }
   } catch (e) {
@@ -407,6 +419,11 @@ function cellText(value: unknown): string {
 
 watch(() => props.caseContext ? `${props.caseContext.ship_id}|${props.caseContext.start_at}|${props.caseContext.end_at}` : '', () => {
   cancel()
+})
+// issue #41：「把区域条件带入对话」只填入输入框，不自动发送；version 变化才重放。
+watch(() => props.pendingDraft?.version ?? 0, () => {
+  const draft = props.pendingDraft
+  if (draft?.text) question.value = draft.text
 })
 onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
 </script>

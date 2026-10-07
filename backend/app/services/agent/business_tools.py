@@ -32,6 +32,7 @@ from backend.app.services.agent.ship_search import (
 from backend.app.services.agent.ship_tracks import get_ship_track
 from backend.app.services.agent.track_observation import track_observation
 from backend.app.services.agent.strait_passages import query_strait_passages
+from backend.app.services.area_activity.context import resolve_area_context
 
 _JSON_TYPE_MAP = {
     "string": str,
@@ -129,8 +130,13 @@ def make_business_tools(
     end_at: datetime,
     forced_window: bool,
     state: dict,
+    area_context: object | None = None,
 ) -> list[StructuredTool]:
-    """构造 8 个只读业务工具；db/窗口/state 绑定到当前请求。"""
+    """构造 11 个只读业务工具；db/窗口/当前区域/state 绑定到当前请求。
+
+    area_context 为本轮请求区域（None → 版本化默认分析区域），只在请求内生效；
+    工具显式给出的矩形只作用于该次调用。
+    """
 
     def _window_args(args: dict) -> dict:
         return {key: value for key, value in args.items() if value is not None}
@@ -229,7 +235,7 @@ def make_business_tools(
         "closure_at": {**time_param, "description": "封锁起始时刻，ISO 8601，必须带时区（统一 UTC），如 2026-02-28T15:00:00+00:00"},
         "end_at": {**time_param, "description": "窗口结束时刻，ISO 8601，必须带时区（统一 UTC）；end_at 必须晚于 closure_at，窗口最长 24 小时"},
     }
-    return [
+    tools = [
         StructuredTool.from_function(
             func=_query_strait_passages,
             name="query_strait_passages",
@@ -364,3 +370,9 @@ def make_business_tools(
             }),
         ),
     ]
+    # 阶段三（issue #41）追加：三个区域活动工具。既有 8 个工具不改动；
+    # 区域上下文在本请求内固定，延迟导入避免与 area_tools 的模块级依赖成环。
+    from backend.app.services.agent.area_tools import make_area_tools
+
+    tools.extend(make_area_tools(db, state, resolve_area_context(area_context)))
+    return tools

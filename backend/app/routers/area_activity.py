@@ -1,12 +1,14 @@
-"""区域船舶活动与进出分析 REST API（issue #41 第一阶段）。
+"""区域船舶活动与进出分析 REST API（issue #41）。
 
-- GET /api/area-activity/default-area — 默认分析区域的版本、边界与依据
-- GET /api/area-activity/snapshot     — 历史时刻在场
-- GET /api/area-activity/activity     — 时段出现、进出与停留（按日汇总）
-- GET /api/area-activity/compare      — 同区同时段筛选的 A/B 比较
+- GET  /api/area-activity/default-area — 默认分析区域的版本、边界与依据
+- GET  /api/area-activity/ship-types   — 船型候选目录（真实取值分布，不硬编码）
+- POST /api/area-activity/resolve-area — 解析/校验一个矩形并回显区域标识（圈选与智能体共用）
+- GET  /api/area-activity/snapshot     — 历史时刻在场
+- GET  /api/area-activity/activity     — 时段出现、进出与停留（按日汇总）
+- GET  /api/area-activity/compare      — 同区同时段筛选的 A/B 比较
 
 路由只做参数校验与错误映射，业务判定全部在 services/area_activity（手动界面与
-后续智能体工具共用同一服务）。契约见 docs/area_activity.md §4。
+智能体工具共用同一服务）。契约见 docs/area_activity.md §4。
 """
 import uuid
 from datetime import datetime
@@ -18,11 +20,14 @@ from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.schemas_area_activity import (
     ActivityResponse,
+    AreaResolveRequest,
+    AreaResolveResponse,
     CompareResponse,
     DefaultAreaResponse,
+    ShipTypesResponse,
     SnapshotResponse,
 )
-from backend.app.services.area_activity import boundaries, service
+from backend.app.services.area_activity import boundaries, service, ship_types
 
 router = APIRouter(prefix="/api/area-activity", tags=["area-activity"])
 
@@ -67,6 +72,54 @@ def _run(db: Session, action):
 @router.get("/default-area", response_model=DefaultAreaResponse)
 def get_default_area():
     return service.default_area_payload()
+
+
+@router.get("/ship-types", response_model=ShipTypesResponse)
+def get_ship_types(db: Session = Depends(get_db)):
+    """船型候选：来自 ships 表真实取值分布，前端与智能体共用同一目录。"""
+
+    def action():
+        return ship_types.ship_type_catalog(db)
+
+    return _run(db, action)
+
+
+@router.post("/resolve-area", response_model=AreaResolveResponse)
+def post_resolve_area(payload: AreaResolveRequest):
+    """把手动圈选/智能体给出的矩形解析成带版本的区域标识。
+
+    与 snapshot/activity/compare 使用同一套半开边界与跨度校验：非法、超限或跨 180°
+    的矩形在这里就以 422 拒绝，避免前端拿着一个后端不接受的区域去查询。
+    """
+
+    def action():
+        bounds, is_default = boundaries.resolve_bounds(
+            payload.south, payload.west, payload.north, payload.east
+        )
+        described = boundaries.describe_area(bounds, is_default=is_default)
+        area = {
+            key: described[key]
+            for key in (
+                "area_id", "name", "version", "is_default",
+                "basis", "bounds", "span_deg", "containment",
+            )
+        }
+        if not is_default and payload.area_id and payload.area_id.strip():
+            area["area_id"] = payload.area_id.strip()
+        message = (
+            "使用默认分析区域；如需自选区域请显式给出 west/south/east/north"
+            if is_default
+            else "已接受自选矩形：西/南含、东/北不含（半开），跨度上限 "
+                 f"{service.params.MAX_RECT_SPAN_DEG:g}°"
+        )
+        return {
+            "status": "ok",
+            "area": area,
+            "message": message,
+            "limitations": list(service.STANDING_LIMITATIONS),
+        }
+
+    return _run(None, action)
 
 
 @router.get("/snapshot", response_model=SnapshotResponse)

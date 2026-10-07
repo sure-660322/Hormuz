@@ -340,7 +340,7 @@ def test_vague_question_gets_natural_clarification():
 
 
 def test_business_tools_do_not_include_sql_tools():
-    """8 个业务工具与 SQL 工具分模块：业务工具集不含任何 SQL/分析工具。"""
+    """11 个业务工具与 SQL 工具分模块：业务工具集不含任何 SQL/分析工具。"""
     from backend.app.services.agent.business_tools import make_business_tools
 
     state = {"tools_used": [], "results": {}, "tool_executions": 0,
@@ -356,6 +356,8 @@ def test_business_tools_do_not_include_sql_tools():
         "query_strait_passages", "search_ships", "get_ship_track",
         "get_event_context", "get_data_health", "query_ship_dwell",
         "query_encounters", "query_event_ship_links",
+        "query_area_ship_snapshot", "query_area_ship_activity",
+        "compare_area_ship_activity",
     }
     assert "query_analytics" not in names
     assert "execute_sql" not in names

@@ -182,3 +182,39 @@ class CompareResponse(BaseModel):
     a: dict[str, Any]
     b: dict[str, Any]
     limitations: list[str]
+
+
+class AreaResolveRequest(BaseModel):
+    """手动圈选/智能体请求的矩形解析（结构校验由模型完成，业务校验在 service）。"""
+
+    west: float
+    south: float
+    east: float
+    north: float
+    area_id: str | None = None
+
+
+class AreaResolveResponse(BaseModel):
+    status: str
+    area: AreaModel
+    message: str
+    limitations: list[str]
+
+
+class ShipTypeOptionModel(BaseModel):
+    value: str
+    label: str
+    raw_values: list[str]
+    count: int
+    count_scope: str
+
+
+class ShipTypesResponse(BaseModel):
+    status: str
+    source: str
+    total_ships: int
+    ship_types: list[ShipTypeOptionModel]
+    reserved: list[ShipTypeOptionModel]
+    count: int
+    limitations: list[str]
+

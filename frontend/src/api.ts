@@ -340,12 +340,23 @@ export interface AgentTurn {
   content: string
 }
 
+export interface AgentAreaContextRequest {
+  west: number
+  south: number
+  east: number
+  north: number
+  area_id?: string | null
+  label?: string | null
+}
+
 export interface AgentAnalyzeRequest {
   question: string
   closure_at: string | null
   end_at: string | null
   history?: AgentTurn[]  // 多轮对话历史，最多最近 10 轮；单轮不传
   map_context?: { playback_at: string; target_ship_id: number | null }
+  // issue #41：本请求当前选定的分析区域；后端以它为权威值，模型不得悄悄改写。
+  area_context?: AgentAreaContextRequest | null
 }
 
 export interface AgentContext {
@@ -389,6 +400,32 @@ export interface AgentQuerySummary {
   truncated: boolean
 }
 
+// 智能体产出的「查看分析」动作（issue #41 区域活动；issue #40 另有 passage_analysis）。
+export interface AgentAreaAnalysisAction {
+  type: 'area_activity'
+  trigger: 'suggested'
+  mode: 'snapshot' | 'activity' | 'compare'
+  query: {
+    west: number
+    south: number
+    east: number
+    north: number
+    area_id: string | null
+    area_is_default: boolean
+    at?: string | null
+    start_at?: string | null
+    end_at?: string | null
+    start_a?: string | null
+    end_a?: string | null
+    start_b?: string | null
+    end_b?: string | null
+    ship_types?: string[] | null
+  }
+  summary: Record<string, unknown>
+  tool: string
+  call_id: string
+}
+
 export interface AgentAnalyzeResponse {
   schema_version: string
   request_id: string
@@ -403,6 +440,8 @@ export interface AgentAnalyzeResponse {
   limitations: string[]
   clarification: string | null
   map_actions: AgentMapAction[]
+  // 后端契约中的「查看分析」动作；类型可能同时含区域活动与通行分析，前端按 type 过滤。
+  analysis_actions?: AgentAreaAnalysisAction[]
 }
 
 export type AgentMapAction =
@@ -790,3 +829,417 @@ export async function fetchDataHealth(): Promise<ApiDataHealth> {
   if (!response.ok) throw new Error(`获取数据健康状态失败：${response.status}`)
   return response.json()
 }
+
+// ---------------------------------------------------------------------------
+// issue #41 区域船舶活动与进出分析：/api/area-activity/*
+// 口径与契约见 docs/area_activity.md §4；手动面板与智能体工具共用同一后端服务，
+// 前端只调用这些函数并直接展示后端字段，不重算业务判定。
+// ---------------------------------------------------------------------------
+
+export interface ApiAreaBounds {
+  west: number
+  south: number
+  east: number
+  north: number
+}
+
+export interface ApiAreaInfo {
+  area_id: string
+  name: string
+  version: string | null
+  is_default: boolean
+  basis: string
+  bounds: ApiAreaBounds
+  span_deg: { lat: number; lon: number }
+  containment: string
+}
+
+export interface ApiAreaAlgorithm {
+  name: string
+  version: string
+  params: Record<string, unknown>
+}
+
+export interface ApiAreaCoverage {
+  source: string
+  batch_ids: number[]
+  batch_days: string[]
+  scope_start: string | null
+  scope_end: string | null
+  scoped_fix_count: number | null
+  region_fix_count: number | null
+  window_region_fix_count: number | null
+  first_fix_at: string | null
+  last_fix_at: string | null
+  note: string
+}
+
+export interface ApiAreaDefaultResponse {
+  status: string
+  area: ApiAreaInfo
+  algorithm: ApiAreaAlgorithm
+  limitations: string[]
+}
+
+export interface ApiAreaResolveResponse {
+  status: string
+  area: ApiAreaInfo
+  message: string
+  limitations: string[]
+}
+
+export interface ApiAreaShipTypeOption {
+  value: string
+  label: string
+  raw_values: string[]
+  count: number
+  count_scope: string
+}
+
+export interface ApiAreaShipTypesResponse {
+  status: string
+  source: string
+  total_ships: number
+  ship_types: ApiAreaShipTypeOption[]
+  reserved: ApiAreaShipTypeOption[]
+  count: number
+  limitations: string[]
+}
+
+export interface ApiAreaFix {
+  id: number | null
+  recorded_at: string | null
+  latitude: number | null
+  longitude: number | null
+}
+
+export interface ApiAreaEvent {
+  observed: boolean
+  observed_at: string | null
+  bracket_seconds: number | null
+  inside_fix: ApiAreaFix | null
+  outside_fix: ApiAreaFix | null
+  outside_evidence_in_context: boolean
+  near_boundary: boolean
+  wide_bracket: boolean
+  same_second_conflict: boolean
+  in_window: boolean
+}
+
+export interface ApiAreaSegment {
+  segment_no: number
+  start_at: string
+  end_at: string
+  start_fix_id: number | null
+  end_fix_id: number | null
+  seconds: number
+  in_window_seconds: number
+  fix_count: number
+}
+
+export interface ApiAreaVisit {
+  visit_key: string
+  ship_id: number
+  ship_name: string | null
+  mmsi: string | null
+  ship_type: string | null
+  entry: ApiAreaEvent
+  exit: ApiAreaEvent
+  prior_state: string
+  first_inside_at: string
+  last_inside_at: string
+  fix_count: number
+  segment_count: number
+  segments: ApiAreaSegment[]
+  observed_seconds: number
+  window_seconds: number
+  unobserved_gap_seconds: number
+  started_before_window: boolean
+  touches_window: boolean
+  status: string
+  flags: string[]
+}
+
+export interface ApiAreaDaily {
+  date: string
+  ships_observed: number
+  observed_entry_count: number
+  observed_exit_count: number
+  observed_ship_seconds: number
+  observed_ship_hours: number
+  visits_touching_day: number
+  complete_visit_count: number
+  truncated_visit_count: number
+  interrupted_visit_count: number
+  uncertain_visit_count: number
+}
+
+export interface ApiAreaSnapshotShip {
+  ship_id: number
+  name: string | null
+  mmsi: string | null
+  ship_type: string | null
+  flag: string | null
+  fix_id: number | null
+  latitude: number
+  longitude: number
+  speed: number | null
+  recorded_at: string
+  age_seconds: number
+  fresh: boolean
+  inside: boolean
+}
+
+export interface ApiAreaSnapshotSummary {
+  in_area_count: number
+  out_of_area_fresh_count: number
+  stale_fix_count: number
+  evaluated_ship_count: number
+  freshness_seconds: number
+}
+
+export interface ApiAreaActivitySummary {
+  ships_observed: number
+  observed_entry_count: number
+  observed_exit_count: number
+  observed_ship_seconds: number
+  observed_ship_hours: number
+  visit_count: number
+  complete_visit_count: number
+  truncated_start_visit_count: number
+  truncated_end_visit_count: number
+  interrupted_visit_count: number
+  uncertain_visit_count: number
+  prior_state_unknown_visit_count: number
+  near_boundary_event_count: number
+  unobserved_gap_seconds: number
+}
+
+export type ApiAreaStatus = 'ok' | 'partial' | 'no_data'
+
+export interface ApiAreaSnapshotResponse {
+  status: ApiAreaStatus
+  area: ApiAreaInfo
+  query: Record<string, unknown>
+  algorithm: ApiAreaAlgorithm
+  coverage: ApiAreaCoverage
+  summary: ApiAreaSnapshotSummary
+  ships: ApiAreaSnapshotShip[]
+  limits: Record<string, number | boolean>
+  limitations: string[]
+}
+
+export interface ApiAreaActivityResponse {
+  status: ApiAreaStatus
+  area: ApiAreaInfo
+  query: Record<string, unknown>
+  algorithm: ApiAreaAlgorithm
+  coverage: ApiAreaCoverage
+  summary: ApiAreaActivitySummary
+  daily: ApiAreaDaily[]
+  visits?: ApiAreaVisit[]
+  limits: Record<string, number | boolean>
+  limitations: string[]
+}
+
+export interface ApiAreaComparePeriod {
+  status: ApiAreaStatus
+  summary: ApiAreaActivitySummary
+  coverage: ApiAreaCoverage
+  daily: ApiAreaDaily[]
+}
+
+export interface ApiAreaCompareMetric {
+  key: string
+  label: string
+  unit: string
+  a: number
+  b: number
+  delta: number
+  change_rate: number | null
+}
+
+export interface ApiAreaCompareResponse {
+  status: ApiAreaStatus
+  area: ApiAreaInfo
+  algorithm: ApiAreaAlgorithm
+  windows: {
+    a: { start: string; end: string; days: number; length_hours: number }
+    b: { start: string; end: string; days: number; length_hours: number }
+  }
+  comparability: {
+    same_area: boolean
+    same_filters: boolean
+    same_algorithm: boolean
+    equal_length: boolean
+    window_days_a: number
+    window_days_b: number
+    window_length_days_a: number
+    window_length_days_b: number
+    per_day_denominator: string
+    warnings: string[]
+  }
+  metrics: ApiAreaCompareMetric[]
+  a: ApiAreaComparePeriod
+  b: ApiAreaComparePeriod
+  limitations: string[]
+}
+
+export interface ApiAreaSnapshotQuery {
+  at: string
+  bounds: ApiAreaBounds | null
+  ship_types?: string[] | null
+  freshness_seconds?: number | null
+  limit?: number | null
+}
+
+export interface ApiAreaActivityQuery {
+  start: string
+  end: string
+  bounds: ApiAreaBounds | null
+  ship_types?: string[] | null
+  batch_ids?: number[] | null
+  lookback_seconds?: number | null
+  lookahead_seconds?: number | null
+  visit_limit?: number | null
+}
+
+export interface ApiAreaCompareQuery {
+  start_a: string
+  end_a: string
+  start_b: string
+  end_b: string
+  bounds: ApiAreaBounds | null
+  ship_types?: string[] | null
+  batch_ids?: number[] | null
+  visit_limit?: number | null
+}
+
+// 区域活动接口错误：保留后端 detail.code / detail.message，便于区分参数错误与超时。
+export class AreaRequestError extends Error {
+  code: string
+  requestId: string
+  status: number
+  constructor(code: string, message: string, requestId: string, status: number) {
+    super(message)
+    this.name = 'AreaRequestError'
+    this.code = code
+    this.requestId = requestId
+    this.status = status
+  }
+}
+
+async function areaRequest<T>(path: string, init: RequestInit, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(30_000)])
+      : AbortSignal.timeout(30_000),
+  })
+  if (!response.ok) {
+    let code = 'HTTP_ERROR'
+    let message = `区域分析请求失败：${response.status}`
+    let requestId = ''
+    try {
+      const body = await response.json()
+      const detail = body?.detail
+      if (detail && typeof detail === 'object' && typeof detail.code === 'string') {
+        code = detail.code
+        message = typeof detail.message === 'string' ? detail.message : message
+        requestId = typeof detail.request_id === 'string' ? detail.request_id : ''
+      }
+    } catch {
+      // 非契约错误体时保留通用提示
+    }
+    throw new AreaRequestError(code, message, requestId, response.status)
+  }
+  return response.json() as Promise<T>
+}
+
+function appendAreaBounds(params: URLSearchParams, bounds: ApiAreaBounds | null): void {
+  if (!bounds) return
+  params.set('west', String(bounds.west))
+  params.set('south', String(bounds.south))
+  params.set('east', String(bounds.east))
+  params.set('north', String(bounds.north))
+}
+
+function appendShipTypes(params: URLSearchParams, shipTypes: string[] | null | undefined): void {
+  // 空数组表示「全部船型」（不传参数），与后端「为空表示全部」一致。
+  for (const value of shipTypes ?? []) {
+    if (value) params.append('ship_type', value)
+  }
+}
+
+function appendBatchIds(params: URLSearchParams, batchIds: number[] | null | undefined): void {
+  for (const value of batchIds ?? []) params.append('batch_ids', String(value))
+}
+
+export async function fetchAreaDefault(): Promise<ApiAreaDefaultResponse> {
+  return areaRequest<ApiAreaDefaultResponse>('/api/area-activity/default-area', { method: 'GET' })
+}
+
+export async function fetchAreaShipTypes(): Promise<ApiAreaShipTypesResponse> {
+  return areaRequest<ApiAreaShipTypesResponse>('/api/area-activity/ship-types', { method: 'GET' })
+}
+
+export async function resolveAreaBounds(
+  bounds: ApiAreaBounds,
+  areaId?: string | null,
+): Promise<ApiAreaResolveResponse> {
+  return areaRequest<ApiAreaResolveResponse>('/api/area-activity/resolve-area', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      west: bounds.west,
+      south: bounds.south,
+      east: bounds.east,
+      north: bounds.north,
+      ...(areaId ? { area_id: areaId } : {}),
+    }),
+  })
+}
+
+export async function fetchAreaSnapshot(
+  query: ApiAreaSnapshotQuery,
+  signal?: AbortSignal,
+): Promise<ApiAreaSnapshotResponse> {
+  const params = new URLSearchParams({ at: query.at })
+  appendAreaBounds(params, query.bounds)
+  appendShipTypes(params, query.ship_types)
+  if (query.freshness_seconds != null) params.set('freshness_seconds', String(query.freshness_seconds))
+  if (query.limit != null) params.set('limit', String(query.limit))
+  return areaRequest<ApiAreaSnapshotResponse>(`/api/area-activity/snapshot?${params}`, { method: 'GET' }, signal)
+}
+
+export async function fetchAreaActivity(
+  query: ApiAreaActivityQuery,
+  signal?: AbortSignal,
+): Promise<ApiAreaActivityResponse> {
+  const params = new URLSearchParams({ start: query.start, end: query.end })
+  appendAreaBounds(params, query.bounds)
+  appendShipTypes(params, query.ship_types)
+  appendBatchIds(params, query.batch_ids)
+  if (query.lookback_seconds != null) params.set('state_lookback_seconds', String(query.lookback_seconds))
+  if (query.lookahead_seconds != null) params.set('state_lookahead_seconds', String(query.lookahead_seconds))
+  if (query.visit_limit != null) params.set('visit_limit', String(query.visit_limit))
+  return areaRequest<ApiAreaActivityResponse>(`/api/area-activity/activity?${params}`, { method: 'GET' }, signal)
+}
+
+export async function fetchAreaCompare(
+  query: ApiAreaCompareQuery,
+  signal?: AbortSignal,
+): Promise<ApiAreaCompareResponse> {
+  const params = new URLSearchParams({
+    start_a: query.start_a,
+    end_a: query.end_a,
+    start_b: query.start_b,
+    end_b: query.end_b,
+  })
+  appendAreaBounds(params, query.bounds)
+  appendShipTypes(params, query.ship_types)
+  appendBatchIds(params, query.batch_ids)
+  if (query.visit_limit != null) params.set('visit_limit', String(query.visit_limit))
+  return areaRequest<ApiAreaCompareResponse>(`/api/area-activity/compare?${params}`, { method: 'GET' }, signal)
+}
+

@@ -1,7 +1,8 @@
-# 区域船舶活动与进出分析：后端算法与接口（issue #41 第一阶段）
+# 区域船舶活动与进出分析：矩形圈选、手动与智能体共用（issue #41）
 
-状态：**后端算法 + REST API 已实现待验收**（2026-10-07）。前端矩形交互、三模式面板、智能体工具与知识库**不在本阶段**，保持未开始。
-本轮只交付：边界规则与版本、共享业务服务、REST API、独立样例验证。基线 commit `ead29ac`（main），分支 `codex/area-ship-activity`，工作树 `D:\my_project\Hormuz-worktrees\codex-area-ship-activity`。
+状态（2026-10-07）：第一阶段「后端算法与接口」**已实现、已在独立测试库与真实库只读验证，待用户验收**；第二、三阶段「手动矩形圈选/三模式面板/地图证据联动」「三个智能体业务工具/当前区域上下文/查看区域分析」**已实现，浏览器端到端冒烟通过，完整独立验收见[验收报告](area_activity_acceptance.md)**。未推送、未合并、未部署。
+
+工作树 `D:\my_project\Hormuz-worktrees\codex-area-activity-ui`，分支 `codex/area-activity-ui`，基线 `aca8d3c`（含第一阶段两个提交）。两种入口共用同一后端服务：手动界面调用 `GET/POST /api/area-activity/*`，智能体调用三个只读工具（`query_area_ship_snapshot`/`query_area_ship_activity`/`compare_area_ship_activity`），同一参数返回一致结果。智能体侧细节见[区域活动智能体工具](area_agent_tools.md)与[智能体接入契约](agent_integration.md)；前端组件与展示规则见[区域活动前端](area_activity_frontend.md)。
 
 数据现状（2026-10-07 本机只读核验）：`ships=4,462`、`ship_positions=17,933,173`、`data_source='nnu_ais'` 单一来源；批次 1–7 为 2026-02-24T16:00Z–2026-03-03T15:59:59Z 的逐日文件，批次 8 为北极案例单船（1 艘，2026-03-26–03-31）。本机最近一次核验值，不是跨环境常量。
 
@@ -170,7 +171,22 @@
 
 ### 4.1 `GET /api/area-activity/default-area`
 
-返回默认区域版本、边界、依据与算法版本，供前端展示与「恢复默认区域」。
+返回默认区域版本、边界、依据与算法版本，供前端展示与「恢复默认区域」。响应：`{status, area, algorithm, limitations}`。
+
+### 4.1.1 `GET /api/area-activity/ship-types`
+
+船型候选目录（手动多选与智能体共用，不在前端硬编码）。响应：
+`{status, source, total_ships, ship_types[], reserved[], count, limitations[]}`，
+其中 `ship_types[]` 为 `{value, label, raw_values[], count, count_scope}`，按数量降序；保留值 `__missing__`（NULL/空，label「缺失（空值或 NULL）」）与 `__unknown__`（数据库取值「未知」，label「未知」）同时出现在 `reserved` 中；`Σcount == total_ships`。
+口径：来自 `ships.ship_type` 的当前取值分布，是当前快照属性，不代表历史船型已逐条核实；不按船名推断。空表返回 `status="no_data"` 与空列表（有效零结果，不是错误）。
+本机 2026-10-07 实测：25 项、`total_ships=4462`（货船 999、油轮 793、`__missing__` 707、`__unknown__` 348、…）。
+
+### 4.1.2 `POST /api/area-activity/resolve-area`
+
+把手动圈选或智能体给出的矩形解析成带版本的区域标识，**与 snapshot/activity/compare 使用同一套半开规则与跨度校验**：非法、超跨度或跨 180° 的矩形在这里就以 422 拒绝（`INVALID_REQUEST`），避免前端拿着后端不接受的区域去查询。
+
+请求体：`{west, south, east, north, area_id?}`（四个边界必填）。响应：`{status, area, message, limitations}`；`area` 与查询响应同构（`area_id`/`name`/`version`/`is_default`/`basis`/`bounds`/`span_deg`/`containment`），调用方给出的 `area_id` 在自定义矩形时回显。
+注意：默认区域请直接用 `default-area` 的返回值，不要把默认矩形当自定义矩形提交（坐标相同但 `area_id` 会变成 `custom`）。
 
 ### 4.2 `GET /api/area-activity/snapshot`
 
@@ -246,7 +262,26 @@
 
 ---
 
-## 五、独立验证（本轮验收方式）
+## 四之二、手动界面与智能体入口（issue #41 第二、三阶段）
+
+### 4.7 手动界面（frontend）
+
+- 入口：地图左侧工具栏「区域」（`data-testid="tool-area"`）打开区域活动面板；区域状态条显示当前区域名称、`area_id`、四边界与跨度，并提供「重新圈选」「恢复默认区域」「取消绘制」。
+- 圈选：点「重新圈选」进入绘制模式（地图显示提示条），在**地图上按住左键拖动**画矩形，松手后由父组件调用 `POST resolve-area` 校验；失败则回滚到原区域并显示后端 `message`，不把无效矩形留给查询。`Esc` 取消绘制；跨度小于 0.01° 视为误触，不提交。缩放/平移地图不改变分析区域。
+- 三模式：时刻在场（默认时刻对齐当前地图回放时刻，避免用「现在」查历史 AIS）、时段活动（UTC 半日区间 `[start, end)`，界面标注终点不含）、两时段比较（A/B 两组，同一矩形与船型条件）。
+- 船型筛选：默认全部，数据来自 `ship-types`；`__missing__`/`__unknown__` 显示为「缺失（空值或 NULL）」「未知」。
+- 结果展示：摘要、每日表与趋势图、访问明细（entry/exit 证据报位、segments、flags、观测/窗口/未观测秒数）、A/B 指标表（`change_rate=null` 显示「基期为 0，无法计算变化率」）；`limits.list_truncated`/`limits.detail_truncated` 显式提示；`limitations` 与 `coverage` 原文展示；`status=no_data` 与「有效零结果」分开表述。
+- 区域变更：旧结果立即标记「区域已变更，待查询」并注明结果所属区域；重新查询成功后清除标记。
+- 证据联动：访问行「地图定位」/「显示区间」→ 复用现有 `ship_track` 地图动作加载该访问 `first_inside_at → last_inside_at` 的有界轨迹，与回放时刻区分。
+- 请求守卫：`requestSeq` + `AbortController`，快速换区/换模式/连续查询时旧响应不覆盖新状态。
+
+### 4.8 智能体入口
+
+- 三个只读工具与 `area_context` 请求字段、`analysis_actions` 响应动作见[智能体接入契约](agent_integration.md)与[区域活动智能体工具](area_agent_tools.md)。
+- 前端把当前选定区域通过 `area_context` 传给 `/agent/analyze`（请求区域的权威值，模型不得悄悄改写）；回答携带 `analysis_actions[type=area_activity]` 时，地图区出现「查看区域分析」入口，点击后打开面板并恢复该次调用的区域、模式、时间与船型条件。
+- 「写入对话」把面板当前区域与条件生成中文提示词填入智能体输入框（不自动发送）。
+
+---
 
 1. **独立测试库**：脚本在同一个 PostgreSQL 实例上创建独立库 `hormuz_area_test`（只影响测试库，绝不写 `aisdb`），按真实结构建最小表：`ships`、`ship_positions`（含 PostGIS 生成列 `location`）与 `ais_import_batches`（coverage / `batch_ids` 会读取它；缺表时接口按数据库错误处理），插入构造报位。
 2. **独立复算**：样例与期望值由**不引用后端算法模块**的朴素 Python 实现独立算出（只读本文档），再与 HTTP API / 服务函数结果逐字段比对。
@@ -254,7 +289,10 @@
 4. **只读真实库核对**：在 `aisdb` 上用同一服务跑 1 日与多日只读查询，记录 EXPLAIN (ANALYZE)、扫描量、冷/暖耗时，核对源表未被写入（查询前后行数与 `pg_stat` 写计数不变）。
 5. 单元测试（不连库，假会话）覆盖纯算法与参数校验；HTTP 契约测试覆盖成功/空结果/参数错误分支。
 
-验证证据与命令记录见 `docs/area_activity_backend_verification.md`（本轮生成的报告）。
+验证证据与命令记录：
+- 第一阶段：`docs/area_activity_backend_verification.md`（后端算法与真实库只读基线）。
+- 第二、三阶段：`docs/area_activity_acceptance.md`（前端 build/check、浏览器手动与智能体入口、真实模型、独立复算）。
+- 前端组件层面的检查：`docs/area_activity_frontend.md`。
 
 ---
 
@@ -266,4 +304,7 @@
 - 缺报区间不计入停留时长；不做插值；采样漏检可能漏掉短暂穿越（间隔 ≤ `gap_seconds` 且无中间报位时按连续观测处理）。
 - 进入次数不要求等于离开次数；窗外进入/窗内离开/缺报都会造成差额。
 - AIS 来源授权与覆盖尚未核实；批次 1–7 为逐日文件，批次 8 为案例单船。
-- 未实现：结果缓存（每次请求实时读取；如需缓存，键必须包含区域版本、时间窗、筛选、来源批次与算法版本）、并发配额、任意多边形、实时 AIS、按小时统计、等待/锚泊语义、精确越界时刻、MobilityDB 派生层重建、智能体工具与前端界面。两期比较在两条语句中读取，业务库当前不并发写入。
+- 圈选只支持轴对齐矩形（不支持任意多边形、不支持跨 180°）；矩形单边跨度上限 10°，超限由后端拒绝而不是截断。第一版不做缓冲/滞回，边界抖动只标记近边界不改计数。
+- 智能体明细有界（快照 ≤50 艘、访问 ≤30 条），被裁剪时必须在回答与面板里说明「还有 N 条未列出」；汇总不受裁剪影响。
+- 未实现：结果缓存（每次请求实时读取；如需缓存，键必须包含区域版本、时间窗、筛选、来源批次与算法版本）、并发配额、任意多边形、实时 AIS、按小时统计、等待/锚泊语义、精确越界时刻、MobilityDB 派生层重建。两期比较在两条语句中读取，业务库当前不并发写入。
+

@@ -79,7 +79,7 @@ question 必填，去除首尾空白后 1–2000 字符。时间字段可省略�
 
 history 可选，为此前对话的消息列表（role 限 user/assistant，content 去除首尾空白后 1–2000 字符），最多携带最近 10 条消息（user/assistant 各计一条，通常为 5 组问答）；服务端将 history 插在 system 与本次问题之间。单轮问答不传 history。
 
-以下九工具注册表为 LC-01 前历史实现；当前版本保留八个业务工具，新增知识库工具并将 `query_analytics` 拆成 schema/check/execute 三工具。SQL 默认关闭时三工具均不向模型暴露；所有工具只通过 `/agent/analyze` 使用，不单独公开 SQL 路由：
+以下九工具注册表为 LC-01 前历史实现；当前版本保留十一个业务工具，新增知识库工具并将 `query_analytics` 拆成 schema/check/execute 三工具。SQL 默认关闭时三工具均不向模型暴露；所有工具只通过 `/agent/analyze` 使用，不单独公开 SQL 路由：
 
 | 工具 | 参数 | 说明 |
 | --- | --- | --- |
@@ -91,6 +91,9 @@ history 可选，为此前对话的消息列表（role 限 user/assistant，cont
 | query_ship_dwell | kind, start_at/end_at, limit | 只读既有 ship_dwell；kind 限 at_anchor/drift/slow_transit，窗口成对且 ≤24h，缺省为全批次；返回阈值快照、stale、真实匹配数与截断状态，不重建 |
 | query_encounters | start_at/end_at, max_distance_nm, limit | 只读既有 encounters；距离过滤只能缩小构建阈值，窗口筛选为与预计算 period 重叠，最小距离是离散采样近似；不调用写入型 analyze |
 | query_event_ship_links | event_id 或 ship_id（二选一）, link_type, start_at/end_at | 按事件查 mentioned/observed 或按船反查 observed；当前七日 AIS 的 observed 未重建，mentioned 没有已核验的 AIS ship_id；不重建 |
+| query_area_ship_snapshot | at（必填）, west/south/east/north（可选，四个同给）, ship_type, freshness_seconds | 某历史时刻在分析区域内的船（每船最新有效报位，过期报位不计入在场）；矩形省略时用本轮请求区域，无请求则用默认分析区域 `hormuz_core_v1`；明细最多 50 艘并说明未列出数量；与 `/api/area-activity` 共用同一 service |
+| query_area_ship_activity | start_at/end_at（必填）, west/south/east/north（可选）, ship_type, batch_ids | 时段出现去重船数、观测进入/离开、累计船时、每日汇总与 ≤30 条访问明细；窗口最长 7 天；明细截断不裁剪汇总；no_data 只表示读取范围内没有报位 |
+| compare_area_ship_activity | start_a/end_a/start_b/end_b（必填）, west/south/east/north（可选）, ship_type, batch_ids | 同区域同筛选的两期比较：`metrics` 给 a/b/delta/change_rate（基期为 0 时 change_rate 为 null 并单独说明）、`comparability` 与 `warnings`；只返回聚合指标，不返回逐次访问明细 |
 | query_analytics | sql（必填）, params, purpose（必填） | catalog v1 内单条参数化 SELECT，覆盖筛选、排序、聚合和批准 JOIN；默认关闭，仅本地回环 + 独立 agent_reader 配置完整时暴露，所有输入经 AST/权限/限额强制校验 |
 
 AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，前端 build 与 check:workbench 通过；一次性 PostgreSQL 17 + 真实 DeepSeek 共 57 项通过，浏览器成功表格、待澄清、已拒绝三状态通过且控制台无错误。共享业务库统计未执行，固定 fixture 数量不能视为当前业务数据。服务侧此前同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。

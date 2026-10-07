@@ -114,6 +114,7 @@ def _coverage(
 def default_area_payload() -> dict:
     bounds = boundaries.default_bounds()
     return {
+        "status": "ok",
         "area": boundaries.describe_area(bounds, is_default=True),
         "algorithm": params.algorithm_descriptor(),
         "limitations": list(STANDING_LIMITATIONS),
