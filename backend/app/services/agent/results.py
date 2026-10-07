@@ -160,6 +160,58 @@ def build_result(
             if item not in limitations:
                 limitations.append(item)
 
+    # issue #40：从成功的统计/比较工具结果生成「通行分析」面板动作；
+    # 每个动作绑定其所属调用自己的查询参数，不使用「当前最新结果」。
+    analysis_actions: list[dict] = []
+    for result in results.values():
+        if result.get("status") not in {"ok", "partial"}:
+            continue
+        if result.get("tool_name") == "query_strait_passage_statistics" and "window" in result:
+            analysis_actions.append({
+                "type": "passage_analysis",
+                "trigger": "suggested",
+                "query": {
+                    "mode": "single",
+                    "start_at": result.get("start_at"),
+                    "end_at": result.get("end_at"),
+                    "ship_types": result.get("ship_types"),
+                    "direction": result.get("direction"),
+                },
+                "summary": {
+                    "status": result.get("status"),
+                    "window": result.get("window"),
+                    "daily": result.get("daily"),
+                    "determination_version": result.get("determination_version"),
+                    "limitations": result.get("limitations", []),
+                },
+            })
+        elif result.get("tool_name") == "compare_strait_passage_statistics" and "metrics" in result:
+            analysis_actions.append({
+                "type": "passage_analysis",
+                "trigger": "suggested",
+                "query": {
+                    "mode": "compare",
+                    "a_start_at": (result.get("a_period") or {}).get("start_at"),
+                    "a_end_at": (result.get("a_period") or {}).get("end_at"),
+                    "b_start_at": (result.get("b_period") or {}).get("start_at"),
+                    "b_end_at": (result.get("b_period") or {}).get("end_at"),
+                    "ship_types": result.get("ship_types"),
+                    "direction": result.get("direction"),
+                },
+                "summary": {
+                    "status": result.get("status"),
+                    "a_period": result.get("a_period"),
+                    "b_period": result.get("b_period"),
+                    "metrics": result.get("metrics"),
+                    "a_avg_passages_per_day": result.get("a_avg_passages_per_day"),
+                    "b_avg_passages_per_day": result.get("b_avg_passages_per_day"),
+                    "windows_overlap": result.get("windows_overlap"),
+                    "comparability_notes": result.get("comparability_notes"),
+                    "determination_version": result.get("determination_version"),
+                    "limitations": result.get("limitations", []),
+                },
+            })
+
     return {
         "schema_version": SCHEMA_VERSION,
         "status": status or normalize_status(tools_used, results),
@@ -181,4 +233,5 @@ def build_result(
         "limitations": limitations,
         "clarification": clarification,
         "map_actions": [],
+        "analysis_actions": analysis_actions,
     }

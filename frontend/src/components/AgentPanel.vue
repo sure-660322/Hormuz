@@ -10,6 +10,7 @@ import {
   fetchAgentAnalyze,
   describeApiError,
   AgentRequestError,
+  type AgentAnalysisAction,
   type AgentAnalyzeResponse,
   type AgentMapAction,
   type AgentEvidence,
@@ -28,6 +29,8 @@ import { eventKind, safeNewsUrl } from '../domain/maritime'
 const emit = defineEmits<{
   'locate-ship': [shipId: number]
   'locate-event': [eventId: string]
+  // issue #40：打开总览「通行分析」面板并恢复该次统计/比较调用的条件与结果。
+  'open-analysis': [action: AgentAnalysisAction]
 }>()
 const props = defineProps<{
   executeMapAction: (action: AgentMapAction, signal: AbortSignal) => Promise<{ message: string; outcome: 'ok' | 'error' | 'cancelled' }>
@@ -462,6 +465,20 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
         <section v-if="turn.response.answer" class="answer-block">
           <div class="answer-text" v-html="renderAnswer(turn.response.answer)"></div>
         </section>
+        <section v-if="turn.response.analysis_actions?.length" class="facts-block">
+          <h3>通行分析</h3>
+          <button
+            v-for="(action, actionIndex) in turn.response.analysis_actions"
+            :key="`analysis-${actionIndex}`"
+            type="button"
+            class="locate-btn"
+            @click="emit('open-analysis', action)"
+          >
+            {{ action.query.mode === 'compare' ? '查看通行比较分析' : '查看通行分析' }}
+          </button>
+          <p class="caption">在总览打开「通行分析」面板，恢复本次条件与统计结果，可继续手动调整。</p>
+        </section>
+
         <section v-if="turn.response.map_actions?.length" class="facts-block">
           <h3>地图操作</h3>
           <button v-for="(action, actionIndex) in turn.response.map_actions" :key="actionIndex" type="button" class="locate-btn" @click="runMapAction(turnIndex, action)">

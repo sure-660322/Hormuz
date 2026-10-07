@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { ApiEvent, ApiMapShip } from '../api'
+import { computed, ref } from 'vue'
+import type { AgentAnalysisAction, AgentMapAction, ApiEvent, ApiMapShip } from '../api'
 import { eventKind, formatTime, zoneLabel } from '../domain/maritime'
 import { BRENT_SOURCE_URL } from '../domain/brentPrices'
 import KeyEventBand from './KeyEventBand.vue'
 import { shipComposition, type ShipGroup } from '../domain/overview'
 import MarketTrendChart from './MarketTrendChart.vue'
+import PassageAnalysisPanel from './PassageAnalysisPanel.vue'
 import ShipCompositionChart from './ShipCompositionChart.vue'
 const props = defineProps<{
   time: string | null
@@ -19,6 +20,8 @@ const props = defineProps<{
   totalEvents: number
   averageSpeed: string
   eventsLoading: boolean
+  executeMapAction: (action: AgentMapAction, signal: AbortSignal) => Promise<{ message: string; outcome: 'ok' | 'error' | 'cancelled' }>
+  analysisRestore: AgentAnalysisAction | null
 }>()
 const emit = defineEmits<{
   selectEvent: [event: ApiEvent]
@@ -38,6 +41,8 @@ const hotEvents = computed(() =>
     .slice(0, 5),
 )
 const composition = computed(() => shipComposition(props.viewShips))
+// issue #40：「通行分析」动态查询面板（默认折叠，保持总览克制的工作区风格）。
+const analysisOpen = ref(false)
 </script>
 <template>
   <section class="panel-content overview-panel">
@@ -61,14 +66,22 @@ const composition = computed(() => shipComposition(props.viewShips))
       <div class="section-title">
         <h3>油价 · 油轮通行量</h3>
         <span>完整历史窗口 · 双轴折线</span>
+        <button type="button" class="analysis-toggle" :aria-expanded="analysisOpen" @click="analysisOpen = !analysisOpen">
+          {{ analysisOpen ? '收起通行分析' : '通行分析' }}
+        </button>
       </div>
       <MarketTrendChart :time="time" :range-start="rangeStart" :range-end="rangeEnd" />
       <p class="chart-source">
         数据来源：<a :href="BRENT_SOURCE_URL" target="_blank" rel="noopener noreferrer">EIA · Europe Brent Spot Price FOB (Daily)</a>
-        · 油轮通行量为本机 AIS 观测统计（UTC 归日，虚拟门线口径，按日统计已核对的观测记录）
+        · 油轮通行量为历史独立复核对照（UTC 归日，虚拟门线口径，固定批次，非动态查询结果）
       </p>
       <p class="chart-source chart-note">注：Brent 现货价仅工作日发布，周末无报价显示为断点；通行量 02-24 与 03-03 为部分日窗，03-03 的 0 表示“无确定通行”，不证明实际零通行。</p>
       <KeyEventBand :events="allEvents" :start="rangeStart" :end="rangeEnd" :loading="eventsLoading" @select="emit('selectKeyEvent', $event)" />
+      <PassageAnalysisPanel
+        v-if="analysisOpen"
+        :execute-map-action="executeMapAction"
+        :restore="analysisRestore"
+      />
     </section>
     <section class="overview-section" aria-label="热点事件">
       <div class="section-title">

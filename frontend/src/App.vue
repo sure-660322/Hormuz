@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { fetchEvents, fetchShipTracks, fetchShipTrackWindow, fetchDwell, fetchEncounters, describeApiError, type AgentMapAction, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiTrackWindow, type ApiDwellResponse, type ApiEncounter } from './api'
+import { fetchEvents, fetchShipTracks, fetchShipTrackWindow, fetchDwell, fetchEncounters, describeApiError, type AgentAnalysisAction, type AgentMapAction, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiTrackWindow, type ApiDwellResponse, type ApiEncounter } from './api'
 import { usePlayback } from './composables/usePlayback'
 import {
   inBounds,
@@ -183,6 +183,12 @@ async function changeWorkspace(mode: 'overview' | 'explore') {
   if (savedCaseView.value) await exitCase()
   workspaceMode.value = mode
   if (mode === 'overview') panelOpen.value = false
+}
+// issue #40：智能体「查看通行分析」→ 打开总览通行分析面板并恢复该次调用条件/结果。
+const analysisRestore = ref<AgentAnalysisAction | null>(null)
+async function openPassageAnalysis(action: AgentAnalysisAction) {
+  analysisRestore.value = action
+  await changeWorkspace('overview')
 }
 async function retryCase() {
   await loadCase()
@@ -1005,6 +1011,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :time="time" :view-ships="currentShips" :view-events="mapEvents" :events="filteredEvents" :all-events="events" :range-start="times[0]" :range-end="times.at(-1)"
         :total-ships="currentShips.length" :total-events="events.length" :average-speed="snapshotAverageSpeed"
         :events-loading="eventsLoading"
+        :execute-map-action="executeMapAction"
+        :analysis-restore="analysisRestore"
         @select-event="chooseEvent" @select-key-event="chooseKeyEvent" @open-ship-group="openShipGroup"
         @open-events="openExplorer('events')" @open-ships="openExplorer('ships')"
       />
@@ -1092,6 +1100,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :playback-at="requestedTime"
         @locate-ship="locateAgentShip"
         @locate-event="locateAgentEvent"
+        @open-analysis="openPassageAnalysis"
       />
     </aside>
   </main>
