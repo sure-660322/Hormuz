@@ -146,3 +146,11 @@ def test_map_command_without_current_tools_cannot_claim_success():
 def test_incomplete_time_not_silently_defaulted(question):
     with pytest.raises(ValueError):
         resolve_map_window(None, question, dt("2026-02-28T15:00Z"), None, None)
+
+
+def test_statistics_question_with_plain_date_needs_no_map_window():
+    # issue #40：统计类问题常带「2月28日」式日期，但不需要地图时间窗，不应被拒绝。
+    start, end, source = resolve_map_window(None, "2月28日有多少艘油轮入湾？", dt("2026-02-28T15:00Z"), None, None)
+    assert start is None and end is None and source is None
+    start, end, source = resolve_map_window(None, "最近一周有多少艘船通过海峡？", dt("2026-02-28T15:00Z"), None, None)
+    assert start is None and end is None and source is None

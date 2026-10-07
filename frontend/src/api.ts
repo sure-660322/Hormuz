@@ -340,6 +340,24 @@ export interface AgentTurn {
   content: string
 }
 
+// issue #40：分析面板动作（passage_analysis），打开「通行分析」并恢复该次调用的条件与结果。
+export interface AgentAnalysisAction {
+  type: 'passage_analysis'
+  trigger: 'suggested'
+  query: {
+    mode: 'single' | 'compare'
+    start_at?: string | null
+    end_at?: string | null
+    a_start_at?: string | null
+    a_end_at?: string | null
+    b_start_at?: string | null
+    b_end_at?: string | null
+    ship_types?: string[] | null
+    direction?: string | null
+  }
+  summary: Record<string, unknown>
+}
+
 export interface AgentAnalyzeRequest {
   question: string
   closure_at: string | null
@@ -403,10 +421,11 @@ export interface AgentAnalyzeResponse {
   limitations: string[]
   clarification: string | null
   map_actions: AgentMapAction[]
+  analysis_actions: AgentAnalysisAction[]
 }
 
 export type AgentMapAction =
-  | { type: 'ship_track' | 'ship_position'; trigger: 'automatic' | 'suggested'; ship_id: number; start_at: string; end_at: string; source: 'nnu_ais'; recorded_at?: string; window_source?: string }
+  | { type: 'ship_track' | 'ship_position'; trigger: 'automatic' | 'suggested'; ship_id: number; start_at: string; end_at: string; source: 'nnu_ais'; recorded_at?: string; window_source?: string; clamp_to_coverage?: boolean }
   | { type: 'event'; trigger: 'suggested'; event_id: string; source: 'news' }
 
 // 非通行工具的结构化结果（字段定义见 docs/agent_integration.md 与后端工具模块）
@@ -788,5 +807,199 @@ export async function fetchDataHealth(): Promise<ApiDataHealth> {
     signal: AbortSignal.timeout(20_000),
   })
   if (!response.ok) throw new Error(`获取数据健康状态失败：${response.status}`)
+  return response.json()
+}
+
+// ---------------------------------------------------------------------------
+// 动态海峡通行统计（issue #40）：手动「通行分析」面板与智能体工具共用同一后端服务。
+// 日期按 UTC 自然日选择，后端使用半开区间 [start, end)。
+export interface ApiPassageMetaOption {
+  value: string
+  label: string
+  ship_count: number
+}
+
+export interface ApiPassageCoverage {
+  batch_id: number | null
+  kind: 'seven_day_batch' | 'case_supplement' | 'unclassified'
+  kind_label: string
+  position_count: number
+  ship_count: number
+  coverage_start: string | null
+  coverage_end: string | null
+}
+
+export interface ApiPassageMeta {
+  ship_type_options: ApiPassageMetaOption[]
+  coverage: ApiPassageCoverage[]
+  coverage_start: string | null
+  coverage_end: string | null
+  determination: Record<string, unknown>
+  schema_version: string
+}
+
+export interface ApiDailyStats {
+  day: string
+  status: 'ok' | 'zero' | 'partial' | 'no_observation'
+  passage_count: number
+  unique_ship_count: number
+  inbound_count: number
+  outbound_count: number
+  uncertain_candidate_count: number
+  position_count: number
+  window_position_count: number
+  coverage_start: string | null
+  coverage_end: string | null
+}
+
+export interface ApiWindowStats {
+  passage_count: number
+  unique_ship_count: number
+  inbound_count: number
+  outbound_count: number
+  uncertain_candidate_count: number
+  position_count: number
+}
+
+export interface ApiPassageStatistics {
+  status: 'ok' | 'partial' | 'no_data'
+  start_at: string
+  end_at: string
+  requested_days: number
+  ship_types: string[] | null
+  direction: string | null
+  daily: ApiDailyStats[]
+  window: ApiWindowStats
+  determination_version: string
+  schema_version: string
+  data_source: string
+  limitations: string[]
+}
+
+export interface ApiMetricComparison {
+  metric: string
+  a_value: number
+  b_value: number
+  delta: number
+  change_rate: number | null
+}
+
+export interface ApiPassageCompare {
+  status: 'ok' | 'partial' | 'no_data'
+  ship_types: string[] | null
+  direction: string | null
+  a: ApiPassageStatistics
+  b: ApiPassageStatistics
+  metrics: ApiMetricComparison[]
+  a_period_days: number
+  b_period_days: number
+  a_avg_passages_per_day: number
+  b_avg_passages_per_day: number
+  windows_overlap: boolean
+  comparability_notes: string[]
+  determination_version: string
+}
+
+export interface ApiPassageEvidenceItem {
+  evidence_id: string
+  stable_key: string
+  ship_id: number
+  ship_name: string | null
+  direction: string
+  start_fix: { recorded_at: string; longitude: number; latitude: number }
+  completion_fix: { recorded_at: string; longitude: number; latitude: number }
+  observed_completion_at: string
+  uncertain: boolean
+  uncertain_reason: string | null
+  ship_type: string | null
+}
+
+export interface ApiPassageEvidence {
+  status: string
+  page: number
+  page_size: number
+  returned_count: number
+  matched_count: number
+  confirmed_count: number
+  uncertain_candidate_count: number
+  page_count: number
+  determination_version: string
+  items: ApiPassageEvidenceItem[]
+  limitations: string[]
+}
+
+export const UNKNOWN_SHIP_TYPE = '__unknown__'
+
+export async function fetchPassageMeta(signal?: AbortSignal): Promise<ApiPassageMeta> {
+  const response = await fetch(`${API_BASE_URL}/api/strait-passages/meta`, {
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) throw new Error(`获取通行统计元数据失败：${response.status}`)
+  return response.json()
+}
+
+export interface PassageQuerySpec {
+  ship_types?: string[] | null
+  direction?: string | null
+}
+
+export async function fetchPassageStatistics(
+  startAt: string, endAt: string, spec: PassageQuerySpec, signal?: AbortSignal,
+): Promise<ApiPassageStatistics> {
+  const response = await fetch(`${API_BASE_URL}/api/strait-passages/statistics`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ start_at: startAt, end_at: endAt, ship_types: spec.ship_types ?? null, direction: spec.direction ?? null }),
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
+  })
+  if (!response.ok) throw new Error(await _passageErrorMessage(response))
+  return response.json()
+}
+
+export async function fetchPassageCompare(
+  aStart: string, aEnd: string, bStart: string, bEnd: string,
+  spec: PassageQuerySpec, signal?: AbortSignal,
+): Promise<ApiPassageCompare> {
+  const response = await fetch(`${API_BASE_URL}/api/strait-passages/compare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      a_start_at: aStart, a_end_at: aEnd, b_start_at: bStart, b_end_at: bEnd,
+      ship_types: spec.ship_types ?? null, direction: spec.direction ?? null,
+    }),
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(90_000)]) : AbortSignal.timeout(90_000),
+  })
+  if (!response.ok) throw new Error(await _passageErrorMessage(response))
+  return response.json()
+}
+
+async function _passageErrorMessage(response: Response): Promise<string> {
+  try {
+    const body = await response.json()
+    if (body && typeof body === 'object' && body.detail && typeof body.detail === 'object' && 'message' in body.detail)
+      return `通行统计查询失败：${(body.detail as { message: string }).message}`
+  } catch {
+    // 非契约错误体按 HTTP 状态提示
+  }
+  return `通行统计查询失败：${response.status}`
+}
+
+export async function fetchPassageEvidence(
+  startAt: string, endAt: string, params: {
+    day?: string; ship_types?: string[] | null; direction?: string | null
+    include_uncertain?: boolean; page?: number; page_size?: number
+  }, signal?: AbortSignal,
+): Promise<ApiPassageEvidence> {
+  const search = new URLSearchParams({ start_at: startAt, end_at: endAt })
+  if (params.day) search.set('day', params.day)
+  if (params.ship_types) params.ship_types.forEach((value) => search.append('ship_types', value))
+  if (params.direction) search.set('direction', params.direction)
+  if (params.include_uncertain) search.set('include_uncertain', 'true')
+  search.set('page', String(params.page ?? 1))
+  search.set('page_size', String(params.page_size ?? 50))
+  const response = await fetch(`${API_BASE_URL}/api/strait-passages/evidence?${search}`, {
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60_000)]) : AbortSignal.timeout(60_000),
+  })
+  if (!response.ok) throw new Error(await _passageErrorMessage(response))
   return response.json()
 }

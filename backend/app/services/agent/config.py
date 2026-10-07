@@ -48,3 +48,11 @@ MAX_PASSAGE_CANDIDATES = 5_000
 LONG_GAP_THRESHOLD = timedelta(hours=6)
 # 两侧报位对推算航速超过 30 节视为疑似异常跳点。
 JUMP_SPEED_KN = 30.0
+
+# ---- 动态通行统计（issue #40）----
+# 统计/比较单时段上限（每时段逐日拆分为 ≤24h 子窗，复用上述单窗判定）。
+MAX_STATS_PERIOD = timedelta(days=7)
+# API/工具层面的「未知/缺失」船型哨兵值；匹配 ships.ship_type 为 NULL 或原始“未知”标签，
+# 与手动面板、智能体工具共用同一口径，不按船名推断。
+UNKNOWN_SHIP_TYPE_OPTION = "__unknown__"
+UNKNOWN_SHIP_TYPE_RAW_LABELS = ("未知",)

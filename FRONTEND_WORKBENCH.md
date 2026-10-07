@@ -25,6 +25,7 @@
 | 数据健康 | 总览区块与页面初始化请求已于 2026-09-30 移除；后端 GET /api/data-health 和智能体工具保留，stale 仍是时间启发式判断 |
 | 异常与空状态 | 请求失败、空结果和重试提示；新闻请求有20秒超时 |
 | 智能体问答 | 地图工具栏「智能体」打开右侧聊天面板（AgentPanel.vue），调用 POST /agent/analyze；独立异步加载、取消与重试，前端 75 秒超时覆盖后端 60 秒预算；已加入 Markdown 消毒渲染、v4 工具结果折叠、消息流与固定输入区。回答继续附船只、证据、统计与限制说明；该 UI 改动已合入本地 main |
+| 通行分析（issue #40，分支待合入） | 总览「油价 · 油轮通行量」区块新增「通行分析」开关，展开 PassageAnalysisPanel.vue：单时段/A-B 比较、UTC 日期、船型多选（含未知/缺失）、方向筛选、按日柱状图、比较表、证据明细分页与地图轨迹联动；智能体统计/比较回答附「查看通行分析」恢复条件。固定历史油轮序列保留为历史独立复核对照（已标注非动态结果） |
 
 ## 数据语义
 
@@ -49,6 +50,7 @@
 | frontend/src/components/EventPanel.vue | 事件筛选、详情、关联报道与事件×船舶关联区 |
 | frontend/src/components/ShipInspector.vue | 船舶详情、航速曲线与派生层速度着色开关 |
 | frontend/src/components/ToolRail.vue | 地图工具栏（图层、智能体入口，图标+文字标签） |
+| frontend/src/components/PassageAnalysisPanel.vue | 通行分析（issue #40）：动态通行统计/比较查询、按日图表、证据分页与地图轨迹联动 |
 | frontend/src/components/TimelineControls.vue | 回放控件 |
 | frontend/src/domain/maritime.ts | 时间格式、展示类型和距离计算 |
 | frontend/src/services/workbench.ts | 本地船舶搜索及尚未实现的服务契约 |
