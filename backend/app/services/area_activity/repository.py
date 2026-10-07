@@ -11,12 +11,25 @@ from backend.app.services.area_activity import params
 # 观测上下文：矩形外扩后的读取范围。内外判定一律使用与 AreaBounds.contains
 # 相同的半开规则；这里不额外加 PostGIS 的 `location && envelope` 粗筛——实测
 # 规划器不会为该形状选择 gist 索引，逐行求 geography 包围盒反而更慢（见验证报告）。
+# 来源批次条件必须与统计、越界探测一致，否则会出现「覆盖说明是一个批次、统计
+# 包含其他批次」；:batch_ids 为 NULL 表示不筛批次。
 SCOPE_PREDICATE = """
     p.data_source = :source
+      AND (CAST(:batch_ids AS bigint[]) IS NULL
+           OR p.source_batch_id = ANY(CAST(:batch_ids AS bigint[])))
       AND p.recorded_at >= :scope_start AND p.recorded_at < :scope_end
       AND p.longitude >= :ctx_west AND p.longitude < :ctx_east
       AND p.latitude >= :ctx_south AND p.latitude < :ctx_north
 """
+
+# 越界探测同样受来源批次约束（别名 b / x 指向 ship_positions）。
+BATCH_PROBE_FILTER = """b.data_source = :source
+                        AND (CAST(:batch_ids AS bigint[]) IS NULL
+                             OR b.source_batch_id = ANY(CAST(:batch_ids AS bigint[])))"""
+
+BATCH_PROBE_FILTER_X = """x.data_source = :source
+                   AND (CAST(:batch_ids AS bigint[]) IS NULL
+                        OR x.source_batch_id = ANY(CAST(:batch_ids AS bigint[])))"""
 
 INSIDE_EXPRESSION = """(
         p.longitude >= :west AND p.longitude < :east
@@ -114,21 +127,21 @@ WITH scoped AS MATERIALIZED (
                / (extract(epoch FROM (o.recorded_at - o.prev_at)) / 3600.0)
            END AS implied_speed_kn,
            CASE WHEN o.inside AND o.prev_inside IS true AND (
-                    (o.recorded_at - o.prev_at) > make_interval(secs => :gap_seconds)
+                    (o.recorded_at - o.prev_at) > make_interval(secs => :probe_seconds)
                     OR (o.pair_km >= :jump_min_km AND o.pair_km / 1.852
                         / NULLIF(extract(epoch FROM (o.recorded_at - o.prev_at)) / 3600.0, 0) > :jump_kn))
                 THEN (SELECT b.id FROM ship_positions AS b
-                      WHERE b.ship_id = o.ship_id AND b.data_source = :source
+                      WHERE b.ship_id = o.ship_id AND {batch_probe_filter}
                         AND (b.recorded_at, b.id) > (o.prev_at, o.prev_fix_id)
                         AND (b.recorded_at, b.id) < (o.recorded_at, o.id)
                       ORDER BY b.recorded_at, b.id LIMIT 1)
            END AS between_first_fix_id,
            CASE WHEN o.inside AND o.prev_inside IS true AND (
-                    (o.recorded_at - o.prev_at) > make_interval(secs => :gap_seconds)
+                    (o.recorded_at - o.prev_at) > make_interval(secs => :probe_seconds)
                     OR (o.pair_km >= :jump_min_km AND o.pair_km / 1.852
                         / NULLIF(extract(epoch FROM (o.recorded_at - o.prev_at)) / 3600.0, 0) > :jump_kn))
                 THEN (SELECT b.recorded_at FROM ship_positions AS b
-                      WHERE b.ship_id = o.ship_id AND b.data_source = :source
+                      WHERE b.ship_id = o.ship_id AND {batch_probe_filter}
                         AND (b.recorded_at, b.id) > (o.prev_at, o.prev_fix_id)
                         AND (b.recorded_at, b.id) < (o.recorded_at, o.id)
                       ORDER BY b.recorded_at, b.id LIMIT 1)
@@ -138,14 +151,14 @@ WITH scoped AS MATERIALIZED (
     SELECT b.*,
            CASE WHEN b.between_first_fix_id IS NOT NULL THEN
                 (SELECT x.recorded_at FROM ship_positions AS x
-                 WHERE x.ship_id = b.ship_id AND x.data_source = :source
+                 WHERE x.ship_id = b.ship_id AND {batch_probe_filter_x}
                    AND (x.recorded_at, x.id) > (b.prev_at, b.prev_fix_id)
                    AND (x.recorded_at, x.id) < (b.recorded_at, b.id)
                  ORDER BY x.recorded_at DESC, x.id DESC LIMIT 1)
            END AS between_last_at,
            CASE WHEN b.between_first_fix_id IS NOT NULL THEN
                 (SELECT x.id FROM ship_positions AS x
-                 WHERE x.ship_id = b.ship_id AND x.data_source = :source
+                 WHERE x.ship_id = b.ship_id AND {batch_probe_filter_x}
                    AND (x.recorded_at, x.id) > (b.prev_at, b.prev_fix_id)
                    AND (x.recorded_at, x.id) < (b.recorded_at, b.id)
                  ORDER BY x.recorded_at DESC, x.id DESC LIMIT 1)
@@ -268,6 +281,8 @@ def fetch_activity_boundaries(
         inside=INSIDE_EXPRESSION,
         scope=SCOPE_PREDICATE,
         ship_type_scope_filter=SHIP_TYPE_SCOPE_FILTER if ship_type_filter else "",
+        batch_probe_filter=BATCH_PROBE_FILTER,
+        batch_probe_filter_x=BATCH_PROBE_FILTER_X,
     )
     return db.execute(text(sql), {
         "start": start, "end": end,
@@ -275,6 +290,7 @@ def fetch_activity_boundaries(
         "source": source, "batch_ids": batch_ids,
         "gap_seconds": gap_seconds, "jump_kn": jump_kn,
         "jump_min_km": params.JUMP_MIN_DISTANCE_KM,
+        "probe_seconds": params.EXCURSION_PROBE_SECONDS,
         "boundary_limit": boundary_limit,
         "west": bounds.west, "east": bounds.east,
         "south": bounds.south, "north": bounds.north,

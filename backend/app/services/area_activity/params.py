@@ -7,8 +7,10 @@
 from datetime import timedelta
 
 # ---- 版本 ----
+# 1.0.0 首版；1.0.1 起：来源批次条件同时作用于上下文/越界探测/覆盖统计，
+# 越界探测阈值由 gap_seconds 改为 excursion_probe_seconds（覆盖短时外出）。
 ALGORITHM_NAME = "area_activity"
-ALGORITHM_VERSION = "1.0.0"
+ALGORITHM_VERSION = "1.0.1"
 CONTAINMENT_RULE = "half_open"  # west <= lon < east, south <= lat < north
 
 # ---- 默认分析区域（项目分析区域，非官方航道边界）----
@@ -44,6 +46,12 @@ STATE_LOOKBACK_SECONDS = 21600
 STATE_LOOKAHEAD_SECONDS = 21600
 # 观测上下文矩形外扩（度，约 5.5 km）；只影响读取范围，不改变内外判定。
 CONTEXT_MARGIN_DEG = 0.05
+# 船离开上下文矩形再返回，至少要走 2 倍外扩距离：经度方向 0.05° × 111.32 ×
+# cos(26.5°) ≈ 4.98 km，2 × 4.98 km ≈ 9.96 km；按最大可信航速 40 kn（20.58 m/s）
+# 折算 ≈ 484 s，取整 480 s。因此间隔超过该值就必须探测「两报位之间是否还有同船
+# 报位」——否则 30 分钟缺报阈值内的短时外出会被误当成连续停留。
+MAX_PLAUSIBLE_SPEED_KN = 40.0
+EXCURSION_PROBE_SECONDS = 480
 # 边界近邻标记距离（米）。
 BOUNDARY_BAND_M = 500.0
 # 归日时区。
@@ -89,6 +97,8 @@ def algorithm_descriptor() -> dict:
             "default_state_lookback_seconds": STATE_LOOKBACK_SECONDS,
             "default_state_lookahead_seconds": STATE_LOOKAHEAD_SECONDS,
             "context_margin_deg": CONTEXT_MARGIN_DEG,
+            "max_plausible_speed_kn": MAX_PLAUSIBLE_SPEED_KN,
+            "excursion_probe_seconds": EXCURSION_PROBE_SECONDS,
             "boundary_band_m": BOUNDARY_BAND_M,
             "day_bucket_time_zone": DAY_TIME_ZONE,
             "visit_split_rule": "observed_outside_fix_between_consecutive_in_area_fixes",

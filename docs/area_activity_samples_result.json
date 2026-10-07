@@ -1,11 +1,15 @@
 {
   "script": "verify_area_activity_samples.py",
   "workspace": "D:\\my_project\\Hormuz-worktrees\\codex-area-ship-activity",
-  "run_started_at": "2026-10-07T11:21:13.177427+00:00",
+  "run_started_at": "2026-10-07T11:49:55.992672+00:00",
   "doc_baseline": {
     "doc": "docs/area_activity.md",
-    "note": "按 2026-10-07 定版口径复核：§2.0 有界越界探测、§2.3 jump_min_distance_km=1.0 与 unobserved_gap_seconds 含 gap+jump、§2.4 每日=当日∩窗口 与 status 优先级/8 个 flags、§2.5 window_days(自然日) 与 window_length_days(实际长度)、§2.6 partial 触发条件、§4.5 entry/exit.in_window 与 segment_count/每段 fix_count",
-    "expected_source": "scripts/area_activity_samples.py（不 import backend，只读文档）"
+    "note": "按 2026-10-07 定版口径（area_activity/1.0.1）复核：§2.0 观测上下文/越界探测/覆盖统计同批次与 excursion_probe_seconds=480 s、§2.3 jump_min_distance_km=1.0 与 unobserved_gap_seconds 含 gap+jump、§2.4 每日=当日∩窗口 与 status 优先级/8 个 flags、§2.5 window_days(自然日) 与 window_length_days(实际长度)、§2.6 partial 触发条件、§4.5 entry/exit.in_window 与 segment_count/每段 fix_count",
+    "expected_source": "scripts/area_activity_samples.py（不 import backend，只读文档）",
+    "new_samples_this_round": [
+      "S21_batch_scope_consistency（batch_ids 同时作用于 scope/越界探测/coverage）",
+      "S22_short_excursion + removal_control（短时外出与无证据对照）"
+    ]
   },
   "python": {
     "executable": "D:\\my_project\\Hormuz\\backend\\.venv\\Scripts\\python.exe",
@@ -102,15 +106,41 @@
       "name": "ships_observed_readings_agree",
       "ok": true,
       "detail": "两种口径在当前样例上一致"
+    },
+    {
+      "name": "batch_scope_consistency",
+      "ok": true,
+      "detail": "该对间隔 1500.0s；batch9001: 访问1/扫描6；不带批次: 访问2/扫描7；仅9002: 扫描1；货船+9001: no_data"
+    },
+    {
+      "name": "short_excursion_probe",
+      "ok": true,
+      "detail": "该对间隔 1200s、位移 5.45 km（8.8 kn）；有证据: 访问2 进入2 离开2 时长0.0s 宽括号=[False, False]（§2.3 行 2 2026-10-07 已改为按 bracket_seconds > gap_seconds 判定，两侧括号 600 s -> false，与实现一致，不再登记备选口径）；无证据对照: 访问1 时长1200.0s"
     }
   ],
   "database": {
     "test_database": "hormuz_area_test",
     "maintenance_database": "postgres",
-    "ships_rows": 32,
-    "positions_rows": 170,
-    "location_not_null": 170,
-    "gist_candidates": 169,
+    "ships_rows": 34,
+    "positions_rows": 183,
+    "batches": [
+      {
+        "id": 9001,
+        "source_day": "2026-04-01",
+        "inserted_rows": 181
+      },
+      {
+        "id": 9002,
+        "source_day": "2026-07-20",
+        "inserted_rows": 2
+      }
+    ],
+    "fixes_per_batch": {
+      "9001": 181,
+      "9002": 2
+    },
+    "location_not_null": 183,
+    "gist_candidates": 180,
     "extensions": [
       "plpgsql",
       "postgis"
@@ -125,8 +155,8 @@
     ]
   },
   "db_roundtrip": {
-    "fixes_rows": 170,
-    "ships_rows": 32,
+    "fixes_rows": 183,
+    "ships_rows": 34,
     "roundtrip_mismatches": [],
     "recompute_drift": []
   },
@@ -135,6 +165,7 @@
     {
       "scene": "S01_enter_exit",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 1,
@@ -166,11 +197,25 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 5
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 5,
+      "expected_scanned_fix_count": 5,
+      "visit_keys": [
+        "s101:f2"
+      ]
     },
     {
       "scene": "S02_multi_round_trip",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 3,
@@ -202,11 +247,27 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 11
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 11,
+      "expected_scanned_fix_count": 11,
+      "visit_keys": [
+        "s102:f10",
+        "s102:f14",
+        "s102:f7"
+      ]
     },
     {
       "scene": "S03_both_outside_no_interp",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 0,
         "observed_entry_count": 0,
@@ -238,11 +299,23 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 1
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 1,
+      "expected_scanned_fix_count": 1,
+      "visit_keys": []
     },
     {
       "scene": "S04_boundary_half_open",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 4,
         "observed_entry_count": 4,
@@ -274,11 +347,28 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 16
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 16,
+      "expected_scanned_fix_count": 16,
+      "visit_keys": [
+        "s104:f20",
+        "s105:f25",
+        "s106:f30",
+        "s107:f33"
+      ]
     },
     {
       "scene": "S05_boundary_jitter",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 3,
@@ -310,11 +400,27 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 8
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 8,
+      "expected_scanned_fix_count": 8,
+      "visit_keys": [
+        "s108:f36",
+        "s108:f38",
+        "s108:f40"
+      ]
     },
     {
       "scene": "S06_started_before_window",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 0,
@@ -346,11 +452,25 @@
         "prior_state_unknown_visit_count": 1,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 11
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 11,
+      "expected_scanned_fix_count": 11,
+      "visit_keys": [
+        "s109:f43"
+      ]
     },
     {
       "scene": "S07_ongoing_after_window",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 2,
         "observed_entry_count": 2,
@@ -382,11 +502,26 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 12
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 12,
+      "expected_scanned_fix_count": 12,
+      "visit_keys": [
+        "s110:f55",
+        "s111:f60"
+      ]
     },
     {
       "scene": "S08_prior_state_unknown",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 0,
@@ -418,11 +553,25 @@
         "prior_state_unknown_visit_count": 1,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 3
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 3,
+      "expected_scanned_fix_count": 3,
+      "visit_keys": [
+        "s112:f66"
+      ]
     },
     {
       "scene": "S09_long_gap_interrupted",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 1,
@@ -454,11 +603,25 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 4800.0,
         "scope_fix_count": 6
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 6,
+      "expected_scanned_fix_count": 6,
+      "visit_keys": [
+        "s113:f70"
+      ]
     },
     {
       "scene": "S10_jump_spike",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 1,
@@ -490,11 +653,25 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 600.0,
         "scope_fix_count": 6
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 6,
+      "expected_scanned_fix_count": 6,
+      "visit_keys": [
+        "s114:f76"
+      ]
     },
     {
       "scene": "S20_fast_small_step_not_jump",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 1,
@@ -526,11 +703,25 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 5
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 5,
+      "expected_scanned_fix_count": 5,
+      "visit_keys": [
+        "s120:f82"
+      ]
     },
     {
       "scene": "S11_same_second_conflict",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 1,
@@ -562,11 +753,25 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 5
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 5,
+      "expected_scanned_fix_count": 5,
+      "visit_keys": [
+        "s115:f87"
+      ]
     },
     {
       "scene": "S12_cross_day_clip",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 1,
@@ -598,11 +803,25 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 9
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 9,
+      "expected_scanned_fix_count": 9,
+      "visit_keys": [
+        "s116:f92"
+      ]
     },
     {
       "scene": "S13_clip_entry_before_start",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 0,
@@ -634,11 +853,25 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 9
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 9,
+      "expected_scanned_fix_count": 9,
+      "visit_keys": [
+        "s117:f101"
+      ]
     },
     {
       "scene": "S14_clip_both_sides",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 0,
@@ -670,11 +903,25 @@
         "prior_state_unknown_visit_count": 1,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 29
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 29,
+      "expected_scanned_fix_count": 29,
+      "visit_keys": [
+        "s118:f109"
+      ]
     },
     {
       "scene": "S15_left_returned_probe",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 1,
         "observed_entry_count": 2,
@@ -706,11 +953,26 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 6
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 6,
+      "expected_scanned_fix_count": 6,
+      "visit_keys": [
+        "s119:f139",
+        "s119:f142"
+      ]
     },
     {
       "scene": "S16_no_data",
       "kind": "activity",
+      "batch_ids": null,
       "actual_summary": {
         "ships_observed": 0,
         "observed_entry_count": 0,
@@ -742,7 +1004,175 @@
         "prior_state_unknown_visit_count": 0,
         "unobserved_gap_seconds": 0,
         "scope_fix_count": 0
-      }
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 0,
+      "expected_scanned_fix_count": 0,
+      "visit_keys": []
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "kind": "activity",
+      "batch_ids": [
+        9001
+      ],
+      "actual_summary": {
+        "ships_observed": 1,
+        "observed_entry_count": 1,
+        "observed_exit_count": 1,
+        "observed_ship_seconds": 3000.0,
+        "observed_ship_hours": 0.833,
+        "visit_count": 1,
+        "complete_visit_count": 1,
+        "truncated_start_visit_count": 0,
+        "truncated_end_visit_count": 0,
+        "interrupted_visit_count": 0,
+        "uncertain_visit_count": 0,
+        "prior_state_unknown_visit_count": 0,
+        "near_boundary_event_count": 0,
+        "unobserved_gap_seconds": 0.0
+      },
+      "expected_summary": {
+        "ships_observed": 1,
+        "observed_entry_count": 1,
+        "observed_exit_count": 1,
+        "observed_ship_seconds": 3000.0,
+        "observed_ship_hours": 0.8333333333333334,
+        "visit_count": 1,
+        "complete_visit_count": 1,
+        "truncated_start_visit_count": 0,
+        "truncated_end_visit_count": 0,
+        "interrupted_visit_count": 0,
+        "uncertain_visit_count": 0,
+        "prior_state_unknown_visit_count": 0,
+        "unobserved_gap_seconds": 0,
+        "scope_fix_count": 6
+      },
+      "actual_coverage_batch_ids": [
+        9001
+      ],
+      "expected_coverage_batch_ids": [
+        9001
+      ],
+      "actual_scanned_fix_count": 6,
+      "expected_scanned_fix_count": 6,
+      "visit_keys": [
+        "s121:f173"
+      ]
+    },
+    {
+      "scene": "S22_short_excursion",
+      "kind": "activity",
+      "batch_ids": null,
+      "actual_summary": {
+        "ships_observed": 1,
+        "observed_entry_count": 2,
+        "observed_exit_count": 2,
+        "observed_ship_seconds": 0.0,
+        "observed_ship_hours": 0.0,
+        "visit_count": 2,
+        "complete_visit_count": 0,
+        "truncated_start_visit_count": 0,
+        "truncated_end_visit_count": 0,
+        "interrupted_visit_count": 0,
+        "uncertain_visit_count": 2,
+        "prior_state_unknown_visit_count": 0,
+        "near_boundary_event_count": 0,
+        "unobserved_gap_seconds": 0.0
+      },
+      "expected_summary": {
+        "ships_observed": 1,
+        "observed_entry_count": 2,
+        "observed_exit_count": 2,
+        "observed_ship_seconds": 0.0,
+        "observed_ship_hours": 0.0,
+        "visit_count": 2,
+        "complete_visit_count": 0,
+        "truncated_start_visit_count": 0,
+        "truncated_end_visit_count": 0,
+        "interrupted_visit_count": 0,
+        "uncertain_visit_count": 2,
+        "prior_state_unknown_visit_count": 0,
+        "unobserved_gap_seconds": 0,
+        "scope_fix_count": 4
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 4,
+      "expected_scanned_fix_count": 4,
+      "visit_keys": [
+        "s122:f180",
+        "s122:f182"
+      ]
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "removed_fix_ids": [
+        181
+      ],
+      "note": "删掉区外中间报位后：无越界证据 -> 一次访问，1200 s 计入停留时长（§2.3 行 1 / §2.0 残余限制：采样漏检）",
+      "kind": "removal_control",
+      "batch_ids": null,
+      "visits": 1,
+      "visit_keys": [
+        "s122:f180"
+      ],
+      "observed_ship_seconds": 1200.0,
+      "actual_summary": {
+        "ships_observed": 1,
+        "observed_entry_count": 1,
+        "observed_exit_count": 1,
+        "observed_ship_seconds": 1200.0,
+        "observed_ship_hours": 0.333,
+        "visit_count": 1,
+        "complete_visit_count": 1,
+        "truncated_start_visit_count": 0,
+        "truncated_end_visit_count": 0,
+        "interrupted_visit_count": 0,
+        "uncertain_visit_count": 0,
+        "prior_state_unknown_visit_count": 0,
+        "near_boundary_event_count": 0,
+        "unobserved_gap_seconds": 0.0
+      },
+      "expected_summary": {
+        "ships_observed": 1,
+        "observed_entry_count": 1,
+        "observed_exit_count": 1,
+        "observed_ship_seconds": 1200.0,
+        "observed_ship_hours": 0.3333333333333333,
+        "visit_count": 1,
+        "complete_visit_count": 1,
+        "truncated_start_visit_count": 0,
+        "truncated_end_visit_count": 0,
+        "interrupted_visit_count": 0,
+        "uncertain_visit_count": 0,
+        "prior_state_unknown_visit_count": 0,
+        "unobserved_gap_seconds": 0,
+        "scope_fix_count": 4
+      },
+      "actual_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "expected_coverage_batch_ids": [
+        9001,
+        9002
+      ],
+      "actual_scanned_fix_count": 4,
+      "expected_scanned_fix_count": 4
     },
     {
       "scene": "S17_snapshot_mix",
@@ -987,16 +1417,16 @@
     {
       "scene": "DB_ROUNDTRIP",
       "path": "fixes.count",
-      "expected": 170,
-      "actual": 170,
+      "expected": 183,
+      "actual": 183,
       "status": "PASS",
       "note": "插入/读回行数一致"
     },
     {
       "scene": "DB_ROUNDTRIP",
       "path": "ships.count",
-      "expected": 32,
-      "actual": 32,
+      "expected": 34,
+      "actual": 34,
       "status": "PASS",
       "note": ""
     },
@@ -1051,8 +1481,8 @@
     {
       "scene": "S01_enter_exit",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -1479,6 +1909,50 @@
       "note": ""
     },
     {
+      "scene": "S01_enter_exit",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S01_enter_exit",
+      "path": "limits.scanned_fix_count",
+      "expected": 5,
+      "actual": 5,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S01_enter_exit",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S01_enter_exit",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s101:f2].entry.wide_bracket": false,
+        "visits[s101:f2].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s101:f2].entry.wide_bracket": false,
+        "visits[s101:f2].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S02_multi_round_trip",
       "path": "http_status",
       "expected": 200,
@@ -1513,8 +1987,8 @@
     {
       "scene": "S02_multi_round_trip",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -2469,6 +2943,58 @@
       "note": ""
     },
     {
+      "scene": "S02_multi_round_trip",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S02_multi_round_trip",
+      "path": "limits.scanned_fix_count",
+      "expected": 11,
+      "actual": 11,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S02_multi_round_trip",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S02_multi_round_trip",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s102:f7].entry.wide_bracket": false,
+        "visits[s102:f7].exit.wide_bracket": false,
+        "visits[s102:f10].entry.wide_bracket": false,
+        "visits[s102:f10].exit.wide_bracket": false,
+        "visits[s102:f14].entry.wide_bracket": false,
+        "visits[s102:f14].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s102:f7].entry.wide_bracket": false,
+        "visits[s102:f7].exit.wide_bracket": false,
+        "visits[s102:f10].entry.wide_bracket": false,
+        "visits[s102:f10].exit.wide_bracket": false,
+        "visits[s102:f14].entry.wide_bracket": false,
+        "visits[s102:f14].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S03_both_outside_no_interp",
       "path": "http_status",
       "expected": 200,
@@ -2503,8 +3029,8 @@
     {
       "scene": "S03_both_outside_no_interp",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -2665,6 +3191,36 @@
       "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
     },
     {
+      "scene": "S03_both_outside_no_interp",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S03_both_outside_no_interp",
+      "path": "limits.scanned_fix_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S03_both_outside_no_interp",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
       "scene": "S04_boundary_half_open",
       "path": "http_status",
       "expected": 200,
@@ -2699,8 +3255,8 @@
     {
       "scene": "S04_boundary_half_open",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -3930,6 +4486,62 @@
     },
     {
       "scene": "S04_boundary_half_open",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S04_boundary_half_open",
+      "path": "limits.scanned_fix_count",
+      "expected": 16,
+      "actual": 16,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S04_boundary_half_open",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S04_boundary_half_open",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s105:f25].entry.wide_bracket": false,
+        "visits[s105:f25].exit.wide_bracket": false,
+        "visits[s106:f30].entry.wide_bracket": false,
+        "visits[s106:f30].exit.wide_bracket": false,
+        "visits[s107:f33].entry.wide_bracket": false,
+        "visits[s107:f33].exit.wide_bracket": false,
+        "visits[s104:f20].entry.wide_bracket": false,
+        "visits[s104:f20].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s105:f25].entry.wide_bracket": false,
+        "visits[s105:f25].exit.wide_bracket": false,
+        "visits[s106:f30].entry.wide_bracket": false,
+        "visits[s106:f30].exit.wide_bracket": false,
+        "visits[s107:f33].entry.wide_bracket": false,
+        "visits[s107:f33].exit.wide_bracket": false,
+        "visits[s104:f20].entry.wide_bracket": false,
+        "visits[s104:f20].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
+      "scene": "S04_boundary_half_open",
       "path": "visit_limit.http_status",
       "expected": 200,
       "actual": 200,
@@ -3995,8 +4607,8 @@
     {
       "scene": "S05_boundary_jitter",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -4967,6 +5579,58 @@
       "note": ""
     },
     {
+      "scene": "S05_boundary_jitter",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S05_boundary_jitter",
+      "path": "limits.scanned_fix_count",
+      "expected": 8,
+      "actual": 8,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S05_boundary_jitter",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S05_boundary_jitter",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s108:f36].entry.wide_bracket": false,
+        "visits[s108:f36].exit.wide_bracket": false,
+        "visits[s108:f38].entry.wide_bracket": false,
+        "visits[s108:f38].exit.wide_bracket": false,
+        "visits[s108:f40].entry.wide_bracket": false,
+        "visits[s108:f40].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s108:f36].entry.wide_bracket": false,
+        "visits[s108:f36].exit.wide_bracket": false,
+        "visits[s108:f38].entry.wide_bracket": false,
+        "visits[s108:f38].exit.wide_bracket": false,
+        "visits[s108:f40].entry.wide_bracket": false,
+        "visits[s108:f40].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S06_started_before_window",
       "path": "http_status",
       "expected": 200,
@@ -5001,8 +5665,8 @@
     {
       "scene": "S06_started_before_window",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -5429,6 +6093,50 @@
       "note": ""
     },
     {
+      "scene": "S06_started_before_window",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S06_started_before_window",
+      "path": "limits.scanned_fix_count",
+      "expected": 11,
+      "actual": 11,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S06_started_before_window",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S06_started_before_window",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s109:f43].entry.wide_bracket": false,
+        "visits[s109:f43].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s109:f43].entry.wide_bracket": false,
+        "visits[s109:f43].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S07_ongoing_after_window",
       "path": "http_status",
       "expected": 200,
@@ -5463,8 +6171,8 @@
     {
       "scene": "S07_ongoing_after_window",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -6155,6 +6863,54 @@
       "note": ""
     },
     {
+      "scene": "S07_ongoing_after_window",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S07_ongoing_after_window",
+      "path": "limits.scanned_fix_count",
+      "expected": 12,
+      "actual": 12,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S07_ongoing_after_window",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S07_ongoing_after_window",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s110:f55].entry.wide_bracket": false,
+        "visits[s110:f55].exit.wide_bracket": false,
+        "visits[s111:f60].entry.wide_bracket": false,
+        "visits[s111:f60].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s110:f55].entry.wide_bracket": false,
+        "visits[s110:f55].exit.wide_bracket": false,
+        "visits[s111:f60].entry.wide_bracket": false,
+        "visits[s111:f60].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S08_prior_state_unknown",
       "path": "http_status",
       "expected": 200,
@@ -6189,8 +6945,8 @@
     {
       "scene": "S08_prior_state_unknown",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -6617,6 +7373,50 @@
       "note": ""
     },
     {
+      "scene": "S08_prior_state_unknown",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S08_prior_state_unknown",
+      "path": "limits.scanned_fix_count",
+      "expected": 3,
+      "actual": 3,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S08_prior_state_unknown",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S08_prior_state_unknown",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s112:f66].entry.wide_bracket": false,
+        "visits[s112:f66].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s112:f66].entry.wide_bracket": false,
+        "visits[s112:f66].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S09_long_gap_interrupted",
       "path": "http_status",
       "expected": 200,
@@ -6651,8 +7451,8 @@
     {
       "scene": "S09_long_gap_interrupted",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -7103,6 +7903,50 @@
       "note": ""
     },
     {
+      "scene": "S09_long_gap_interrupted",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S09_long_gap_interrupted",
+      "path": "limits.scanned_fix_count",
+      "expected": 6,
+      "actual": 6,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S09_long_gap_interrupted",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S09_long_gap_interrupted",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s113:f70].entry.wide_bracket": false,
+        "visits[s113:f70].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s113:f70].entry.wide_bracket": false,
+        "visits[s113:f70].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S10_jump_spike",
       "path": "http_status",
       "expected": 200,
@@ -7137,8 +7981,8 @@
     {
       "scene": "S10_jump_spike",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -7589,6 +8433,50 @@
       "note": ""
     },
     {
+      "scene": "S10_jump_spike",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S10_jump_spike",
+      "path": "limits.scanned_fix_count",
+      "expected": 6,
+      "actual": 6,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S10_jump_spike",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S10_jump_spike",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s114:f76].entry.wide_bracket": false,
+        "visits[s114:f76].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s114:f76].entry.wide_bracket": false,
+        "visits[s114:f76].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S20_fast_small_step_not_jump",
       "path": "http_status",
       "expected": 200,
@@ -7623,8 +8511,8 @@
     {
       "scene": "S20_fast_small_step_not_jump",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -8051,6 +8939,50 @@
       "note": ""
     },
     {
+      "scene": "S20_fast_small_step_not_jump",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S20_fast_small_step_not_jump",
+      "path": "limits.scanned_fix_count",
+      "expected": 5,
+      "actual": 5,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S20_fast_small_step_not_jump",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S20_fast_small_step_not_jump",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s120:f82].entry.wide_bracket": false,
+        "visits[s120:f82].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s120:f82].entry.wide_bracket": false,
+        "visits[s120:f82].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S11_same_second_conflict",
       "path": "http_status",
       "expected": 200,
@@ -8085,8 +9017,8 @@
     {
       "scene": "S11_same_second_conflict",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -8517,6 +9449,50 @@
       "note": ""
     },
     {
+      "scene": "S11_same_second_conflict",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S11_same_second_conflict",
+      "path": "limits.scanned_fix_count",
+      "expected": 5,
+      "actual": 5,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S11_same_second_conflict",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S11_same_second_conflict",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s115:f87].entry.wide_bracket": false,
+        "visits[s115:f87].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s115:f87].entry.wide_bracket": false,
+        "visits[s115:f87].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S12_cross_day_clip",
       "path": "http_status",
       "expected": 200,
@@ -8551,8 +9527,8 @@
     {
       "scene": "S12_cross_day_clip",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -9067,6 +10043,50 @@
       "note": ""
     },
     {
+      "scene": "S12_cross_day_clip",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S12_cross_day_clip",
+      "path": "limits.scanned_fix_count",
+      "expected": 9,
+      "actual": 9,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S12_cross_day_clip",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S12_cross_day_clip",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s116:f92].entry.wide_bracket": true,
+        "visits[s116:f92].exit.wide_bracket": true
+      },
+      "actual": {
+        "visits[s116:f92].entry.wide_bracket": true,
+        "visits[s116:f92].exit.wide_bracket": true
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S13_clip_entry_before_start",
       "path": "http_status",
       "expected": 200,
@@ -9101,8 +10121,8 @@
     {
       "scene": "S13_clip_entry_before_start",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -9529,6 +10549,50 @@
       "note": ""
     },
     {
+      "scene": "S13_clip_entry_before_start",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S13_clip_entry_before_start",
+      "path": "limits.scanned_fix_count",
+      "expected": 9,
+      "actual": 9,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S13_clip_entry_before_start",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S13_clip_entry_before_start",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s117:f101].entry.wide_bracket": false,
+        "visits[s117:f101].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s117:f101].entry.wide_bracket": false,
+        "visits[s117:f101].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S14_clip_both_sides",
       "path": "http_status",
       "expected": 200,
@@ -9563,8 +10627,8 @@
     {
       "scene": "S14_clip_both_sides",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -9991,6 +11055,50 @@
       "note": ""
     },
     {
+      "scene": "S14_clip_both_sides",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S14_clip_both_sides",
+      "path": "limits.scanned_fix_count",
+      "expected": 29,
+      "actual": 29,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S14_clip_both_sides",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S14_clip_both_sides",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s118:f109].entry.wide_bracket": false,
+        "visits[s118:f109].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s118:f109].entry.wide_bracket": false,
+        "visits[s118:f109].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S15_left_returned_probe",
       "path": "http_status",
       "expected": 200,
@@ -10025,8 +11133,8 @@
     {
       "scene": "S15_left_returned_probe",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -10731,6 +11839,54 @@
       "note": ""
     },
     {
+      "scene": "S15_left_returned_probe",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S15_left_returned_probe",
+      "path": "limits.scanned_fix_count",
+      "expected": 6,
+      "actual": 6,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S15_left_returned_probe",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S15_left_returned_probe",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s119:f139].entry.wide_bracket": false,
+        "visits[s119:f139].exit.wide_bracket": true,
+        "visits[s119:f142].entry.wide_bracket": true,
+        "visits[s119:f142].exit.wide_bracket": true
+      },
+      "actual": {
+        "visits[s119:f139].entry.wide_bracket": false,
+        "visits[s119:f139].exit.wide_bracket": true,
+        "visits[s119:f142].entry.wide_bracket": true,
+        "visits[s119:f142].exit.wide_bracket": true
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S16_no_data",
       "path": "http_status",
       "expected": 200,
@@ -10765,8 +11921,8 @@
     {
       "scene": "S16_no_data",
       "path": "algorithm.version",
-      "expected": "area_activity/1.0.0",
-      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.0\", \"params\": {\"containment\": \"half_op",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
       "status": "PASS",
       "note": ""
     },
@@ -10927,6 +12083,1780 @@
       "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
     },
     {
+      "scene": "S16_no_data",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S16_no_data",
+      "path": "limits.scanned_fix_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S16_no_data",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "http_status",
+      "expected": 200,
+      "actual": 200,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "json.no_nan_inf",
+      "expected": "无 NaN/Infinity",
+      "actual": "无",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "area.area_id",
+      "expected": "custom",
+      "actual": "custom",
+      "status": "PASS",
+      "note": "字段名 area_id"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "area.is_default",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": "§1.2 默认区域回显 true，自定义矩形回显 false"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "algorithm.version",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "summary.ships_observed",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 ships_observed"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "summary.observed_entry_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 observed_entry_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "summary.observed_exit_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 observed_exit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "summary.observed_ship_seconds",
+      "expected": 3000.0,
+      "actual": 3000.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_seconds"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "summary.observed_ship_hours",
+      "expected": 0.8333333333333334,
+      "actual": 0.833,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_hours"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "summary.visit_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 visit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "status_hint",
+      "expected": "ok",
+      "actual": "ok",
+      "status": "PASS",
+      "note": "§2.6 状态取值"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily.dates",
+      "expected": [
+        "2026-07-20"
+      ],
+      "actual": [
+        "2026-07-20"
+      ],
+      "status": "PASS",
+      "note": "§2.4 每日一条"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].ships_observed",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 ships_observed"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].observed_entry_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 observed_entry_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].observed_exit_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 observed_exit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].observed_ship_seconds",
+      "expected": 3000.0,
+      "actual": 3000.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_seconds"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].observed_ship_hours",
+      "expected": 0.8333333333333334,
+      "actual": 0.833,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_hours"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].visits_touching_day",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 visits_touching_day"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].complete_visit_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 complete_visit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].truncated_visit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 truncated_visit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].interrupted_visit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 interrupted_visit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "daily[2026-07-20].uncertain_visit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 uncertain_visit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits",
+      "expected": [
+        "s121:f173"
+      ],
+      "actual": [
+        "s121:f173"
+      ],
+      "status": "PASS",
+      "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].ship_id",
+      "expected": 121,
+      "actual": 121,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].ship_type",
+      "expected": "油轮",
+      "actual": "油轮",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].entry.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].entry.observed_at",
+      "expected": "2026-07-20T06:00:00Z",
+      "actual": "2026-07-20T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].entry.bracket_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].entry.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].entry.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].entry.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].entry.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].entry.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].exit.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].exit.observed_at",
+      "expected": "2026-07-20T06:50:00Z",
+      "actual": "2026-07-20T06:50:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].exit.bracket_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].exit.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].exit.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].exit.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].exit.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].exit.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].prior_state",
+      "expected": "outside",
+      "actual": "outside",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].first_inside_at",
+      "expected": "2026-07-20T06:00:00Z",
+      "actual": "2026-07-20T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].last_inside_at",
+      "expected": "2026-07-20T06:50:00Z",
+      "actual": "2026-07-20T06:50:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].fix_count",
+      "expected": 4,
+      "actual": 4,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].segment_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].observed_seconds",
+      "expected": 3000.0,
+      "actual": 3000.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].window_seconds",
+      "expected": 3000.0,
+      "actual": 3000.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].unobserved_gap_seconds",
+      "expected": 0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].touches_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].segments",
+      "expected": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:00:00Z",
+          "end_at": "2026-07-20T06:50:00Z",
+          "start_fix_id": 173,
+          "end_fix_id": 177,
+          "seconds": 3000.0,
+          "in_window_seconds": 3000.0,
+          "fix_count": 4
+        }
+      ],
+      "actual": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:00:00Z",
+          "end_at": "2026-07-20T06:50:00Z",
+          "start_fix_id": 173,
+          "end_fix_id": 177,
+          "seconds": 3000.0,
+          "in_window_seconds": 3000.0,
+          "fix_count": 4
+        }
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].status",
+      "expected": "complete",
+      "actual": "complete",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "visits[s121:f173].flags",
+      "expected": [],
+      "actual": [],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001
+      ],
+      "actual": [
+        9001
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "limits.scanned_fix_count",
+      "expected": 6,
+      "actual": 6,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "query.filters.batch_ids",
+      "expected": [
+        9001
+      ],
+      "actual": [
+        9001
+      ],
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s121:f173].entry.wide_bracket": false,
+        "visits[s121:f173].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s121:f173].entry.wide_bracket": false,
+        "visits[s121:f173].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "http_status",
+      "expected": 200,
+      "actual": 200,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "json.no_nan_inf",
+      "expected": "无 NaN/Infinity",
+      "actual": "无",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "area.area_id",
+      "expected": "custom",
+      "actual": "custom",
+      "status": "PASS",
+      "note": "字段名 area_id"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "area.is_default",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": "§1.2 默认区域回显 true，自定义矩形回显 false"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "algorithm.version",
+      "expected": "area_activity/1.0.1",
+      "actual": "{\"name\": \"area_activity\", \"version\": \"1.0.1\", \"params\": {\"containment\": \"half_op",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "summary.ships_observed",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 ships_observed"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "summary.observed_entry_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 observed_entry_count"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "summary.observed_exit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 observed_exit_count"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "summary.observed_ship_seconds",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_seconds"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "summary.observed_ship_hours",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_hours"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "summary.visit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 visit_count"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "status_hint",
+      "expected": "partial",
+      "actual": "partial",
+      "status": "PASS",
+      "note": "§2.6 状态取值"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily.dates",
+      "expected": [
+        "2026-07-21"
+      ],
+      "actual": [
+        "2026-07-21"
+      ],
+      "status": "PASS",
+      "note": "§2.4 每日一条"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].ships_observed",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 ships_observed"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].observed_entry_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 observed_entry_count"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].observed_exit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 observed_exit_count"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].observed_ship_seconds",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_seconds"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].observed_ship_hours",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_hours"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].visits_touching_day",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 visits_touching_day"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].complete_visit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 complete_visit_count"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].truncated_visit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 truncated_visit_count"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].interrupted_visit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 interrupted_visit_count"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "daily[2026-07-21].uncertain_visit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 uncertain_visit_count"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits",
+      "expected": [
+        "s122:f180",
+        "s122:f182"
+      ],
+      "actual": [
+        "s122:f180",
+        "s122:f182"
+      ],
+      "status": "PASS",
+      "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].ship_id",
+      "expected": 122,
+      "actual": 122,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].ship_type",
+      "expected": "油轮",
+      "actual": "油轮",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].entry.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].entry.observed_at",
+      "expected": "2026-07-21T06:00:00Z",
+      "actual": "2026-07-21T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].entry.bracket_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].entry.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].entry.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].entry.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].entry.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].entry.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].exit.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].exit.observed_at",
+      "expected": "2026-07-21T06:00:00Z",
+      "actual": "2026-07-21T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].exit.bracket_seconds",
+      "expected": 600.0,
+      "actual": 600.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].exit.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].exit.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].exit.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].exit.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].exit.outside_evidence_in_context",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].prior_state",
+      "expected": "outside",
+      "actual": "outside",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].first_inside_at",
+      "expected": "2026-07-21T06:00:00Z",
+      "actual": "2026-07-21T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].last_inside_at",
+      "expected": "2026-07-21T06:00:00Z",
+      "actual": "2026-07-21T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].fix_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].segment_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].observed_seconds",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].window_seconds",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].unobserved_gap_seconds",
+      "expected": 0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].touches_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].segments",
+      "expected": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-21T06:00:00Z",
+          "end_at": "2026-07-21T06:00:00Z",
+          "start_fix_id": 180,
+          "end_fix_id": 180,
+          "seconds": 0.0,
+          "in_window_seconds": 0.0,
+          "fix_count": 1
+        }
+      ],
+      "actual": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-21T06:00:00Z",
+          "end_at": "2026-07-21T06:00:00Z",
+          "start_fix_id": 180,
+          "end_fix_id": 180,
+          "seconds": 0.0,
+          "in_window_seconds": 0.0,
+          "fix_count": 1
+        }
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].status",
+      "expected": "uncertain",
+      "actual": "uncertain",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f180].flags",
+      "expected": [
+        "outside_evidence_out_of_context"
+      ],
+      "actual": [
+        "outside_evidence_out_of_context"
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].ship_id",
+      "expected": 122,
+      "actual": 122,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].ship_type",
+      "expected": "油轮",
+      "actual": "油轮",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].entry.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].entry.observed_at",
+      "expected": "2026-07-21T06:20:00Z",
+      "actual": "2026-07-21T06:20:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].entry.bracket_seconds",
+      "expected": 600.0,
+      "actual": 600.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].entry.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].entry.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].entry.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].entry.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].entry.outside_evidence_in_context",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].exit.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].exit.observed_at",
+      "expected": "2026-07-21T06:20:00Z",
+      "actual": "2026-07-21T06:20:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].exit.bracket_seconds",
+      "expected": 1800.0,
+      "actual": 1800.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].exit.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].exit.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].exit.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].exit.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].exit.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].prior_state",
+      "expected": "outside",
+      "actual": "outside",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].first_inside_at",
+      "expected": "2026-07-21T06:20:00Z",
+      "actual": "2026-07-21T06:20:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].last_inside_at",
+      "expected": "2026-07-21T06:20:00Z",
+      "actual": "2026-07-21T06:20:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].fix_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].segment_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].observed_seconds",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].window_seconds",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].unobserved_gap_seconds",
+      "expected": 0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].touches_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].segments",
+      "expected": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-21T06:20:00Z",
+          "end_at": "2026-07-21T06:20:00Z",
+          "start_fix_id": 182,
+          "end_fix_id": 182,
+          "seconds": 0.0,
+          "in_window_seconds": 0.0,
+          "fix_count": 1
+        }
+      ],
+      "actual": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-21T06:20:00Z",
+          "end_at": "2026-07-21T06:20:00Z",
+          "start_fix_id": 182,
+          "end_fix_id": 182,
+          "seconds": 0.0,
+          "in_window_seconds": 0.0,
+          "fix_count": 1
+        }
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].status",
+      "expected": "uncertain",
+      "actual": "uncertain",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "visits[s122:f182].flags",
+      "expected": [
+        "outside_evidence_out_of_context"
+      ],
+      "actual": [
+        "outside_evidence_out_of_context"
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "limits.scanned_fix_count",
+      "expected": 4,
+      "actual": 4,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "excursion.visit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "§2.0 v1.0.1：间隔 1200 s > excursion_probe_seconds(480 s) 必须探测 -> 拆成两次访问"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "excursion.observed_entry_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "有证据时进入 2 次（无证据对照 1 次，即外出各多 1 次）"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "excursion.observed_exit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "有证据时离开 2 次（无证据对照 1 次，即外出各多 1 次）"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "excursion.observed_ship_seconds",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": "§2.4：外出的 1200 s 不计入停留时长（两条单报位访问都是 0 长度 segment）"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "excursion.split_sides_outside_evidence_out_of_context",
+      "expected": [
+        false,
+        false
+      ],
+      "actual": [
+        false,
+        false
+      ],
+      "status": "PASS",
+      "note": "§2.3 行 2：拆分两侧的区外证据都在 context_bbox 之外"
+    },
+    {
+      "scene": "S22_short_excursion",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s122:f180].entry.wide_bracket": false,
+        "visits[s122:f180].exit.wide_bracket": false,
+        "visits[s122:f182].entry.wide_bracket": false,
+        "visits[s122:f182].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s122:f180].entry.wide_bracket": false,
+        "visits[s122:f180].exit.wide_bracket": false,
+        "visits[s122:f182].entry.wide_bracket": false,
+        "visits[s122:f182].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "http_status",
+      "expected": 200,
+      "actual": 200,
+      "status": "PASS",
+      "note": "删掉证据后同一场景仍应正常返回"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "json.no_nan_inf",
+      "expected": "无 NaN/Infinity",
+      "actual": "无",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "summary.ships_observed",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 ships_observed"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "summary.observed_entry_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 observed_entry_count"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "summary.observed_exit_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 observed_exit_count"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "summary.observed_ship_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_seconds"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "summary.observed_ship_hours",
+      "expected": 0.3333333333333333,
+      "actual": 0.333,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_hours"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "summary.visit_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 visit_count"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "status_hint",
+      "expected": "ok",
+      "actual": "ok",
+      "status": "PASS",
+      "note": "§2.6 状态取值"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits",
+      "expected": [
+        "s122:f180"
+      ],
+      "actual": [
+        "s122:f180"
+      ],
+      "status": "PASS",
+      "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].ship_id",
+      "expected": 122,
+      "actual": 122,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].ship_type",
+      "expected": "油轮",
+      "actual": "油轮",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].entry.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].entry.observed_at",
+      "expected": "2026-07-21T06:00:00Z",
+      "actual": "2026-07-21T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].entry.bracket_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].entry.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].entry.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].entry.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].entry.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].entry.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].exit.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].exit.observed_at",
+      "expected": "2026-07-21T06:20:00Z",
+      "actual": "2026-07-21T06:20:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].exit.bracket_seconds",
+      "expected": 1800.0,
+      "actual": 1800.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].exit.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].exit.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].exit.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].exit.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].exit.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].prior_state",
+      "expected": "outside",
+      "actual": "outside",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].first_inside_at",
+      "expected": "2026-07-21T06:00:00Z",
+      "actual": "2026-07-21T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].last_inside_at",
+      "expected": "2026-07-21T06:20:00Z",
+      "actual": "2026-07-21T06:20:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].fix_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].segment_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].observed_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].window_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].unobserved_gap_seconds",
+      "expected": 0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].touches_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].segments",
+      "expected": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-21T06:00:00Z",
+          "end_at": "2026-07-21T06:20:00Z",
+          "start_fix_id": 180,
+          "end_fix_id": 182,
+          "seconds": 1200.0,
+          "in_window_seconds": 1200.0,
+          "fix_count": 2
+        }
+      ],
+      "actual": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-21T06:00:00Z",
+          "end_at": "2026-07-21T06:20:00Z",
+          "start_fix_id": 180,
+          "end_fix_id": 182,
+          "seconds": 1200.0,
+          "in_window_seconds": 1200.0,
+          "fix_count": 2
+        }
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].status",
+      "expected": "complete",
+      "actual": "complete",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "visits[s122:f180].flags",
+      "expected": [],
+      "actual": [],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "limits.scanned_fix_count",
+      "expected": 4,
+      "actual": 4,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "control.visit_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "§2.0 残余限制：AIS 静默（无区外证据）时不拆分，属采样漏检"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "control.observed_ship_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": "§2.3 行 1：间隔 1200 s ≤ gap_seconds 且无中间报位 -> 该区间计入停留时长"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "control.observed_entry_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "对照：进入 1 次（有证据时 2 次）"
+    },
+    {
+      "scene": "S22_short_excursion::removal",
+      "path": "control.restored",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "对照结束后把删除的报位写回测试库（保持库与样例一致，便于 --skip-db 复跑）"
+    },
+    {
       "scene": "S02_multi_round_trip::filter1",
       "path": "http_status",
       "expected": 200,
@@ -10945,6 +13875,14 @@
       ],
       "status": "PASS",
       "note": "同一船型精确匹配"
+    },
+    {
+      "scene": "S02_multi_round_trip::filter1",
+      "path": "batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§4.3 batch_ids 与 ship_type 可组合，两者同时生效"
     },
     {
       "scene": "S02_multi_round_trip::filter1",
@@ -11805,6 +14743,58 @@
       "note": ""
     },
     {
+      "scene": "S02_multi_round_trip::filter1",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S02_multi_round_trip::filter1",
+      "path": "limits.scanned_fix_count",
+      "expected": 11,
+      "actual": 11,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S02_multi_round_trip::filter1",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S02_multi_round_trip::filter1",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s102:f7].entry.wide_bracket": false,
+        "visits[s102:f7].exit.wide_bracket": false,
+        "visits[s102:f10].entry.wide_bracket": false,
+        "visits[s102:f10].exit.wide_bracket": false,
+        "visits[s102:f14].entry.wide_bracket": false,
+        "visits[s102:f14].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s102:f7].entry.wide_bracket": false,
+        "visits[s102:f7].exit.wide_bracket": false,
+        "visits[s102:f10].entry.wide_bracket": false,
+        "visits[s102:f10].exit.wide_bracket": false,
+        "visits[s102:f14].entry.wide_bracket": false,
+        "visits[s102:f14].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S04_boundary_half_open::filter1",
       "path": "http_status",
       "expected": 200,
@@ -11823,6 +14813,14 @@
       ],
       "status": "PASS",
       "note": "精确匹配（104/106）"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter1",
+      "path": "batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§4.3 batch_ids 与 ship_type 可组合，两者同时生效"
     },
     {
       "scene": "S04_boundary_half_open::filter1",
@@ -12425,6 +15423,54 @@
       "note": ""
     },
     {
+      "scene": "S04_boundary_half_open::filter1",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter1",
+      "path": "limits.scanned_fix_count",
+      "expected": 8,
+      "actual": 8,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter1",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter1",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s106:f30].entry.wide_bracket": false,
+        "visits[s106:f30].exit.wide_bracket": false,
+        "visits[s104:f20].entry.wide_bracket": false,
+        "visits[s104:f20].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s106:f30].entry.wide_bracket": false,
+        "visits[s106:f30].exit.wide_bracket": false,
+        "visits[s104:f20].entry.wide_bracket": false,
+        "visits[s104:f20].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S04_boundary_half_open::filter2",
       "path": "http_status",
       "expected": 200,
@@ -12443,6 +15489,14 @@
       ],
       "status": "PASS",
       "note": "NULL 船型（107）"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter2",
+      "path": "batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§4.3 batch_ids 与 ship_type 可组合，两者同时生效"
     },
     {
       "scene": "S04_boundary_half_open::filter2",
@@ -12775,6 +15829,50 @@
       "note": ""
     },
     {
+      "scene": "S04_boundary_half_open::filter2",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter2",
+      "path": "limits.scanned_fix_count",
+      "expected": 3,
+      "actual": 3,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter2",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter2",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s107:f33].entry.wide_bracket": false,
+        "visits[s107:f33].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s107:f33].entry.wide_bracket": false,
+        "visits[s107:f33].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
       "scene": "S04_boundary_half_open::filter3",
       "path": "http_status",
       "expected": 200,
@@ -12793,6 +15891,14 @@
       ],
       "status": "PASS",
       "note": "无「未知」船型 -> 有效零结果（软）"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter3",
+      "path": "batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§4.3 batch_ids 与 ship_type 可组合，两者同时生效"
     },
     {
       "scene": "S04_boundary_half_open::filter3",
@@ -12859,6 +15965,36 @@
       "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
     },
     {
+      "scene": "S04_boundary_half_open::filter3",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter3",
+      "path": "limits.scanned_fix_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S04_boundary_half_open::filter3",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
       "scene": "S05_boundary_jitter::filter1",
       "path": "http_status",
       "expected": 200,
@@ -12877,6 +16013,14 @@
       ],
       "status": "PASS",
       "note": "保留值 __unknown__ = 未知（108）"
+    },
+    {
+      "scene": "S05_boundary_jitter::filter1",
+      "path": "batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§4.3 batch_ids 与 ship_type 可组合，两者同时生效"
     },
     {
       "scene": "S05_boundary_jitter::filter1",
@@ -13751,6 +16895,1710 @@
       ],
       "status": "PASS",
       "note": ""
+    },
+    {
+      "scene": "S05_boundary_jitter::filter1",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S05_boundary_jitter::filter1",
+      "path": "limits.scanned_fix_count",
+      "expected": 8,
+      "actual": 8,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S05_boundary_jitter::filter1",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S05_boundary_jitter::filter1",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s108:f36].entry.wide_bracket": false,
+        "visits[s108:f36].exit.wide_bracket": false,
+        "visits[s108:f38].entry.wide_bracket": false,
+        "visits[s108:f38].exit.wide_bracket": false,
+        "visits[s108:f40].entry.wide_bracket": false,
+        "visits[s108:f40].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s108:f36].entry.wide_bracket": false,
+        "visits[s108:f36].exit.wide_bracket": false,
+        "visits[s108:f38].entry.wide_bracket": false,
+        "visits[s108:f38].exit.wide_bracket": false,
+        "visits[s108:f40].entry.wide_bracket": false,
+        "visits[s108:f40].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "http_status",
+      "expected": 200,
+      "actual": 200,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "ship_type",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "不带 batch_ids：9002 的中间报位成为越界证据 -> left_returned 两次访问"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§4.3 batch_ids 与 ship_type 可组合，两者同时生效"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "summary.ships_observed",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 ships_observed"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "summary.observed_entry_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 observed_entry_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "summary.observed_exit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 observed_exit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "summary.observed_ship_seconds",
+      "expected": 1500.0,
+      "actual": 1500.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_seconds"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "summary.observed_ship_hours",
+      "expected": 0.4166666666666667,
+      "actual": 0.417,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_hours"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "summary.visit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 visit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "status_hint",
+      "expected": "partial",
+      "actual": "partial",
+      "status": "PASS",
+      "note": "§2.6 状态取值"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits",
+      "expected": [
+        "s121:f173",
+        "s121:f176"
+      ],
+      "actual": [
+        "s121:f173",
+        "s121:f176"
+      ],
+      "status": "PASS",
+      "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].ship_id",
+      "expected": 121,
+      "actual": 121,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].ship_type",
+      "expected": "油轮",
+      "actual": "油轮",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].entry.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].entry.observed_at",
+      "expected": "2026-07-20T06:00:00Z",
+      "actual": "2026-07-20T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].entry.bracket_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].entry.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].entry.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].entry.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].entry.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].entry.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].exit.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].exit.observed_at",
+      "expected": "2026-07-20T06:10:00Z",
+      "actual": "2026-07-20T06:10:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].exit.bracket_seconds",
+      "expected": 900.0,
+      "actual": 900.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].exit.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].exit.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].exit.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].exit.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].exit.outside_evidence_in_context",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].prior_state",
+      "expected": "outside",
+      "actual": "outside",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].first_inside_at",
+      "expected": "2026-07-20T06:00:00Z",
+      "actual": "2026-07-20T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].last_inside_at",
+      "expected": "2026-07-20T06:10:00Z",
+      "actual": "2026-07-20T06:10:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].fix_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].segment_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].observed_seconds",
+      "expected": 600.0,
+      "actual": 600.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].window_seconds",
+      "expected": 600.0,
+      "actual": 600.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].unobserved_gap_seconds",
+      "expected": 0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].touches_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].segments",
+      "expected": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:00:00Z",
+          "end_at": "2026-07-20T06:10:00Z",
+          "start_fix_id": 173,
+          "end_fix_id": 174,
+          "seconds": 600.0,
+          "in_window_seconds": 600.0,
+          "fix_count": 2
+        }
+      ],
+      "actual": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:00:00Z",
+          "end_at": "2026-07-20T06:10:00Z",
+          "start_fix_id": 173,
+          "end_fix_id": 174,
+          "seconds": 600.0,
+          "in_window_seconds": 600.0,
+          "fix_count": 2
+        }
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].status",
+      "expected": "uncertain",
+      "actual": "uncertain",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f173].flags",
+      "expected": [
+        "outside_evidence_out_of_context"
+      ],
+      "actual": [
+        "outside_evidence_out_of_context"
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].ship_id",
+      "expected": 121,
+      "actual": 121,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].ship_type",
+      "expected": "油轮",
+      "actual": "油轮",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].entry.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].entry.observed_at",
+      "expected": "2026-07-20T06:35:00Z",
+      "actual": "2026-07-20T06:35:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].entry.bracket_seconds",
+      "expected": 600.0,
+      "actual": 600.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].entry.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].entry.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].entry.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].entry.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].entry.outside_evidence_in_context",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].exit.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].exit.observed_at",
+      "expected": "2026-07-20T06:50:00Z",
+      "actual": "2026-07-20T06:50:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].exit.bracket_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].exit.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].exit.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].exit.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].exit.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].exit.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].prior_state",
+      "expected": "outside",
+      "actual": "outside",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].first_inside_at",
+      "expected": "2026-07-20T06:35:00Z",
+      "actual": "2026-07-20T06:35:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].last_inside_at",
+      "expected": "2026-07-20T06:50:00Z",
+      "actual": "2026-07-20T06:50:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].fix_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].segment_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].observed_seconds",
+      "expected": 900.0,
+      "actual": 900.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].window_seconds",
+      "expected": 900.0,
+      "actual": 900.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].unobserved_gap_seconds",
+      "expected": 0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].touches_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].segments",
+      "expected": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:35:00Z",
+          "end_at": "2026-07-20T06:50:00Z",
+          "start_fix_id": 176,
+          "end_fix_id": 177,
+          "seconds": 900.0,
+          "in_window_seconds": 900.0,
+          "fix_count": 2
+        }
+      ],
+      "actual": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:35:00Z",
+          "end_at": "2026-07-20T06:50:00Z",
+          "start_fix_id": 176,
+          "end_fix_id": 177,
+          "seconds": 900.0,
+          "in_window_seconds": 900.0,
+          "fix_count": 2
+        }
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].status",
+      "expected": "uncertain",
+      "actual": "uncertain",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "visits[s121:f176].flags",
+      "expected": [
+        "outside_evidence_out_of_context"
+      ],
+      "actual": [
+        "outside_evidence_out_of_context"
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "limits.scanned_fix_count",
+      "expected": 7,
+      "actual": 7,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "query.filters.batch_ids",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s121:f173].entry.wide_bracket": false,
+        "visits[s121:f173].exit.wide_bracket": false,
+        "visits[s121:f176].entry.wide_bracket": false,
+        "visits[s121:f176].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s121:f173].entry.wide_bracket": false,
+        "visits[s121:f173].exit.wide_bracket": false,
+        "visits[s121:f176].entry.wide_bracket": false,
+        "visits[s121:f176].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter1",
+      "path": "batch.split_state",
+      "expected": "split",
+      "actual": "split",
+      "status": "PASS",
+      "note": "§2.0/§2.3：越界探测是否命中 -> 该对被拆成两次访问还是保持一次"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "http_status",
+      "expected": 200,
+      "actual": 200,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "ship_type",
+      "expected": [
+        "油轮"
+      ],
+      "actual": [
+        "油轮"
+      ],
+      "status": "PASS",
+      "note": "显式列出两个批次：与不带批次等价（两次访问），coverage 回显 [9001, 9002]"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§4.3 batch_ids 与 ship_type 可组合，两者同时生效"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "summary.ships_observed",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "响应字段 ships_observed"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "summary.observed_entry_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 observed_entry_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "summary.observed_exit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 observed_exit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "summary.observed_ship_seconds",
+      "expected": 1500.0,
+      "actual": 1500.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_seconds"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "summary.observed_ship_hours",
+      "expected": 0.4166666666666667,
+      "actual": 0.417,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_hours"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "summary.visit_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": "响应字段 visit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "status_hint",
+      "expected": "partial",
+      "actual": "partial",
+      "status": "PASS",
+      "note": "§2.6 状态取值"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits",
+      "expected": [
+        "s121:f173",
+        "s121:f176"
+      ],
+      "actual": [
+        "s121:f173",
+        "s121:f176"
+      ],
+      "status": "PASS",
+      "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].ship_id",
+      "expected": 121,
+      "actual": 121,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].ship_type",
+      "expected": "油轮",
+      "actual": "油轮",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].entry.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].entry.observed_at",
+      "expected": "2026-07-20T06:00:00Z",
+      "actual": "2026-07-20T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].entry.bracket_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].entry.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].entry.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].entry.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].entry.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].entry.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].exit.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].exit.observed_at",
+      "expected": "2026-07-20T06:10:00Z",
+      "actual": "2026-07-20T06:10:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].exit.bracket_seconds",
+      "expected": 900.0,
+      "actual": 900.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].exit.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].exit.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].exit.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].exit.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].exit.outside_evidence_in_context",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].prior_state",
+      "expected": "outside",
+      "actual": "outside",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].first_inside_at",
+      "expected": "2026-07-20T06:00:00Z",
+      "actual": "2026-07-20T06:00:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].last_inside_at",
+      "expected": "2026-07-20T06:10:00Z",
+      "actual": "2026-07-20T06:10:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].fix_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].segment_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].observed_seconds",
+      "expected": 600.0,
+      "actual": 600.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].window_seconds",
+      "expected": 600.0,
+      "actual": 600.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].unobserved_gap_seconds",
+      "expected": 0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].touches_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].segments",
+      "expected": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:00:00Z",
+          "end_at": "2026-07-20T06:10:00Z",
+          "start_fix_id": 173,
+          "end_fix_id": 174,
+          "seconds": 600.0,
+          "in_window_seconds": 600.0,
+          "fix_count": 2
+        }
+      ],
+      "actual": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:00:00Z",
+          "end_at": "2026-07-20T06:10:00Z",
+          "start_fix_id": 173,
+          "end_fix_id": 174,
+          "seconds": 600.0,
+          "in_window_seconds": 600.0,
+          "fix_count": 2
+        }
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].status",
+      "expected": "uncertain",
+      "actual": "uncertain",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f173].flags",
+      "expected": [
+        "outside_evidence_out_of_context"
+      ],
+      "actual": [
+        "outside_evidence_out_of_context"
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].ship_id",
+      "expected": 121,
+      "actual": 121,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].ship_type",
+      "expected": "油轮",
+      "actual": "油轮",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].entry.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].entry.observed_at",
+      "expected": "2026-07-20T06:35:00Z",
+      "actual": "2026-07-20T06:35:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].entry.bracket_seconds",
+      "expected": 600.0,
+      "actual": 600.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].entry.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].entry.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].entry.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].entry.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].entry.outside_evidence_in_context",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].exit.observed",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].exit.observed_at",
+      "expected": "2026-07-20T06:50:00Z",
+      "actual": "2026-07-20T06:50:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].exit.bracket_seconds",
+      "expected": 1200.0,
+      "actual": 1200.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].exit.in_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].exit.near_boundary",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].exit.same_second_conflict",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].exit.wide_bracket",
+      "expected": false,
+      "actual": false,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].exit.outside_evidence_in_context",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].prior_state",
+      "expected": "outside",
+      "actual": "outside",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].first_inside_at",
+      "expected": "2026-07-20T06:35:00Z",
+      "actual": "2026-07-20T06:35:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].last_inside_at",
+      "expected": "2026-07-20T06:50:00Z",
+      "actual": "2026-07-20T06:50:00Z",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].fix_count",
+      "expected": 2,
+      "actual": 2,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].segment_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].observed_seconds",
+      "expected": 900.0,
+      "actual": 900.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].window_seconds",
+      "expected": 900.0,
+      "actual": 900.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].unobserved_gap_seconds",
+      "expected": 0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].touches_window",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].segments",
+      "expected": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:35:00Z",
+          "end_at": "2026-07-20T06:50:00Z",
+          "start_fix_id": 176,
+          "end_fix_id": 177,
+          "seconds": 900.0,
+          "in_window_seconds": 900.0,
+          "fix_count": 2
+        }
+      ],
+      "actual": [
+        {
+          "segment_no": 1,
+          "start_at": "2026-07-20T06:35:00Z",
+          "end_at": "2026-07-20T06:50:00Z",
+          "start_fix_id": 176,
+          "end_fix_id": 177,
+          "seconds": 900.0,
+          "in_window_seconds": 900.0,
+          "fix_count": 2
+        }
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].status",
+      "expected": "uncertain",
+      "actual": "uncertain",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "visits[s121:f176].flags",
+      "expected": [
+        "outside_evidence_out_of_context"
+      ],
+      "actual": [
+        "outside_evidence_out_of_context"
+      ],
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "limits.scanned_fix_count",
+      "expected": 7,
+      "actual": 7,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "query.filters.batch_ids",
+      "expected": [
+        9001,
+        9002
+      ],
+      "actual": [
+        9001,
+        9002
+      ],
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "wide_bracket.rule",
+      "expected": {
+        "visits[s121:f173].entry.wide_bracket": false,
+        "visits[s121:f173].exit.wide_bracket": false,
+        "visits[s121:f176].entry.wide_bracket": false,
+        "visits[s121:f176].exit.wide_bracket": false
+      },
+      "actual": {
+        "visits[s121:f173].entry.wide_bracket": false,
+        "visits[s121:f173].exit.wide_bracket": false,
+        "visits[s121:f176].entry.wide_bracket": false,
+        "visits[s121:f176].exit.wide_bracket": false
+      },
+      "status": "PASS",
+      "note": "§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds(1800)，left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter2",
+      "path": "batch.split_state",
+      "expected": "split",
+      "actual": "split",
+      "status": "PASS",
+      "note": "§2.0/§2.3：越界探测是否命中 -> 该对被拆成两次访问还是保持一次"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "http_status",
+      "expected": 200,
+      "actual": 200,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "ship_type",
+      "expected": [
+        "油轮"
+      ],
+      "actual": [
+        "油轮"
+      ],
+      "status": "PASS",
+      "note": "批次与船型可组合：9002 在范围内只有 1 条区外报位 -> 有效零结果（非 no_data）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "batch_ids",
+      "expected": [
+        9002
+      ],
+      "actual": [
+        9002
+      ],
+      "status": "PASS",
+      "note": "§4.3 batch_ids 与 ship_type 可组合，两者同时生效"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "summary.ships_observed",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 ships_observed"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "summary.observed_entry_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 observed_entry_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "summary.observed_exit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 observed_exit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "summary.observed_ship_seconds",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_seconds"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "summary.observed_ship_hours",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_hours"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "summary.visit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 visit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "status_hint",
+      "expected": "ok",
+      "actual": "ok",
+      "status": "PASS",
+      "note": "§2.6 状态取值"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "visits",
+      "expected": [],
+      "actual": [],
+      "status": "PASS",
+      "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9002
+      ],
+      "actual": [
+        9002
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "limits.scanned_fix_count",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "query.filters.batch_ids",
+      "expected": [
+        9002
+      ],
+      "actual": [
+        9002
+      ],
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter3",
+      "path": "batch.split_state",
+      "expected": "single",
+      "actual": "single",
+      "status": "PASS",
+      "note": "§2.0/§2.3：越界探测是否命中 -> 该对被拆成两次访问还是保持一次"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "http_status",
+      "expected": 200,
+      "actual": 200,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "ship_type",
+      "expected": [
+        "货船"
+      ],
+      "actual": [
+        "货船"
+      ],
+      "status": "PASS",
+      "note": "批次与船型同时生效：该窗口内没有货船报位 -> no_data"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "batch_ids",
+      "expected": [
+        9001
+      ],
+      "actual": [
+        9001
+      ],
+      "status": "PASS",
+      "note": "§4.3 batch_ids 与 ship_type 可组合，两者同时生效"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "summary.ships_observed",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 ships_observed"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "summary.observed_entry_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 observed_entry_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "summary.observed_exit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 observed_exit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "summary.observed_ship_seconds",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_seconds"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "summary.observed_ship_hours",
+      "expected": 0.0,
+      "actual": 0.0,
+      "status": "PASS",
+      "note": "响应字段 observed_ship_hours"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "summary.visit_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "响应字段 visit_count"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "status_hint",
+      "expected": "no_data",
+      "actual": "no_data",
+      "status": "PASS",
+      "note": "§2.6 状态取值"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "visits",
+      "expected": [],
+      "actual": [],
+      "status": "PASS",
+      "note": "§2.0 访问稳定键 visit_key = s{ship_id}:f{首个区域内报位 id}"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "coverage.batch_ids",
+      "expected": [
+        9001
+      ],
+      "actual": [
+        9001
+      ],
+      "status": "PASS",
+      "note": "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "limits.scanned_fix_count",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "note": "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "query.filters.batch_ids",
+      "expected": [
+        9001
+      ],
+      "actual": [
+        9001
+      ],
+      "status": "PASS",
+      "note": "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）"
+    },
+    {
+      "scene": "S21_batch_scope_consistency::filter4",
+      "path": "batch.split_state",
+      "expected": "single",
+      "actual": "single",
+      "status": "PASS",
+      "note": "§2.0/§2.3：越界探测是否命中 -> 该对被拆成两次访问还是保持一次"
     },
     {
       "scene": "S17_snapshot_mix",
@@ -15319,14 +20167,75 @@
       "actual": true,
       "status": "PASS",
       "note": "§4.1 回显默认区域"
+    },
+    {
+      "scene": "default_area",
+      "path": "algorithm.version",
+      "expected": "area_activity/1.0.1",
+      "actual": "1.0.1",
+      "status": "PASS",
+      "note": "§4.1 default-area 回显算法版本"
+    },
+    {
+      "scene": "default_area",
+      "path": "algorithm.params.excursion_probe_seconds",
+      "expected": 480,
+      "actual": 480,
+      "status": "PASS",
+      "note": "§3 参数与默认值随算法描述回显"
+    },
+    {
+      "scene": "default_area",
+      "path": "algorithm.params.max_plausible_speed_kn",
+      "expected": 40.0,
+      "actual": 40.0,
+      "status": "PASS",
+      "note": "§3 参数与默认值随算法描述回显"
+    },
+    {
+      "scene": "default_area",
+      "path": "algorithm.params.gap_seconds",
+      "expected": 1800,
+      "actual": 1800,
+      "status": "PASS",
+      "note": "§3 参数与默认值随算法描述回显"
+    },
+    {
+      "scene": "default_area",
+      "path": "algorithm.params.context_margin_deg",
+      "expected": 0.05,
+      "actual": 0.05,
+      "status": "PASS",
+      "note": "§3 参数与默认值随算法描述回显"
     }
   ],
   "summary": {
-    "PASS": 1656,
+    "PASS": 2131,
     "WARN": 0,
     "FAIL": 0,
     "SKIP": 0
   },
+  "doc_implementation_divergences": [
+    {
+      "id": "left_returned_wide_bracket_on_short_excursion",
+      "status": "resolved",
+      "resolved_on": "2026-10-07",
+      "resolution": "文档已按实现口径修正：docs/area_activity.md §2.3 表格第 2 行（left_returned 行）现写明「两侧事件按 §2.3 统一规则判定 wide_bracket（即 bracket_seconds > gap_seconds 才为 true，不是无条件置位）」，与实现一致；本脚本的比对随之从WARN 改为硬断言 wide_bracket == (bracket_seconds > gap_seconds)，重跑不再产生这 3 条 WARN。",
+      "doc_ref": "docs/area_activity.md §2.3 表格第 2 行（left_returned 行）/ §2.4 flags",
+      "doc_literal_before": "只要判定为 left_returned，两侧事件（前段的离开、后段的进入）都标 wide_bracket",
+      "doc_literal_now": "两侧事件按 §2.3 统一规则判定 wide_bracket（即 bracket_seconds > gap_seconds 才为 true，不是无条件置位）",
+      "implementation": "按 bracket_seconds > gap_seconds(1800 s) 判定 wide_bracket（backend/app/services/area_activity/algorithm.py:248 与 :292），短时外出的括号各只有 600 s -> 不标",
+      "scenes": [
+        "S22_short_excursion",
+        "S21_batch_scope_consistency(不带批次变体)"
+      ],
+      "former_severity": "WARN",
+      "former_actual": "拆分、计数、时长、outside_evidence_out_of_context 均与文档一致；仅 wide_entry_bracket/wide_exit_bracket 与当时的 §2.3 行 2 字面不符",
+      "impact": "只影响 flags 与 entry/exit.wide_bracket 两个字段的取值，不影响访问次数、进出计数、时长与 status（两侧事件已因 outside_evidence_out_of_context 归为 uncertain）",
+      "chosen_option": "改文档（原 options[0]）：§2.3 行 2 写明按 bracket_seconds 是否超过 gap_seconds 判定 wide_bracket",
+      "not_chosen_option": "改实现：left_returned 拆分时无条件给两侧事件置 wide_bracket=true"
+    }
+  ],
   "failure_groups": [],
   "ambiguities": {
     "S01_enter_exit": {
@@ -15897,11 +20806,71 @@
         "alternates": []
       }
     },
+    "S21_batch_scope_consistency": {
+      "summary.ships_observed": {
+        "reason": "§2.0 把「候选船」定义为窗口内至少有一条区域内报位，§2.4 只写「出现去重船数」；主口径取候选船数，备选为与窗口相交的访问涉及的船数",
+        "alternates": [
+          1
+        ]
+      },
+      "daily[2026-07-20].ships_observed": {
+        "reason": "§2.4 定版每日桶 = 当日 ∩ 窗口；「出现去重船数」按桶内区域内报位去重（主口径）还是按与桶相交的访问去重（实现侧）文档未写，两者只在访问跨越桶且桶内无报位时不同",
+        "alternates": [
+          1
+        ]
+      },
+      "daily[2026-07-20].complete_visit_count": {
+        "reason": "§5.3 给出每日状态计数，但未说明按「访问在当日桶内的状态」还是「访问在全窗口的状态」归类；主口径与 summary 一致（全窗口 status）",
+        "alternates": []
+      },
+      "daily[2026-07-20].truncated_visit_count": {
+        "reason": "§5.3 给出每日状态计数，但未说明按「访问在当日桶内的状态」还是「访问在全窗口的状态」归类；主口径与 summary 一致（全窗口 status）",
+        "alternates": []
+      },
+      "daily[2026-07-20].interrupted_visit_count": {
+        "reason": "§5.3 给出每日状态计数，但未说明按「访问在当日桶内的状态」还是「访问在全窗口的状态」归类；主口径与 summary 一致（全窗口 status）",
+        "alternates": []
+      },
+      "daily[2026-07-20].uncertain_visit_count": {
+        "reason": "§5.3 给出每日状态计数，但未说明按「访问在当日桶内的状态」还是「访问在全窗口的状态」归类；主口径与 summary 一致（全窗口 status）",
+        "alternates": []
+      }
+    },
+    "S22_short_excursion": {
+      "summary.ships_observed": {
+        "reason": "§2.0 把「候选船」定义为窗口内至少有一条区域内报位，§2.4 只写「出现去重船数」；主口径取候选船数，备选为与窗口相交的访问涉及的船数",
+        "alternates": [
+          1
+        ]
+      },
+      "daily[2026-07-21].ships_observed": {
+        "reason": "§2.4 定版每日桶 = 当日 ∩ 窗口；「出现去重船数」按桶内区域内报位去重（主口径）还是按与桶相交的访问去重（实现侧）文档未写，两者只在访问跨越桶且桶内无报位时不同",
+        "alternates": [
+          1
+        ]
+      },
+      "daily[2026-07-21].complete_visit_count": {
+        "reason": "§5.3 给出每日状态计数，但未说明按「访问在当日桶内的状态」还是「访问在全窗口的状态」归类；主口径与 summary 一致（全窗口 status）",
+        "alternates": []
+      },
+      "daily[2026-07-21].truncated_visit_count": {
+        "reason": "§5.3 给出每日状态计数，但未说明按「访问在当日桶内的状态」还是「访问在全窗口的状态」归类；主口径与 summary 一致（全窗口 status）",
+        "alternates": []
+      },
+      "daily[2026-07-21].interrupted_visit_count": {
+        "reason": "§5.3 给出每日状态计数，但未说明按「访问在当日桶内的状态」还是「访问在全窗口的状态」归类；主口径与 summary 一致（全窗口 status）",
+        "alternates": []
+      },
+      "daily[2026-07-21].uncertain_visit_count": {
+        "reason": "§5.3 给出每日状态计数，但未说明按「访问在当日桶内的状态」还是「访问在全窗口的状态」归类；主口径与 summary 一致（全窗口 status）",
+        "alternates": []
+      }
+    },
     "S17_snapshot_mix": {
       "summary.evaluated_ship_count": {
         "reason": "§2.1 未定义「评估船数」是否包含没有任何报位、或最新报位在 at 之后的船；主口径 = 有 <= at 报位（被实际判定）的船",
         "alternates": [
-          32,
+          34,
           30
         ]
       }
@@ -15910,13 +20879,13 @@
       "summary.evaluated_ship_count": {
         "reason": "§2.1 未定义「评估船数」是否包含没有任何报位、或最新报位在 at 之后的船；主口径 = 有 <= at 报位（被实际判定）的船",
         "alternates": [
-          32,
+          34,
           30
         ]
       }
     }
   },
-  "run_finished_at": "2026-10-07T11:21:16.443096+00:00",
-  "duration_seconds": 3.266,
+  "run_finished_at": "2026-10-07T11:49:59.453150+00:00",
+  "duration_seconds": 3.46,
   "exit_code": 0
 }

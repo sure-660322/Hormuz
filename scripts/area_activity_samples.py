@@ -6,11 +6,18 @@
   * §3         参数默认值
   * §4.3–§4.5  REST 契约字段名（期望值按这些字段名组织，便于逐字段比对）
 
-2026-10-07 文档定版后同步的口径（本轮复验基准）：
-  * §2.0 有界越界探测：对「可疑对」（间隔 > gap_seconds，或位移 ≥ jump_min_distance_km
-    且推算速度 > jump_speed_kn）按 (ship_id, recorded_at, id) 探测两报位之间是否还有该船
-    报位（允许越出 context_bbox），有则 left_returned；
+2026-10-07 文档定版（`area_activity/1.0.1`）后同步的口径（本轮复验基准）：
+  * §2.0 有界越界探测：对「待探测对」（间隔 > excursion_probe_seconds=480 s，或位移
+    ≥ jump_min_distance_km 且推算速度 > jump_speed_kn）按 (ship_id, recorded_at, id) 探测
+    两报位之间是否还有该船报位（允许越出 context_bbox），有则 left_returned；
+    480 s 的来源：2 × 外扩距离 9.96 km ÷ max_plausible_speed_kn=40 kn ≈ 484 s，取 480 s；
+  * §2.0/§3/§4.3 来源批次条件**同时**作用于观测上下文、越界探测与覆盖统计；带 batch_ids 请求时
+    coverage.batch_ids 回显实际生效批次（样例 S21 复验三者的批次范围一致）；
   * §2.3 跳点需位移 ≥ 1.0 km **且** 推算速度 > 30 kn；unobserved_gap_seconds 含 gap 与 jump；
+  * §2.3 行 2（left_returned）的 wide_bracket 口径已了结（2026-10-07 文档修正）：两侧事件
+    **不**无条件置位，而是按 §2.3 统一规则 `wide = bracket_seconds > gap_seconds` 判定；
+    短时外出（括号各只有数百秒）两侧均为 false。本文件只保留数值口径，不再登记「文档字面」
+    备选值，验证脚本按该口径硬断言（原分歧记录见 verify 脚本的 doc_implementation_divergences）；
   * §2.4 每日 = 当日 ∩ 窗口 [start,end)；进入/离开只计事件时间落在窗口内的事件；
     status 优先级固定（truncated_start → truncated_end → interrupted → uncertain → complete）；
     flags 取值固定为 8 个；单报位访问 = 一条 0 长度 segment；
@@ -49,9 +56,9 @@ DEFAULT_AREA_VERSION = "1.0.0"
 DEFAULT_AREA = {"south": 25.8, "west": 55.8, "north": 27.1, "east": 57.1}
 
 # --------------------------------------------------------------------------
-# §3 参数与默认值（area_activity/1.0.0）
+# §3 参数与默认值（area_activity/1.0.1）
 # --------------------------------------------------------------------------
-ALGORITHM_VERSION = "area_activity/1.0.0"
+ALGORITHM_VERSION = "area_activity/1.0.1"
 DEFAULT_PARAMS: dict[str, Any] = {
     "freshness_seconds": 3600.0,
     "gap_seconds": 1800.0,
@@ -60,6 +67,9 @@ DEFAULT_PARAMS: dict[str, Any] = {
     "state_lookback_seconds": 21600.0,
     "state_lookahead_seconds": 21600.0,
     "context_margin_deg": 0.05,
+    # §3 v1.0.1：越界探测阈值与它依据的最大可信航速。
+    "max_plausible_speed_kn": 40.0,
+    "excursion_probe_seconds": 480.0,
     "boundary_band_m": 500.0,
     "day_bucket_time_zone": "UTC",
     "source": "nnu_ais",
@@ -68,6 +78,10 @@ DEFAULT_PARAMS: dict[str, Any] = {
     "max_visit_rows": 2000,
     "max_snapshot_ships": 5000,
 }
+
+# 验证脚本插入测试库 ais_import_batches 的批次行（S21 用 9001/9002 两个批次；
+# coverage.batch_ids 回显的是该表的批次 id，不是报位上出现过的批次）。
+SAMPLE_BATCH_IDS: tuple[int, ...] = (9001, 9002)
 
 EARTH_RADIUS_M = 6371008.8
 METERS_PER_NAUTICAL_MILE = 1852.0
@@ -226,6 +240,21 @@ def ship_type_matches(ship_type: str | None, wanted: Sequence[str] | None) -> bo
     return False
 
 
+def _batch_ok(fix: Fix, p: dict[str, Any]) -> bool:
+    """§3/§4.3 来源批次白名单；`batch_ids` 为 None 表示不筛批次。"""
+    wanted = p.get("batch_ids")
+    if not wanted:
+        return True
+    return fix.source_batch_id in wanted
+
+
+def _coverage_batch_ids(batch_ids: Sequence[int] | None) -> list[int]:
+    """§4.3：coverage.batch_ids = 实际生效批次，取自 ais_import_batches（验证脚本插入的批次行）。"""
+    if batch_ids:
+        return sorted({int(b) for b in batch_ids if int(b) in set(SAMPLE_BATCH_IDS)})
+    return sorted(SAMPLE_BATCH_IDS)
+
+
 def _fix_public(fix: Fix) -> dict[str, Any]:
     return {
         "id": fix.id,
@@ -243,33 +272,39 @@ def naive_analyze(
     end: datetime,
     params: dict[str, Any] | None = None,
     ship_types: Sequence[str] | None = None,
+    batch_ids: Sequence[int] | None = None,
 ) -> dict[str, Any]:
     """按文档 §2.0–§2.4 朴素复算一个窗口的活动（不引用后端实现）。
 
     `fixes` 必须是**全部**样例报位：§2.0 的「有界越界探测」要用到 context_bbox 之外的
     报位来判断两条相邻区内报位之间是否还有该船报位（left_returned 的依据）。
+    `batch_ids`（§3/§4.3）同时约束观测上下文、越界探测与覆盖统计，三处必须一致。
 
     返回 {"summary", "daily", "visits", "status_hint", "ambiguities", ...}。
-    字段名对齐 §4.3/§4.5/§5.3，便于与 HTTP 响应逐字段比对。
+    字段名对齐 §4.3/§4.5，便于与 HTTP 响应逐字段比对。
     """
     p = dict(DEFAULT_PARAMS)
     p.update(params or {})
+    p["batch_ids"] = [int(b) for b in batch_ids] if batch_ids else None
     start = _as_utc(start)
     end = _as_utc(end)
     ships = list(ships)
     fixes = list(fixes)
     ship_by_id = {s.id: s for s in ships}
 
-    # 0) §2.0 越界探测索引：全部同源报位按 (recorded_at, id) 排序，不受 scope / context_bbox 限制
+    # 0) §2.0 越界探测索引：全部同源报位按 (recorded_at, id) 排序，不受 scope / context_bbox
+    #    限制，但同样受来源批次约束（探测与上下文批次范围必须一致）。
     probe_index: dict[int, list[Fix]] = {}
     for fix in fixes:
         if p["source"] and fix.data_source != p["source"]:
+            continue
+        if not _batch_ok(fix, p):
             continue
         probe_index.setdefault(fix.ship_id, []).append(fix)
     for probe_seq in probe_index.values():
         probe_seq.sort(key=lambda f: (f.recorded_at, f.id))
 
-    # 1) 来源 / 船型 / 状态序列范围 scope=[start-lookback, end+lookahead) ∩ context_bbox（§2.0）
+    # 1) 来源 / 批次 / 船型 / 状态序列范围 scope=[start-lookback, end+lookahead) ∩ context_bbox（§2.0）
     scope_start = start - timedelta(seconds=p["state_lookback_seconds"])
     scope_end = end + timedelta(seconds=p["state_lookahead_seconds"])
     scoped: dict[int, list[Fix]] = {}
@@ -279,6 +314,8 @@ def naive_analyze(
         if ship is None or not ship_type_matches(ship.ship_type, ship_types):
             continue
         if p["source"] and fix.data_source != p["source"]:
+            continue
+        if not _batch_ok(fix, p):
             continue
         if not (scope_start <= fix.recorded_at < scope_end):
             continue
@@ -460,13 +497,15 @@ def _probe_between(
 ) -> list[Fix]:
     """§2.0 有界越界探测：两条报位之间是否还有该船其它报位（允许越出 context_bbox）。
 
-    只对「可疑对」调用；结果按 (recorded_at, id) 排序，调用方只取首末报位的 id 与时间。
+    只对「待探测对」调用；同样受来源批次约束（探测与上下文的批次范围必须一致）。
+    结果按 (recorded_at, id) 排序，调用方只取首末报位的 id 与时间。
     """
     source = p["source"]
     between = [
         f
         for f in all_fixes
         if (not source or f.data_source == source)
+        and _batch_ok(f, p)
         and (prev.recorded_at, prev.id) < (f.recorded_at, f.id) < (cur.recorded_at, cur.id)
     ]
     between.sort(key=lambda f: (f.recorded_at, f.id))
@@ -484,14 +523,17 @@ def _pair_break(
     speed_kn = dist_km / (dt / 3600.0) / 1.852
     is_gap = dt > p["gap_seconds"]
     is_jump = dist_km >= p["jump_min_distance_km"] and speed_kn > p["jump_speed_kn"]
-    if not (is_gap or is_jump):
-        return "none", []  # 连续观测：该区间计入停留时长
-    between = _probe_between(all_fixes, prev, cur, p)  # 只对可疑对探测（§2.0）
+    # §2.0 v1.0.1：待探测对 = 间隔 > excursion_probe_seconds（默认 480 s）或满足跳点条件。
+    if not (dt > p["excursion_probe_seconds"] or is_jump):
+        return "none", []  # 间隔 ≤480 s：不可能完成一次外出往返，该区间计入停留时长
+    between = _probe_between(all_fixes, prev, cur, p)
     if between:
-        return "left_returned", between
+        return "left_returned", between  # §2.3 行 2：有区外证据 -> 拆成两次访问
     if is_gap:
         return "gap", []
-    return "jump", []
+    if is_jump:
+        return "jump", []
+    return "none", []  # 间隔在 (probe_seconds, gap_seconds] 且无中间报位 -> 仍是连续观测
 
 
 def _inside_blocks(
@@ -747,6 +789,11 @@ def _build_visit(
                 f"§4.5 未定义未观测{side}事件的 bracket_seconds；主口径 null（不存在括号区间），备选 0.0",
                 [0.0],
             )
+    # §2.3 行 2（left_returned）的 wide_bracket 口径：2026-10-07 文档已按实现口径修正为
+    # 「两侧事件按 §2.3 统一规则判定，即 bracket_seconds > gap_seconds 才为 true，不是无条件置位」。
+    # 因此这里不再登记「文档字面（true）」备选值 —— 短时外出两侧应为 false，属硬断言；
+    # 分歧的解决记录保留在 scripts/verify_area_activity_samples.py 的
+    # DOC_IMPLEMENTATION_DIVERGENCES（status=resolved），不删除以便追溯。
     return visit
 
 
@@ -875,10 +922,15 @@ class Scenario:
     use_default_area: bool = False
     params: dict[str, Any] = field(default_factory=dict)
     ship_types: list[str] | None = None
+    # §3/§4.3 来源批次白名单（主请求）；None = 不筛批次。
+    batch_ids: list[int] | None = None
     covers: list[str] = field(default_factory=list)
     notes: str = ""
     expected: dict[str, Any] | None = None
     filter_checks: list[dict[str, Any]] = field(default_factory=list)
+    # 场景内的“移除报位”对照探针（例如 S22：删掉区外中间报位后必须仍是一次访问）。
+    # {"fix_ids": [...], "note": "...", "expected": {...}}，由验证脚本在测试库里临时删除并恢复。
+    removal_probe: dict[str, Any] | None = None
     soft_all_reason: str = ""
 
     def query_params(self, visit_limit: int | None = 500) -> list[tuple[str, str]]:
@@ -890,6 +942,8 @@ class Scenario:
             out.extend((k, str(v)) for k, v in self.rect.as_query().items())
         for t in self.ship_types or []:
             out.append(("ship_type", t))
+        for batch in self.batch_ids or []:
+            out.append(("batch_ids", str(batch)))
         if visit_limit is not None:
             out.append(("visit_limit", str(visit_limit)))
         return out
@@ -977,6 +1031,7 @@ class SampleBuilder:
         longitude: float,
         speed: float | None = None,
         data_source: str = "nnu_ais",
+        source_batch_id: int | None = 9001,
     ) -> Fix:
         self._fix_id += 1
         self._row += 1
@@ -988,7 +1043,7 @@ class SampleBuilder:
             longitude=longitude,
             speed=speed,
             data_source=data_source,
-            source_batch_id=9001,
+            source_batch_id=source_batch_id,
             source_row=self._row,
         )
         self.fixes.append(fix)
@@ -1233,6 +1288,38 @@ def build_registry() -> dict[str, Any]:
         b.fix(sid, U(6, day, base_hour, 30), *IN_2)
         b.fix(sid, U(6, day, base_hour + 1, 0), *OUT_W)
 
+    # ---------------- S21 批次范围一致性（§2.0 scope/探测/覆盖 三者同批次）-----
+    # 同一艘船、同一段窗口里混入两个来源批次 9001 / 9002：
+    #   * 06:10 -> 06:35 两条区内报位间隔 1500 s（> 480 s 且 < 1800 s，两端位移很小）；
+    #   * 唯一夹在中间的报位 06:25 属于 9002，且远在 context_bbox 之外（24.0/52.0），
+    #     所以它一定不在观测上下文的状态序列里，只能靠越界探测发现；
+    #   * 另有 05:00 一条 9002 的区外报位（在外扩带内），用于区分「按批次筛过的扫描量」
+    #     与「不筛批次的扫描量」（6 vs 7）。
+    b.ship(121, "SAMPLE BATCH SCOPE", "油轮")
+    s21_start, s21_end = U(7, 20, 6), U(7, 20, 18)
+    b.fix(121, U(7, 20, 5, 0), *OUT_W, source_batch_id=9002)          # 9002，外扩带内、矩形外
+    b.fix(121, U(7, 20, 5, 40), *OUT_W)                               # 9001
+    b.fix(121, U(7, 20, 6, 0), *IN_1)                                 # 9001 区内
+    b.fix(121, U(7, 20, 6, 10), *IN_2)                                # 9001 区内
+    b.fix(121, U(7, 20, 6, 25), 24.000, 52.000, source_batch_id=9002)  # 9002，context 之外
+    b.fix(121, U(7, 20, 6, 35), *IN_2)                                # 9001 区内（与 06:10 相隔 1500 s）
+    b.fix(121, U(7, 20, 6, 50), *IN_3)                                # 9001 区内
+    b.fix(121, U(7, 20, 7, 10), *OUT_W)                               # 9001 区外（离开括号 1200 s）
+
+    # ---------------- S22 短时外出（用户场景，§2.0 v1.0.1 / §2.3 行 2）---------
+    # 船在区内；10 min 后出现在外扩带之外（距矩形南边 0.5°，位置绝对值不重要，
+    # 只要求它不在 context_bbox 内）；20 min 后回到区内相近位置。
+    # 两条区内报位间隔 1200 s：< gap_seconds(1800) 且两端位移约 5.4 km（约 8.8 kn），
+    # 不满足跳点条件 —— v1.0.0 会把它当连续停留，v1.0.1 因 1200 > 480 s 必须探测并拆分。
+    b.ship(122, "SAMPLE SHORT EXCURSION", "油轮")
+    s22_start, s22_end = U(7, 21, 6), U(7, 21, 18)
+    b.fix(122, U(7, 21, 5, 40), *OUT_W)                            # 进入括号 1200 s（非宽括号）
+    b.fix(122, U(7, 21, 6, 0), *IN_1)                              # 区内
+    s22_outside = b.fix(122, U(7, 21, 6, 10), 25.300, 56.400)      # 外扩带之外（context 之外）
+    b.fix(122, U(7, 21, 6, 20), *IN_2)                             # 回到区内相近位置
+    b.fix(122, U(7, 21, 6, 50), *OUT_W)                            # 离开括号 1800 s（非宽括号）
+    s22_removed_ids = [s22_outside.id]  # 负向对照要删掉的那条区外中间报位
+
     scenarios = [
         Scenario(
             name="S01_enter_exit",
@@ -1404,6 +1491,60 @@ def build_registry() -> dict[str, Any]:
             ship_ids=[],
             covers=["no_data"],
         ),
+        Scenario(
+            name="S21_batch_scope_consistency",
+            title="批次范围一致性：scope / 越界探测 / coverage 都只看 batch_ids=[9001]",
+            doc_ref="§2.0（观测上下文）/§2.3 行 2/§3 batch_ids/§4.3 coverage.batch_ids",
+            start=s21_start,
+            end=s21_end,
+            ship_ids=[121],
+            batch_ids=[9001],
+            covers=["batch_scope_consistency"],
+            notes="主请求 batch_ids=[9001]：06:10->06:35（1500 s）之间只有 9002 的区外报位，"
+            "按批次探测不到 -> 不拆分（1 次访问、3000 s）；filter 请求分别验证不带批次"
+            "（拆成两次访问，进入/离开各多 1 次）、油轮+9002（范围内只剩 1 条区外报位 -> 有效零结果）"
+            "与货船+9001（船型与批次同时生效 -> no_data）",
+            filter_checks=[
+                {
+                    "ship_type": None,
+                    "batch_ids": None,
+                    "note": "不带 batch_ids：9002 的中间报位成为越界证据 -> left_returned 两次访问",
+                },
+                {
+                    "ship_type": ["油轮"],
+                    "batch_ids": [9001, 9002],
+                    "note": "显式列出两个批次：与不带批次等价（两次访问），coverage 回显 [9001, 9002]",
+                },
+                {
+                    "ship_type": ["油轮"],
+                    "batch_ids": [9002],
+                    "note": "批次与船型可组合：9002 在范围内只有 1 条区外报位 -> 有效零结果（非 no_data）",
+                },
+                {
+                    "ship_type": ["货船"],
+                    "batch_ids": [9001],
+                    "note": "批次与船型同时生效：该窗口内没有货船报位 -> no_data",
+                },
+            ],
+        ),
+        Scenario(
+            name="S22_short_excursion",
+            title="短时外出：间隔 1200 s（<gap 但 >480 s）驶出外扩带再返回",
+            doc_ref="§2.0 有界越界探测（v1.0.1）/§2.3 行 2/§2.4",
+            start=s22_start,
+            end=s22_end,
+            ship_ids=[122],
+            covers=["short_excursion_probe"],
+            notes="两条区内报位 06:00/06:20 间隔 1200 s、位移约 5.4 km（约 8.8 kn，不构成跳点）；"
+            "06:10 的报位在 context_bbox 之外，只有越界探测能看到 -> 拆成两次访问，"
+            "两侧事件标 outside_evidence_out_of_context，外出的 1200 s 不计入时长（observed_seconds=0）；"
+            "removal_probe 删掉该报位后必须回到 1 次访问且该区间计入时长（无证据不拆分）",
+            removal_probe={
+                "fix_ids": s22_removed_ids,
+                "note": "删掉区外中间报位后：无越界证据 -> 一次访问，1200 s 计入停留时长"
+                        "（§2.3 行 1 / §2.0 残余限制：采样漏检）",
+            },
+        ),
     ]
 
     snapshots = [
@@ -1538,20 +1679,31 @@ def sample_registry() -> dict[str, Any]:
     return registry
 
 
+def _expected_bundle(analysis: dict[str, Any], batch_ids: Sequence[int] | None) -> dict[str, Any]:
+    """朴素复算结果 → 期望值（含 §4.3 coverage.batch_ids 与 limits.scanned_fix_count）。"""
+    return {
+        "summary": analysis["summary"],
+        "daily": {row["date"]: row for row in analysis["daily"]},
+        "daily_order": [row["date"] for row in analysis["daily"]],
+        "visits": {v["visit_key"]: v for v in analysis["visits"]},
+        "status_hint": analysis["status_hint"],
+        "ambiguities": analysis["ambiguities"],
+        # §4.3：批次条件同时作用于统计、上下文与越界探测；coverage.batch_ids 回显实际生效批次。
+        "coverage_batch_ids": _coverage_batch_ids(batch_ids),
+        # §2.0 scope = [start-lookback, end+lookahead) ∩ context_bbox ∩ 来源 ∩ 批次（∩ 船型）。
+        "scanned_fix_count": analysis["scope_fix_count"],
+    }
+
+
 def compute_expectations(registry: dict[str, Any]) -> None:
     ships = registry["ships"]
     fixes = registry["fixes"]
 
     for sc in registry["scenarios"]:
-        analysis = naive_analyze(ships, fixes, sc.rect, sc.start, sc.end, sc.params, sc.ship_types)
-        sc.expected = {
-            "summary": analysis["summary"],
-            "daily": {row["date"]: row for row in analysis["daily"]},
-            "daily_order": [row["date"] for row in analysis["daily"]],
-            "visits": {v["visit_key"]: v for v in analysis["visits"]},
-            "status_hint": analysis["status_hint"],
-            "ambiguities": analysis["ambiguities"],
-        }
+        analysis = naive_analyze(
+            ships, fixes, sc.rect, sc.start, sc.end, sc.params, sc.ship_types, sc.batch_ids
+        )
+        sc.expected = _expected_bundle(analysis, sc.batch_ids)
         if "left_returned_probe" in sc.covers:
             # §2.0 定版后该场景是硬断言：两条区内报位之间的区外报位（在 context_bbox 之外）
             # 经越界探测证明后把访问切成两次，两侧事件都算 wide_bracket 并标
@@ -1561,13 +1713,21 @@ def compute_expectations(registry: dict[str, Any]) -> None:
             ) + "§2.0 定版：越界探测命中 -> left_returned 两次访问（硬断言）"
         sc.filter_checks = list(sc.filter_checks)
         for check in sc.filter_checks:
-            sub = naive_analyze(ships, fixes, sc.rect, sc.start, sc.end, sc.params, check["ship_type"])
-            check["expected"] = {
-                "summary": sub["summary"],
-                "visits": {v["visit_key"]: v for v in sub["visits"]},
-                "status_hint": sub["status_hint"],
-                "ambiguities": sub["ambiguities"],
-            }
+            check_batches = check.get("batch_ids", sc.batch_ids)
+            sub = naive_analyze(
+                ships, fixes, sc.rect, sc.start, sc.end, sc.params,
+                check.get("ship_type"), check_batches,
+            )
+            check["expected"] = _expected_bundle(sub, check_batches)
+        if sc.removal_probe is not None:
+            removed = set(sc.removal_probe["fix_ids"])
+            remaining = [f for f in fixes if f.id not in removed]
+            after = naive_analyze(
+                ships, remaining, sc.rect, sc.start, sc.end, sc.params, sc.ship_types, sc.batch_ids
+            )
+            sc.removal_probe["expected"] = _expected_bundle(after, sc.batch_ids)
+            sc.removal_probe["removed_fix_count"] = len(removed)
+            sc.removal_probe["remaining_fix_count"] = len(remaining)
 
     for snap in registry["snapshots"]:
         snap.expected = naive_snapshot(
@@ -1654,6 +1814,8 @@ REQUIRED_COVERAGE = {
     "valid_zero": "有效零结果",
     "no_data": "no_data",
     "left_returned_probe": "left_returned 探针",
+    "short_excursion_probe": "短时外出探测（间隔 >480 s 且 <gap_seconds）",
+    "batch_scope_consistency": "批次范围一致性（scope/探测/覆盖同批次）",
     "snapshot_freshness": "快照新鲜度/过期/无回退",
     "compare_ab": "A/B 比较（含零基期）",
 }
@@ -1677,6 +1839,11 @@ HAND_CHECKED = {
     "S15_left_returned_probe": {"ships_observed": 1, "entries": 2, "exits": 2, "window_seconds": 1200.0},
     "S16_no_data": {"ships_observed": 0, "entries": 0, "exits": 0, "window_seconds": 0.0},
     "S20_fast_small_step_not_jump": {"ships_observed": 1, "entries": 1, "exits": 1, "window_seconds": 1800.0},
+    # S21（batch_ids=[9001]）：9002 的中间报位不算证据 -> 仍然是一次连续停留 06:00–06:50。
+    "S21_batch_scope_consistency": {"ships_observed": 1, "entries": 1, "exits": 1, "window_seconds": 3000.0},
+    # S22：06:00/06:20 两条单报位访问（各自 0 长度 segment），外出的 1200 s 不计入时长；
+    # 进入/离开各 2 次（相对“无证据”对照各多 1 次，且都落在窗口内）。
+    "S22_short_excursion": {"ships_observed": 1, "entries": 2, "exits": 2, "window_seconds": 0.0},
 }
 
 
@@ -1908,6 +2075,146 @@ def self_check(registry: dict[str, Any]) -> list[dict[str, Any]]:
         not drift,
         "两种口径在当前样例上一致" if not drift else f"存在差异（按 WARN 记录）：{drift}",
     )
+
+    # 17) 批次范围一致性（§2.0/§3/§4.3）：同一对区内报位之间只有 9002 的区外报位时，
+    #     batch_ids=[9001] 必须不拆分，且扫描量/覆盖批次都按 9001 计；不筛批次才拆。
+    s21 = next((sc for sc in registry["scenarios"] if sc.name == "S21_batch_scope_consistency"), None)
+    if s21 is None or not s21.expected or len(s21.filter_checks) < 4:
+        add("batch_scope_consistency", False, "缺少 S21 批次样例或其 filter 变体")
+    else:
+        own = sorted(
+            (f for f in registry["fixes"] if f.ship_id in set(s21.ship_ids)),
+            key=lambda f: (f.recorded_at, f.id),
+        )
+        inside = [f for f in own if inside_rect(f.latitude, f.longitude, s21.rect)]
+        pairs = list(zip(inside, inside[1:]))
+        mid = [
+            (a, b, f)
+            for a, b in pairs
+            for f in own
+            if a.recorded_at < f.recorded_at < b.recorded_at
+        ]
+        mid_outside = [item for item in mid if not inside_rect(item[2].latitude, item[2].longitude, s21.rect)]
+        main, no_filter, only_9002, wrong_type = (
+            s21.expected, s21.filter_checks[0]["expected"],
+            s21.filter_checks[2]["expected"], s21.filter_checks[3]["expected"],
+        )
+        pair_seconds = (
+            (mid_outside[0][1].recorded_at - mid_outside[0][0].recorded_at).total_seconds()
+            if mid_outside else None
+        )
+        checks = {
+            "中间区外报位只有一个且属于 9002": len(mid_outside) == 1
+            and mid_outside[0][2].source_batch_id == 9002,
+            "该对间隔在 (480, 1800) 内": pair_seconds is not None
+            and DEFAULT_PARAMS["excursion_probe_seconds"] < pair_seconds < DEFAULT_PARAMS["gap_seconds"],
+            "中间报位在 context 之外（只有探测能看到）": bool(mid_outside)
+            and not in_context(
+                mid_outside[0][2].latitude, mid_outside[0][2].longitude,
+                s21.rect, DEFAULT_PARAMS["context_margin_deg"],
+            ),
+            "batch_ids=[9001] 不拆分（1 次访问 3000 s）": len(main["visits"]) == 1
+            and abs(main["summary"]["observed_ship_seconds"] - 3000.0) < 1e-6
+            and main["coverage_batch_ids"] == [9001],
+            "不带批次拆成两次访问（+1 离开 +1 进入）": len(no_filter["visits"]) == 2
+            and no_filter["summary"]["observed_entry_count"] == main["summary"]["observed_entry_count"] + 1
+            and no_filter["summary"]["observed_exit_count"] == main["summary"]["observed_exit_count"] + 1
+            and no_filter["coverage_batch_ids"] == [9001, 9002],
+            "扫描量随批次变化（6 -> 7）": main["scanned_fix_count"] == 6
+            and no_filter["scanned_fix_count"] == 7
+            and only_9002["scanned_fix_count"] == 1,
+            "批次与船型组合都生效": len(only_9002["visits"]) == 0
+            and only_9002["status_hint"] == "ok"
+            and wrong_type["status_hint"] == "no_data"
+            and wrong_type["scanned_fix_count"] == 0,
+        }
+        bad = [name for name, ok in checks.items() if not ok]
+        detail = (
+            f"该对间隔 {pair_seconds}s；batch9001: 访问{len(main['visits'])}/扫描{main['scanned_fix_count']}；"
+            f"不带批次: 访问{len(no_filter['visits'])}/扫描{no_filter['scanned_fix_count']}；"
+            f"仅9002: 扫描{only_9002['scanned_fix_count']}；货船+9001: {wrong_type['status_hint']}"
+        )
+        add("batch_scope_consistency", not bad, detail if not bad else f"失败项：{bad} / {detail}")
+
+    # 18) 短时外出（§2.0 v1.0.1）：间隔 1200 s（>480、<1800）且位移小，唯一中间报位在
+    #     context 之外；有证据 -> 两次访问且该区间不计时长；删掉证据 -> 一次访问且计入时长。
+    s22 = next((sc for sc in registry["scenarios"] if sc.name == "S22_short_excursion"), None)
+    if s22 is None or not s22.expected or s22.removal_probe is None:
+        add("short_excursion_probe", False, "缺少 S22 短时外出样例或其负向对照")
+    else:
+        own = sorted(
+            (f for f in registry["fixes"] if f.ship_id in set(s22.ship_ids)),
+            key=lambda f: (f.recorded_at, f.id),
+        )
+        inside = [f for f in own if inside_rect(f.latitude, f.longitude, s22.rect)]
+        prev, cur = inside[0], inside[1]
+        between = [f for f in own if prev.recorded_at < f.recorded_at < cur.recorded_at]
+        gap_s = (cur.recorded_at - prev.recorded_at).total_seconds()
+        dist_km = haversine_m(prev.latitude, prev.longitude, cur.latitude, cur.longitude) / 1000.0
+        speed_kn = implied_speed_kn(prev, cur)
+        visits = list(s22.expected["visits"].values())
+        after = list(s22.removal_probe["expected"]["visits"].values())
+        checks = {
+            "间隔 1200 s 落在 (480, 1800)": abs(gap_s - 1200.0) < 1e-6
+            and DEFAULT_PARAMS["excursion_probe_seconds"] < gap_s <= DEFAULT_PARAMS["gap_seconds"],
+            "两端位移不足以判跳点": not (
+                dist_km >= DEFAULT_PARAMS["jump_min_distance_km"]
+                and speed_kn > DEFAULT_PARAMS["jump_speed_kn"]
+            ),
+            "唯一中间报位在 context 之外": len(between) == 1
+            and not in_context(
+                between[0].latitude, between[0].longitude,
+                s22.rect, DEFAULT_PARAMS["context_margin_deg"],
+            ),
+            "有证据 -> 两次访问、进出各 2（对照各多 1 次）": len(visits) == 2
+            and s22.expected["summary"]["observed_entry_count"] == 2
+            and s22.expected["summary"]["observed_exit_count"] == 2,
+            "外出的 1200 s 不计入时长": all(abs(v["observed_seconds"]) < 1e-6 for v in visits),
+            "拆分两侧（前段离开/后段进入）证据在上下文之外": len(visits) == 2
+            and all(v["flags"] == ["outside_evidence_out_of_context"] for v in visits)
+            and visits[0]["exit"]["outside_evidence_in_context"] is False
+            and visits[1]["entry"]["outside_evidence_in_context"] is False,
+            "无证据对照 -> 一次访问且 1200 s 计入时长": len(after) == 1
+            and abs(after[0]["observed_seconds"] - 1200.0) < 1e-6
+            and after[0]["flags"] == []
+            and s22.removal_probe["expected"]["summary"]["observed_entry_count"] == 1,
+            "§2.3 行 2 已按文档修正：wide = bracket_seconds > gap_seconds（两侧不无条件置位）": all(
+                v[side]["wide_bracket"]
+                == (
+                    v[side]["bracket_seconds"] is not None
+                    and v[side]["bracket_seconds"] > DEFAULT_PARAMS["gap_seconds"]
+                )
+                for v in visits
+                for side in ("entry", "exit")
+            )
+            and not any(
+                key.endswith((".wide_bracket", ".flags"))
+                for key in s22.expected["ambiguities"]
+            ),
+        }
+        # 反事实：把探测阈值退回 v1.0.0 的 gap_seconds(1800 s)，同一场景必须回到
+        # 「一次访问 + 1200 s」——说明本样例对「阈值 1800 s -> 480 s」这一修复有区分度。
+        legacy_params = dict(s22.params or {})
+        legacy_params["excursion_probe_seconds"] = DEFAULT_PARAMS["gap_seconds"]
+        legacy = naive_analyze(
+            registry["ships"], registry["fixes"], s22.rect, s22.start, s22.end,
+            legacy_params, s22.ship_types, s22.batch_ids,
+        )
+        checks["反事实（阈值退回 gap_seconds）-> 一次访问 1200 s"] = (
+            len(legacy["visits"]) == 1
+            and abs(legacy["summary"]["observed_ship_seconds"] - 1200.0) < 1e-6
+        )
+        bad = [name for name, ok in checks.items() if not ok]
+        detail = (
+            f"该对间隔 {gap_s:.0f}s、位移 {dist_km:.2f} km（{speed_kn:.1f} kn）；"
+            f"有证据: 访问{len(visits)} 进入{s22.expected['summary']['observed_entry_count']} "
+            f"离开{s22.expected['summary']['observed_exit_count']} 时长{s22.expected['summary']['observed_ship_seconds']}s "
+            f"宽括号={[v['entry']['wide_bracket'] or v['exit']['wide_bracket'] for v in visits]}（§2.3 行 2 "
+            f"2026-10-07 已改为按 bracket_seconds > gap_seconds 判定，两侧括号 600 s -> false，"
+            f"与实现一致，不再登记备选口径）；"
+            f"无证据对照: 访问{len(after)} 时长{s22.removal_probe['expected']['summary']['observed_ship_seconds']}s"
+        )
+        add("short_excursion_probe", not bad, detail if not bad else f"失败项：{bad} / {detail}")
 
     return results
 

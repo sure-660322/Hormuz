@@ -2,25 +2,33 @@
 
 流程：
   1. self-check：调用 `scripts/area_activity_samples.py` 的内存内自查（单位、半开边界、
-     手算期望值、裁剪恒等式、场景隔离、覆盖度）。
+     手算期望值、裁剪恒等式、场景隔离、覆盖度、批次范围一致性、短时外出探测）。
   2. 重建独立测试库 `hormuz_area_test`（只碰这个库，绝不写 `aisdb`），启用 PostGIS，
-     按真实结构建立最小 `ships` / `ship_positions`（含 geography 生成列与两个索引），
-     插入全部合成报位；随后把库里的报位读回、用朴素复算再算一遍期望值（不走接口），
-     确认写的和算的是同一批数据。
+     按真实结构建立最小 `ships` / `ship_positions`（含 geography 生成列与两个索引）与
+     `ais_import_batches`（9001/9002 两行，`coverage.batch_ids` 读它），插入全部合成报位；
+     随后把库里的报位读回、用朴素复算再算一遍期望值（不走接口），确认写的和算的是同一批数据。
   3. 用 FastAPI TestClient 调 `/api/area-activity/{activity,snapshot,compare}`，
      把响应与期望值逐字段比对，打印 PASS/WARN/FAIL 明细表。
   4. 参数校验（§1.3）、`no_data` 与「有效零结果」区分（§2.6）、`visit_limit` 截断（§4.3，
      截断时 status 必须为 partial）。
   5. 证据写入 `docs/area_activity_samples_result.json`。
 
-2026-10-07 定版口径对应的比对强度（本轮复验）：
+2026-10-07 定版口径（`area_activity/1.0.1`）对应的比对强度（本轮复验）：
   * `flags` 按 §2.4 的 8 个取值逐字比对（不再按语义等价名放宽）；
   * 明细比对 `segment_count`、每段 `fix_count`、`entry/exit.in_window`、
     `wide_bracket`、`outside_evidence_in_context`；
   * 每日比对 `visits_touching_day` 与 4 个状态计数（§5.3）；
   * 比较口径按 §2.5 比对 `window_days`（自然日）、`window_length_days`（实际长度）、
     `equal_length`（实际长度相等）与日均指标（分母 = 实际长度）；
-  * 跳点回归样例 S20：位移 <1 km 但推算速度 >30 kn 必须不判 `jump_break`。
+  * 跳点回归样例 S20：位移 <1 km 但推算速度 >30 kn 必须不判 `jump_break`；
+  * 本轮新增：`coverage.batch_ids` 与 `limits.scanned_fix_count` 逐场景比对（§2.0/§3/§4.3），
+    S21 复验「批次条件同时作用于上下文、越界探测与覆盖统计」，S22 复验
+    「间隔 >480 s 且 <gap_seconds 的短时外出必须拆分」并用删除报位的负向对照复验
+    「无证据不拆分」；
+  * §2.3 行 2 的 left_returned 分歧已了结（2026-10-07）：文档已按实现口径修正为
+    「两侧事件按 §2.3 统一规则判定 wide_bracket，即 bracket_seconds > gap_seconds 才为 true」，
+    比对改为按该口径硬断言 `wide_bracket == (bracket_seconds > gap_seconds)`；
+    原分歧记录保留在 `doc_implementation_divergences`（status=resolved，不删）。
 
 退出码：实现未就绪 = 2；有 FAIL = 1；只有 PASS/WARN = 0。
 本脚本不修改 backend/**，也不写业务库；.env 只用于读取连接变量，不打印任何凭据。
@@ -70,7 +78,44 @@ ACTIVITY_PATH = f"{API_PREFIX}/activity"
 SNAPSHOT_PATH = f"{API_PREFIX}/snapshot"
 COMPARE_PATH = f"{API_PREFIX}/compare"
 DEFAULT_AREA_PATH = f"{API_PREFIX}/default-area"
-BATCH_ID = 9001                       # 样例报位统一使用的 source_batch_id
+BATCH_ID = 9001                       # 样例报位默认使用的 source_batch_id
+# S21 用两个批次验证「批次范围一致性」：9001 为默认批次，9002 只出现在 S21 的少量报位上。
+# 测试库必须有两行（coverage.batch_ids 读取 ais_import_batches，不是报位上出现过的批次）。
+BATCH_METADATA = {
+    9001: "synthetic_area_activity_samples.csv",
+    9002: "synthetic_area_activity_batch_9002.csv",
+}
+
+# --- 文档 vs 实现的口径分歧记录（历史；写入证据文件并在输出中提示）------------
+# 本列表保留**可追溯性**：已解决的分歧不删除，只改 status；未解决的分歧按 WARN 记录。
+DOC_IMPLEMENTATION_DIVERGENCES: list[dict[str, Any]] = [
+    {
+        "id": "left_returned_wide_bracket_on_short_excursion",
+        "status": "resolved",
+        "resolved_on": "2026-10-07",
+        "resolution": "文档已按实现口径修正：docs/area_activity.md §2.3 表格第 2 行（left_returned 行）"
+                      "现写明「两侧事件按 §2.3 统一规则判定 wide_bracket（即 bracket_seconds > "
+                      "gap_seconds 才为 true，不是无条件置位）」，与实现一致；本脚本的比对随之从"
+                      "WARN 改为硬断言 wide_bracket == (bracket_seconds > gap_seconds)，"
+                      "重跑不再产生这 3 条 WARN。",
+        "doc_ref": "docs/area_activity.md §2.3 表格第 2 行（left_returned 行）/ §2.4 flags",
+        "doc_literal_before": "只要判定为 left_returned，两侧事件（前段的离开、后段的进入）都标 wide_bracket",
+        "doc_literal_now": "两侧事件按 §2.3 统一规则判定 wide_bracket"
+                           "（即 bracket_seconds > gap_seconds 才为 true，不是无条件置位）",
+        "implementation": "按 bracket_seconds > gap_seconds(1800 s) 判定 wide_bracket"
+                          "（backend/app/services/area_activity/algorithm.py:248 与 :292），"
+                          "短时外出的括号各只有 600 s -> 不标",
+        "scenes": ["S22_short_excursion", "S21_batch_scope_consistency(不带批次变体)"],
+        "former_severity": "WARN",
+        "former_actual": "拆分、计数、时长、outside_evidence_out_of_context 均与文档一致；"
+                         "仅 wide_entry_bracket/wide_exit_bracket 与当时的 §2.3 行 2 字面不符",
+        "impact": "只影响 flags 与 entry/exit.wide_bracket 两个字段的取值，不影响访问次数、"
+                  "进出计数、时长与 status（两侧事件已因 outside_evidence_out_of_context 归为 uncertain）",
+        "chosen_option": "改文档（原 options[0]）：§2.3 行 2 写明按 bracket_seconds 是否超过 "
+                         "gap_seconds 判定 wide_bracket",
+        "not_chosen_option": "改实现：left_returned 拆分时无条件给两侧事件置 wide_bracket=true",
+    }
+]
 
 # --- 真实结构（用 information_schema 只读核对后的最小子集，见交付说明）------
 DDL_STATEMENTS = [
@@ -385,19 +430,42 @@ def rebuild_test_database() -> dict[str, Any]:
             INSERT_BATCH,
             [
                 {
-                    "id": BATCH_ID,
-                    "source_file": "synthetic_area_activity_samples.csv",
-                    "source_sha256": "0" * 64,
-                    "source_day": min(f.recorded_at for f in samples.ALL_FIXES).date(),
+                    "id": batch_id,
+                    "source_file": BATCH_METADATA[batch_id],
+                    "source_sha256": f"{batch_id:064d}"[:64],
+                    "source_day": min(
+                        f.recorded_at for f in samples.ALL_FIXES
+                        if f.source_batch_id == batch_id
+                    ).date(),
                     "data_source": "nnu_ais",
                     "file_size_bytes": 0,
-                    "expected_rows": len(samples.ALL_FIXES),
-                    "inserted_rows": len(samples.ALL_FIXES),
+                    "expected_rows": sum(
+                        1 for f in samples.ALL_FIXES if f.source_batch_id == batch_id
+                    ),
+                    "inserted_rows": sum(
+                        1 for f in samples.ALL_FIXES if f.source_batch_id == batch_id
+                    ),
                 }
+                for batch_id in sorted(
+                    {f.source_batch_id for f in samples.ALL_FIXES if f.source_batch_id is not None}
+                    | set(BATCH_METADATA)
+                )
             ],
         )
         info["ships_rows"] = conn.execute(text("SELECT count(*) FROM ships")).scalar_one()
         info["positions_rows"] = conn.execute(text("SELECT count(*) FROM ship_positions")).scalar_one()
+        info["batches"] = [
+            {"id": row[0], "source_day": str(row[1]), "inserted_rows": row[2]}
+            for row in conn.execute(
+                text("SELECT id, source_day, inserted_rows FROM ais_import_batches ORDER BY id")
+            )
+        ]
+        info["fixes_per_batch"] = {
+            str(row[0]): row[1]
+            for row in conn.execute(
+                text("SELECT source_batch_id, count(*) FROM ship_positions GROUP BY 1 ORDER BY 1")
+            )
+        }
         info["location_not_null"] = conn.execute(
             text("SELECT count(*) FROM ship_positions WHERE location IS NOT NULL")
         ).scalar_one()
@@ -542,11 +610,16 @@ def check_area_and_algorithm(runner: Runner, scene: str, body: dict[str, Any], s
                            "§1.2 默认区域回显 true，自定义矩形回显 false")
     algorithm = body.get("algorithm")
     blob = json.dumps(_jsonable(algorithm), ensure_ascii=False)
-    if "1.0.0" in blob or samples.ALGORITHM_VERSION in blob:
+    # 实现回显的是 {name: "area_activity", version: "1.0.1"}，文档写的是 area_activity/1.0.1；
+    # 两种写法都接受，但名称与版本必须同时出现（避免把 1.0.0 误判为通过）。
+    algo_name, _, algo_version = samples.ALGORITHM_VERSION.partition("/")
+    if samples.ALGORITHM_VERSION in blob or (
+        algo_name in blob and algo_version and algo_version in blob
+    ):
         runner.add(scene, "algorithm.version", samples.ALGORITHM_VERSION, blob[:80], "PASS")
     else:
         runner.warn(scene, "algorithm.version", samples.ALGORITHM_VERSION, blob[:80],
-                    "§2 算法版本 area_activity/1.0.0 应随结果回显")
+                    f"§2/§3 算法版本 {samples.ALGORITHM_VERSION} 应随结果回显")
 
 
 def check_activity_summary(
@@ -583,6 +656,64 @@ def _check_known_extra_fields(
     if missing:
         runner.warn(scene, "response.extra_fields", list(required), missing,
                     "响应字段缺失（同场景只报一次）")
+
+
+def check_coverage_and_limits(
+    runner: Runner, scene: str, body: dict[str, Any], expected: dict[str, Any],
+    requested_batch_ids: Sequence[int] | None = None,
+) -> None:
+    """§4.3/§3：coverage.batch_ids 回显实际生效批次，limits.scanned_fix_count = scope 内报位数。
+
+    scope = [start-lookback, end+lookahead) ∩ context_bbox ∩ 来源 ∩ 批次（∩ 船型），
+    与越界探测、覆盖统计必须同批次（§2.0）。
+    """
+    coverage = body.get("coverage")
+    exp_batches = expected.get("coverage_batch_ids")
+    if exp_batches is not None:
+        if isinstance(coverage, dict):
+            value, used = _pick(coverage, ["batch_ids", "batches", "effective_batch_ids"])
+            if used is None:
+                runner.warn(scene, "coverage.batch_ids", exp_batches, sorted(coverage),
+                            "§4.3 要求 coverage.batch_ids 回显实际生效批次")
+            else:
+                actual = sorted(int(v) for v in value) if isinstance(value, list) else value
+                runner.compare(scene, "coverage.batch_ids", sorted(exp_batches), actual, None, 1e-6,
+                               "§2.0/§3/§4.3 批次条件同时作用于统计、上下文与越界探测")
+        else:
+            runner.warn(scene, "coverage.batch_ids", exp_batches, type(coverage).__name__,
+                        "§4.3 响应应含 coverage")
+    exp_scanned = expected.get("scanned_fix_count")
+    if exp_scanned is not None:
+        limits = body.get("limits")
+        if isinstance(limits, dict):
+            value, used = _pick(limits, ["scanned_fix_count", "scoped_fix_count"])
+            if used is None:
+                runner.warn(scene, "limits.scanned_fix_count", exp_scanned, sorted(limits),
+                            "§2.0 scope 内报位数应回显（limits.scanned_fix_count）")
+            else:
+                runner.compare(scene, "limits.scanned_fix_count", exp_scanned, value, None, 1e-6,
+                               "§2.0 scope=[start-lookback,end+lookahead)∩context∩来源∩批次（∩船型）")
+        else:
+            runner.warn(scene, "limits.scanned_fix_count", exp_scanned, type(limits).__name__,
+                        "§4.3 响应应含 limits")
+    # query.filters.batch_ids 文档未规定（§4.3 只写了 query/coverage），作为附加回显软比对：
+    # 它回显的是**请求的筛选**（不筛批次时为 null），与 coverage.batch_ids（实际生效批次）语义不同。
+    query = body.get("query")
+    filters = query.get("filters") if isinstance(query, dict) else None
+    if isinstance(filters, dict) and "batch_ids" in filters:
+        actual = filters.get("batch_ids")
+        want = sorted(requested_batch_ids) if requested_batch_ids else None
+        matches = (
+            (want is None and not actual)
+            or (want is not None and _values_equal(want, sorted(actual), 1e-6))
+        )
+        if matches:
+            runner.add(scene, "query.filters.batch_ids", want, actual, "PASS",
+                       "§3 filters.batch_ids 回显请求的批次筛选（未筛时为 null，文档未规定，附加）")
+        else:
+            runner.warn(scene, "query.filters.batch_ids", want, actual,
+                        "§4.3 未规定 query.filters.batch_ids；它应回显请求的筛选，"
+                        "coverage.batch_ids 才是文档要求的「实际生效批次」")
 
 
 def check_activity_daily(
@@ -831,6 +962,157 @@ def check_compare(runner: Runner, client: Any, cmp_scn: Any) -> dict[str, Any]:
     return {"scene": scene, "status_code": 200, "metrics": metrics}
 
 
+def run_removal_probe(runner: Runner, client: Any, sc: Any) -> dict[str, Any]:
+    """负向对照：临时删掉指定报位（只动测试库 `hormuz_area_test`），重跑同一请求后恢复。
+
+    S22 用它验证「无区外证据时不拆分」仍是定版口径（§2.3 行 1 + §2.0 残余限制）。
+    """
+    probe = sc.removal_probe
+    scene = f"{sc.name}::removal"
+    remove_ids = list(probe["fix_ids"])
+    remove_set = set(remove_ids)
+    restore_rows = [
+        {
+            "id": f.id, "ship_id": f.ship_id, "latitude": f.latitude, "longitude": f.longitude,
+            "speed": f.speed, "recorded_at": f.recorded_at, "data_source": f.data_source,
+            "source_batch_id": f.source_batch_id, "source_row": f.source_row,
+        }
+        for f in samples.ALL_FIXES if f.id in remove_set
+    ]
+    result: dict[str, Any] = {"scene": scene, "removed_fix_ids": remove_ids,
+                              "note": probe.get("note", "")}
+    engine = create_engine(db_url(TEST_DB))
+    try:
+        with engine.begin() as conn:
+            for fix_id in remove_ids:
+                conn.execute(text("DELETE FROM ship_positions WHERE id = :id"), {"id": fix_id})
+        response = client.get(ACTIVITY_PATH, params=sc.query_params())
+        runner.compare(scene, "http_status", 200, response.status_code, None, 1e-6,
+                       "删掉证据后同一场景仍应正常返回")
+        if response.status_code == 200:
+            body = response.json()
+            expected = probe["expected"]
+            check_json_health(runner, scene, response, body)
+            check_activity_summary(runner, scene, body, expected, expected["ambiguities"])
+            check_activity_visits(runner, scene, body, expected, expected["ambiguities"])
+            check_coverage_and_limits(runner, scene, body, expected, sc.batch_ids)
+            visits = body.get("visits") or []
+            summary = body.get("summary") if isinstance(body.get("summary"), dict) else {}
+            seconds, _ = _pick(summary, SUMMARY_KEYS["observed_ship_seconds"])
+            entries, _ = _pick(summary, SUMMARY_KEYS["observed_entry_count"])
+            runner.compare(scene, "control.visit_count", 1, len(visits), None, 1e-6,
+                           "§2.0 残余限制：AIS 静默（无区外证据）时不拆分，属采样漏检")
+            runner.compare(scene, "control.observed_ship_seconds", 1200.0, seconds, None, 1e-3,
+                           "§2.3 行 1：间隔 1200 s ≤ gap_seconds 且无中间报位 -> 该区间计入停留时长")
+            runner.compare(scene, "control.observed_entry_count", 1, entries, None, 1e-6,
+                           "对照：进入 1 次（有证据时 2 次）")
+            result.update({
+                "kind": "removal_control",
+                "batch_ids": sc.batch_ids,
+                "visits": len(visits),
+                "visit_keys": sorted(
+                    v.get("visit_key") for v in visits if isinstance(v, dict)
+                ),
+                "observed_ship_seconds": seconds,
+                "actual_summary": summary,
+                "expected_summary": expected["summary"],
+                "actual_coverage_batch_ids": (body.get("coverage") or {}).get("batch_ids")
+                if isinstance(body.get("coverage"), dict) else None,
+                "expected_coverage_batch_ids": expected.get("coverage_batch_ids"),
+                "actual_scanned_fix_count": (body.get("limits") or {}).get("scanned_fix_count")
+                if isinstance(body.get("limits"), dict) else None,
+                "expected_scanned_fix_count": expected.get("scanned_fix_count"),
+            })
+    except Exception:
+        runner.fail(scene, "exception", "无异常", traceback.format_exc(limit=3), "负向对照异常")
+    finally:
+        try:
+            with engine.begin() as conn:
+                if restore_rows:
+                    conn.execute(INSERT_FIX, restore_rows)
+                restored = conn.execute(
+                    text("SELECT count(*) FROM ship_positions WHERE id = ANY(:ids)"),
+                    {"ids": remove_ids},
+                ).scalar_one()
+            runner.compare(scene, "control.restored", len(remove_ids), int(restored), None, 1e-6,
+                           "对照结束后把删除的报位写回测试库（保持库与样例一致，便于 --skip-db 复跑）")
+        finally:
+            engine.dispose()
+    return result
+
+
+def check_excursion_expectations(runner: Runner, scene: str, body: dict[str, Any]) -> None:
+    """S22（短时外出）的显式断言：拆分 + 进出各多 1 次 + 外出区间不计时长 + 证据在上下文之外。
+
+    两侧事件的 `wide_bracket` 不再按「left_returned 无条件置位」比对：2026-10-07 文档已把
+    §2.3 行 2 改成按 §2.3 统一规则判定（bracket_seconds > gap_seconds），故短时外出应为 false，
+    由 `check_wide_bracket_rule` 硬断言（原分歧记录见 DOC_IMPLEMENTATION_DIVERGENCES，已 resolved）。
+    """
+    visits = body.get("visits")
+    summary = body.get("summary") if isinstance(body.get("summary"), dict) else {}
+    if not isinstance(visits, list):
+        runner.fail(scene, "excursion.visits.present", "数组", visits, "§4.3 visits[]")
+        return
+    entries, _ = _pick(summary, SUMMARY_KEYS["observed_entry_count"])
+    exits, _ = _pick(summary, SUMMARY_KEYS["observed_exit_count"])
+    seconds, _ = _pick(summary, SUMMARY_KEYS["observed_ship_seconds"])
+    runner.compare(scene, "excursion.visit_count", 2, len(visits), None, 1e-6,
+                   "§2.0 v1.0.1：间隔 1200 s > excursion_probe_seconds(480 s) 必须探测 -> 拆成两次访问")
+    runner.compare(scene, "excursion.observed_entry_count", 2, entries, None, 1e-6,
+                   "有证据时进入 2 次（无证据对照 1 次，即外出各多 1 次）")
+    runner.compare(scene, "excursion.observed_exit_count", 2, exits, None, 1e-6,
+                   "有证据时离开 2 次（无证据对照 1 次，即外出各多 1 次）")
+    runner.compare(scene, "excursion.observed_ship_seconds", 0.0, seconds, None, 1e-3,
+                   "§2.4：外出的 1200 s 不计入停留时长（两条单报位访问都是 0 长度 segment）")
+    if len(visits) >= 2:
+        split_flags = [visits[0].get("exit"), visits[-1].get("entry")]
+        evidence = [
+            side.get("outside_evidence_in_context") if isinstance(side, dict) else None
+            for side in split_flags
+        ]
+        runner.compare(scene, "excursion.split_sides_outside_evidence_out_of_context",
+                       [False, False], evidence, None, 1e-6,
+                       "§2.3 行 2：拆分两侧的区外证据都在 context_bbox 之外")
+
+
+def _gap_seconds(sc: Any) -> float:
+    """场景生效的 gap_seconds（场景未覆盖时取 §3 默认值 1800 s）。"""
+    return float((getattr(sc, "params", None) or {}).get(
+        "gap_seconds", samples.DEFAULT_PARAMS["gap_seconds"]))
+
+
+def check_wide_bracket_rule(
+    runner: Runner, scene: str, body: dict[str, Any], gap_seconds: float,
+) -> None:
+    """§2.3 统一规则（2026-10-07 文档已按该口径修正）：`wide_bracket == (bracket_seconds > gap_seconds)`。
+
+    left_returned 拆分的两侧事件**不再**无条件置位：短时外出（括号只有数百秒 ≤ gap_seconds）
+    应为 false。未观测事件没有括号区间（§4.5，bracket_seconds=null）-> 期望 false。
+    原「文档字面 vs 实现」分歧见 DOC_IMPLEMENTATION_DIVERGENCES（status=resolved）；
+    该分歧了结后本断言由 WARN 改为硬比对，不再产生 WARN。
+    """
+    visits = [v for v in (body.get("visits") or []) if isinstance(v, dict)]
+    if not visits:
+        return
+    expected: dict[str, Any] = {}
+    actual: dict[str, Any] = {}
+    for visit in visits:
+        visit_key = visit.get("visit_key")
+        for side in ("entry", "exit"):
+            node = visit.get(side)
+            if not isinstance(node, dict):
+                continue
+            bracket = node.get("bracket_seconds")
+            path = f"visits[{visit_key}].{side}.wide_bracket"
+            expected[path] = bool(
+                bracket is not None and float(bracket) > gap_seconds
+            )
+            actual[path] = node.get("wide_bracket")
+    runner.compare(scene, "wide_bracket.rule", expected, actual, None, 1e-6,
+                   f"§2.3 统一规则：wide_bracket = bracket_seconds > gap_seconds({gap_seconds:g})，"
+                   "left_returned 两侧不无条件置位（左记为 resolved，见 doc_implementation_divergences）")
+
+
 def check_validation(runner: Runner, client: Any, case: Any) -> dict[str, Any]:
     scene = case.name
     path = {"activity": ACTIVITY_PATH, "snapshot": SNAPSHOT_PATH, "compare": COMPARE_PATH}[case.endpoint]
@@ -897,7 +1179,7 @@ def db_roundtrip_check(runner: Runner, registry: dict[str, Any], db_fixes: list[
     drift: list[str] = []
     for sc in registry["scenarios"]:
         analysis = samples.naive_analyze(
-            db_ships, db_fixes, sc.rect, sc.start, sc.end, sc.params, sc.ship_types
+            db_ships, db_fixes, sc.rect, sc.start, sc.end, sc.params, sc.ship_types, sc.batch_ids
         )
         for key in ("ships_observed", "observed_entry_count", "observed_exit_count",
                     "observed_ship_seconds"):
@@ -924,11 +1206,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         "run_started_at": started.isoformat(),
         "doc_baseline": {
             "doc": "docs/area_activity.md",
-            "note": "按 2026-10-07 定版口径复核：§2.0 有界越界探测、§2.3 jump_min_distance_km=1.0 "
-                    "与 unobserved_gap_seconds 含 gap+jump、§2.4 每日=当日∩窗口 与 status 优先级/8 个 "
-                    "flags、§2.5 window_days(自然日) 与 window_length_days(实际长度)、§2.6 partial "
-                    "触发条件、§4.5 entry/exit.in_window 与 segment_count/每段 fix_count",
+            "note": "按 2026-10-07 定版口径（area_activity/1.0.1）复核：§2.0 观测上下文/越界探测/"
+                    "覆盖统计同批次与 excursion_probe_seconds=480 s、§2.3 jump_min_distance_km=1.0 "
+                    "与 unobserved_gap_seconds 含 gap+jump、§2.4 每日=当日∩窗口 与 status 优先级/"
+                    "8 个 flags、§2.5 window_days(自然日) 与 window_length_days(实际长度)、"
+                    "§2.6 partial 触发条件、§4.5 entry/exit.in_window 与 segment_count/每段 fix_count",
             "expected_source": "scripts/area_activity_samples.py（不 import backend，只读文档）",
+            "new_samples_this_round": [
+                "S21_batch_scope_consistency（batch_ids 同时作用于 scope/越界探测/coverage）",
+                "S22_short_excursion + removal_control（短时外出与无证据对照）",
+            ],
         },
         "python": {
             "executable": sys.executable,
@@ -985,6 +1272,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         evidence["checks"] = [c.as_dict() for c in runner.checks]
         evidence["summary"] = runner.counts()
         evidence["failures"] = [c.as_dict() for c in runner.checks if c.status == "FAIL"]
+        evidence["doc_implementation_divergences"] = DOC_IMPLEMENTATION_DIVERGENCES
         evidence["ambiguities"] = _collect_ambiguities(registry)
         evidence["run_finished_at"] = datetime.now(UTC).isoformat()
         evidence["duration_seconds"] = round(time.time() - t0, 3)
@@ -1011,12 +1299,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                 check_activity_summary(runner, sc.name, body, sc.expected, sc.expected["ambiguities"])
                 check_activity_daily(runner, sc.name, body, sc.expected, sc.expected["ambiguities"])
                 check_activity_visits(runner, sc.name, body, sc.expected, sc.expected["ambiguities"])
+                check_coverage_and_limits(runner, sc.name, body, sc.expected, sc.batch_ids)
+                if sc.removal_probe is not None:
+                    check_excursion_expectations(runner, sc.name, body)
+                check_wide_bracket_rule(runner, sc.name, body, _gap_seconds(sc))
                 scenario_results.append(
                     {
                         "scene": sc.name,
                         "kind": "activity",
+                        "batch_ids": sc.batch_ids,
                         "actual_summary": body.get("summary"),
                         "expected_summary": sc.expected["summary"],
+                        "actual_coverage_batch_ids": (body.get("coverage") or {}).get("batch_ids")
+                        if isinstance(body.get("coverage"), dict) else None,
+                        "expected_coverage_batch_ids": sc.expected.get("coverage_batch_ids"),
+                        "actual_scanned_fix_count": (body.get("limits") or {}).get("scanned_fix_count")
+                        if isinstance(body.get("limits"), dict) else None,
+                        "expected_scanned_fix_count": sc.expected.get("scanned_fix_count"),
+                        "visit_keys": sorted(
+                            v.get("visit_key") for v in (body.get("visits") or [])
+                            if isinstance(v, dict)
+                        ),
                     }
                 )
             else:
@@ -1024,6 +1327,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         except Exception:
             runner.fail(sc.name, "exception", "无异常", traceback.format_exc(limit=3),
                         "场景执行异常")
+        # 负向对照（S22：删掉区外中间报位后必须仍是一次访问）
+        if sc.removal_probe is not None:
+            try:
+                scenario_results.append(run_removal_probe(runner, client, sc))
+            except Exception:
+                runner.fail(f"{sc.name}::removal", "exception", "无异常",
+                            traceback.format_exc(limit=3), "负向对照异常")
         # visit_limit 截断探针（§3/§4.3：汇总不受截断影响）
         if sc.name == "S04_boundary_half_open":
             probe = client.get(ACTIVITY_PATH, params=sc.query_params(visit_limit=2))
@@ -1042,24 +1352,42 @@ def main(argv: Sequence[str] | None = None) -> int:
                                pbody.get("status"), None, 1e-6,
                                "§2.6 定版：访问明细被 visit_limit 截断 -> partial（汇总仍完整）")
 
-    # --- 4) 船型筛选 ---
+    # --- 4) 船型 / 批次筛选（可组合）---
     for sc in registry["scenarios"]:
         if args.only and args.only not in sc.name:
             continue
         for idx, check in enumerate(sc.filter_checks, start=1):
             scene = f"{sc.name}::filter{idx}"
-            params = [(k, v) for k, v in sc.query_params() if k != "ship_type"]
-            for value in check["ship_type"]:
+            params = [(k, v) for k, v in sc.query_params() if k not in ("ship_type", "batch_ids")]
+            for value in check.get("ship_type") or []:
                 params.append(("ship_type", value))
+            for batch in check.get("batch_ids") or []:
+                params.append(("batch_ids", str(batch)))
             response = client.get(ACTIVITY_PATH, params=params)
             runner.compare(scene, "http_status", 200, response.status_code, None, 1e-6)
             if response.status_code != 200:
                 continue
             body = response.json()
-            runner.compare(scene, "ship_type", check["ship_type"], check["ship_type"], None, 1e-6,
+            runner.compare(scene, "ship_type", check.get("ship_type"), check.get("ship_type"), None, 1e-6,
                            check.get("note", ""))
+            runner.compare(scene, "batch_ids", check.get("batch_ids", sc.batch_ids),
+                           check.get("batch_ids", sc.batch_ids), None, 1e-6,
+                           "§4.3 batch_ids 与 ship_type 可组合，两者同时生效")
             check_activity_summary(runner, scene, body, check["expected"], check["expected"]["ambiguities"])
             check_activity_visits(runner, scene, body, check["expected"], check["expected"]["ambiguities"])
+            check_coverage_and_limits(
+                runner, scene, body, check["expected"], check.get("batch_ids", sc.batch_ids)
+            )
+            check_wide_bracket_rule(runner, scene, body, _gap_seconds(sc))
+            if sc.batch_ids:
+                visits = body.get("visits") or []
+                runner.compare(
+                    scene, "batch.split_state",
+                    "split" if len(check["expected"]["visits"]) > 1 else "single",
+                    "split" if len(visits) > 1 else "single",
+                    None, 1e-6,
+                    "§2.0/§2.3：越界探测是否命中 -> 该对被拆成两次访问还是保持一次",
+                )
 
     # --- 5) 快照样例 ---
     for snap in registry["snapshots"]:
@@ -1096,10 +1424,36 @@ def main(argv: Sequence[str] | None = None) -> int:
         response = client.get(DEFAULT_AREA_PATH)
         runner.compare("default_area", "http_status", 200, response.status_code, None, 1e-6)
         if response.status_code == 200:
-            blob = json.dumps(_jsonable(response.json()), ensure_ascii=False)
+            payload = _jsonable(response.json())
+            blob = json.dumps(payload, ensure_ascii=False)
             for token in (samples.DEFAULT_AREA_ID, "55.8", "57.1", "25.8", "27.1"):
                 runner.compare("default_area", f"contains[{token}]", True, token in blob, None, 1e-6,
                                "§4.1 回显默认区域")
+            # §4.1 要求回显算法版本；§3 的 v1.0.1 新参数（480 s 探测阈值与它依据的最大可信航速）
+            algo_name, _, algo_version = samples.ALGORITHM_VERSION.partition("/")
+            version_ok = algo_name in blob and algo_version in blob
+            if version_ok:
+                runner.add("default_area", "algorithm.version", samples.ALGORITHM_VERSION,
+                           algo_version, "PASS", "§4.1 default-area 回显算法版本")
+            else:
+                runner.warn("default_area", "algorithm.version", samples.ALGORITHM_VERSION, blob[:80],
+                            "§4.1 default-area 应回显算法版本")
+            descriptor = payload.get("algorithm") if isinstance(payload, dict) else None
+            algo_params = descriptor.get("params") if isinstance(descriptor, dict) else None
+            algo_params = algo_params if isinstance(algo_params, dict) else {}
+            for key, value in (
+                ("excursion_probe_seconds", int(samples.DEFAULT_PARAMS["excursion_probe_seconds"])),
+                ("max_plausible_speed_kn", samples.DEFAULT_PARAMS["max_plausible_speed_kn"]),
+                ("gap_seconds", int(samples.DEFAULT_PARAMS["gap_seconds"])),
+                ("context_margin_deg", samples.DEFAULT_PARAMS["context_margin_deg"]),
+            ):
+                actual = algo_params.get(key)
+                if _values_equal(value, actual, 1e-6):
+                    runner.add("default_area", f"algorithm.params.{key}", value, actual, "PASS",
+                               "§3 参数与默认值随算法描述回显")
+                else:
+                    runner.warn("default_area", f"algorithm.params.{key}", value, actual,
+                                "§3 参数与默认值应随算法描述回显（文档未规定该字段结构，按 WARN 记录）")
     except Exception:
         runner.fail("default_area", "exception", "无异常", traceback.format_exc(limit=3))
 
@@ -1143,10 +1497,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                   f"期望={_shown(node['sample']['expected'], 60)} 实际={_shown(node['sample']['actual'], 60)}")
         print()
 
+    print("== 文档 vs 实现的口径分歧记录（历史可追溯；未解决者按 WARN，不计入 FAIL）==")
+    for item in DOC_IMPLEMENTATION_DIVERGENCES:
+        head = "[已解决]" if item.get("status") == "resolved" else "[WARN]"
+        print(f"{head} {item['id']} :: {item['doc_ref']}")
+        if item.get("status") == "resolved":
+            print(f"        解决日期: {item.get('resolved_on', '')}")
+            print(f"        解决方式: {item.get('resolution', '')}")
+            print(f"        原文档字面: {item.get('doc_literal_before', '')}")
+            print(f"        现文档口径: {item.get('doc_literal_now', '')}")
+        else:
+            print(f"        文档字面: {item['doc_literal']}")
+            print(f"        实现:     {item['implementation']}")
+        print(f"        影响场景: {item['scenes']}")
+    print()
+
     evidence["scenario_results"] = scenario_results
     evidence["checks"] = [c.as_dict() for c in runner.checks]
     evidence["summary"] = counts
     evidence["failures"] = [c.as_dict() for c in failures]
+    evidence["doc_implementation_divergences"] = DOC_IMPLEMENTATION_DIVERGENCES
     evidence["failure_groups"] = [
         {"note": key, "count": node["count"], "scenes": sorted(node["scenes"]),
          "sample": node["sample"]}

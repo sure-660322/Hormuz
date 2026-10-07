@@ -156,6 +156,26 @@ def main() -> int:
             "filters": payload["query"]["filters"],
         }
 
+        # 批次筛选必须同时作用于统计、上下文与覆盖：同一窗口按批次 4 与不筛批次对比。
+        unfiltered = service.query_activity(
+            db, start=windows["activity_1d_default_area"][0],
+            end=windows["activity_1d_default_area"][1], bounds=bounds, is_default=True)
+        payload, ms = timed(lambda: service.query_activity(
+            db, start=windows["activity_1d_default_area"][0],
+            end=windows["activity_1d_default_area"][1],
+            bounds=bounds, is_default=True, batch_ids=[4],
+        ))
+        runs["activity_1d_batch_filter"] = {
+            "run1_ms": ms, "summary": summarize(payload),
+            "coverage_batch_ids": payload["coverage"]["batch_ids"],
+            "unfiltered_scanned_fix_count": unfiltered["limits"]["scanned_fix_count"],
+            "filtered_scanned_fix_count": payload["limits"]["scanned_fix_count"],
+            "scanned_fix_count_matches_batch": (
+                payload["limits"]["scanned_fix_count"]
+                < unfiltered["limits"]["scanned_fix_count"]
+            ),
+        }
+
         payload, ms = timed(lambda: service.query_activity(
             db, start=windows["activity_1d_default_area"][0],
             end=windows["activity_1d_default_area"][1],
@@ -168,7 +188,12 @@ def main() -> int:
 
         payload, ms = timed(lambda: service.query_snapshot(
             db, at=datetime(2026, 2, 28, 12, 0, tzinfo=UTC), bounds=bounds, is_default=True))
-        runs["snapshot_default_area"] = {"run1_ms": ms, "summary": payload["summary"]}
+        second_snapshot, ms_second_snapshot = timed(lambda: service.query_snapshot(
+            db, at=datetime(2026, 2, 28, 12, 0, tzinfo=UTC), bounds=bounds, is_default=True))
+        runs["snapshot_default_area"] = {
+            "run1_ms": ms, "run2_ms": ms_second_snapshot, "summary": payload["summary"],
+            "same_summary_between_runs": payload["summary"] == second_snapshot["summary"],
+        }
 
         payload, ms = timed(lambda: service.compare_activity(
             db,

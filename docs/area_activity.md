@@ -43,14 +43,19 @@
 
 ---
 
-## 二、算法口径（版本 `area_activity/1.0.0`）
+## 二、算法口径（版本 `area_activity/1.0.1`）
+
+变更记录：`1.0.0` 首版；`1.0.1`（2026-10-07）来源批次条件同时作用于上下文、越界探测与覆盖统计；越界探测阈值由 `gap_seconds` 改为 `excursion_probe_seconds`，覆盖「短时间内驶出外扩范围再返回」的漏检。
 
 ### 2.0 公共定义
 
 - **报位（fix）**：`ship_positions` 一行，`nnu_ais` 来源，按 `(recorded_at, id)` 排序，`id` 只用于同一时刻的稳定排序，不用于业务键。
 - **内外判定**：§1.1 半开矩形。
-- **观测上下文（scope）**：`[start - lookback, end + lookahead)` ∩ `context_bbox`。`context_bbox` = 分析矩形按 `context_margin_deg`（默认 0.05°，约 5.5 km）外扩。状态序列（`lag/lead`、segment 划分）在该范围内计算：上下文内的区外报位**保留在序列里**，不先删区外点再判定。
-- **有界越界探测**：对「可疑对」（相邻两条区域内报位，间隔 > `gap_seconds`，或位移 ≥ `jump_min_distance_km` 且推算速度 > `jump_speed_kn`）额外做一次按 `(ship_id, recorded_at, id)` 索引的**存在性探测**：这两条报位之间是否还有该船的任何其它报位（不限位置，可以在 `context_bbox` 之外）。探测只返回「有/无」及首末报位的 `id` 与时间，不读取该区间内的全部报位；有中间报位即证明船被观测到在区外。这是 §2.3 `left_returned` 的依据，也是「不先删区外点」与「不读全库」之间的折中。
+- **观测上下文（scope）**：`[start - lookback, end + lookahead)` ∩ `context_bbox` ∩ 来源批次。`context_bbox` = 分析矩形按 `context_margin_deg`（默认 0.05°，约 5.5 km）外扩。状态序列（`lag/lead`、segment 划分）在该范围内计算：上下文内的区外报位**保留在序列里**，不先删区外点再判定。**来源批次条件同时作用于上下文、越界探测与覆盖统计**，三者的批次范围必须一致，不允许「覆盖说明是一个批次、统计包含其他批次」。
+- **有界越界探测（v1.0.1 起覆盖短时外出）**：对「待探测对」做一次按 `(ship_id, recorded_at, id)` 索引的**存在性探测**：这两条区内报位之间是否还有该船的任何其它报位（不限位置，可越出 `context_bbox`）。探测只返回「有/无」与首末报位的 `id` 与时间，不读取该区间内的全部报位；有中间报位即证明船被观测到在区外，访问被拆开（`left_returned`）。
+  - **待探测对的判据**：相邻两条区内报位，间隔 > `excursion_probe_seconds`（默认 480 s）**或**（位移 ≥ `jump_min_distance_km` 且推算速度 > `jump_speed_kn`）。
+  - **480 s 的来源**：船要离开上下文矩形再返回，至少要走 2 倍外扩距离。经度方向 `0.05° × 111.32 × cos(26.5°) ≈ 4.98 km`，往返 ≥ 9.96 km；按最大可信航速 `max_plausible_speed_kn = 40`（20.58 m/s）折算 ≈ 484 s，取 480 s。因此**间隔 ≤ 480 s 的相邻对不可能完成一次外出往返**，无需探测；超过 480 s 就必须探测。该阈值只依赖外扩范围与最大可信航速两个已声明常量。
+  - 残余限制：若船在区外**完全没有报位**（AIS 静默），任何探测都找不到证据，此时按连续观测或 `gap` 处理，属采样漏检，见 §6。
 - **候选船**：在 `[start, end)` 内至少有一条区域内报位的船。
 - **统计时区**：全部按 UTC 归日、按 UTC 输出；`[start, end)` 半开。
 - **稳定键**：访问键 `visit_key = "s{ship_id}:f{第一个区域内报位 id}"`；事件证据使用源报位 `id`，不使用每次查询重置的序号。同一访问在重叠窗口/两期比较中得到同一键，不重复生成证据。
@@ -82,7 +87,7 @@
 | 情形 | 判定 | 处理 |
 | --- | --- | --- |
 | `cur - prev <= gap_seconds`，且不满足跳点条件 | 连续观测 | 该区间计入停留时长 |
-| 间隔 `> gap_seconds` **或**（位移 `>= jump_min_distance_km` 且推算速度 `> jump_speed_kn`），且探测到**两报位之间存在同船其它报位** | `left_returned`：船在期间被观测到在区外 | **拆成两次访问**（离开+进入均计入）；两侧事件标 `wide_bracket`，区外证据在上下文之外时另标 `outside_evidence_out_of_context` |
+| 间隔 `> excursion_probe_seconds` **或**（位移 `>= jump_min_distance_km` 且推算速度 `> jump_speed_kn`），且探测到**两报位之间存在同船其它报位** | `left_returned`：船在期间被观测到在区外 | **拆成两次访问**（离开+进入均计入）；两侧事件按 §2.3 统一规则判定 `wide_bracket`（即 `bracket_seconds > gap_seconds` 才为 true，不是无条件置位），区外证据在上下文之外时另标 `outside_evidence_out_of_context` |
 | 间隔 `> gap_seconds`，中间无任何同船报位 | `gap`：缺报中断 | **不拆分、不累计该区间**，访问标 `gap_interrupted`，区间计入 `unobserved_gap_seconds` |
 | 间隔 `<= gap_seconds`，位移 `>= jump_min_distance_km` 且推算速度 `> jump_speed_kn` | `jump`：疑似异常跳点 | 不累计该区间（同样计入 `unobserved_gap_seconds`），访问标 `jump_break` |
 
@@ -129,7 +134,7 @@
 
 ---
 
-## 三、参数与默认值（`area_activity/1.0.0`）
+## 三、参数与默认值（`area_activity/1.0.1`）
 
 | 参数 | 默认 | 说明 |
 | --- | --- | --- |
@@ -140,10 +145,12 @@
 | `state_lookback_seconds` | 21600（6 h） | 窗口前读取前置状态的范围 |
 | `state_lookahead_seconds` | 21600（6 h） | 窗口后读取结束状态的范围 |
 | `context_margin_deg` | 0.05 | 观测上下文矩形外扩（约 5.5 km） |
+| `max_plausible_speed_kn` | 40.0 | 推导游界探测阈值用的最大可信航速 |
+| `excursion_probe_seconds` | 480 | 相邻区内报位间隔超过它就必须探测中间报位（由外扩范围与最大可信航速推出，见 §2.0） |
 | `boundary_band_m` | 500.0 | 边界近邻标记距离 |
 | `day_bucket_time_zone` | `UTC` | 归日时区 |
 | `source` | `nnu_ais` | 受控来源 |
-| `batch_ids` | `null`（全部） | 可选批次白名单 |
+| `batch_ids` | `null`（全部） | 可选批次白名单；**同时**约束上下文读取、越界探测与覆盖统计 |
 | `max_scanned_fixes` | 4,000,000 | 超过直接拒绝，不截断 |
 | `max_candidate_ships` | 5,000 | 超过直接拒绝 |
 | `max_visit_rows` | 2,000 | 明细返回上限（汇总不受截断影响） |
@@ -184,7 +191,7 @@
 | `start`/`end` | 是 | `[start, end)`，最长 7 天 |
 | `west`/`south`/`east`/`north` | 否 | 分析矩形 |
 | `ship_type` | 否 | 可重复 |
-| `batch_ids` | 否 | 来源批次白名单，可重复 |
+| `batch_ids` | 否 | 来源批次白名单，可重复；同一批次条件同时作用于统计、上下文与越界探测，`coverage.batch_ids` 回显实际生效批次 |
 | `state_lookback_seconds` / `state_lookahead_seconds` | 否 | 0–86400 |
 | `visit_limit` | 否 | 明细上限，默认 500，最大 2000 |
 

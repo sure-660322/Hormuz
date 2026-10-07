@@ -167,6 +167,50 @@ def test_compare_rejects_overlong_window_and_reports_no_data(patched):
     assert metrics["observed_ship_hours_per_day"]["a"] == 0.0
 
 
+def test_activity_passes_batch_ids_and_ship_types_to_repository(monkeypatch):
+    """批次筛选必须真的进入查询参数（否则统计与覆盖说明会不一致）。"""
+    captured = {}
+
+    def fake_fetch(db, **kwargs):
+        captured.update(kwargs)
+        return []
+
+    monkeypatch.setattr(service.repository, "apply_session_settings", lambda *a, **k: None)
+    monkeypatch.setattr(service.repository, "fetch_activity_boundaries", fake_fetch)
+    monkeypatch.setattr(service.repository, "fetch_scope_stats", lambda *a, **k: stats(
+        scoped_fix_count=0, region_fix_count=0, window_region_fix_count=0,
+        first_fix_at=None, last_fix_at=None,
+    ))
+    monkeypatch.setattr(service.repository, "fetch_batch_coverage", lambda *a, **k: [])
+
+    payload = activity(batch_ids=[4], ship_type_values=["油轮"])
+    assert captured["batch_ids"] == [4]
+    assert captured["ship_types"] == ["油轮"]
+    assert payload["query"]["filters"]["batch_ids"] == [4]
+
+
+def test_activity_sql_scopes_batches_and_probes_short_excursions():
+    """SQL 文本层：批次条件覆盖上下文与越界探测；短间隔也走探测分支。"""
+    from backend.app.services.area_activity import params as activity_params
+    from backend.app.services.area_activity import repository
+
+    sql = str(repository.ACTIVITY_BOUNDARIES).format(
+        inside=repository.INSIDE_EXPRESSION,
+        scope=repository.SCOPE_PREDICATE,
+        ship_type_scope_filter="",
+        batch_probe_filter=repository.BATCH_PROBE_FILTER,
+        batch_probe_filter_x=repository.BATCH_PROBE_FILTER_X,
+    )
+    # 上下文过滤 + 首探测(b) + 末探测(x) 都应带批次条件
+    assert sql.count("source_batch_id") >= 3
+    assert sql.count("CAST(:batch_ids AS bigint[])") >= 3
+    assert ":probe_seconds" in sql
+    assert sql.count(":probe_seconds") >= 2
+    # 探测阈值由外扩范围与最大可信航速推出，必须小于缺报阈值
+    assert activity_params.EXCURSION_PROBE_SECONDS == 480
+    assert activity_params.EXCURSION_PROBE_SECONDS < activity_params.GAP_SECONDS
+
+
 def test_snapshot_freshness_and_no_fallback(patched):
     patched["snapshot_rows"] = [
         # 新鲜且在区内
