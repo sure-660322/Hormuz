@@ -31,6 +31,14 @@ SQL 候选计算前过滤）、方向筛选、A/B 比较（差值/变化率 A=0 
   schemas_agent）由本会话按本任务整合。
 - 未验证：真实 DeepSeek 对统计/比较问题的工具选择与表述、浏览器端到端（控件/图表/
   地图联动/窄屏/控制台）、独立测试库验证；历史油轮固定批次数字仅作对照。
+## 2026-10-07 Issue #41 接手与最终复测
+
+状态：三个阶段已实现，接手文档已保存；已在任务分支整合最新远端 main（4ce8184）与本地 main（2efd0ef），未合入 main、未部署。负责人 Codex，处理模式，交付到 PR。原始实现基线 aca8d3c，整合代码基线 6c5ff4d，交付 HEAD 以 PR 为准。
+
+本轮验证：后端 390 passed / 14 skipped；前端 build、check:workbench、区域检查 30/30 与隔离类型检查通过；14 组 API 条件与已有独立复算证据的 163 项断言全部一致（162 数值/字段 + 1 状态，历史报告的 165 计数有误）。完整浏览器复测与真实模型调用见[验收报告](area_activity_acceptance.md) §七。知识库已补齐区域工具口径；#40 通行与 #41 区域工具/动作均保留。
+
+限制：触屏及纯键盘矩形绘制尚未支持；真实超时已通过只读慢查询注入验证；并发预算、纯键盘表单走查、真实模型多轮追问仍未验收。共享库只读，未迁移、未改凭据、未重启已有服务。本轮使用独立 8032/5178，资源收尾见验收报告。下方阶段记录保留当时事实，不以历史数量替代复测。
+
 ## 2026-10-07 Issue #41 第一阶段：区域活动后端算法与接口
 
 状态：**已实现、已在独立测试库与真实库只读验证，本地分支已提交，待用户验收；未推送、未合并、未部署**。负责人 Codex（本会话）。基线 `main` / `ead29ac`，分支 `codex/area-ship-activity`，工作树 `D:/my_project/Hormuz-worktrees/codex-area-ship-activity`。数据库目标：只读 `aisdb`（本机 PostgreSQL 17.10 + PostGIS 3.5.2）+ 独立测试库 `hormuz_area_test`；未建索引、未迁移、未重建派生层、未写业务库。允许修改路径：`backend/app/services/area_activity/**`、`backend/app/routers/area_activity.py`、`backend/app/schemas_area_activity.py`、`backend/app/main.py`（仅注册）、`backend/tests/test_area_activity_*.py`、`scripts/area_activity_samples.py`、`scripts/verify_area_activity_samples.py`、`scripts/verify_area_activity_backend.py`、`docs/area_activity*.md|json`、README 摘要。
@@ -50,7 +58,7 @@ SQL 候选计算前过滤）、方向筛选、A/B 比较（差值/变化率 A=0 
 - 验证：后端 **366 passed / 14 skipped**（新增区域工具 32 项、区域上下文 8 项）；`frontend` 的 `npm run build`、`npm run check:workbench`、`node checks/area-activity.cjs`（30/30，`--types` 0 errors）通过；浏览器手动全链路 15/15（默认区查询与 API 一致、圈选、区域变更标记、恢复默认、三模式、Esc 取消）；独立验收（复算 14 组/165 字段、浏览器 S0–S8、真实模型三问）见验收报告。证据：`output/acceptance/**`（忽略目录，不提交）。
 - 验收修复（提交 `4edec3e`）：`agentDraft` 漏声明导致「写入对话」ReferenceError 与构建失败；`L.DomEvent` handler 类型改为 `Event` 内部收窄；默认区域面积身份（面板传 `bounds=null`、`context.resolve_area_context` 兜底）；>24h 访问的轨迹裁剪。
 - 与 #40 的合并预检：main 已含 #40（`acfc7af`）。在临时 worktree 做过一次合并预检，10 个文件冲突、解决口径与合并后 390 passed / 14 skipped 记录在[合并预检](area_activity_merge_check.md)；**没有执行真实合并**。
-- 未验证/未包含：真实合并与 main 同步、推送与部署；并发与多用户响应预算、`statement_timeout` 真实触发路径、AIS 来源授权与覆盖完整性；知识库正文未新增区域章节（工具说明已指向区域口径）。
+- 未验证/未包含：真实合并与 main 同步、推送与部署；并发与多用户响应预算、`statement_timeout` 真实触发路径、AIS 来源授权与覆盖完整性；知识库区域章节已在接手复测时补齐。
 
 ## 2026-10-06 仓库清理与文档整理
 

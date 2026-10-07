@@ -140,6 +140,10 @@ function record(step, name, status, detail, extra) {
   const tag = status === 'PASS' ? 'PASS' : status === 'BLOCKED' ? 'BLOCKED' : 'FAIL'
   console.log(`${tag} [${step}] ${name}${detail ? ' :: ' + detail : ''}`)
 }
+async function inputValueIfPresent(page, selector) {
+  const input = page.locator(selector).first()
+  return await input.count() ? input.inputValue() : ''
+}
 async function shot(page, step) {
   try { await page.screenshot({ path: path.join(OUT_DIR, `shot-${step}.png`) }) } catch { /* ignore */ }
 }

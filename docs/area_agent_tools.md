@@ -134,7 +134,7 @@
 - `backend/app/services/agent/langchain_runner.py`（`area_prompt_section`、`area_context` 透传）
 - `backend/app/routers/agent.py`（透传 `area_context`）
 - `backend/tests/test_agent_area_tools.py`（新建，32 项）
-- `backend/tests/test_langchain_agent.py`（工具名集合断言同步为 11 个，经 Lead 授权）
+- `backend/tests/test_langchain_agent.py`（工具名集合断言同步为 13 个（8 个既有 + 2 个通行 + 3 个区域））
 - `docs/agent_integration.md`（工具数量与清单两处，经 Lead 授权）
 
 未修改：`backend/app/services/area_activity/**`（含 `context.py`，只读调用）、`frontend/**`、
@@ -142,16 +142,6 @@
 
 ## 6. 验证与未验证
 
-已验证（2026-10-07，离线，不连真实库/不调真实模型）：
+2026-10-07：整合最新 main 后后端全量 390 passed / 14 skipped；知识库已补充三个区域工具、默认区域、UTC 半开口径与不确定性。真实模型三问与真实库独立复算保留为历史证据，本轮浏览器真实模型调用及「查看区域分析」回填见[验收报告](area_activity_acceptance.md) §七。
 
-```powershell
-.\backend\.venv\Scripts\python.exe -m pytest backend/tests/test_agent_area_tools.py -q
-.\backend\.venv\Scripts\python.exe -m pytest backend/tests/test_langchain_agent.py backend/tests/test_agent_map_actions.py backend/tests/test_agent_dwell.py -q
-```
-
-未验证：
-
-- 真实 DeepSeek 下的工具选择、参数（尤其 `at` 与矩形）正确性与回答口径；
-- 浏览器端「查看区域分析」按钮对 `analysis_actions` 的实际消费与面板回填；
-- 真实数据库上的工具调用（本阶段全部用打桩仓储层覆盖）；
-- `#40` passage 动作与本动作同轮共存时的响应模型联合类型（整合时由 Lead 处理）。
+`analysis_actions` 使用通行/区域联合类型，结果分别追加，13 个业务工具均位于注册表 return 之前，相关后端回归与前端构建通过。尚未验证真实模型在同一回答同时调用通行与区域工具、多轮追问和并发响应预算。

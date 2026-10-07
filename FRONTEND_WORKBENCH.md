@@ -24,7 +24,7 @@
 | 相遇分析 | 总览列表与重新分析入口已于 2026-09-30 移除；地图相遇图层保留，仍读取 GET /api/encounters；后端分析接口保留 |
 | 数据健康 | 总览区块与页面初始化请求已于 2026-09-30 移除；后端 GET /api/data-health 和智能体工具保留，stale 仍是时间启发式判断 |
 | 异常与空状态 | 请求失败、空结果和重试提示；新闻请求有20秒超时 |
-| 区域活动分析 | 地图工具栏「区域」打开区域活动面板（AreaActivityPanel.vue）：显示默认分析区域与半开边界，支持按住左键拖拽圈选新矩形（Esc 取消，后端 `POST /api/area-activity/resolve-area` 校验，失败回滚并显示后端说明），缩放平移不改变分析区；三模式查询（时刻在场 / 时段活动含每日汇总与趋势图 / 两时段比较）；船型多选来自 `GET /api/area-activity/ship-types`（默认全部，含缺失/未知保留值）；访问明细可展开 entry/exit 证据报位、segments 与质量 flags，并可「地图定位」（复用既有 ship_track 有界轨迹，>24h 访问裁剪为末 24 小时并提示）；区域变更后旧结果标「区域已变更，待查询」；请求用 requestSeq + AbortController，旧响应不覆盖新条件；结果只展示后端字段（area/version/coverage/limits/limitations），前端不重算业务判定 |
+| 区域活动分析 | 地图工具栏「区域」打开区域活动面板（AreaActivityPanel.vue）：显示默认分析区域与半开边界，支持按住左键拖拽圈选新矩形（Esc 取消，后端 `POST /api/area-activity/resolve-area` 校验，失败回滚并显示后端说明），缩放平移不改变分析区；三模式查询（时刻在场 / 时段活动含每日汇总与趋势图 / 两时段比较）；船型多选来自 `GET /api/area-activity/ship-types`（默认全部，含缺失/未知保留值）；访问明细可展开 entry/exit 证据报位、segments 与质量 flags，并可「地图定位」（复用既有 ship_track 有界轨迹，>24h 访问裁剪为末 24 小时并提示；打开区域面板时详情面板隐藏，进入智能体对话时关闭区域面板，提示条可点击关闭）；区域变更后旧结果标「区域已变更，待查询」；请求用 requestSeq + AbortController，旧响应不覆盖新条件；结果只展示后端字段（area/version/coverage/limits/limitations），前端不重算业务判定 |
 | 智能体问答 | 地图工具栏「智能体」打开右侧聊天面板（AgentPanel.vue），调用 POST /agent/analyze；独立异步加载、取消与重试，前端 75 秒超时覆盖后端 60 秒预算；已加入 Markdown 消毒渲染、v4 工具结果折叠、消息流与固定输入区。回答继续附船只、证据、统计与限制说明；该 UI 改动已合入本地 main |
 | 通行分析（issue #40，分支待合入） | 总览「油价 · 油轮通行量」区块新增「通行分析」开关，展开 PassageAnalysisPanel.vue：单时段/A-B 比较、UTC 日期、船型多选（含未知/缺失）、方向筛选、按日柱状图、比较表、证据明细分页与地图轨迹联动；智能体统计/比较回答附「查看通行分析」恢复条件。固定历史油轮序列保留为历史独立复核对照（已标注非动态结果） |
 
@@ -90,3 +90,7 @@ npm run check:workbench
 ## 2026-10-07 北冰洋故事交互（Issue #43）
 
 PR #44 已合入main（b0ed92f），本地已同步并保留原技能提交，未部署；build/check:workbench及浏览器样本验证通过。CasePanel组织三段故事、报道和证据边界，新增CaseSpeedPlot使用已有采样轨迹定位时间；TimelineControls支持可选阶段末界及播放状态，MapView可在开播时聚焦完整阶段并避开手机底部面板。支持起点播放/暂停、上一段/下一段、收起/展开和退出恢复。未导入仍能阅读报道，图片失败占位，503可重试；无后端或工具契约变更，真实模型未重验。日期、命令、截图与未验证范围见[案例说明](docs/arctic_ocean_case.md#2026-10-07-issue-43-故事与交互升级)。
+
+## Issue #41 接手复测（2026-10-07）
+
+任务分支 codex/area-activity-ui 已整合最新 main；未合入 main、未部署。最终浏览器与真实模型回填结果见[区域验收报告](docs/area_activity_acceptance.md) §七。构建、check:workbench、区域检查 30/30 与隔离类型检查通过。访问轨迹后船舶详情遮挡区域表、提示关闭按钮被遮挡的问题已修复，验收脚本只用真实点击，不用 DOM click 绕过遮挡。触屏/纯键盘矩形绘制尚未支持。

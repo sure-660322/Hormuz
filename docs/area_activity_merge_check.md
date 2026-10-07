@@ -1,6 +1,8 @@
 # issue #41 第二、三阶段与 main（含 issue #40）的合并预检记录
 
 日期：2026-10-07（本机）。
+
+> 第一至六节是先前临时预检记录；当前任务分支整合与复测状态见第七节，不把历史预检视为本轮验证。
 范围：**这不是合并授权，也没有改动 main**。本轮只在一个临时 worktree 里做一次
 「把 `codex/area-activity-ui` 合并到当前 main」的预检，用来说明合并时会冲突哪些文件、
 每个冲突怎么解，以及解完是否仍然全绿。真正合并仍需用户授权与整合者执行。
@@ -72,3 +74,15 @@ cd frontend; npm run build; npm run check:workbench; node checks/area-activity.c
 - 合并预检：**已完成**（临时 worktree `be90100`，未推送、未进 main）。
 - 真实合并与 main 同步：**未执行**（用户未授权；按项目规则由指定整合者串行处理）。
 - 本文件不替代验收报告：产品级验收见 `docs/area_activity_acceptance.md`。
+
+## 七、本轮任务分支整合（2026-10-07）
+
+负责人：Codex，本会话接手 #41；处理模式，止于 PR 交付。
+
+- 接手 HEAD `7d3a86e`，基线 `aca8d3c`；7 份未提交文档保存为 `e585eda`。
+- 在任务分支合入已解决 #40 冲突的预检提交 `be90100`，再合入 `origin/main=4ce8184` 与本地 `main=2efd0ef`；主目录与 main 均未修改。
+- 当前整合代码基线 `6c5ff4d`；保留 `7d3a86e` 的聚焦失败提示修复，轨迹提示改用实际裁剪后的 windowStart/windowEnd。
+- 临时合并脚本 apply_merge_resolutions.py / apply_merge_resolutions2.py / post_merge_fixes.py 从交付树移除；知识库区域工具口径已补齐并验证可检索。
+- 任务范围：区域服务/API/工具、前端区域与动作接入、对应检查/文档；本机资源为只读 aisdb、独立验收端口 8032/5178。原有 8031/5177、8000/5174 服务未重启。
+- 390 passed / 14 skipped；前端 build、check:workbench、区域检查 30/30 与隔离类型检查通过。完整浏览器及 API 复核见[验收报告](area_activity_acceptance.md) §七。
+- 当前 main 与本分支代码的整合已在任务分支完成；合入 main、部署、任务 worktree 清理均未执行。不再需要按第五节重做旧基线冲突。

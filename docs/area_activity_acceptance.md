@@ -1,17 +1,17 @@
 # 区域船舶活动与进出分析：第二、三阶段独立验收报告
 
 验收日期：2026-10-07（本机，UTC 记录）
-验收人：verifier（独立验证，未修改任何实现代码）
-范围：issue #41 第二阶段（前端矩形圈选、三模式面板、地图联动）与第三阶段（三个区域智能体工具、当前区域上下文、「查看区域分析」动作）。第一阶段后端算法与 REST API 的验收见 [area_activity_backend_verification.md](area_activity_backend_verification.md)（当时批次），本报告只记录本轮实测值。
+初轮验收人：verifier（独立验证，未修改实现代码）；§七接手复测：Codex（修复并复测）
+范围：issue #41 第二阶段（前端矩形圈选、三模式面板、地图联动）与第三阶段（三个区域智能体工具、当前区域上下文、「查看区域分析」动作）。第一阶段后端算法与 REST API 的验收见 [area_activity_backend_verification.md](area_activity_backend_verification.md)（当时批次），§一至六保留初轮实测，修复后结果在 §七；历史报告中 165 字段的计数有误，脚本实际为 163 项断言（含状态项）。
 
 ## 状态四项
 
 | 项 | 状态 | 依据 |
 | --- | --- | --- |
 | 实现 | 已实现（工作树内） | 第二阶段与第三阶段代码已在工作树；本报告对应 HEAD 见 §一 |
-| 测试 | 见 §二（含失败项与缺陷清单） | 后端 366 passed / 14 skipped；独立复算 165 字段与 API 全一致；前端 build 见 §三；浏览器 49 PASS / 3 FAIL，其中 2 项为实现缺陷、1 项为工作树环境项 |
+| 测试 | 见 §二（含失败项与缺陷清单） | 初轮 366/14 与 49 PASS/3 FAIL 保留为历史；最终 390/14、前端检查通过、浏览器 62 PASS/0 FAIL/0 BLOCKED，详见 §七 |
 | 提交 | 已提交本地分支 | `371afe3 feat(area-activity): 手动矩形圈选、三模式面板与智能体区域工具（issue #41 第二、三阶段）`（`codex/area-activity-ui`）；验收期间的后续修复见 §一 |
-| 推送 / 部署 | 未推送、未部署 | 未执行 `git push`，无远端 PR，无部署动作 |
+| 推送 / 部署 | 任务分支交付到 PR，未合并/未部署 | 当前交付 PR 见 §七；main 尚不含 #41 |
 
 ## 一、环境与基线
 
@@ -215,18 +215,52 @@ node .\output\acceptance\area_activity_browser.cjs --base http://127.0.0.1:5177
 - `output/acceptance/agent_consistency.json`：智能体结果与独立复算的三方一致性核对。
 - `output/acceptance/frontend_build.log`、`browser_smoke.json`、`browser_recheck*.json`：构建日志与分步复测记录。
 
-## 七、复测记录（Lead 修复后追加）
+## 七、修复后复测记录（2026-10-07）
 
-（本节在 Lead 完成 `npm run build` 修复后，以最终 HEAD 复测并填写；届时重跑：全量 pytest、`npm run build`、三个前端检查、`git diff --check`、浏览器 S0–S9、`compare_api_vs_recompute.py`；真实模型不重复调用（已有 3 次，预算内）。）
+状态：三个阶段已实现；接手的 7 份文档保存为 e585eda，已在任务分支合入最新远端 main（4ce8184）及本地 main（2efd0ef）。业务代码验收 commit 为 **904e5ba**；之后提交仅验收脚本与文档，交付 HEAD 以 PR 为准。主目录与 main 未修改，未部署。
+
+### 新发现并修复的 F6：证据轨迹后面板/提示条被遮挡
+
+访问「地图定位」会选船并打开船舶详情，详情遮住区域访问表；提示条的关闭按钮也在区域面板下方。旧验收脚本用 DOM click 兜底，掩盖真实点击不可达。修复为区域面板打开时隐藏上下文详情、切换工具/写入对话时关闭区域面板，区域面板开启时提高提示条层级。脚本取消 DOM click 兜底并逐断言落盘。最终 S7/S9/S10 全部采用真实点击。
+
+### 复测结果与证据
+
+| 项目 | 本轮结果 | 命令或证据 |
+| --- | --- | --- |
+| 后端全量 | 390 passed / 14 skipped（12.68 s） | backend/.venv/Scripts/python.exe -m pytest backend/tests -q；含 #40 和 #41 回归 |
+| 前端构建/语义/类型 | build、check:workbench、区域 30/30、隔离 vue-tsc 0 errors | frontend 下 npm run build、npm run check:workbench、node checks/area-activity.cjs --types；F6 修复后重跑 |
+| API 与已有独立复算 | 14 组、163 项断言全一致，0 差异 | output/acceptance/api_vs_recompute_current.json；期望值沿用初轮 independent_recompute.json，未冒充重扫源表 |
+| 浏览器整轮 S0–S10 | **62 PASS / 0 FAIL / 0 BLOCKED** | output/acceptance/browser_current_final.json；其中 11 条为已知工作树环境项记录，不代表环境错误被修复 |
+| 真实模型与面板回填 | 1 次新增模型请求；snapshot、默认区 ID/标记/四边界正确；回填 at=2026-02-28T11:59，写入对话 168 字，无 ReferenceError | S9/S10；初轮三问及数字证据保留，未重复三问或声称多轮已验收 |
+| 真实 PostgreSQL 超时 | **只读 on / timeout 20s / 20.056 s / HTTP 503 / QUERY_TIMEOUT** | output/acceptance/statement_timeout_current.json；在独立 TestClient 进程注入 SELECT pg_sleep(21)，由真实 PostgreSQL 取消，service 与 router 保持原逻辑；非全局配置、非源表写入、非并发压测 |
+| 格式与知识库 | git diff --check 通过；区域章节可检索 | search_knowledge('区域船舶活动 query_area_ship_activity') 命中新增区域章节 |
+
+S3 鼠标圈选/ESC/超大矩形拒绝回滚/恢复默认通过；S4 默认身份及三模式数字通过；S5 有效零与错误通过；S6 取消、旧响应守卫、区域变更标记通过。S7 正常访问和 36 h 长访问分别加载正确船舶与窗口（长访问为末 24 h，地图图形 162→298），零长度访问明确拒绝且无额外轨迹。S8 的 1440×900/390×844 均无横向溢出、减少动态生效；已查看截图确认遮挡修复与窄屏表单展示，不代表触屏设备走查。
+
+运行资源：本轮独立 API 8032/Vite 5178，工作目录仍为 codex-area-activity-ui，数据库 aisdb 只读；原有 8031/5177、8000/5174 未重启。独立临时服务完成验收后停止，工作树与本地证据保留。
+
+版本化的结构化证据见 [area_activity_final_verification.json](area_activity_final_verification.json)。可复跑脚本：
+
+```powershell
+# 独立期望值（会读取真实库；输出位于忽略的 output/acceptance）
+backend/.venv/Scripts/python.exe -X utf8 scripts/verify_area_activity_independent.py
+backend/.venv/Scripts/python.exe -X utf8 scripts/verify_area_activity_api_recompute.py --base http://127.0.0.1:8032
+# Playwright 必须可解析（可通过已有 NODE_PATH）；S9 额外调用一次真实模型
+node scripts/verify_area_activity_browser.cjs --base http://127.0.0.1:5178 --out browser_current_final.json
+# 超时验证：独立只读会话，约 20 秒，未改运行中的 API
+backend/.venv/Scripts/python.exe scripts/verify_area_activity_timeout.py
+```
+
+交付状态：任务分支已提交，PR 交付信息见本节后续记录；未合并、未部署。并发与触屏/键盘范围未完成，不能据此声称 Issue 的全部验收条件已满足。
 
 ## 八、未验证项（按实际列出）
 
-1. `statement_timeout` 真实触发路径（20 s 超时返回 503）——本轮只从 `default-area` 响应看到配置值，未构造真实超时；第一阶段仅以注入异常覆盖。
+1. 高负载真实查询超时未做压测；已通过 §七真实 PostgreSQL 慢查询注入验证 20 s 取消与 503 映射。
 2. 并发与多用户响应预算——单请求实测（1 天查询约 2–6 s、A/B 约 11 s），未做并发压测。
-3. 触摸/移动端手势圈选——本轮只验证鼠标事件（桌面 1440 与窄屏 390 视口，仍用鼠标）；触屏 `touchstart/touchmove` 路径未验证。
-4. 键盘全流程可达性——只验证了 ESC 取消绘制与表单 label/for；未做纯键盘走查。
+3. 触摸/移动端手势圈选——本轮只验证鼠标事件（桌面 1440 与窄屏 390 视口，仍用鼠标）；当前代码仅注册鼠标绘制事件，触屏手势尚未支持。
+4. 键盘全流程可达性——只验证了 ESC 取消绘制与表单 label/for；未做纯键盘表单走查，纯键盘矩形绘制尚未支持。
 5. `no_data` 状态的浏览器展示——本轮浏览器验证的是「有效零结果（ok + 0 在场）」，`no_data` 分支由单元/契约测试覆盖，未在页面上构造（例如批量数据范围外的窗口）。
 6. 跨 180°、超大经纬度、`visit_limit` 极端值等参数错误的 UI 呈现——只在 API 层与前端语义检查覆盖。
 7. 视觉细节（配色、图例、趋势图在窄屏的具体呈现）需人工确认；本轮只做了溢出与控制台检查。
 8. 真实模型的措辞质量与拒答边界——只验证了工具调用、`analysis_actions` 与关键数字，未做多轮追问与对抗性提问。
-9. 推送与部署——未执行。
+9. 合并与部署未执行；PR 交付状态见 §七。

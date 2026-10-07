@@ -1,7 +1,7 @@
 # 区域船舶活动面板：前端展示层（issue #41 阶段二-A）
 
-状态：**组件与语义检查已实现，待浏览器验收**（2026-10-07）。
-范围：仅本文档列出的 3 个前端文件 + 本文档；App.vue / MapView.vue 接入与 `frontend/src/api.ts` 区域接口由 Lead 负责（对接点见 §二）。
+状态：**已实现；2026-10-07 整合后的构建、工作台检查与区域检查通过，浏览器与真实后端复测见[验收报告](area_activity_acceptance.md) §七**。
+范围：本文维护组件契约；App.vue、MapView.vue、api.ts 已完成接入，统一状态以验收报告为准。下方初始隔离构建日志保留为当时记录。
 基线：分支 `codex/area-activity-ui`，commit `aca8d3c`，工作树 `D:\my_project\Hormuz-worktrees\codex-area-activity-ui`。
 字段事实来源：`backend/app/schemas_area_activity.py`、`backend/app/services/area_activity/service.py`、`docs/area_activity.md` §4.5/§4.6。前端不重算业务判定，汇总数字直接取后端字段。
 
@@ -171,18 +171,18 @@ npm run build
 本轮结果（2026-10-07）：`vue-tsc -b && vite build` 通过，退出码 0，`✓ built in 8.01s`（`dist/assets/index-*.js` 1,126.00 kB / gzip 384.91 kB，CSS 90.95 kB）。构建期间 App.vue / AgentPanel.vue 的在途改动曾报错，Lead 接线完成后已消除；`AreaActivityPanel.vue` / `areaActivity.ts` 全程无错误。已核对 App.vue 接入与本契约一致：`:open/:bounds/:default-bounds/:area-label/:area-is-default/:agent-context/:pending-action` + `@close/@update:bounds/@locate-ship/@focus-visit/@use-area-in-dialog/@results-updated`，面板被包在 `<div class="area-panel-placement">` 内；dist 产物中可检索到面板样式类与「区域活动分析」文案，说明组件确实被打进构建。
 仅剩 Vite 的 chunk > 500 kB 通用提示（项目既有，与本组件无关；本组件未新增依赖、未改 `package.json`）。
 
-## 九、未验证项与限制
+## 九、验证范围与限制
 
-- 未做浏览器交互验收（不启动 dev server、不占端口）：三模式实际渲染、ECharts 趋势图绘制与窄屏刻度、展开明细、取消查询、区域变更后的失效标注均只经静态断言与类型检查，未在浏览器点过。
-- 未连真实后端：`/api/area-activity/ship-types` 与 `resolve-area` 尚未在本工作树验证；组件对这些接口的成功/失败分支只做了代码路径与文案处理，未取得真实响应样例。
-- 请求版本守卫只做了源码级断言（`requestSeq` + `AbortController` + `seq !== requestSeq`），没有可复现的竞态自动化用例；无 DOM 测试环境（未安装 jsdom/vitest，且不新增依赖）。
-- `pendingAction` 的识别字段集是面板单方面约定的（`mode/at/start/end/startA/endA/startB/endB/shipTypes`）；App.vue 若传别的结构会被忽略。
-- 汇总数字未与后端复算：全部直接展示后端字段，前端没有第二套判定。
+2026-10-07：三模式、真实接口、默认区域身份、取消与旧响应守卫、圈选/回滚、证据轨迹和智能体回填已纳入浏览器复测。手动数字与已有独立复算证据一致，详见[验收报告](area_activity_acceptance.md) §七。
 
-## 十、给 Lead 的整合备注
+- 矩形绘制目前只实现鼠标拖拽与 ESC 取消；触屏手势及纯键盘绘制尚未支持，表单全流程键盘可达性未验收。
+- 窄屏溢出与减少动态检查覆盖 390×844；不代表移动设备触屏验收。
+- 真实超时已通过只读慢查询注入验证；并发响应预算、真实模型多轮追问仍未验证。
+
+## 十、组件接入约定（已接入）
 
 1. `area` 采用后端真实结构（嵌套 `bounds`、`version` 可为 null、`containment` 字符串）；`domain/areaActivity.ts` 的 `readBounds` 同时兼容嵌套与扁平写法，因此 api.ts 保持现在的 `ApiAreaInfo.bounds` 即可，无需改动。
 2. 组件不 import api.ts 的响应 interface，只用 `type ApiAreaBounds` + 4 个函数；响应经 `toAreaXxxResult()` 宽松归一化。若后续 api.ts 增删字段，只要函数名/参数名不变，组件不受影响。
 3. 截断提示只认 `limits.list_truncated` / `limits.detail_truncated`；比较模式没有顶层 `coverage`，组件按 `a.coverage`/`b.coverage` 展示两期覆盖。
-4. 未使用 `fetchAreaDefault()`/`resolveAreaBounds()`；若希望面板显示后端默认区域版本或让「重新圈选」先经 `resolve-area` 规范化，需要在 App.vue 侧完成并把结果经 `areaLabel`/`bounds` 传入。
+4. 未使用 `fetchAreaDefault()`/`resolveAreaBounds()`；若希望面板显示后端默认区域版本或让「重新圈选」先经 `resolve-area` 规范化，需要在 App.vue 侧已完成并把结果经 `areaLabel`/`bounds` 传入。
 5. 面板根元素不做定位；App.vue 需要给它一个确定高度/宽度的容器（推荐右侧栏或浮层，`min-height: 0` 保证内部滚动）。
