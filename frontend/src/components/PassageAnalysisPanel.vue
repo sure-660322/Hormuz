@@ -82,16 +82,24 @@ function dateToUtcIso(day: string, endExclusive: boolean): string {
 
 const dayCount = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400_000)
 
+// 含首尾的完整 UTC 天数（结束日期当日计入区间）。
+const inclusiveDays = (from: string, to: string) => dayCount(from, to) + 1
+
+// 后端返回半开区间终点（end_at 为次日 00:00 UTC）；展示为含尾 UTC 日时回退 1 秒。
+function inclusiveEndDay(endAt: string): string {
+  return new Date(Date.parse(endAt) - 1000).toISOString().slice(0, 10)
+}
+
 function validateConditions(): string | null {
   if (mode.value === 'single') {
     if (!startDate.value || !endDate.value) return '请选择起止日期。'
-    if (dayCount(startDate.value, endDate.value) < 1) return '结束日期必须晚于开始日期。'
-    if (dayCount(startDate.value, endDate.value) > 7) return '单时段最多 7 天，请缩小范围。'
+    if (inclusiveDays(startDate.value, endDate.value) < 1) return '结束日期不能早于开始日期。'
+    if (inclusiveDays(startDate.value, endDate.value) > 7) return '单时段最多 7 天（含首尾），请缩小范围。'
   } else {
     for (const [label, from, to] of [['A', aStartDate.value, aEndDate.value], ['B', bStartDate.value, bEndDate.value]] as const) {
       if (!from || !to) return `请选择 ${label} 段的起止日期。`
-      if (dayCount(from, to) < 1) return `${label} 段结束日期必须晚于开始日期。`
-      if (dayCount(from, to) > 7) return `${label} 段最多 7 天，请缩小范围。`
+      if (inclusiveDays(from, to) < 1) return `${label} 段结束日期不能早于开始日期。`
+      if (inclusiveDays(from, to) > 7) return `${label} 段最多 7 天（含首尾），请缩小范围。`
     }
   }
   return null
@@ -305,7 +313,7 @@ async function showEvidenceOnMap(item: ApiPassageEvidence['items'][number]) {
     const result = await props.executeMapAction({
       type: 'ship_track', trigger: 'suggested', ship_id: item.ship_id,
       start_at: new Date(startMs).toISOString(), end_at: new Date(endMs).toISOString(),
-      source: 'nnu_ais', window_source: '通行分析证据时段（非回放时段）',
+      source: 'nnu_ais', window_source: '通行分析证据时段（非回放时段）', clamp_to_coverage: true,
     }, controller.signal)
     mapMessage.value = result.message
   } catch (e) {
@@ -428,12 +436,17 @@ onMounted(() => {
         const starts = sevenDay.map((batch) => batch.coverage_start).filter((value): value is string => !!value).sort()
         const ends = sevenDay.map((batch) => batch.coverage_end).filter((value): value is string => !!value).sort()
         if (starts.length && ends.length) {
-          const first = starts[0]!.slice(0, 10)
-          const last = new Date(Date.parse(ends.at(-1)!) + 1000).toISOString().slice(0, 10)
+          // coverage 为含首尾时刻；首日常为部分日窗（如 02-24T16:00 起），
+          // 默认窗口取首日起 7 个含首尾 UTC 日，避免超后端 7 天上限。
+          const firstMs = Date.parse(starts[0]!)
+          const first = new Date(firstMs).toISOString().slice(0, 10)
+          const capped = new Date(firstMs + 6 * 86400_000).toISOString().slice(0, 10)
+          const lastInstantDay = new Date(Date.parse(ends.at(-1)!)).toISOString().slice(0, 10)
+          const last = capped < lastInstantDay ? capped : lastInstantDay
           startDate.value = first
           aStartDate.value = first
           endDate.value = last
-          aEndDate.value = new Date(Date.parse(`${first}T00:00:00Z`) + 2 * 86400_000).toISOString().slice(0, 10)
+          aEndDate.value = new Date(firstMs + 2 * 86400_000).toISOString().slice(0, 10)
           bStartDate.value = new Date(Date.parse(`${last}T00:00:00Z`) - 2 * 86400_000).toISOString().slice(0, 10)
           bEndDate.value = last
         }
@@ -547,9 +560,9 @@ function formatFix(fix: { recorded_at: string; longitude: number; latitude: numb
 
     <div v-if="compareResult" class="analysis-result">
       <p class="analysis-note">
-        A 段 {{ compareResult.a.start_at.slice(0, 10) }} 至 {{ compareResult.a.end_at.slice(0, 10) }}（{{ compareResult.a_period_days }} 天，
+        A 段 {{ compareResult.a.start_at.slice(0, 10) }} 至 {{ inclusiveEndDay(compareResult.a.end_at) }}（{{ compareResult.a_period_days }} 天，
         日均 {{ compareResult.a_avg_passages_per_day.toFixed(2) }} 次）·
-        B 段 {{ compareResult.b.start_at.slice(0, 10) }} 至 {{ compareResult.b.end_at.slice(0, 10) }}（{{ compareResult.b_period_days }} 天，
+        B 段 {{ compareResult.b.start_at.slice(0, 10) }} 至 {{ inclusiveEndDay(compareResult.b.end_at) }}（{{ compareResult.b_period_days }} 天，
         日均 {{ compareResult.b_avg_passages_per_day.toFixed(2) }} 次）
         <template v-if="compareResult.windows_overlap">· 两期重叠，统计不独立</template>
       </p>

@@ -425,7 +425,7 @@ export interface AgentAnalyzeResponse {
 }
 
 export type AgentMapAction =
-  | { type: 'ship_track' | 'ship_position'; trigger: 'automatic' | 'suggested'; ship_id: number; start_at: string; end_at: string; source: 'nnu_ais'; recorded_at?: string; window_source?: string }
+  | { type: 'ship_track' | 'ship_position'; trigger: 'automatic' | 'suggested'; ship_id: number; start_at: string; end_at: string; source: 'nnu_ais'; recorded_at?: string; window_source?: string; clamp_to_coverage?: boolean }
   | { type: 'event'; trigger: 'suggested'; event_id: string; source: 'news' }
 
 // 非通行工具的结构化结果（字段定义见 docs/agent_integration.md 与后端工具模块）

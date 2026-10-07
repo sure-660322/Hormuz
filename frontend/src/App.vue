@@ -621,7 +621,12 @@ async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Pr
   if (caseActive.value && caseAgentWindow.value && (start < Date.parse(caseAgentWindow.value.start_at) || end > Date.parse(caseAgentWindow.value.end_at)))
     return fail('轨迹窗口超出当前阶段。请返回案例概况或选择对应阶段。')
   const first = Date.parse(times.value[0] ?? ''), last = Date.parse(times.value.at(-1) ?? '')
-  if (![start, end, first, last].every(Number.isFinite) || start >= end || end - start > 86400000 || start < first || end > last)
+  if (![start, end, first, last].every(Number.isFinite) || start >= end || end - start > 86400000)
+    return fail('轨迹时间窗无效或超出本批 AIS 覆盖；单次最多 24 小时。')
+  // 通行分析证据等「围绕某时刻」的场景允许裁剪到本批覆盖内，而非直接失败。
+  const windowStart = action.clamp_to_coverage ? Math.max(start, first) : start
+  const windowEnd = action.clamp_to_coverage ? Math.min(end, last) : end
+  if (windowStart >= windowEnd || (!action.clamp_to_coverage && (start < first || end > last)))
     return fail('轨迹时间窗无效或超出本批 AIS 覆盖；单次最多 24 小时。')
   const version = ++mapActionVersion
   pendingMapController?.abort()
@@ -631,7 +636,7 @@ async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Pr
   const isCancelled = () => signal.aborted || controller.signal.aborted || version !== mapActionVersion
   let loaded: ApiTrackWindow
   try {
-    loaded = await fetchShipTrackWindow(action.ship_id, new Date(start).toISOString(), new Date(end).toISOString(), 300, controller.signal)
+    loaded = await fetchShipTrackWindow(action.ship_id, new Date(windowStart).toISOString(), new Date(windowEnd).toISOString(), 300, controller.signal)
   } catch (e) { return fail(describeApiError(e, '轨迹加载失败')) }
   if (isCancelled()) return cancelled('地图目标已变更，本次操作已取消。')
   const points = loaded.segments.flatMap(segment => segment.points)
@@ -667,7 +672,7 @@ async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Pr
     outcome: 'ok',
     message: action.type === 'ship_position'
       ? `已在地图定位并高亮 ${ship.name}（ID ${ship.id}）；AIS 报位时刻 ${ship.recorded_at}，地图回放时刻 ${time.value}。`
-      : `已在地图显示 ${ship.name}（ID ${ship.id}）的轨迹（${new Date(start).toISOString()} 至 ${new Date(end).toISOString()}）。`,
+      : `已在地图显示 ${ship.name}（ID ${ship.id}）的轨迹（${new Date(windowStart).toISOString()} 至 ${new Date(windowEnd).toISOString()}）。`,
   }
 }
 function restore() {
