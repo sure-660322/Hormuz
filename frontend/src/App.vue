@@ -661,12 +661,16 @@ async function executeMapAction(action: AgentMapAction, signal: AbortSignal): Pr
   await nextTick()
   const focused = await mapView.value?.confirmFocus(action.ship_id, trackVisible.value)
   if (signal.aborted || committedVersion !== mapActionVersion) return cancelled('地图目标已变更，本次操作已取消。')
-  if (!focused) return fail('目标已加载，但地图聚焦未能完成，请重试。')
+  // 目标已加载并选中时不再按失败处理：视野聚焦受面板/缩放限制时只补充说明，
+  // 否则会出现「轨迹其实已渲染，提示却说聚焦失败」的矛盾（独立验收 F4）。
+  const focusNote = focused
+    ? ''
+    : '（目标已加载并选中；地图视野可能受面板或缩放限制，可用「全局视野」或手动缩放查看）'
   return {
     outcome: 'ok',
-    message: action.type === 'ship_position'
+    message: (action.type === 'ship_position'
       ? `已在地图定位并高亮 ${ship.name}（ID ${ship.id}）；AIS 报位时刻 ${ship.recorded_at}，地图回放时刻 ${time.value}。`
-      : `已在地图显示 ${ship.name}（ID ${ship.id}）的轨迹（${new Date(start).toISOString()} 至 ${new Date(end).toISOString()}）。`,
+      : `已在地图显示 ${ship.name}（ID ${ship.id}）的轨迹（${new Date(start).toISOString()} 至 ${new Date(end).toISOString()}）。`) + focusNote,
   }
 }
 function restore() {
