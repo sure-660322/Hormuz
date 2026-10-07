@@ -14,6 +14,7 @@ from backend.app.routers.dwell import router as dwell_router
 from backend.app.routers.encounters import router as encounters_router
 from backend.app.routers.data_health import router as data_health_router
 from backend.app.routers.cases import router as cases_router
+from backend.app.routers.area_activity import router as area_activity_router
 
 app = FastAPI()
 #添加中间件
@@ -49,6 +50,7 @@ app.include_router(dwell_router)
 app.include_router(encounters_router)
 app.include_router(data_health_router)
 app.include_router(cases_router)
+app.include_router(area_activity_router)
 
 @app.get("/health")
 def health_check():

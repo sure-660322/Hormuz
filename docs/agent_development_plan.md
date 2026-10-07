@@ -1,5 +1,15 @@
 # 智能体下一阶段开发任务
 
+## 2026-10-07 Issue #41 第一阶段：区域活动后端算法与接口
+
+状态：**已实现、已在独立测试库与真实库只读验证，本地分支已提交，待用户验收；未推送、未合并、未部署**。负责人 Codex（本会话）。基线 `main` / `ead29ac`，分支 `codex/area-ship-activity`，工作树 `D:/my_project/Hormuz-worktrees/codex-area-ship-activity`。数据库目标：只读 `aisdb`（本机 PostgreSQL 17.10 + PostGIS 3.5.2）+ 独立测试库 `hormuz_area_test`；未建索引、未迁移、未重建派生层、未写业务库。允许修改路径：`backend/app/services/area_activity/**`、`backend/app/routers/area_activity.py`、`backend/app/schemas_area_activity.py`、`backend/app/main.py`（仅注册）、`backend/tests/test_area_activity_*.py`、`scripts/area_activity_samples.py`、`scripts/verify_area_activity_samples.py`、`scripts/verify_area_activity_backend.py`、`docs/area_activity*.md|json`、README 摘要。
+
+- 交付：默认项目分析区域 `hormuz_core_v1`（25.8/55.8/27.1/57.1，半开矩形，附来源与版本）、`/api/area-activity/default-area|snapshot|activity|compare`、共享服务 `backend/app/services/area_activity/`（边界、参数、固定参数化 SQL、状态机、按日裁剪与 A/B）。口径与契约见[区域活动模块](area_activity.md)。
+- 算法：时刻在场用每船最新有效报位（默认 3600 s 新鲜度，过期不回退）；时段分析按状态转换识别访问与进出，`left_returned` 拆访问、`gap` 标缺报中断、`jump` 标跳点，停留时长只累计连续观测区间并按窗口/自然日交集裁剪；A/B 允许不等长窗口，基期 0 时变化率为 null。
+- 验证：单元+HTTP 契约 35 passed；全量后端 **327 passed / 14 skipped**；独立测试库样例验证 **PASS=1656 / WARN=0 / FAIL=0**（45 个场景/校验组，脚本只依据文档重写规则，不引用后端实现；复验轮新增跳点双阈值回归样例 S20）；真实库只读验证通过（无非只读语句、源表行数与写入计数不变），性能基线 1 小时 ≈2.1 s、1 天 ≈2.9 s、7 天 ≈7.5 s、快照 63 ms；真实 HTTP 冒烟（8030，验证后关闭）通过。证据见[验证报告](area_activity_backend_verification.md)与 `docs/area_activity_*_result.json`。
+- 本轮修复：segment 边界误判（`IS NOT NULL` 含 `'none'`）、短间隔 GPS 抖动被当成跳点（加入 ≥1 km 位移条件）、PostGIS 逐行粗筛拖慢查询（移除，7 天 5.6 s→4.7 s）。验证暴露的 9 条文档歧义已逐条定版，见验证报告 §四。
+- **未开始（待验收后推进）**：前端矩形圈选与三模式面板、地图轨迹联动、三个智能体业务工具（`query_area_ship_snapshot/activity/compare`）与知识库/系统提示同步、真实模型问答、浏览器（桌面/窄屏）验收。与 #40 的共享文件（`App.vue`、前端 API 类型、智能体 schema）本轮未改动。
+
 ## 2026-10-06 仓库清理与文档整理
 
 状态：已验证、已合入 main 并推送，任务 worktree 与本地分支已清理（2026-10-06；实施分支 codex/repository-cleanup，基线49895f9，清理提交2acd881）。本轮只删除用户确认废弃的数据/示例/中间清单，清理主目录忽略的旧模拟输出，并整理文档和引用；测试、知识库、真实 AIS 导入代码及真实数据库备份保留。验证及整合状态统一维护在[清理记录](repository_cleanup_2026-10-06.md)，未改写历史、公开仓库或部署。

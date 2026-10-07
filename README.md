@@ -19,6 +19,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 | 历史回放 | 原模拟数据分窗加载路径仍在；真实 AIS 以至多 4 帧的小窗口预取和有界缓存连续播放，未下载七日 1,792 万条报位。单船轨迹按时间桶抽稀并分段；1,985 个刻度为旧模拟批次历史结果 |
 | 新闻浏览 | Issue #6 已在左侧新增「时间线 / 列表」切换：纵向时间线按来源发生日期分组，宽屏两侧交错、窄屏单侧；日期级事件在当前显示时区进入该日时与地图同步出现，不声称具体小时。[PR #11](https://github.com/sure-660322/Hormuz/pull/11) 已合入 main。[Issue #17](https://github.com/sure-660322/Hormuz/issues/17) 在两种视图的事件分类文字前显示统一分类图标，前端构建、工作台检查和当时可见事件的浏览器核对通过，详见[前端工作台](FRONTEND_WORKBENCH.md)。列表保留封面缩略图，地图事件弹卡保留配图与回退；有发生日期但无代表坐标的事件仍可读详情。缺少 `event_datetime` 的事件放在可展开的「时间未明确」区，仅能阅读详情，不用报道日期补造发生日期或地图回放点。关联报道与来源仍在事件详情中。 |
 | MobilityDB / PostGIS | **P0–P4 已实现，P5 部分实现**：派生轨迹、速度着色、事件关联、停留和相遇分析、data-health 已有代码；主回放仍读原始船位，未切换 simplified 派生层。本机新数据的派生表仍为空；旧试验数量与验收见下表 |
+| 区域船舶活动分析 | **后端算法与接口已实现待验收（issue #41 第一阶段，2026-10-07）**：默认项目分析区域 + 半开矩形、时刻在场/时段进出/停留/按日汇总/A-B 比较共用同一服务；独立测试库样例验证 PASS=1656、FAIL=0，真实库只读验证通过（1 小时 ≈2.1 s、1 天 ≈2.9 s、7 天 ≈7.5 s，扫描 ≤400 万报位）。**前端矩形交互、三模式面板、地图联动与三个智能体业务工具均未开始**；口径见[区域活动模块](docs/area_activity.md)，证据见[验证报告](docs/area_activity_backend_verification.md) |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
 | 智能体 | **本地 main 已接入七日真实 AIS 语义并通过工具层验证**：LangChain `create_agent`、8 个只读业务工具与知识库保持 v4 契约。船舶检索、轨迹和有界虚拟门线通行已在应用库只读验证；**SQL 三工具已按 catalog v2 + 016 只读语义层在本机恢复启用**（`agent_data.v_ships` 一船一行，`v_ships=4,462` 与源表一致；执行器全链路核验通过，真实 DeepSeek 对「多少艘油轮」自主完成 schema→check→execute 并回答 793 艘）。含 TimescaleDB 的集群须为读者角色设 `timescaledb.disable_load=on`（016 已内置）。浏览器端到端仍未验证；合并后后端 257 passed / 12 skipped，旧版 254/245 passed 为历史离线验收 |
 
@@ -29,7 +30,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 - 前端：Vue 3、TypeScript、Vite、Leaflet；底图使用 OpenStreetMap（可切换自建本地瓦片服务，见下），海事参考使用 OpenSeaMap。
 - 后端：FastAPI、SQLAlchemy、Psycopg。
 - 本机数据库：PostgreSQL；已核对扩展 PostGIS 3.5.2、MobilityDB 1.3.0、TimescaleDB 2.22.0。
-- 主数据流：数据库 → FastAPI → Vue / Leaflet；区域船舶查询目前在浏览器内计算。
+- 主数据流：数据库 → FastAPI → Vue / Leaflet；前端区域船舶查询仍按当前视野在浏览器内计算，后端 `/api/area-activity/*` 已提供区域时刻在场、时段进出/停留与 A/B 比较能力（前端未接入）。
 
 | 路径 | 用途 |
 | --- | --- |
@@ -38,6 +39,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 | `frontend/src/composables/usePlayback.ts` | 分窗加载及回放 |
 | `frontend/src/services/` | 本地空间计算、国家边界图层 |
 | `backend/app/routers/` | 船舶、新闻事件、模拟元数据、停留试验路由 |
+| `backend/app/services/area_activity/` | 区域活动共享服务：边界版本、算法参数、固定参数化 SQL 与状态机（手动 API 与后续智能体工具共用） |
 | `backend/app/models.py`、`schemas.py` | ORM 模型及接口响应结构 |
 | `backend/sql/` | 历史迁移与派生表 SQL |
 | `sim_ais_demo/config/news_aligned_config.json` | 旧模拟情景配置，仅供历史参考 |
@@ -109,6 +111,10 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 | GET | `/api/encounters?from=&to=&max_distance_nm=` | P4 相遇分析派生层（`encounters`）：一船对一行（最近距离 NM/米、时间重叠分钟、最近接近点、period），阈值快照入 params |
 | POST | `/api/encounters/analyze` | P4 受控同步重建相遇派生层：body `{distance_nm, overlap_min, sample_seconds}`，成功后写表并回 summary；模拟时空邻近，接近不等于实际交互 |
 | GET | `/api/data-health` | P5 数据健康：按 `data_source` 的报位数/船数/覆盖区间/中位 gap、全局计数、四张派生表行数 + built_at + stale |
+| GET | `/api/area-activity/default-area` | 默认分析区域（`hormuz_core_v1`）的版本、半开边界、跨度与依据；供后续前端「开启功能/恢复默认区域」使用 |
+| GET | `/api/area-activity/snapshot?at=&west=&south=&east=&north=&ship_type=` | 历史时刻区域在场：每船取 `at` 之前最新有效报位（默认 3600 s 新鲜度），过期不计入、不回退到更早的区域内报位；返回在场摘要与有界船舶列表 |
+| GET | `/api/area-activity/activity?start=&end=&west=&south=&east=&north=&ship_type=&batch_ids=` | 时段出现/进出/停留：按船去重出现数、观测进入/离开次数、观测支持的停留时长与按 UTC 自然日汇总；窗口 ≤7 天，超限或超读取上限直接拒绝 |
+| GET | `/api/area-activity/compare?start_a=&end_a=&start_b=&end_b=&…` | 同一矩形/筛选/算法版本下的 A/B 两时段比较：绝对差与变化率（基期 0 时为 null）、日均分母为窗口实际长度、覆盖可比性警告 |
 | GET | `/events` | 新闻聚合事件，按最早报道日期排序 |
 | GET | `/events/{event_id}/cover` | 按业务事件 ID 读取关联报道配图；从 `NEWS_IMAGE_ROOT` 下受限的 `images/` 路径返回图片，缺失时 404 |
 | GET | `/events/{event_id}/news` | 使用业务事件字符串 ID 查询关联报道，不是数据库整数主键 |
