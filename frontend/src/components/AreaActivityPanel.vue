@@ -356,7 +356,9 @@ function parseOptionalInt(text: string): { value: number | null; error: string |
 function planQuery(): QueryPlan {
   if (!shipTypeFilterReady.value) return { ok: false, message: '请至少选择一个船型再查询（后端把空船型解释为全部，清空后请点「全选」）。' }
   const shipTypes = shipTypeFilter.value
-  const bounds = { ...props.bounds }
+  // 默认区域传 null（后端按默认区返回 area_id=hormuz_core_v1/is_default=true）；
+  // 只有自选矩形才传四个边界，否则后端按契约回显 area_id=custom，丢掉默认区身份。
+  const bounds = props.areaIsDefault ? null : { ...props.bounds }
   if (mode.value === 'snapshot') {
     const at = utcInputToIso(snapshotAt.value)
     if (!at) return { ok: false, message: '请填写有效的时刻（UTC，格式 YYYY-MM-DDTHH:mm）。' }

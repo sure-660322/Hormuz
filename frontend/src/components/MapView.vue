@@ -352,7 +352,8 @@ function cancelDraw() {
   emit('areaDrawCancel')
 }
 
-function onAreaDrawStart(event: MouseEvent) {
+function onAreaDrawStart(rawEvent: Event) {
+  const event = rawEvent as MouseEvent
   if (!map || !areaLayer || !props.areaDrawing || event.button !== 0) return
   drawing = true
   drawStart = map.mouseEventToLatLng(event)
@@ -363,9 +364,9 @@ function onAreaDrawStart(event: MouseEvent) {
   drawRect = L.rectangle(L.latLngBounds(drawStart, drawStart), DRAW_STYLE).addTo(areaLayer)
 }
 
-function onAreaDrawing(event: MouseEvent) {
+function onAreaDrawing(rawEvent: Event) {
   if (!drawing || !drawStart || !drawRect || !map) return
-  drawRect.setBounds(L.latLngBounds(drawStart, map.mouseEventToLatLng(event)))
+  drawRect.setBounds(L.latLngBounds(drawStart, map.mouseEventToLatLng(rawEvent as MouseEvent)))
 }
 
 function onAreaDrawEnd() {

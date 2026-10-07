@@ -729,6 +729,7 @@ const areaPanelContext = computed(() => {
   const context = areaAgentContext.value ?? {}
   return { ...context, at: context.at ?? time.value ?? null }
 })
+const agentDraft = ref<{ text: string; version: number } | null>(null)
 let agentDraftVersion = 0
 let areaDefaultLoaded = false
 
@@ -883,21 +884,31 @@ async function openAreaAnalysis(action: AgentAreaAnalysisAction) {
 }
 
 // 证据联动：加载该访问时段的有界轨迹（复用现有轨迹接口与地图图层）。
+// 地图轨迹单次最多 24 小时（executeMapAction 的既有约束），长于 24 小时的访问按
+// 「末次区内报位向前 24 小时」裁剪并明确说明，而不是整条拒绝。
+const VISIT_TRACK_LIMIT_MS = 24 * 60 * 60 * 1000
 async function showVisitTrack(payload: { shipId: number; startAt: string; endAt: string; visitKey?: string }) {
-  const start = Date.parse(payload.startAt)
+  const rawStart = Date.parse(payload.startAt)
   const end = Date.parse(payload.endAt)
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-    notice.value = '该访问的观测区间无效，无法显示轨迹'
+  if (!Number.isFinite(rawStart) || !Number.isFinite(end) || end <= rawStart) {
+    notice.value = '该访问的观测区间无效（首末区内报位时间缺失或倒置），无法显示轨迹'
     return
   }
+  const clamped = end - rawStart > VISIT_TRACK_LIMIT_MS
+  const start = clamped ? end - VISIT_TRACK_LIMIT_MS : rawStart
   await executeMapAction(
     {
       type: 'ship_track', trigger: 'suggested', ship_id: payload.shipId,
       start_at: new Date(start).toISOString(), end_at: new Date(end).toISOString(),
-      source: 'nnu_ais', window_source: '区域访问证据区间',
+      source: 'nnu_ais',
+      window_source: clamped ? '区域访问证据区间（已裁剪为末 24 小时）' : '区域访问证据区间',
     },
     new AbortController().signal,
-  ).then(result => { notice.value = result.message })
+  ).then(result => {
+    notice.value = clamped
+      ? `${result.message} 该访问跨度超过 24 小时，地图轨迹已裁剪为末次区内报位前的 24 小时（访问完整区间见明细）。`
+      : result.message
+  })
 }
 
 function useAreaInDialog(payload: { text: string }) {
@@ -908,14 +919,18 @@ function useAreaInDialog(payload: { text: string }) {
   workspaceMode.value = 'explore'
 }
 
-const areaAgentAreaContext = computed(() => ({
-  west: areaBounds.value.west,
-  south: areaBounds.value.south,
-  east: areaBounds.value.east,
-  north: areaBounds.value.north,
-  area_id: areaIsDefault.value ? 'hormuz_core_v1' : 'custom',
-  label: areaLabel.value,
-}))
+// 默认区域不传 area_context（后端按版本化默认区处理，area_id=hormuz_core_v1）；
+// 只有自选矩形才把四边界与 custom 标记交给后端，避免默认区身份被覆盖成 custom。
+const areaAgentAreaContext = computed(() => (areaIsDefault.value
+  ? null
+  : {
+      west: areaBounds.value.west,
+      south: areaBounds.value.south,
+      east: areaBounds.value.east,
+      north: areaBounds.value.north,
+      area_id: 'custom',
+      label: areaLabel.value,
+    }))
 
 watch(areaBoundsVersion, () => {
   // 区域变更后，已展示的结果立即标记为「区域已变更，待查询」；

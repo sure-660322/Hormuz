@@ -47,6 +47,13 @@ def _number(value: Any, key: str) -> float:
     return float(value)
 
 
+def _same_bounds(left: boundaries.AreaBounds, right: boundaries.AreaBounds) -> bool:
+    return (
+        left.south == right.south and left.west == right.west
+        and left.north == right.north and left.east == right.east
+    )
+
+
 def _from_bounds(
     bounds: boundaries.AreaBounds,
     *,
@@ -56,6 +63,22 @@ def _from_bounds(
     source: str,
 ) -> AreaContext:
     if is_default:
+        return AreaContext(
+            bounds=bounds,
+            is_default=True,
+            area_id=params.DEFAULT_AREA_ID,
+            name=params.DEFAULT_AREA_NAME,
+            version=params.DEFAULT_AREA_VERSION,
+            label=label or params.DEFAULT_AREA_NAME,
+            source=SOURCE_DEFAULT,
+        )
+    # 调用方显式声明 area_id=默认区域标识且边界与默认区域完全一致时，按默认区域处理：
+    # 否则「当前区域=默认区域」的智能体请求会回显 custom，丢掉默认区身份（数字不受影响）。
+    if (
+        area_id
+        and area_id.strip() == params.DEFAULT_AREA_ID
+        and _same_bounds(bounds, boundaries.default_bounds())
+    ):
         return AreaContext(
             bounds=bounds,
             is_default=True,
