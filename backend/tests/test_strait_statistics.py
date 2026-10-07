@@ -354,3 +354,30 @@ def test_build_result_analysis_actions_bind_own_query():
         D1, D1 + timedelta(days=1), "测试", "回答",
     )
     assert outcome3["analysis_actions"] == []  # 失败调用不生成动作
+
+
+def test_direction_filtered_payload_masks_opposite_direction():
+    """方向过滤时未统计方向置 null（不是 0），避免模型把「未统计」误述为「零通行」。"""
+    from backend.app.services.agent.business_tools import _mask_uncounted_direction
+
+    payload = {
+        "direction": "east_to_west",
+        "window": {"passage_count": 5, "inbound_count": 5, "outbound_count": 0},
+        "daily": [{"day": "2026-02-28", "inbound_count": 5, "outbound_count": 0}],
+    }
+    masked = _mask_uncounted_direction(payload)
+    assert masked["window"]["outbound_count"] is None
+    assert masked["daily"][0]["outbound_count"] is None
+    assert masked["window"]["inbound_count"] == 5  # 已统计方向保留真实计数
+    assert "direction_note" in masked
+
+    plain = {"direction": None, "window": {"outbound_count": 3}, "daily": []}
+    assert _mask_uncounted_direction(plain)["window"]["outbound_count"] == 3
+    compare = {
+        "direction": "outbound",
+        "a_period": {"window": {"inbound_count": 0, "outbound_count": 2}},
+        "b_period": {"window": {"inbound_count": 0, "outbound_count": 4}},
+    }
+    masked_compare = _mask_uncounted_direction(compare)
+    assert masked_compare["a_period"]["window"]["inbound_count"] is None
+    assert masked_compare["b_period"]["window"]["inbound_count"] is None

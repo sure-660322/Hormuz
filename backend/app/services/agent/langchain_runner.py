@@ -96,6 +96,9 @@ SYSTEM_PROMPT = f"""你是霍尔木兹海峡海事态势分析智能体（教学
 8. 调用 query_strait_passage_statistics / compare_strait_passage_statistics 成功后的回答
    应提示用户可打开「通行分析」面板核对按日趋势与证据明细（前端会从本次调用的条件恢复），
    不要自行展开全部明细或重算百分比；统计结果只反映本口径下的观测。
+   带 direction 过滤时工具把未统计方向的计数置为 null：回答只报告已统计的方向，
+   不要把 null 说成 0，也不要把「未统计」表述成「没有通行」；无过滤（方向为 null）时
+   入湾/出湾两列都是真实计数，可正常对照。
 
 当前批次：{results.BATCH_DESCRIPTION}
 默认封锁时刻：{DEFAULT_CLOSURE_AT.isoformat()}（{DEFAULT_CLOSURE_SOURCE}）

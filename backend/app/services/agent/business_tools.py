@@ -127,9 +127,39 @@ def _resolve_window(
     return window_start, window_end
 
 
+def _mask_uncounted_direction(payload: dict) -> dict:
+    """方向过滤时把未统计的方向置 null（不是 0），避免把「未统计」误述为「零通行」。"""
+    direction = payload.get("direction")
+    own, opposite = {
+        "inbound": ("inbound", "outbound"),
+        "east_to_west": ("inbound", "outbound"),
+        "outbound": ("outbound", "inbound"),
+        "west_to_east": ("outbound", "inbound"),
+    }.get(direction, (None, None))
+    if not own:
+        return payload
+    windows = [payload.get("window")]
+    for period_key in ("a_period", "b_period"):
+        period = payload.get(period_key)
+        if isinstance(period, dict):
+            windows.append(period.get("window"))
+    for window in windows:
+        if isinstance(window, dict):
+            window[f"{opposite}_count"] = None
+    for day in payload.get("daily") or []:
+        if isinstance(day, dict):
+            day[f"{opposite}_count"] = None
+    label = "入湾（东→西）" if own == "inbound" else "出湾（西→东）"
+    payload["direction_note"] = (
+        f"本结果仅统计{label}方向；另一方向的计数为 null（未统计，不是 0），"
+        "回答时只报告已统计方向，不要把 null 列成 0。"
+    )
+    return payload
+
+
 def _statistics_payload(result) -> dict:
     """统计工具给模型的有界摘要：只含按日计数与全窗汇总，不含证据明细/轨迹。"""
-    return to_jsonable({
+    return _mask_uncounted_direction(to_jsonable({
         "status": result.status,
         "start_at": result.start_at,
         "end_at": result.end_at,
@@ -141,12 +171,12 @@ def _statistics_payload(result) -> dict:
         "determination_version": result.determination_version,
         "evidence_note": "证据明细不在工具结果中；前端「通行分析」面板可按日分页查看并联动地图",
         "limitations": result.limitations,
-    })
+    }))
 
 
 def _compare_payload(result) -> dict:
     """比较工具给模型的有界摘要：两期汇总、差值、变化率（A=0 为 null）与可比性。"""
-    return to_jsonable({
+    return _mask_uncounted_direction(to_jsonable({
         "status": result.status,
         "ship_types": result.ship_types,
         "direction": result.direction,
@@ -161,7 +191,7 @@ def _compare_payload(result) -> dict:
         "comparability_notes": result.comparability_notes,
         "determination_version": result.determination_version,
         "limitations": list(dict.fromkeys(result.a.limitations + result.b.limitations)),
-    })
+    }))
 
 
 def make_business_tools(
