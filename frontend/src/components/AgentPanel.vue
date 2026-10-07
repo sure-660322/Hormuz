@@ -443,6 +443,8 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
             {{ statusMeta[turn.response.status]?.label ?? turn.response.status }}
           </span>
           <span v-for="tool in turn.response.tools_used" :key="tool" class="tool-chip">{{ toolLabels[tool] ?? tool }}</span>
+          <span v-if="!turn.response.tools_used.length && /\d/.test(turn.response.answer)" class="tool-chip warn"
+                title="本轮回答包含数字但未调用任何数据工具，数字可能不可靠，建议要求重查">未调用数据工具</span>
           <button type="button" class="icon-button copy-button" aria-label="复制回答" title="复制回答" @click="copyAnswer(turn.response.answer)"><IconCopy :size="16" aria-hidden="true" /></button>
         </div>
 
@@ -727,6 +729,10 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
   font-size: 11px;
   border: 1px solid var(--line, #26405a);
   color: var(--muted, #9fc2e0);
+}
+.tool-chip.warn {
+  color: #f0b45a;
+  border-color: #8a6420;
 }
 .status-badge[data-tone='ok'] {
   color: #7ee2a8;
