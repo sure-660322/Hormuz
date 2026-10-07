@@ -251,7 +251,7 @@ node scripts/verify_area_activity_browser.cjs --base http://127.0.0.1:5178 --out
 backend/.venv/Scripts/python.exe scripts/verify_area_activity_timeout.py
 ```
 
-交付状态：任务分支已提交，PR 交付信息见本节后续记录；未合并、未部署。并发与触屏/键盘范围未完成，不能据此声称 Issue 的全部验收条件已满足。
+交付状态：[草稿 PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已创建并推送，base=main、head=codex/area-activity-ui；本节业务验收 commit 904e5ba，当前交付 HEAD 以 PR 为准。未合并、未部署。并发与触屏/键盘范围未完成，不能据此声称 Issue 的全部验收条件已满足。
 
 ## 八、未验证项（按实际列出）
 

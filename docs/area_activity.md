@@ -1,6 +1,6 @@
 # 区域船舶活动与进出分析：矩形圈选、手动与智能体共用（issue #41）
 
-状态（2026-10-07）：三个阶段已实现；任务分支已整合最新 main，修复后端到端复测见[验收报告](area_activity_acceptance.md) §七。后端 390 passed / 14 skipped；前端 build、check:workbench、区域检查 30/30 与类型检查通过；API 14 组/163 项断言与已有独立复算证据一致。未合入 main、未部署；并发预算、触屏与纯键盘绘制等限制保留，交付状态见验收报告。
+状态（2026-10-07）：三个阶段已实现；任务分支已整合最新 main，修复后端到端复测见[验收报告](area_activity_acceptance.md) §七。后端 390 passed / 14 skipped；前端 build、check:workbench、区域检查 30/30 与类型检查通过；API 14 组/163 项断言与已有独立复算证据一致。未合入 main、未部署；并发预算、触屏与纯键盘绘制等限制保留，已推送并交付[草稿 PR #45](https://github.com/sure-660322/Hormuz/pull/45)，详细交接见验收报告。
 
 工作树 `D:\my_project\Hormuz-worktrees\codex-area-activity-ui`，分支 `codex/area-activity-ui`，基线 `aca8d3c`（含第一阶段两个提交）。两种入口共用同一后端服务：手动界面调用 `GET/POST /api/area-activity/*`，智能体调用三个只读工具（`query_area_ship_snapshot`/`query_area_ship_activity`/`compare_area_ship_activity`），同一参数返回一致结果。智能体侧细节见[区域活动智能体工具](area_agent_tools.md)与[智能体接入契约](agent_integration.md)；前端组件与展示规则见[区域活动前端](area_activity_frontend.md)。
 

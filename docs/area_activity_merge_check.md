@@ -86,3 +86,5 @@ cd frontend; npm run build; npm run check:workbench; node checks/area-activity.c
 - 任务范围：区域服务/API/工具、前端区域与动作接入、对应检查/文档；本机资源为只读 aisdb、独立验收端口 8032/5178。原有 8031/5177、8000/5174 服务未重启。
 - 390 passed / 14 skipped；前端 build、check:workbench、区域检查 30/30 与隔离类型检查通过。完整浏览器及 API 复核见[验收报告](area_activity_acceptance.md) §七。
 - 当前 main 与本分支代码的整合已在任务分支完成；合入 main、部署、任务 worktree 清理均未执行。不再需要按第五节重做旧基线冲突。
+
+交付：[草稿 PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已创建并推送；base=main，head=codex/area-activity-ui。业务复测 commit 904e5ba，后续仅验收脚本与文档；未执行 main 合并或清理任务 worktree。
