@@ -180,7 +180,11 @@ watch(() => props.restore, (action) => {
   if (!action) return
   const query = action.query
   mode.value = query.mode
-  direction.value = (query.direction as '' | 'inbound' | 'outbound') ?? ''
+  // 方向兼容门线侧别别名（east_to_west=入湾 / west_to_east=出湾），后端已规范为 inbound/outbound。
+  const rawDirection = query.direction as string | undefined
+  direction.value = rawDirection === 'inbound' || rawDirection === 'east_to_west'
+    ? 'inbound'
+    : rawDirection === 'outbound' || rawDirection === 'west_to_east' ? 'outbound' : ''
   if (query.ship_types && meta.value) {
     const known = new Set(allTypeValues.value)
     selectedTypes.value = query.ship_types.filter((value) => known.has(value))
