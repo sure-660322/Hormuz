@@ -274,3 +274,9 @@ SQL-02～06 的阶段验收文档继续保留，但不再作为当前任务看�
 浏览器：Playwright 独立会话 `issue24`，两次提问后聊天面板和上一轮结果保留；显示 FAIR TIGER（ID 360）14:00–15:00 UTC 轨迹成功，第二轮定位/高亮成功（界面以真实地图 API 返回的 14:58:39Z 报位时间为准）。`/ships/360/track-window` 与 `/ships/snapshot-window` 返回 200。控制台 0 errors、1 条现有 ECharts 零尺寸 warning；未将该图表警告归因于本任务。临时证据原在任务 worktree 的 `output/playwright/` 与 `.playwright-cli/`；清理前已复制保存到主目录本地忽略路径 `local-archive/issue24-2026-09-30/playwright/` 和 `playwright-cli/`（含 snapshot、network、generate_fixture.py 和生成响应），不提交原始数据与临时输出。后端真实模型日志、原始 9 次账单归因、真实供应商缓存/费用及全量端到端模型验收未验证。
 
 2026-09-30 合并与同步核验：`gh pr view 25` 确认 base=main、state=MERGED；fetch 后 `git merge-base --is-ancestor af41d37 origin/main` 及任务提交 19e3cba 对本地 HEAD 的祖先检查通过，主目录 fast-forward。用户授权合并、清理与同步，本会话作为整合者仅同步本任务共享文档段落。旧 8000 reloader/worker 未自动加载变更，因此核对精确进程后停止并从主目录重启；启动日志确认监听主目录、Application startup complete。新运行日志位于上述本地归档的 `runtime/`。8000 `/health`、`/docs` 与 5174 首页均 HTTP 200；在最新主目录执行 `backend/.venv/Scripts/python.exe -m pytest backend/tests/test_agent_track_observation.py backend/tests/test_agent_map_actions.py -q`，29 passed。该检查是合入后相关回归，不冒充重新执行全量 286 项，也未调用收费模型。当前 5174 的后续问答使用修复后端，原有回答不重算；其他会话 worktree/服务保留。
+
+## 2026-10-07 Issue #43 北冰洋故事交互
+
+状态：**已实现，前端检查及浏览器样本已验证，待 PR 评审/主分支整合，未部署**。负责人 Codex，独立分支 `codex/arctic-story` / worktree `codex-arctic-story`；初始基线acfc7af，交付以origin/main的f555ec7为基线，只携带任务改动。预览5182只读复用8000，不更改数据库、后端契约或依赖。实现三个阶段/完整故事、分段起点播放与末界停止、航速采样曲线/滑块定位、缺报与报道证据边界、手机下方面板、收起/退出、阶段完整范围聚焦。
+
+2026-10-07 build/check:workbench/diff检查通过；Playwright验证真实案例2352采样点、阶段切换新增轨迹请求0、播放暂停/末界/快速切换/时间定位、1280×720及390×844/reduced-motion/退出恢复；路由夹具验证未导入、图片失败、503重试，无pageerror。保留既有大bundle警告；后端/真实模型与导入未重验。无新业务工具，沿用既有案例上下文及轨迹接口。详细实现、证据与限制见[案例说明](arctic_ocean_case.md#2026-10-07-issue-43-故事与交互升级)。README、案例说明和FRONTEND_WORKBENCH已在本任务分支同步；与区域业务共享文件的合入需由整合者串行协调。
