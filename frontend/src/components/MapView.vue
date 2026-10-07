@@ -25,6 +25,7 @@ const props = defineProps<{
   speedSegments: ApiTrackSegment[] | null
   windowSegments: ApiTrackWindow['segments'] | null
   backgroundSegments?: ApiTrackWindow['segments'] | null
+  focusSegments?: ApiTrackWindow['segments']
   windowSpeedColor: boolean
   windowPointsVisible: boolean
   isolated: boolean
@@ -431,7 +432,10 @@ function focusPadding() {
   const panel = container.value?.closest('.workbench')?.querySelector('.inspector')?.getBoundingClientRect()
   const casePanel = container.value?.closest('.workbench')?.querySelector('.case-panel')?.getBoundingClientRect()
   let left = 40, right = 40, bottom = 40
-  if (area && casePanel && casePanel.width) left = Math.min(area.width * 0.55, casePanel.right - area.left + 25)
+  if (area && casePanel && casePanel.width) {
+    if (area.width <= 760) bottom = Math.min(area.height - 100, area.bottom - casePanel.top + 20)
+    else left = Math.min(area.width * 0.55, casePanel.right - area.left + 25)
+  }
   if (area && panel && panel.width && panel.height && panel.left < area.right && panel.top < area.bottom) {
     if (panel.height > area.height * 0.7) right = Math.min(area.width - 100, area.right - panel.left + 30)
     else bottom = Math.min(area.height - 100, area.bottom - panel.top + 30)
@@ -562,7 +566,7 @@ watch(() => props.selectedEncounter, (enc) => {
 watch(() => [props.layers, props.isolated], syncLayers, { deep: true })
 watch(() => props.focusShipRequest, focusShip)
 watch(() => props.focusTrackRequest, () => {
-  const points = (props.windowSegments ?? []).flatMap(segment => segment.points)
+  const points = (props.focusSegments ?? props.windowSegments ?? []).flatMap(segment => segment.points)
   if (map && points.length) { map.stop(); map.fitBounds(
     L.latLngBounds(points.map(point => [point.latitude, point.longitude] as L.LatLngTuple)),
     { ...focusPadding(), maxZoom: 11, animate: false },

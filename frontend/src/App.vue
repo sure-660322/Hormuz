@@ -68,6 +68,8 @@ const caseHighlight = computed(() => {
 })
 const caseWindow = ref<{ start_at: string; end_at: string } | null>(null)
 const caseSwitching = ref(false)
+const casePlaying = ref(false)
+const timelineControls = ref<InstanceType<typeof TimelineControls> | null>(null)
 const savedCaseView = ref<{
   time: string | null; view: ReturnType<InstanceType<typeof MapView>['captureView']>
   ship: number | null; event: ApiEvent | null; panel: Panel; panelOpen: boolean
@@ -131,21 +133,29 @@ async function initializeCase() {
     layers.value.dwell = false
     layers.value.encounters = false
     await nextTick()
+    const deadline = Date.now() + 20000
+    while (version === caseVersion && !frameReady.value && !snapshotError.value && Date.now() < deadline)
+      await new Promise(resolve => setTimeout(resolve, 100))
+    if (version !== caseVersion || !caseOpen.value) return
     focusTrackRequest.value++
   } catch (e) {
     if (version === caseVersion) caseError.value = describeApiError(e, '完整案例加载失败')
   } finally { if (version === caseVersion) caseSwitching.value = false }
 }
-async function selectCaseStage(id: string) {
+async function selectCaseStage(id: string, position: 'start' | 'end' = 'end') {
   caseStageId.value = id
-  if (!caseActive.value || caseSwitching.value) return
+  if (!caseActive.value || caseSwitching.value) return false
   const version = ++caseVersion
   cancelMapAction()
   agentTrack.value = null
   const stage = caseData.value?.stages.find(s => s.id === id)
   const end = stage?.end_at ?? caseWindow.value!.end_at
   // Use the last existing frame within the phase, rather than the next day's frame.
-  seek(times.value.filter(at => Date.parse(at) <= Date.parse(end)).at(-1) ?? end)
+  const start = stage?.start_at ?? caseWindow.value!.start_at
+  const target = position === 'start'
+    ? times.value.find(at => Date.parse(at) >= Date.parse(start)) ?? start
+    : times.value.filter(at => Date.parse(at) <= Date.parse(end)).at(-1) ?? end
+  seek(target)
   seekRequest.value++
   selectedShipId.value = caseData.value!.ship_id
   trackVisible.value = true
@@ -153,7 +163,24 @@ async function selectCaseStage(id: string) {
   const deadline = Date.now() + 20000
   while (version === caseVersion && !frameReady.value && !snapshotError.value && Date.now() < deadline)
     await new Promise(resolve => setTimeout(resolve, 100))
-  if (version === caseVersion && caseOpen.value) focusTrackRequest.value++
+  if (version !== caseVersion || !caseOpen.value) return false
+  focusTrackRequest.value++
+  return frameReady.value && !snapshotError.value
+}
+async function playCaseStage(id: string) {
+  if (await selectCaseStage(id, 'start')) timelineControls.value?.start()
+}
+function seekCaseTime(at: string) {
+  if (!caseActive.value) return
+  caseVersion++
+  cancelMapAction()
+  agentTrack.value = null
+  seekRequest.value++
+  seek(at)
+}
+function pauseCase() {
+  caseVersion++
+  timelineControls.value?.stop()
 }
 async function exitCase() {
   const version = ++caseVersion
@@ -205,7 +232,7 @@ const caseStageStatus = computed(() => {
   if (!caseActive.value || caseStageId.value === 'overview') return ''
   if (snapshotError.value) return '阶段快照加载失败，可点击地图状态中的重试。'
   if (snapshotLoading.value || !frameReady.value) return '阶段已选中：等待快照与轨迹…'
-  return '已定位到阶段末帧；亮线为阶段内已回放轨迹，淡线为完整观测轨迹。'
+  return casePlaying.value ? '正在回放本阶段；亮线随观测时间推进。' : '已定位；点击曲线查看过程，或从阶段起点播放。'
 })
 async function retryPlayback() {
   if (caseActive.value) await initializeCase()
@@ -1156,7 +1183,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @open-agent="togglePanel('agent')"
         @open-area="areaOpen ? closeAreaPanel() : openAreaPanel()"
       />
-      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" @select="selectCaseStage" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
+      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
       <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开案例阶段与报道</button>
       <LayersPopover
         v-if="layersOpen"
@@ -1180,6 +1207,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :speed-segments="speedColorOn ? speedSegments : null"
         :window-segments="agentTrack ? agentTrack.segments : (caseActive ? caseHighlight : isRealAis ? (realTrack?.segments ?? []) : null)"
         :background-segments="caseActive ? caseFullTrack?.segments ?? null : null"
+        :focus-segments="caseActive && !agentTrack && caseAgentWindow ? clipCaseTracks(caseFullTrack, caseAgentWindow.start_at, caseAgentWindow.end_at) : undefined"
         :window-speed-color="isRealAis && speedColorOn"
         :window-points-visible="isRealAis && realPointsVisible"
         :isolated="isolated"
@@ -1325,6 +1353,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </section>
     <div class="timeline-dock" :class="{ compact: timelineCompact }">
       <TimelineControls
+        ref="timelineControls" :playback-end="caseActive ? caseAgentWindow?.end_at : undefined" @playing-change="casePlaying = $event"
         v-model="index" :frame-times="times" :snapshot-mode="isRealAis" :frame-ready="frameReady" :frame-error="snapshotError"
         :seek-request="seekRequest"
         :loading="loading" :error-message="error" :compact="timelineCompact"

@@ -86,3 +86,7 @@ npm run check:workbench
 ```
 
 2026-09-21 UI 优化（品牌 Logo、事件图标半透明化与屏幕固定尺寸、事件就地信息卡）：npm run build 与 npm run check:workbench 通过；无头 Chrome 端到端验证通过——Logo 渲染、点击事件图标就地弹出信息卡（类型/标题/时间/摘要/查看详情）、「查看详情」打开右侧事件面板并关闭信息卡、选中高亮正常，控制台无错误；截图为本地临时产物（screenshots/，不入库）。智能体历史验收记录（原标注日期晚于本次文档核对日，实际验收日期待核对；不代表本次重新验证）：本地提交前以上两项已通过。契约 v3：npm run build 与 npm run check:workbench 通过；浏览器端到端联调通过（多轮追问渲染两轮、事件结果与定位按钮渲染、定位后选中船、控制台无未处理错误）；历史浏览器记录见 sim_ais_demo/output_news_aligned/api_startup_report.json，不等于完整端到端覆盖。2026-09-19 P1/P2：npm run build 与 npm run check:workbench 通过；无头 Chrome 端到端验证通过——事件关联区渲染（observed/mentioned 分列）、关联船定位选中、速度着色轨迹与图例渲染均正常，控制台无错误；截图为本地临时产物（screenshots/，不入库）。
+
+## 2026-10-07 北冰洋故事交互（Issue #43）
+
+PR #44 已合入main（b0ed92f），本地已同步并保留原技能提交，未部署；build/check:workbench及浏览器样本验证通过。CasePanel组织三段故事、报道和证据边界，新增CaseSpeedPlot使用已有采样轨迹定位时间；TimelineControls支持可选阶段末界及播放状态，MapView可在开播时聚焦完整阶段并避开手机底部面板。支持起点播放/暂停、上一段/下一段、收起/展开和退出恢复。未导入仍能阅读报道，图片失败占位，503可重试；无后端或工具契约变更，真实模型未重验。日期、命令、截图与未验证范围见[案例说明](docs/arctic_ocean_case.md#2026-10-07-issue-43-故事与交互升级)。
