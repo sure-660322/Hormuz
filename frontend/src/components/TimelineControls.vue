@@ -11,12 +11,14 @@ const props = defineProps<{
   frameReady?: boolean
   frameError?: string
   compact?: boolean
+  playbackEnd?: string
 }>()
 const emit = defineEmits<{
   'update:modelValue': [index: number]
   retry: []
   speedChange: [speed: number]
   toggleCompact: []
+  playingChange: [playing: boolean]
 }>()
 const playing = ref(false)
 const speed = ref(1)
@@ -111,10 +113,16 @@ watch([playing, speed], () => {
   timer = setInterval(() => {
     if (props.snapshotMode && !props.frameReady) return
     const next = Math.min(last.value, props.modelValue + 1)
+    if (props.playbackEnd && Date.parse(props.frameTimes[next] ?? '') > Date.parse(props.playbackEnd)) { stop(); return }
     emit('update:modelValue', next)
     if (next === last.value) stop()
   }, 1000 / speed.value)
 })
+watch(playing, value => emit('playingChange', value))
+function startPlayback() {
+  if (!playing.value) play()
+}
+defineExpose({ start: startPlayback, stop })
 watch(speed, value => emit('speedChange', value))
 watch(() => props.frameError, (message) => { if (message) stop() })
 watch(() => props.seekRequest, () => { stop() })
