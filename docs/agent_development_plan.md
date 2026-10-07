@@ -1,5 +1,36 @@
 # 智能体下一阶段开发任务
 
+## 2026-10-07 Issue #40 动态海峡通行统计（分支 `kimi/strait-passage-stats`）
+
+状态：**已实现待验证**（2026-10-07；基线 `ead29ac`，负责人 Kimi；worktree
+`D:/my_project/Hormuz-worktrees/kimi-strait-passage-stats`）。按 issue 范围交付：
+手动「通行分析」面板（总览图表旁内联展开，不新增 Dashboard 页）+ 智能体两个新工具，
+复用同一统计/比较服务；多日按日统计（≤7 天/时段）、船型多选（含未知/缺失桶，
+SQL 候选计算前过滤）、方向筛选、A/B 比较（差值/变化率 A=0 为 null/窗口长度与覆盖
+可比性）、证据明细分页（matched_count 不受分页影响）、来源批次元数据（七日批次 1–7
+与案例补充批次 8 区分）。服务端逐日编排保留 24h 回看，稳定证据键
+`ship_id:起始报位id:完成报位id` 跨窗去重；判定口径与阈值不变
+（`determination_version=strait-gates-v1+stats-2026-10-07`）。v4 增量 `analysis_actions`
+绑定调用自身参数，前端「查看通行分析」恢复条件/结果；证据行地图联动复用智能体地图
+动作执行器（证据时段 ±6h，与回放时段分别标明）。
+
+- 验证（2026-10-07 本机应用库只读）：后端 306 passed / 14 skipped（新增
+  `test_strait_statistics.py` 14 项）；HTTP 成功/无时区 422/超 7 天 422 分支通过；
+  7 日全船型 475 次/候选 32 与逐日基线一致，全窗去重 447 艘；性能预算逐项达标
+  （meta 热 1.08s、statistics 7 天 11.48s、compare 油轮 3v3 7.36s、evidence 7 天 10.89s）；
+  前端 `npm run build` 与 `npm run check:workbench` 通过。
+- 性能基线（改码前实测）：1 日全船型热 median 1.62s（日扫描约 75.3 万门线报位），
+  7 日逐日合计 11.17s；基线脚本保留在 `scripts/measure_strait_baseline.py`。
+- 允许修改路径：backend/app/services/agent/（strait_passages/strait_statistics/config/
+  business_tools/results/langchain_runner/knowledge）、backend/app/routers/strait_passages.py、
+  backend/app/main.py、backend/app/schemas_agent.py、backend/tests/test_strait_statistics.py、
+  frontend/src（api.ts/App.vue/OverviewPanel.vue/AgentPanel.vue/PassageAnalysisPanel.vue）、
+  docs/、README.md、FRONTEND_WORKBENCH.md、scripts/measure_strait_baseline.py。
+  数据库目标：本机应用库只读（无写入/迁移/重建）；前端 5174 由用户既有 dev 服务占用，
+  本轮未另起服务。共享文件（README、agent_integration、agent_development_plan、
+  schemas_agent）由本会话按本任务整合。
+- 未验证：真实 DeepSeek 对统计/比较问题的工具选择与表述、浏览器端到端（控件/图表/
+  地图联动/窄屏/控制台）、独立测试库验证；历史油轮固定批次数字仅作对照。
 ## 2026-10-07 Issue #41 第一阶段：区域活动后端算法与接口
 
 状态：**已实现、已在独立测试库与真实库只读验证，本地分支已提交，待用户验收；未推送、未合并、未部署**。负责人 Codex（本会话）。基线 `main` / `ead29ac`，分支 `codex/area-ship-activity`，工作树 `D:/my_project/Hormuz-worktrees/codex-area-ship-activity`。数据库目标：只读 `aisdb`（本机 PostgreSQL 17.10 + PostGIS 3.5.2）+ 独立测试库 `hormuz_area_test`；未建索引、未迁移、未重建派生层、未写业务库。允许修改路径：`backend/app/services/area_activity/**`、`backend/app/routers/area_activity.py`、`backend/app/schemas_area_activity.py`、`backend/app/main.py`（仅注册）、`backend/tests/test_area_activity_*.py`、`scripts/area_activity_samples.py`、`scripts/verify_area_activity_samples.py`、`scripts/verify_area_activity_backend.py`、`docs/area_activity*.md|json`、README 摘要。

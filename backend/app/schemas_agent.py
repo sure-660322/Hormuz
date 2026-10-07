@@ -139,10 +139,16 @@ class AgentAnalyzeResponse(BaseModel):
     limitations: list[str]
     clarification: str | None  # 非澄清状态为空
     map_actions: list["AgentMapAction"] = Field(default_factory=list)
+    # issue #40：分析面板动作（当前仅 passage_analysis）。由成功的统计/比较工具结果生成，
+    # 绑定该次调用自己的查询参数，前端据此打开「通行分析」面板并恢复条件与结果。
     analysis_actions: list["AgentAnalysisAction"] = Field(default_factory=list)
 
 
 class AgentAnalysisAction(BaseModel):
+    type: Literal["passage_analysis"] = "passage_analysis"
+    trigger: Literal["suggested"] = "suggested"
+    query: dict[str, Any]  # {mode, start_at, end_at, a/b 起止, ship_types, direction}
+    summary: dict[str, Any]  # 该次调用的有界统计摘要，供面板直接恢复展示
     """结果中的建议分析动作（「查看区域分析」）。
 
     由本轮成功调用过的区域活动工具生成（同名工具多次调用只保留最后一次）；

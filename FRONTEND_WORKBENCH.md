@@ -26,6 +26,7 @@
 | 异常与空状态 | 请求失败、空结果和重试提示；新闻请求有20秒超时 |
 | 区域活动分析 | 地图工具栏「区域」打开区域活动面板（AreaActivityPanel.vue）：显示默认分析区域与半开边界，支持按住左键拖拽圈选新矩形（Esc 取消，后端 `POST /api/area-activity/resolve-area` 校验，失败回滚并显示后端说明），缩放平移不改变分析区；三模式查询（时刻在场 / 时段活动含每日汇总与趋势图 / 两时段比较）；船型多选来自 `GET /api/area-activity/ship-types`（默认全部，含缺失/未知保留值）；访问明细可展开 entry/exit 证据报位、segments 与质量 flags，并可「地图定位」（复用既有 ship_track 有界轨迹，>24h 访问裁剪为末 24 小时并提示）；区域变更后旧结果标「区域已变更，待查询」；请求用 requestSeq + AbortController，旧响应不覆盖新条件；结果只展示后端字段（area/version/coverage/limits/limitations），前端不重算业务判定 |
 | 智能体问答 | 地图工具栏「智能体」打开右侧聊天面板（AgentPanel.vue），调用 POST /agent/analyze；独立异步加载、取消与重试，前端 75 秒超时覆盖后端 60 秒预算；已加入 Markdown 消毒渲染、v4 工具结果折叠、消息流与固定输入区。回答继续附船只、证据、统计与限制说明；该 UI 改动已合入本地 main |
+| 通行分析（issue #40，分支待合入） | 总览「油价 · 油轮通行量」区块新增「通行分析」开关，展开 PassageAnalysisPanel.vue：单时段/A-B 比较、UTC 日期、船型多选（含未知/缺失）、方向筛选、按日柱状图、比较表、证据明细分页与地图轨迹联动；智能体统计/比较回答附「查看通行分析」恢复条件。固定历史油轮序列保留为历史独立复核对照（已标注非动态结果） |
 
 ## 数据语义
 
@@ -51,6 +52,7 @@
 | frontend/src/components/ShipInspector.vue | 船舶详情、航速曲线与派生层速度着色开关 |
 | frontend/src/components/ToolRail.vue | 地图工具栏（图层、区域、智能体入口，图标+文字标签） |
 | frontend/src/components/AreaActivityPanel.vue | 区域活动面板：三模式表单、船型多选、每日/访问/比较结果、证据联动与请求守卫 |
+| frontend/src/components/PassageAnalysisPanel.vue | 通行分析（issue #40）：动态通行统计/比较查询、按日图表、证据分页与地图轨迹联动 |
 | frontend/src/components/TimelineControls.vue | 回放控件 |
 | frontend/src/domain/areaActivity.ts | 区域活动纯函数：响应归一化、UTC 换算、格式化、截断与 change_rate 文案、对话提示词 |
 | frontend/src/domain/maritime.ts | 时间格式、展示类型和距离计算 |

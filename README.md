@@ -8,6 +8,8 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 
 文档入口：[当前文档索引](docs/README.md) · [前端工作台](FRONTEND_WORKBENCH.md) · [数据库说明](docs/database_setup.md) · [历史交付记录](docs/archive/delivery_notes_2026-10-03.md)。
 
+协作入口：[智能体规则](AGENTS.md) · [GitHub 任务技能](.agents/skills/github-issue-workflow/SKILL.md) · [协作与技能接入](docs/collaboration.md)。使用「处理 #编号」交付 PR，「收尾」合并、同步、清理，或「闭环处理 #编号」完成全过程；共享 main 按指定整合者规则处理。
+
 ## 当前进度
 
 | 模块 | 当前状态 |
@@ -22,6 +24,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 | 区域船舶活动分析 | **三个阶段已实现，浏览器手动/智能体全链路冒烟通过，独立验收报告待最终确认（issue #41，2026-10-07，算法版本 1.0.1，分支 `codex/area-activity-ui`，未推送/未合并）**：默认项目分析区域 + 半开矩形、手动圈选矩形、时刻在场/时段进出停留/按日汇总/A-B 比较三模式面板与地图证据联动，以及智能体三个只读工具（`query_area_ship_snapshot`/`query_area_ship_activity`/`compare_area_ship_activity`）与 `area_context`+`analysis_actions`「查看区域分析」入口，手动 API 与工具共用同一服务。批次筛选同时作用于统计、上下文与越界探测。第一阶段：独立测试库样例验证 PASS=2131、FAIL=0，真实库只读验证通过（1 小时 ≈2.1 s、1 天 ≈2.8 s、7 天 ≈7.2 s，扫描 ≤400 万报位）。第二、三阶段：后端 366 passed / 14 skipped、前端 build 与 check:workbench 通过、浏览器冒烟 15/15、真实模型三问数字与独立复算一致；证据见[验收报告](docs/area_activity_acceptance.md)与[合并预检](docs/area_activity_merge_check.md)。**未推送、未合并、未部署；main 当前尚未包含本分支** |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
 | 智能体 | **本地 main 已接入七日真实 AIS 语义并通过工具层验证**：LangChain `create_agent`、13 个只读业务工具（8 个既有 + 2 个动态通行统计 + 3 个区域活动）与知识库保持 v4 契约。船舶检索、轨迹和有界虚拟门线通行已在应用库只读验证；**SQL 三工具已按 catalog v2 + 016 只读语义层在本机恢复启用**（`agent_data.v_ships` 一船一行，`v_ships=4,462` 与源表一致；执行器全链路核验通过，真实 DeepSeek 对「多少艘油轮」自主完成 schema→check→execute 并回答 793 艘）。含 TimescaleDB 的集群须为读者角色设 `timescaledb.disable_load=on`（016 已内置）。浏览器端到端仍未验证；合并后后端 257 passed / 12 skipped，旧版 254/245 passed 为历史离线验收 |
+| 智能体 | **本地 main 已接入七日真实 AIS 语义并通过工具层验证**：LangChain `create_agent`、10 个只读业务工具与知识库保持 v4 契约（issue #40 新增 `query_strait_passage_statistics` / `compare_strait_passage_statistics` 两个动态通行统计工具，响应新增 `analysis_actions`）。船舶检索、轨迹和有界虚拟门线通行已在应用库只读验证；**SQL 三工具已按 catalog v2 + 016 只读语义层在本机恢复启用**（`agent_data.v_ships` 一船一行，`v_ships=4,462` 与源表一致；执行器全链路核验通过，真实 DeepSeek 对「多少艘油轮」自主完成 schema→check→execute 并回答 793 艘）。含 TimescaleDB 的集群须为读者角色设 `timescaledb.disable_load=on`（016 已内置）。浏览器端到端仍未验证；合并后后端 257 passed / 12 skipped，旧版 254/245 passed 为历史离线验收。动态通行统计（分支 `kimi/strait-passage-stats`，306 passed / 14 skipped、前端 build 与 check:workbench 通过、应用库只读实测符合性能预算）：手动「通行分析」面板与智能体工具复用同一统计服务，支持多日按日统计、船型多选（含未知/缺失）、方向筛选与 A/B 比较；真实模型问答与浏览器端到端待验收，详见[通行统计模块说明](docs/agent_tool_strait_statistics.md) |
 
 旧模拟批次依据同期新闻构造等待等行为，具体船数、响应时刻、航迹及比例属于模拟假设；其报告仅作历史记录，见[旧批次说明](sim_ais_demo/output_news_aligned/README.md)。用这些 AIS 作研究结论前仍须核验来源、授权、覆盖和完整性。
 
@@ -31,6 +34,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 - 后端：FastAPI、SQLAlchemy、Psycopg。
 - 本机数据库：PostgreSQL；已核对扩展 PostGIS 3.5.2、MobilityDB 1.3.0、TimescaleDB 2.22.0。
 - 主数据流：数据库 → FastAPI → Vue / Leaflet；前端地图视野内的船舶筛选仍在浏览器内计算；区域活动分析（圈选矩形、三模式、证据联动）改由后端 `/api/area-activity/*` 计算，前端只展示后端字段，智能体三个区域工具与手动界面共用同一服务。
+- 主数据流：数据库 → FastAPI → Vue / Leaflet；区域船舶查询目前在浏览器内计算。
 
 | 路径 | 用途 |
 | --- | --- |
@@ -39,7 +43,6 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 | `frontend/src/composables/usePlayback.ts` | 分窗加载及回放 |
 | `frontend/src/services/` | 本地空间计算、国家边界图层 |
 | `backend/app/routers/` | 船舶、新闻事件、模拟元数据、停留试验路由 |
-| `backend/app/services/area_activity/` | 区域活动共享服务：边界版本、算法参数、固定参数化 SQL 与状态机（手动 API 与后续智能体工具共用） |
 | `backend/app/models.py`、`schemas.py` | ORM 模型及接口响应结构 |
 | `backend/sql/` | 历史迁移与派生表 SQL |
 | `sim_ais_demo/config/news_aligned_config.json` | 旧模拟情景配置，仅供历史参考 |
@@ -117,6 +120,10 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 | GET | `/api/area-activity/snapshot?at=&west=&south=&east=&north=&ship_type=` | 历史时刻区域在场：每船取 `at` 之前最新有效报位（默认 3600 s 新鲜度），过期不计入、不回退到更早的区域内报位；返回在场摘要与有界船舶列表 |
 | GET | `/api/area-activity/activity?start=&end=&west=&south=&east=&north=&ship_type=&batch_ids=` | 时段出现/进出/停留：按船去重出现数、观测进入/离开次数、观测支持的停留时长与按 UTC 自然日汇总；窗口 ≤7 天，超限或超读取上限直接拒绝 |
 | GET | `/api/area-activity/compare?start_a=&end_a=&start_b=&end_b=&…` | 同一矩形/筛选/算法版本下的 A/B 两时段比较：绝对差与变化率（基期 0 时为 null）、日均分母为窗口实际长度、覆盖可比性警告 |
+| GET | `/api/strait-passages/meta` | 动态通行统计元数据：船型选项（含 `__unknown__` 未知/缺失桶）与按 `source_batch_id` 的来源批次覆盖（七日全船批次/案例单船补充区分），不硬编码历史数量 |
+| POST | `/api/strait-passages/statistics` | 单时段（≤7 个 UTC 自然日）按日通行统计与全窗汇总：body `{start_at, end_at, ship_types?, direction?}`；与智能体 `query_strait_passage_statistics` 工具共用同一服务，同条件结果一致 |
+| POST | `/api/strait-passages/compare` | A/B 两期通行统计比较：两期指标、差值、`(B-A)/A` 变化率（A=0 为 null）、窗口长度与覆盖可比性说明；body 含 a/b 起止与共享筛选 |
+| GET | `/api/strait-passages/evidence` | 通行证据明细分页（船舶标识、方向、两端报位时间/位置、观测完成时间；`include_uncertain=true` 附候选及原因）；分页不影响 `matched_count` 完整统计 |
 | GET | `/events` | 新闻聚合事件，按最早报道日期排序 |
 | GET | `/events/{event_id}/cover` | 按业务事件 ID 读取关联报道配图；从 `NEWS_IMAGE_ROOT` 下受限的 `images/` 路径返回图片，缺失时 404 |
 | GET | `/events/{event_id}/news` | 使用业务事件字符串 ID 查询关联报道，不是数据库整数主键 |
@@ -141,7 +148,7 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 
 历史验收记录：默认问题曾返回 1 艘 SIM V2 化学品船 019（证据 P1，观测完成于 2026-02-28T18:14:54Z）；v3 三场景联调记录见 [当前契约](docs/agent_integration.md)。本轮未重新调用模型，不能把历史数量当作当前查询结果；自由回答正文尚无逐项事实核验器。
 
-后续再做：地图定位当前指向回放快照位置，历史轨迹逐点回放联动尚未实现；服务端会话持久化未做（history 由客户端逐请求携带）。受限 SQL 底座已按真实 AIS 重做并启用：`016` 重建 `agent_data` 语义层与只读角色，catalog v2 哈希与口径已在本机核验，真实模型聚合问答通过；报位级 SQL 不在 catalog 范围，报位级分析仍走业务工具。业务工具（现为 13 个）的应用库复核见[智能体开发任务](docs/agent_development_plan.md)：停留、相遇及 observed 事件关联未构建，不能据零结果推断没有真实行为或关联；mentioned 文本提及仍可查询。
+后续再做：地图定位当前指向回放快照位置，历史轨迹逐点回放联动尚未实现；服务端会话持久化未做（history 由客户端逐请求携带）。受限 SQL 底座已按真实 AIS 重做并启用：`016` 重建 `agent_data` 语义层与只读角色，catalog v2 哈希与口径已在本机核验，真实模型聚合问答通过；报位级 SQL 不在 catalog 范围，报位级分析仍走业务工具。十三个业务工具的应用库复核见[智能体开发任务](docs/agent_development_plan.md)：停留、相遇及 observed 事件关联未构建，不能据零结果推断没有真实行为或关联；mentioned 文本提及仍可查询。动态通行统计已随 issue #40 落地（多日统计/船型筛选/两期比较，手动面板与智能体共用服务）：真实模型问答与浏览器端到端待验收；「查看通行分析」可从智能体回答恢复条件到总览面板，证据行可在地图查看该船证据时段轨迹（与回放时段分别标明）。
 
 受限分析主链 SQL-01～06 已完成。SQL-02～06 文档作为现有安全执行底座的历史验收证据继续保留；它们不再定义下一版交互方式。LC-01～04 已按阶段引入 LangChain 单智能体、轻量知识库、原生业务 Skills 和受限 SQL Agent，并完成等价回归：固定短语分类器和手写模型工具循环已移除（LC-03/LC-04），旧 `runner.py` 已删除。任务状态见 [开发计划](docs/agent_development_plan.md)。
 

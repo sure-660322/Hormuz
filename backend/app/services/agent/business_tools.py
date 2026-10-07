@@ -32,6 +32,10 @@ from backend.app.services.agent.ship_search import (
 from backend.app.services.agent.ship_tracks import get_ship_track
 from backend.app.services.agent.track_observation import track_observation
 from backend.app.services.agent.strait_passages import query_strait_passages
+from backend.app.services.agent.strait_statistics import (
+    compare_strait_passage_statistics,
+    query_strait_passage_statistics,
+)
 from backend.app.services.area_activity.context import resolve_area_context
 
 _JSON_TYPE_MAP = {
@@ -124,6 +128,73 @@ def _resolve_window(
     return window_start, window_end
 
 
+def _mask_uncounted_direction(payload: dict) -> dict:
+    """方向过滤时把未统计的方向置 null（不是 0），避免把「未统计」误述为「零通行」。"""
+    direction = payload.get("direction")
+    own, opposite = {
+        "inbound": ("inbound", "outbound"),
+        "east_to_west": ("inbound", "outbound"),
+        "outbound": ("outbound", "inbound"),
+        "west_to_east": ("outbound", "inbound"),
+    }.get(direction, (None, None))
+    if not own:
+        return payload
+    windows = [payload.get("window")]
+    for period_key in ("a_period", "b_period"):
+        period = payload.get(period_key)
+        if isinstance(period, dict):
+            windows.append(period.get("window"))
+    for window in windows:
+        if isinstance(window, dict):
+            window[f"{opposite}_count"] = None
+    for day in payload.get("daily") or []:
+        if isinstance(day, dict):
+            day[f"{opposite}_count"] = None
+    label = "入湾（东→西）" if own == "inbound" else "出湾（西→东）"
+    payload["direction_note"] = (
+        f"本结果仅统计{label}方向；另一方向的计数为 null（未统计，不是 0），"
+        "回答时只报告已统计方向，不要把 null 列成 0。"
+    )
+    return payload
+
+
+def _statistics_payload(result) -> dict:
+    """统计工具给模型的有界摘要：只含按日计数与全窗汇总，不含证据明细/轨迹。"""
+    return _mask_uncounted_direction(to_jsonable({
+        "status": result.status,
+        "start_at": result.start_at,
+        "end_at": result.end_at,
+        "requested_days": result.requested_days,
+        "ship_types": result.ship_types,
+        "direction": result.direction,
+        "window": result.window,
+        "daily": result.daily,
+        "determination_version": result.determination_version,
+        "evidence_note": "证据明细不在工具结果中；前端「通行分析」面板可按日分页查看并联动地图",
+        "limitations": result.limitations,
+    }))
+
+
+def _compare_payload(result) -> dict:
+    """比较工具给模型的有界摘要：两期汇总、差值、变化率（A=0 为 null）与可比性。"""
+    return _mask_uncounted_direction(to_jsonable({
+        "status": result.status,
+        "ship_types": result.ship_types,
+        "direction": result.direction,
+        "a_period": {"start_at": result.a.start_at, "end_at": result.a.end_at,
+                     "status": result.a.status, "window": result.a.window},
+        "b_period": {"start_at": result.b.start_at, "end_at": result.b.end_at,
+                     "status": result.b.status, "window": result.b.window},
+        "metrics": result.metrics,
+        "a_avg_passages_per_day": result.a_avg_passages_per_day,
+        "b_avg_passages_per_day": result.b_avg_passages_per_day,
+        "windows_overlap": result.windows_overlap,
+        "comparability_notes": result.comparability_notes,
+        "determination_version": result.determination_version,
+        "limitations": list(dict.fromkeys(result.a.limitations + result.b.limitations)),
+    }))
+
+
 def make_business_tools(
     db: Session,
     closure_at: datetime,
@@ -148,6 +219,38 @@ def make_business_tools(
             window = _resolve_window(True, args, globals_closure_at, globals_end_at, forced_window)
             return tool_payload(query_strait_passages(db, window[0], window[1], ship_id=ship_id))
         return _execute_guarded(state, "query_strait_passages", run)
+
+    def _query_strait_passage_statistics(
+        start_at: str | None = None,
+        end_at: str | None = None,
+        ship_types: list[str] | None = None,
+        direction: str | None = None,
+    ) -> str:
+        def run():
+            args = _window_args({"start_at": start_at, "end_at": end_at})
+            window = _resolve_window(True, args, globals_closure_at, globals_end_at, forced_window)
+            result = query_strait_passage_statistics(
+                db, window[0], window[1], ship_types=ship_types, direction=direction,
+            )
+            return _statistics_payload(result)
+        return _execute_guarded(state, "query_strait_passage_statistics", run)
+
+    def _compare_strait_passage_statistics(
+        a_start_at: str, a_end_at: str, b_start_at: str, b_end_at: str,
+        ship_types: list[str] | None = None,
+        direction: str | None = None,
+    ) -> str:
+        def run():
+            window_a = _resolve_window(True, _window_args({"start_at": a_start_at, "end_at": a_end_at}),
+                                       globals_closure_at, globals_end_at, forced_window)
+            window_b = _resolve_window(True, _window_args({"start_at": b_start_at, "end_at": b_end_at}),
+                                       globals_closure_at, globals_end_at, forced_window)
+            result = compare_strait_passage_statistics(
+                db, window_a[0], window_a[1], window_b[0], window_b[1],
+                ship_types=ship_types, direction=direction,
+            )
+            return _compare_payload(result)
+        return _execute_guarded(state, "compare_strait_passage_statistics", run)
 
     def _search_ships(keyword: str, limit: int | None = None) -> str:
         def run():
@@ -231,6 +334,10 @@ def make_business_tools(
         "type": "string",
         "description": "ISO 8601，必须带时区（统一 UTC）；省略时用后端默认封锁时刻与 24 小时窗口",
     }
+    stats_window_params = {
+        "start_at": {**time_param, "description": "统计时段开始，ISO 8601，必须带时区（统一 UTC），如 2026-02-26T00:00:00+00:00"},
+        "end_at": {**time_param, "description": "统计时段结束（半开区间，不含），ISO 8601，必须带时区；单时段最长 7 天"},
+    }
     window_params = {
         "closure_at": {**time_param, "description": "封锁起始时刻，ISO 8601，必须带时区（统一 UTC），如 2026-02-28T15:00:00+00:00"},
         "end_at": {**time_param, "description": "窗口结束时刻，ISO 8601，必须带时区（统一 UTC）；end_at 必须晚于 closure_at，窗口最长 24 小时"},
@@ -249,6 +356,49 @@ def make_business_tools(
                     **window_params,
                     "ship_id": {"type": "integer", "description": "可选：仅判断一艘数据库船；先用 search_ships 确认 ID"},
                 },
+            }),
+        ),
+        StructuredTool.from_function(
+            func=_query_strait_passage_statistics,
+            name="query_strait_passage_statistics",
+            description=(
+                "海峡通行按日统计与全窗汇总（多日、全船型/多船型含未知缺失、入湾/出湾方向），"
+                "用户问「某几天每天多少船通过/通行量趋势/某船型通行多少次」必须调用本工具，"
+                "不要用 query_strait_passages 逐日相加。一次调用由服务端完成多日编排，"
+                "结果含每日确定通行次数/去重艘数/入湾/出湾/不确定候选数量与全窗汇总；"
+                "证据明细不在结果中，引导用户用「通行分析」面板查看。时间省略时退化为请求窗口"
+            ),
+            args_schema=args_model("query_strait_passage_statistics", {
+                "type": "object", "properties": {
+                    **stats_window_params,
+                    "ship_types": {"type": "array", "items": {"type": "string"},
+                                   "description": "船型多选（如 [\"油轮\",\"货船\"]）；省略=全部；值 \"__unknown__\" 表示未知/缺失船型"},
+                    "direction": {"type": "string", "enum": ["inbound", "outbound"],
+                                  "description": "inbound=入湾（东→西）、outbound=出湾（西→东）；省略=全部方向"},
+                },
+            }),
+        ),
+        StructuredTool.from_function(
+            func=_compare_strait_passage_statistics,
+            name="compare_strait_passage_statistics",
+            description=(
+                "两段时间 A/B 通行统计比较（共用船型与方向筛选）：返回两期统计、绝对差值、"
+                "(B-A)/A 变化率（A=0 时为 null）、窗口长度与覆盖可比性说明。"
+                "用户问「封锁前后通行量变化/哪段更多/同比增减」等比较问题必须调用本工具，"
+                "不要自行用两次统计相减。两期都必须显式给带时区的起止时间；用户没给齐两期时先澄清"
+            ),
+            args_schema=args_model("compare_strait_passage_statistics", {
+                "type": "object", "properties": {
+                    "a_start_at": stats_window_params["start_at"],
+                    "a_end_at": stats_window_params["end_at"],
+                    "b_start_at": stats_window_params["start_at"],
+                    "b_end_at": stats_window_params["end_at"],
+                    "ship_types": {"type": "array", "items": {"type": "string"},
+                                   "description": "船型多选；省略=全部；值 \"__unknown__\" 表示未知/缺失船型"},
+                    "direction": {"type": "string", "enum": ["inbound", "outbound"],
+                                  "description": "inbound=入湾、outbound=出湾；省略=全部方向"},
+                },
+                "required": ["a_start_at", "a_end_at", "b_start_at", "b_end_at"],
             }),
         ),
         StructuredTool.from_function(

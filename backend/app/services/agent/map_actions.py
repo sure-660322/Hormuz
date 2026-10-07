@@ -14,6 +14,9 @@ _NEGATED = re.compile(r"不要|(?<![识分区])别|无需|不用|不需要|不�
 _PRONOUN = re.compile(r"这[条艘]船|那[条艘]船|刚才.*船|它")
 _ISO = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})")
 _RELATIVE = re.compile(r"(?:最近|过去|前|近)\s*(\d+|一|两|二)\s*(?:个)?\s*(小时|天)")
+# 地图展示意图：命中才需要推导/校验地图时间窗；统计类问题（如「2月28日有多少艘油轮入湾」）
+# 虽含日期或船名，但不需要地图窗口，交给统计工具自行解析时段（issue #40）。
+_MAP_INTENT = re.compile(r"轨迹|位置|移动|定位|高亮|显示|标出|画出|绘制|地图")
 
 
 def display_intent(question: str) -> bool:
@@ -27,6 +30,8 @@ def resolve_map_window(db, question, playback_at, start, end):
         return start, end, "用户输入"
     if len(stamps) == 2:
         return tuple(datetime.fromisoformat(s.replace("Z", "+00:00")) for s in stamps) + ("用户输入 UTC 时间窗",)
+    if not _MAP_INTENT.search(question):
+        return start, end, None
     if stamps or re.search(r"\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}月\d{1,2}日|\d{1,2}[:：]\d{2}|\d+点", question):
         raise ValueError("请给出两个完整、带时区的 ISO 8601 起止时间，避免日期或时区歧义")
     if playback_at is None or not re.search(r"船|轨迹|位置|移动|定位|高亮", question):

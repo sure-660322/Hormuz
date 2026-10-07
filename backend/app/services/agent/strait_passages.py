@@ -25,6 +25,8 @@ from backend.app.services.agent.config import (
     MAX_WINDOW,
     SCHEMA_VERSION,
     SHIP_DATA_SOURCE,
+    UNKNOWN_SHIP_TYPE_OPTION,
+    UNKNOWN_SHIP_TYPE_RAW_LABELS,
 )
 
 
@@ -41,7 +43,7 @@ class PositionFix:
 class PassageEvidence:
     """一条完整通行证据。uncertain 为 True 时表示不确定候选（不计入确定结果）。"""
 
-    evidence_id: str  # P1/P2…（确定）或 U1/U2…（不确定候选）
+    evidence_id: str  # P1/P2…（确定）或 U1/U2…（不确定候选）；统计服务另用稳定源键去重
     ship_id: int
     direction: str  # west_to_east / east_to_west
     start_fix: PositionFix  # 起始侧（变化前侧）最后一个报位
@@ -49,6 +51,10 @@ class PassageEvidence:
     observed_completion_at: datetime  # = completion_fix.recorded_at，观测完成时间，非精确越线时刻
     uncertain: bool = False
     uncertain_reason: str | None = None  # left_corridor / long_gap / jump
+    start_fix_id: int | None = None  # 起始侧源报位 id（ship_positions.id），稳定证据键组成部分
+    completion_fix_id: int | None = None  # 完成侧源报位 id（ship_positions.id），稳定证据键组成部分
+    ship_name: str | None = None  # ships.name 当前快照
+    ship_type: str | None = None  # ships.ship_type 当前快照（分类来源，不声称历史已核实）
 
 
 @dataclass
@@ -101,20 +107,53 @@ def _validate(closure_at: datetime, end_at: datetime) -> None:
         raise ValueError(f"查询窗口不能超过 24 小时，请缩小范围（当前 {end_at - closure_at}）")
 
 
-def query_strait_passages(
+def _ship_type_scope(ship_types: tuple[str, ...] | list[str] | None) -> tuple[str, dict]:
+    """把船型多选（含未知/缺失哨兵）编译为 SQL 片段，在候选计算前过滤。
+
+    返回 (scope 片段, 额外参数)。ship_types 为 None 表示全部船型，无片段。
+    """
+    if ship_types is None:
+        return "", {}
+    selected = [str(item) for item in ship_types]
+    known = [item for item in selected if item != UNKNOWN_SHIP_TYPE_OPTION]
+    want_unknown = len(known) != len(selected)
+    clauses: list[str] = []
+    params: dict = {}
+    if known:
+        clauses.append("s.ship_type = ANY(CAST(:ship_type_list AS text[]))")
+        params["ship_type_list"] = known
+    if want_unknown:
+        raw_labels = list(UNKNOWN_SHIP_TYPE_RAW_LABELS)
+        clauses.append("(s.ship_type IS NULL OR s.ship_type = ANY(CAST(:unknown_type_list AS text[])))")
+        params["unknown_type_list"] = raw_labels
+    if not clauses:
+        return "", {}
+    return " AND p.ship_id IN (SELECT s.id FROM ships AS s WHERE " + " OR ".join(clauses) + ")", params
+
+
+def _gate_transition_rows(
     db: Session,
     closure_at: datetime,
     end_at: datetime,
     ship_id: int | None = None,
-) -> StraitPassageResult:
-    """按海峡虚拟双门线查询观测通行，不把源报位集加载到应用内存。"""
+    ship_types: tuple[str, ...] | list[str] | None = None,
+    direction: str | None = None,
+) -> tuple[list[dict], dict]:
+    """核心：限定时间/空间/来源后，在库内取回侧别变化行（含船型与源报位 id）。
+
+    ship_types=None 表示全部船型；含 UNKNOWN_SHIP_TYPE_OPTION 时匹配缺失/未知。
+    direction 限 west_to_east / east_to_west；None 表示全部方向。
+    与 query_strait_passages 相同的扫描/候选上限与报错口径，不截断。
+    """
     _validate(closure_at, end_at)
     if ship_id is not None and (isinstance(ship_id, bool) or not isinstance(ship_id, int) or ship_id <= 0):
         raise ValueError("ship_id 必须为正整数")
-    lookback_at = closure_at - GATE_LOOKBACK
+    if direction is not None and direction not in ("west_to_east", "east_to_west"):
+        raise ValueError("direction 必须是 west_to_east / east_to_west 或省略")
+    ship_type_clause, ship_type_params = _ship_type_scope(ship_types)
     params = {
         "source": SHIP_DATA_SOURCE,
-        "lookback_at": lookback_at,
+        "lookback_at": closure_at - GATE_LOOKBACK,
         "closure_at": closure_at,
         "end_at": end_at,
         "lat_min": GATE_LAT_MIN,
@@ -124,6 +163,8 @@ def query_strait_passages(
         "west_gate": GATE_WEST_LON,
         "east_gate": GATE_EAST_LON,
         "ship_id": ship_id,
+        "direction": direction,
+        **ship_type_params,
     }
     # 限定 48 小时内的门线侧别报位；中间带不改变已观测到的侧别。
     scope = """
@@ -136,6 +177,7 @@ def query_strait_passages(
     """
     if ship_id is not None:
         scope += " AND p.ship_id = :ship_id"
+    scope += ship_type_clause
     summary = db.execute(text("""
         SELECT count(*) AS position_count, min(p.recorded_at) AS coverage_start,
                max(p.recorded_at) AS coverage_end,
@@ -146,12 +188,6 @@ def query_strait_passages(
         raise ValueError(
             f"海峡门线附近报位数 {position_count} 超过上限 {MAX_GATE_FIXES_SCANNED}，"
             "请缩小查询窗口；结果没有被截断"
-        )
-    if not position_count:
-        return StraitPassageResult(
-            status="no_data", closure_at=closure_at, end_at=end_at,
-            query_summary=QuerySummary(0, 0, 0, 0, None, None, False),
-            limitations=["所选窗口及前置 24 小时内无海峡虚拟门线侧别报位，无法判定通行"],
         )
 
     # PostgreSQL 在库内排序并只返回侧别变化的证据行。id 让同秒多报位稳定排序；
@@ -171,7 +207,8 @@ def query_strait_passages(
             FROM scoped
             WINDOW ship_time AS (PARTITION BY ship_id ORDER BY recorded_at, id)
         )
-        SELECT o.ship_id, s.name, o.side, o.previous_side,
+        SELECT o.ship_id, s.name, s.ship_type, o.side, o.previous_side,
+               o.id AS completion_fix_id, o.previous_id AS start_fix_id,
                o.recorded_at, o.longitude, o.latitude,
                o.previous_at, o.previous_lon, o.previous_lat,
                EXISTS (
@@ -190,6 +227,7 @@ def query_strait_passages(
         FROM ordered AS o JOIN ships AS s ON s.id = o.ship_id
         WHERE o.previous_side IS NOT NULL AND o.previous_side <> o.side
           AND o.recorded_at >= :closure_at
+          AND (CAST(:direction AS text) IS NULL OR (o.previous_side || '_to_' || o.side) = CAST(:direction AS text))
         ORDER BY o.recorded_at, o.ship_id, o.id
         LIMIT :candidate_limit
     """)
@@ -201,35 +239,60 @@ def query_strait_passages(
             f"侧别变化候选超过上限 {MAX_PASSAGE_CANDIDATES}，请缩小查询窗口；"
             "结果没有被截断"
         )
+    return rows, summary
+
+
+def _classify_evidence(row: dict) -> PassageEvidence:
+    """按既定口径（离开走廊/长间隔/跳点）把一条变迁行分类为确定证据或不确定候选。"""
+    previous = PositionFix(row["previous_at"], row["previous_lon"], row["previous_lat"])
+    current = PositionFix(row["recorded_at"], row["longitude"], row["latitude"])
+    gap = current.recorded_at - previous.recorded_at
+    distance_km = _haversine_km(
+        previous.longitude, previous.latitude, current.longitude, current.latitude
+    )
+    implied_speed_kn = (
+        distance_km / 1.852 / (gap.total_seconds() / 3600)
+        if gap.total_seconds() > 0 else float("inf")
+    )
+    reason = (
+        "left_corridor" if row["left_corridor"] else
+        "long_gap" if gap > LONG_GAP_THRESHOLD else
+        "jump" if implied_speed_kn > JUMP_SPEED_KN else None
+    )
+    return PassageEvidence(
+        evidence_id="", ship_id=row["ship_id"],
+        direction=f"{row['previous_side']}_to_{row['side']}",
+        start_fix=previous, completion_fix=current,
+        observed_completion_at=current.recorded_at,
+        uncertain=reason is not None, uncertain_reason=reason,
+        start_fix_id=row.get("start_fix_id"), completion_fix_id=row.get("completion_fix_id"),
+        ship_name=row.get("name"), ship_type=row.get("ship_type"),
+    )
+
+
+def query_strait_passages(
+    db: Session,
+    closure_at: datetime,
+    end_at: datetime,
+    ship_id: int | None = None,
+) -> StraitPassageResult:
+    """按海峡虚拟双门线查询观测通行，不把源报位集加载到应用内存。"""
+    rows, summary = _gate_transition_rows(db, closure_at, end_at, ship_id=ship_id)
+    position_count = summary["position_count"]
+    if not position_count:
+        return StraitPassageResult(
+            status="no_data", closure_at=closure_at, end_at=end_at,
+            query_summary=QuerySummary(0, 0, 0, 0, None, None, False),
+            limitations=["所选窗口及前置 24 小时内无海峡虚拟门线侧别报位，无法判定通行"],
+        )
 
     confirmed: list[PassageEvidence] = []
     uncertain: list[PassageEvidence] = []
     ship_names: dict[int, str] = {}
     for row in rows:
-        previous = PositionFix(row["previous_at"], row["previous_lon"], row["previous_lat"])
-        current = PositionFix(row["recorded_at"], row["longitude"], row["latitude"])
-        gap = current.recorded_at - previous.recorded_at
-        distance_km = _haversine_km(
-            previous.longitude, previous.latitude, current.longitude, current.latitude
-        )
-        implied_speed_kn = (
-            distance_km / 1.852 / (gap.total_seconds() / 3600)
-            if gap.total_seconds() > 0 else float("inf")
-        )
-        reason = (
-            "left_corridor" if row["left_corridor"] else
-            "long_gap" if gap > LONG_GAP_THRESHOLD else
-            "jump" if implied_speed_kn > JUMP_SPEED_KN else None
-        )
-        item = PassageEvidence(
-            evidence_id="", ship_id=row["ship_id"],
-            direction=f"{row['previous_side']}_to_{row['side']}",
-            start_fix=previous, completion_fix=current,
-            observed_completion_at=current.recorded_at,
-            uncertain=reason is not None, uncertain_reason=reason,
-        )
+        item = _classify_evidence(row)
         ship_names[row["ship_id"]] = row["name"]
-        (uncertain if reason else confirmed).append(item)
+        (uncertain if item.uncertain else confirmed).append(item)
 
     for index, item in enumerate(confirmed, start=1):
         item.evidence_id = f"P{index}"

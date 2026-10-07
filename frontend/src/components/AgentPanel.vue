@@ -10,6 +10,7 @@ import {
   fetchAgentAnalyze,
   describeApiError,
   AgentRequestError,
+  type AgentAnalysisAction,
   type AgentAnalyzeResponse,
   type AgentMapAction,
   type AgentAreaAnalysisAction,
@@ -29,6 +30,8 @@ import { eventKind, safeNewsUrl } from '../domain/maritime'
 const emit = defineEmits<{
   'locate-ship': [shipId: number]
   'locate-event': [eventId: string]
+  // issue #40：打开总览「通行分析」面板并恢复该次统计/比较调用的条件与结果。
+  'open-analysis': [action: AgentAnalysisAction]
   // issue #41：本轮回答产生的「查看区域分析」动作，交给 App 暂存并显示入口。
   'area-analysis-suggested': [action: AgentAreaAnalysisAction]
 }>()
@@ -53,6 +56,18 @@ interface AgentTurnState {
 }
 
 const markdown = new MarkdownIt({ html: false, linkify: false, breaks: true })
+
+function passageAnalysisActions(response: AgentAnalyzeResponse): AgentAnalysisAction[] {
+  return (response.analysis_actions ?? []).filter(
+    (action): action is AgentAnalysisAction => action.type === 'passage_analysis',
+  )
+}
+
+function areaAnalysisActions(response: AgentAnalyzeResponse): AgentAreaAnalysisAction[] {
+  return (response.analysis_actions ?? []).filter(
+    (action): action is AgentAreaAnalysisAction => action.type === 'area_activity',
+  )
+}
 
 function renderAnswer(value: string): string {
   return DOMPurify.sanitize(markdown.render(value), { USE_PROFILES: { html: true } })
@@ -457,6 +472,8 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
             {{ statusMeta[turn.response.status]?.label ?? turn.response.status }}
           </span>
           <span v-for="tool in turn.response.tools_used" :key="tool" class="tool-chip">{{ toolLabels[tool] ?? tool }}</span>
+          <span v-if="!turn.response.tools_used.length && /\d/.test(turn.response.answer)" class="tool-chip warn"
+                title="本轮回答包含数字但未调用任何数据工具，数字可能不可靠，建议要求重查">未调用数据工具</span>
           <button type="button" class="icon-button copy-button" aria-label="复制回答" title="复制回答" @click="copyAnswer(turn.response.answer)"><IconCopy :size="16" aria-hidden="true" /></button>
         </div>
 
@@ -479,6 +496,34 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
         <section v-if="turn.response.answer" class="answer-block">
           <div class="answer-text" v-html="renderAnswer(turn.response.answer)"></div>
         </section>
+        <section v-if="passageAnalysisActions(turn.response).length" class="facts-block">
+          <h3>通行分析</h3>
+          <button
+            v-for="(action, actionIndex) in passageAnalysisActions(turn.response)"
+            :key="`passage-${actionIndex}`"
+            type="button"
+            class="locate-btn"
+            @click="emit('open-analysis', action)"
+          >
+            {{ action.query.mode === 'compare' ? '查看通行比较分析' : '查看通行分析' }}
+          </button>
+          <p class="caption">在总览打开「通行分析」面板，恢复本次条件与统计结果，可继续手动调整。</p>
+        </section>
+
+        <section v-if="areaAnalysisActions(turn.response).length" class="facts-block">
+          <h3>区域分析</h3>
+          <button
+            v-for="(action, actionIndex) in areaAnalysisActions(turn.response)"
+            :key="`area-${actionIndex}`"
+            type="button"
+            class="locate-btn"
+            @click="emit('area-analysis-suggested', action)"
+          >
+            {{ action.mode === 'snapshot' ? '查看时刻在场分析' : action.mode === 'compare' ? '查看两时段比较' : '查看时段活动分析' }}
+          </button>
+          <p class="caption">在地图区打开「区域分析」面板，恢复本次区域、模式与筛选条件后可继续手动调整。</p>
+        </section>
+
         <section v-if="turn.response.map_actions?.length" class="facts-block">
           <h3>地图操作</h3>
           <button v-for="(action, actionIndex) in turn.response.map_actions" :key="actionIndex" type="button" class="locate-btn" @click="runMapAction(turnIndex, action)">
@@ -727,6 +772,10 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
   font-size: 11px;
   border: 1px solid var(--line, #26405a);
   color: var(--muted, #9fc2e0);
+}
+.tool-chip.warn {
+  color: #f0b45a;
+  border-color: #8a6420;
 }
 .status-badge[data-tone='ok'] {
   color: #7ee2a8;
