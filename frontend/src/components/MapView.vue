@@ -40,6 +40,12 @@ const props = defineProps<{
   dwell: ApiDwellResponse | null
   encounters: ApiEncounter[] | null
   selectedEncounter: ApiEncounter | null
+  // issue #41：分析区域矩形（独立于地图视野，缩放/平移不改变它）
+  areaBounds?: { west: number; south: number; east: number; north: number } | null
+  areaLabel?: string
+  areaMeta?: string
+  areaIsDefault?: boolean
+  areaDrawing?: boolean
 }>()
 const emit = defineEmits<{
   selectShip: [ship: ApiMapShip]
@@ -49,6 +55,8 @@ const emit = defineEmits<{
   countryStatus: [status: string]
   clearSelection: []
   selectEncounter: [encounter: ApiEncounter]
+  areaDrawn: [bounds: { west: number; south: number; east: number; north: number }]
+  areaDrawCancel: []
 }>()
 const container = ref<HTMLElement | null>(null)
 const tileError = ref(false)
@@ -60,7 +68,8 @@ let shipLayer: L.LayerGroup,
   trackLayer: L.LayerGroup,
   harbourLayer: L.LayerGroup,
   dwellLayer: L.LayerGroup,
-  encounterLayer: L.LayerGroup
+  encounterLayer: L.LayerGroup,
+  areaLayer: L.LayerGroup
 let seamarks: L.TileLayer
 let vectorLayer: L.LayerGroup, clusterLayer: L.LayerGroup
 let canvas: L.Canvas
@@ -261,6 +270,142 @@ function emitBounds() {
     east: b.getEast(),
   })
 }
+// ---- issue #41：分析区域矩形（显示、手动圈选）----
+// 分析与地图视野解耦：缩放/平移不改变矩形；重新圈选框在松手后交给后端校验，
+// 校验失败时由父组件回滚 bounds，这里只负责呈现当前生效的矩形。
+type AreaRect = { west: number; south: number; east: number; north: number }
+const AREA_STYLE: L.PathOptions = {
+  color: '#38BDF8',
+  weight: 1.6,
+  dashArray: '6 5',
+  fillColor: '#38BDF8',
+  fillOpacity: 0.07,
+  interactive: false,
+}
+const DRAW_STYLE: L.PathOptions = {
+  color: '#F0B45A',
+  weight: 1.4,
+  dashArray: '4 4',
+  fillColor: '#F0B45A',
+  fillOpacity: 0.12,
+  interactive: false,
+}
+let areaRect: L.Rectangle | null = null
+let drawRect: L.Rectangle | null = null
+let drawStart: L.LatLng | null = null
+let drawing = false
+
+function areaLatLngs(bounds: AreaRect): L.LatLngBounds {
+  return L.latLngBounds([bounds.south, bounds.west], [bounds.north, bounds.east])
+}
+
+function formatCoord(value: number): string {
+  return value.toFixed(3)
+}
+
+function areaTooltipHtml(bounds: AreaRect): string {
+  const label = props.areaLabel || '分析区域'
+  const meta = props.areaMeta ? ` · ${props.areaMeta}` : ''
+  const tag = props.areaIsDefault ? '默认项目分析区域' : '自选矩形'
+  return (
+    `<strong>${label}</strong>（${tag}）${meta}<br/>` +
+    `${formatCoord(bounds.south)}–${formatCoord(bounds.north)}°N · ` +
+    `${formatCoord(bounds.west)}–${formatCoord(bounds.east)}°E<br/>` +
+    '半开区间：西/南含、东/北不含；缩放平移地图不改变该区域'
+  )
+}
+
+function scheduleArea() {
+  scheduler.schedule('area', renderArea)
+}
+
+function renderArea() {
+  if (!map || !areaLayer) return
+  const bounds = props.areaBounds
+  if (!bounds) {
+    if (areaRect) {
+      areaLayer.removeLayer(areaRect)
+      areaRect = null
+    }
+    return
+  }
+  const latLngs = areaLatLngs(bounds)
+  if (!areaRect) {
+    areaRect = L.rectangle(latLngs, AREA_STYLE).addTo(areaLayer)
+  } else {
+    areaRect.setBounds(latLngs)
+  }
+  areaRect.bindTooltip(areaTooltipHtml(bounds), { direction: 'top', sticky: true })
+}
+
+function cancelDraw() {
+  if (!drawing && !drawRect) {
+    if (props.areaDrawing) emit('areaDrawCancel')
+    return
+  }
+  drawing = false
+  drawStart = null
+  if (drawRect && areaLayer) {
+    areaLayer.removeLayer(drawRect)
+    drawRect = null
+  }
+  emit('areaDrawCancel')
+}
+
+function onAreaDrawStart(rawEvent: Event) {
+  const event = rawEvent as MouseEvent
+  if (!map || !areaLayer || !props.areaDrawing || event.button !== 0) return
+  drawing = true
+  drawStart = map.mouseEventToLatLng(event)
+  if (drawRect) {
+    areaLayer.removeLayer(drawRect)
+    drawRect = null
+  }
+  drawRect = L.rectangle(L.latLngBounds(drawStart, drawStart), DRAW_STYLE).addTo(areaLayer)
+}
+
+function onAreaDrawing(rawEvent: Event) {
+  if (!drawing || !drawStart || !drawRect || !map) return
+  drawRect.setBounds(L.latLngBounds(drawStart, map.mouseEventToLatLng(rawEvent as MouseEvent)))
+}
+
+function onAreaDrawEnd() {
+  if (!drawing) return
+  drawing = false
+  drawStart = null
+  const rectangle = drawRect
+  drawRect = null
+  if (rectangle && areaLayer) areaLayer.removeLayer(rectangle)
+  if (!rectangle) return
+  const b = rectangle.getBounds()
+  const spanLat = b.getNorth() - b.getSouth()
+  const spanLon = b.getEast() - b.getWest()
+  // 明显是误触（跨度小于 0.01°，约 1 km）时不算一次圈选；其余一律交后端校验，
+  // 前端不自行决定跨度上限（与 REST 拒绝规则保持单一事实来源）。
+  if (spanLat < 0.01 || spanLon < 0.01) {
+    emit('areaDrawCancel')
+    return
+  }
+  emit('areaDrawn', {
+    west: b.getWest(),
+    south: b.getSouth(),
+    east: b.getEast(),
+    north: b.getNorth(),
+  })
+}
+
+function onAreaKeyDown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && props.areaDrawing) cancelDraw()
+}
+
+function focusArea() {
+  const bounds = props.areaBounds
+  if (!map || !bounds) return false
+  map.stop()
+  map.fitBounds(areaLatLngs(bounds), { padding: [40, 40], animate: false })
+  return true
+}
+
 function smoothlyCenterOn(point: L.LatLngExpression) {
   if (!map) return
   const reduceMotion = window.matchMedia(
@@ -319,7 +464,7 @@ function captureView() {
 function restoreView(view: { latitude: number; longitude: number; zoom: number } | null) {
   if (map && view) { map.stop(); map.setView([view.latitude, view.longitude], view.zoom, { animate: false }) }
 }
-defineExpose({ confirmFocus, captureView, restoreView })
+defineExpose({ confirmFocus, captureView, restoreView, focusArea, cancelAreaDraw: cancelDraw })
 async function loadHarbours() {
   harbourRequest?.abort()
   if (!map || !props.layers.harbours || props.isolated) return
@@ -431,6 +576,27 @@ watch(
 )
 watch(() => props.globalViewRequest, globalView)
 watch(
+  () => [props.areaBounds, props.areaLabel, props.areaMeta, props.areaIsDefault],
+  scheduleArea,
+)
+watch(() => props.areaDrawing, (active) => {
+  if (!map) return
+  if (active) {
+    // 观察模式：禁用地图拖动，左键拖拽交给圈选逻辑
+    map.dragging.disable()
+    map.getContainer().classList.add('area-draw-ready')
+  } else {
+    map.dragging.enable()
+    map.getContainer().classList.remove('area-draw-ready', 'area-drawing')
+    if (drawRect && areaLayer) {
+      areaLayer.removeLayer(drawRect)
+      drawRect = null
+    }
+    drawing = false
+    drawStart = null
+  }
+})
+watch(
   () => props.trackVisible,
   (visible) => {
     if (visible && props.track.length > 1)
@@ -510,6 +676,7 @@ onMounted(() => {
   harbourLayer = L.layerGroup()
   dwellLayer = L.layerGroup().addTo(map)
   encounterLayer = L.layerGroup().addTo(map)
+  areaLayer = L.layerGroup().addTo(map)
   shipManager = new ShipLayerManager({
     shipLayer,
     clusterLayer,
@@ -535,12 +702,21 @@ onMounted(() => {
   map.on('click', () => {
     emit('clearSelection')
   })
+  // 圈选绘制：仅在 areaDrawing 时绑定，避免影响既有选船/选事件交互
+  // 圈选绘制：直接绑定容器原生事件（Leaflet 在拖动被禁时会 preventDefault，map.on('mousedown')
+  // 不一定会派发）；mouseup 挂在 window 上，保证松手落在面板/状态条上时也能结束绘制。
+  const drawContainer = container.value
+  L.DomEvent.on(drawContainer, 'mousedown', onAreaDrawStart)
+  L.DomEvent.on(drawContainer, 'mousemove', onAreaDrawing)
+  window.addEventListener('mouseup', onAreaDrawEnd)
+  window.addEventListener('keydown', onAreaKeyDown)
   observer = new ResizeObserver(() => {
     map?.invalidateSize({ pan: false })
     emitBounds()
   })
   observer.observe(container.value)
   syncLayers()
+  scheduleArea()
   emitBounds()
 })
 onBeforeUnmount(() => {
@@ -554,6 +730,15 @@ onBeforeUnmount(() => {
   harbourRequest?.abort()
   clearTimeout(harbourTimer)
   countryLayer?.destroy()
+  areaRect = null
+  drawRect = null
+  map?.getContainer().classList.remove('area-drawing')
+  if (container.value) {
+    L.DomEvent.off(container.value, 'mousedown', onAreaDrawStart)
+    L.DomEvent.off(container.value, 'mousemove', onAreaDrawing)
+  }
+  window.removeEventListener('mouseup', onAreaDrawEnd)
+  window.removeEventListener('keydown', onAreaKeyDown)
   map?.remove()
   map = undefined
 })
@@ -573,5 +758,8 @@ onBeforeUnmount(() => {
   ></div>
   <div v-if="tileError" class="tile-notice" role="status">
     部分在线底图加载失败，船舶数据仍可使用
+  </div>
+  <div v-if="areaDrawing" class="area-draw-hint" role="status" aria-live="polite">
+    在地图上按住左键拖动圈选矩形（西/南含、东/北不含，单边 ≤ 10°）；Esc 取消
   </div>
 </template>

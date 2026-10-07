@@ -50,6 +50,8 @@ from backend.app.services.agent.model_client import (
 )
 from backend.app.services.agent.request_guard import new_state, reserve_tool
 from backend.app.services.agent.model_usage import ModelUsageRecorder
+from backend.app.services.area_activity import params as area_params
+from backend.app.services.area_activity.context import AreaContext, resolve_area_context
 
 # 整体执行预算（秒），与 v4 契约一致；单模型请求超时见 model_client
 OVERALL_BUDGET_SECONDS = 60.0
@@ -117,6 +119,40 @@ SQL_PROMPT_SECTION = """
 """
 
 
+def area_prompt_section(ctx: AreaContext) -> str:
+    """区域活动工具与当前区域上下文（issue #41 阶段三；只追加，不重写既有提示）。"""
+    bounds = ctx.bounds
+    default_line = (
+        f"默认分析区域：{area_params.DEFAULT_AREA_NAME}"
+        f"（area_id={area_params.DEFAULT_AREA_ID}，version={area_params.DEFAULT_AREA_VERSION}，"
+        f"west={area_params.DEFAULT_WEST} south={area_params.DEFAULT_SOUTH} "
+        f"east={area_params.DEFAULT_EAST} north={area_params.DEFAULT_NORTH}，半开矩形）；"
+        "这是项目分析区域，不是官方航道（TAS/TSS）边界"
+    )
+    if ctx.is_default:
+        current_line = "当前请求区域：请求未提供自定义矩形，本轮使用上面的默认分析区域"
+    else:
+        current_line = (
+            f"当前请求区域：area_id={ctx.area_id}，label={ctx.label}，"
+            f"west={bounds.west} south={bounds.south} east={bounds.east} north={bounds.north}"
+            "（半开矩形）"
+        )
+    return (
+        "\n区域船舶活动工具（只读、有界）：\n"
+        f"- {default_line}。\n"
+        f"- {current_line}。区域工具未显式给出 west/south/east/north 时必须使用当前请求区域；"
+        "不得猜测地名边界、不得套用别的海峡或海湾范围，也不得自行改写区域。\n"
+        "- query_area_ship_snapshot=某历史时刻在区域内的船（at 必填且必须带时区，"
+        "不得用当前时间或默认封锁时刻猜测）；query_area_ship_activity=时段内出现、观测进出与"
+        "累计船时（窗口最长 7 天）；compare_area_ship_activity=同区域同筛选的两期比较。\n"
+        "- 需要改用别的区域时，先用文字说明新的矩形范围并让用户在区域面板确认，"
+        "不要直接宣称已经切换区域。\n"
+        "- 口径：报位是历史观测，出现去重船数不是交通量；缺报区间不计入船时；"
+        "status=no_data 表示读取范围内没有报位，不能当作「零船」；"
+        "不推断因果、不发布结论，区分观测与推断。"
+    )
+
+
 def build_llm() -> BaseChatModel:
     """从后端环境构造 DeepSeek（OpenAI 兼容）ChatModel；密钥缺失时抛 AgentConfigError。"""
     api_key = os.getenv("DEEPSEEK_API_KEY")
@@ -155,7 +191,9 @@ def _make_knowledge_tool(state: dict) -> StructuredTool:
         name="search_project_knowledge",
         description=(
             "检索项目轻量知识库：项目定位与技术栈、数据语义（历史 AIS/新闻/时间口径）、"
-            "海峡完整通行判定规则、停留/相遇/事件关联限制、智能体能力边界。"
+            "海峡完整通行判定规则、停留/相遇/事件关联限制、智能体能力边界；"
+            "区域活动分析的口径要点见三个区域工具的说明（默认分析区域、"
+            "出现去重船数不是交通量、no_data 不是零船）。"
             "回答项目知识类问题（如「船是真实 AIS 吗」「通行怎么判定」「相遇代表真实接触吗」）"
             "必须优先调用本工具；具体数据查询改用对应业务工具"
         ),
@@ -188,11 +226,13 @@ def run_lc_agent(
     budget_seconds: float = OVERALL_BUDGET_SECONDS,
     sql_enabled: bool | None = None,
     map_context: dict | None = None,
+    area_context: dict | None = None,
 ) -> dict:
     """LangChain create_agent 编排一次完整问答，返回 v4 契约结果字典。
 
     llm 可注入（测试用脚本化假模型）；budget_seconds 可缩短（测试超时路径）；
-    sql_enabled 为 None 时按功能开关自动检测（本地演示环境启用受限 SQL 工具）。
+    sql_enabled 为 None 时按功能开关自动检测（本地演示环境启用受限 SQL 工具）；
+    area_context 为本轮请求区域（面板矩形），None → 版本化默认分析区域。
     """
     window_source = None
     if map_context:
@@ -214,7 +254,10 @@ def run_lc_agent(
         sql_enabled = sql_tools.sql_tools_enabled()
 
     state: dict[str, Any] = new_state(MAX_TOOL_EXECUTIONS, budget_seconds)
-    tools = make_business_tools(db, closure_at, end_at, forced_window, state)
+    # 本轮请求区域（None → 默认分析区域）；请求给出的区域是区域工具的权威矩形。
+    current_area = resolve_area_context(area_context)
+    tools = make_business_tools(db, closure_at, end_at, forced_window, state,
+                                area_context=current_area)
     tools.append(_make_knowledge_tool(state))
     if sql_enabled:
         tools.extend(sql_tools.make_sql_tools(request_id=request_id, state=state))
@@ -223,6 +266,7 @@ def run_lc_agent(
     system_prompt += f"\n当前请求窗口：{closure_at.isoformat()} 至 {end_at.isoformat()}；来源：{closure_source}。"
     if map_context:
         system_prompt += f"\n本轮地图参考船 ID：{map_context.get('target_ship_id') or '未唯一确定'}（仍须本轮工具核实）。"
+    system_prompt += area_prompt_section(current_area)
     @before_model
     def _stop_expired_or_exhausted(_agent_state, _runtime):
         if state["cancel_event"].is_set() or time.monotonic() >= state["deadline"]:

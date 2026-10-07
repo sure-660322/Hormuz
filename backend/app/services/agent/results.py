@@ -44,6 +44,14 @@ DATA_HEALTH_LIMITATIONS = [
     "本工具只读：不触发迁移、数据导入或派生层重建",
 ]
 
+# 区域活动工具 → analysis_actions.mode（工具名与 services/agent/area_tools.py 一致）。
+# 只有 status ∈ {ok, partial} 的调用才生成「查看区域分析」动作；同名工具多次调用只保留最后一次。
+AREA_TOOL_MODES = {
+    "query_area_ship_snapshot": "snapshot",
+    "query_area_ship_activity": "activity",
+    "compare_area_ship_activity": "compare",
+}
+
 
 def new_request_id() -> str:
     return f"req_{uuid.uuid4().hex}"
@@ -116,6 +124,117 @@ def normalize_status(tools_used: list[str], results: dict) -> str:
     if any(status in {"ok", "partial"} for status in statuses):
         return "partial"
     return "no_data"
+
+
+def _area_action_query(mode: str, query: dict, area: dict) -> dict:
+    """「查看区域分析」动作的查询回显：与工具结果同一区域与时间，不做二次推断。
+
+    边界恒为实际生效的四个边界；area_id 归一化为 hormuz_core_v1（默认区域）或
+    custom（自定义矩形）——面板自带的 area_id/label 仍保留在 results[call_id].area 中。
+    """
+    filters = query.get("filters") if isinstance(query.get("filters"), dict) else {}
+    is_default = area.get("is_default", query.get("area_is_default"))
+    action = {
+        "west": area.get("west", query.get("west")),
+        "south": area.get("south", query.get("south")),
+        "east": area.get("east", query.get("east")),
+        "north": area.get("north", query.get("north")),
+        "area_id": area.get("area_id", query.get("area_id")) if is_default else "custom",
+        "area_version": area.get("version", query.get("area_version")),
+        "area_is_default": is_default,
+        "ship_types": filters.get("ship_types"),
+        "batch_ids": filters.get("batch_ids"),
+    }
+    if mode == "snapshot":
+        action["at"] = query.get("at")
+    elif mode == "activity":
+        action["start_at"] = query.get("start_at")
+        action["end_at"] = query.get("end_at")
+    else:
+        for key in ("start_a", "end_a", "start_b", "end_b"):
+            action[key] = query.get(key)
+    return action
+
+
+def _area_action_summary(mode: str, envelope: dict) -> dict:
+    """「查看区域分析」动作的有界摘要（完整结果仍在 results[call_id] 中）。"""
+    summary = envelope.get("summary") if isinstance(envelope.get("summary"), dict) else {}
+    limits = envelope.get("limits") if isinstance(envelope.get("limits"), dict) else {}
+    query = envelope.get("query") if isinstance(envelope.get("query"), dict) else {}
+    status = envelope.get("status")
+    if mode == "snapshot":
+        return {
+            "status": status,
+            "in_area_count": summary.get("in_area_count"),
+            "listed_ship_count": summary.get("listed_ship_count"),
+            "unlisted_ship_count": summary.get("unlisted_ship_count"),
+            "out_of_area_fresh_count": summary.get("out_of_area_fresh_count"),
+            "stale_fix_count": summary.get("stale_fix_count"),
+            "freshness_seconds": summary.get("freshness_seconds"),
+            "list_truncated": limits.get("list_truncated"),
+        }
+    if mode == "activity":
+        window = query.get("window") if isinstance(query.get("window"), dict) else {}
+        return {
+            "status": status,
+            "ships_observed": summary.get("ships_observed"),
+            "observed_entry_count": summary.get("observed_entry_count"),
+            "observed_exit_count": summary.get("observed_exit_count"),
+            "observed_ship_hours": summary.get("observed_ship_hours"),
+            "visit_count": summary.get("visit_count"),
+            "window_days": window.get("days"),
+            "window_length_hours": window.get("length_hours"),
+            "visits_not_shown": limits.get("visits_not_shown"),
+            "detail_truncated": limits.get("detail_truncated"),
+        }
+    metrics = {
+        item.get("key"): item
+        for item in (envelope.get("metrics") or [])
+        if isinstance(item, dict)
+    }
+    comparability = query.get("comparability") if isinstance(query.get("comparability"), dict) else {}
+    ships = metrics.get("ships_observed") or {}
+    entries = metrics.get("observed_entry_count") or {}
+    return {
+        "status": status,
+        "ships_observed_a": ships.get("a"),
+        "ships_observed_b": ships.get("b"),
+        "ships_observed_delta": ships.get("delta"),
+        "ships_observed_change_rate": ships.get("change_rate"),
+        "observed_entry_count_a": entries.get("a"),
+        "observed_entry_count_b": entries.get("b"),
+        "observed_entry_count_delta": entries.get("delta"),
+        "observed_entry_count_change_rate": entries.get("change_rate"),
+        "equal_length": comparability.get("equal_length"),
+        "warnings": list(comparability.get("warnings") or []),
+    }
+
+
+def _area_analysis_actions(results: dict) -> list[dict]:
+    """区域活动工具的成功调用 → 「查看区域分析」动作。
+
+    列表追加，不重排其它类型的动作；同名工具多次调用只保留最后一次（按调用顺序）。
+    """
+    actions: list[dict] = []
+    for call_id, envelope in results.items():
+        tool_name = envelope.get("tool_name")
+        mode = AREA_TOOL_MODES.get(tool_name)
+        if mode is None or envelope.get("status") not in {"ok", "partial"}:
+            continue
+        query = envelope.get("query") if isinstance(envelope.get("query"), dict) else {}
+        area = envelope.get("area") if isinstance(envelope.get("area"), dict) else {}
+        action = {
+            "type": "area_activity",
+            "trigger": "suggested",
+            "mode": mode,
+            "query": _area_action_query(mode, query, area),
+            "summary": _area_action_summary(mode, envelope),
+            "tool": tool_name,
+            "call_id": envelope.get("call_id") or call_id,
+        }
+        actions = [item for item in actions if item["tool"] != tool_name]
+        actions.append(action)
+    return actions
 
 
 def build_result(
@@ -215,6 +334,8 @@ def build_result(
                     "limitations": result.get("limitations", []),
                 },
             })
+    # 列表追加：区域活动动作不重排、不覆盖其它类型（如通行分析）的动作。
+    analysis_actions.extend(_area_analysis_actions(results))
 
     return {
         "schema_version": SCHEMA_VERSION,

@@ -31,6 +31,15 @@ SQL 候选计算前过滤）、方向筛选、A/B 比较（差值/变化率 A=0 
   schemas_agent）由本会话按本任务整合。
 - 未验证：真实 DeepSeek 对统计/比较问题的工具选择与表述、浏览器端到端（控件/图表/
   地图联动/窄屏/控制台）、独立测试库验证；历史油轮固定批次数字仅作对照。
+## 2026-10-07 Issue #41 第一阶段：区域活动后端算法与接口
+
+状态：**已实现、已在独立测试库与真实库只读验证，本地分支已提交，待用户验收；未推送、未合并、未部署**。负责人 Codex（本会话）。基线 `main` / `ead29ac`，分支 `codex/area-ship-activity`，工作树 `D:/my_project/Hormuz-worktrees/codex-area-ship-activity`。数据库目标：只读 `aisdb`（本机 PostgreSQL 17.10 + PostGIS 3.5.2）+ 独立测试库 `hormuz_area_test`；未建索引、未迁移、未重建派生层、未写业务库。允许修改路径：`backend/app/services/area_activity/**`、`backend/app/routers/area_activity.py`、`backend/app/schemas_area_activity.py`、`backend/app/main.py`（仅注册）、`backend/tests/test_area_activity_*.py`、`scripts/area_activity_samples.py`、`scripts/verify_area_activity_samples.py`、`scripts/verify_area_activity_backend.py`、`docs/area_activity*.md|json`、README 摘要。
+
+- 交付：默认项目分析区域 `hormuz_core_v1`（25.8/55.8/27.1/57.1，半开矩形，附来源与版本）、`/api/area-activity/default-area|snapshot|activity|compare`、共享服务 `backend/app/services/area_activity/`（边界、参数、固定参数化 SQL、状态机、按日裁剪与 A/B）。口径与契约见[区域活动模块](area_activity.md)。
+- 算法：时刻在场用每船最新有效报位（默认 3600 s 新鲜度，过期不回退）；时段分析按状态转换识别访问与进出，`left_returned` 拆访问、`gap` 标缺报中断、`jump` 标跳点，停留时长只累计连续观测区间并按窗口/自然日交集裁剪；A/B 允许不等长窗口，基期 0 时变化率为 null。
+- 验证：单元+HTTP 契约 37 passed；全量后端 **329 passed / 14 skipped**；独立测试库样例验证 **PASS=2131 / WARN=0 / FAIL=0**（52 个场景/校验组，self-check 19/19，脚本只依据文档重写规则，不引用后端实现；含跳点双阈值回归 S20、批次范围一致性 S21、短时外出 S22 及其负向对照）；真实库只读验证通过（无非只读语句、源表行数与写入计数不变），性能基线 1 小时 ≈2.1 s、1 天 ≈2.8 s、7 天 ≈7.2 s、快照 40–60 ms；真实 HTTP 冒烟（8030，验证后关闭）通过。证据见[验证报告](area_activity_backend_verification.md)与 `docs/area_activity_*_result.json`。
+- 本轮修复：segment 边界误判（`IS NOT NULL` 含 `'none'`）、短间隔 GPS 抖动被当成跳点（加入 ≥1 km 位移条件）、PostGIS 逐行粗筛拖慢查询（移除，7 天 5.6 s→4.7 s）。用户复核后追加两处修复（算法版本升到 `1.0.1`）：**批次筛选下沉到上下文与越界探测**（此前只作用于快照，统计与覆盖说明可能不同批次）、**越界探测阈值改为 480 s**（此前只在 >30 min 缺报或跳点时探测，船短时驶出 0.05° 外扩带再返回会被当成连续停留）。验证暴露的 9 条文档歧义已逐条定版，见验证报告 §四。
+- **未开始（待验收后推进）**：前端矩形圈选与三模式面板、地图轨迹联动、三个智能体业务工具（`query_area_ship_snapshot/activity/compare`）与知识库/系统提示同步、真实模型问答、浏览器（桌面/窄屏）验收。与 #40 的共享文件（`App.vue`、前端 API 类型、智能体 schema）本轮未改动。
 
 ## 2026-10-06 仓库清理与文档整理
 
