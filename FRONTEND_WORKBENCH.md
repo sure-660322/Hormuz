@@ -85,4 +85,4 @@ npm run check:workbench
 
 ## 2026-10-07 北冰洋故事交互（Issue #43）
 
-任务分支已实现并经build/check:workbench及浏览器样本验证，待PR评审/主分支整合，未部署。CasePanel组织三段故事、报道和证据边界，新增CaseSpeedPlot使用已有采样轨迹定位时间；TimelineControls支持可选阶段末界及播放状态，MapView可在开播时聚焦完整阶段并避开手机底部面板。支持起点播放/暂停、上一段/下一段、收起/展开和退出恢复。未导入仍能阅读报道，图片失败占位，503可重试；无后端或工具契约变更，真实模型未重验。日期、命令、截图与未验证范围见[案例说明](docs/arctic_ocean_case.md#2026-10-07-issue-43-故事与交互升级)。
+PR #44 已合入main（b0ed92f），本地已同步并保留原技能提交，未部署；build/check:workbench及浏览器样本验证通过。CasePanel组织三段故事、报道和证据边界，新增CaseSpeedPlot使用已有采样轨迹定位时间；TimelineControls支持可选阶段末界及播放状态，MapView可在开播时聚焦完整阶段并避开手机底部面板。支持起点播放/暂停、上一段/下一段、收起/展开和退出恢复。未导入仍能阅读报道，图片失败占位，503可重试；无后端或工具契约变更，真实模型未重验。日期、命令、截图与未验证范围见[案例说明](docs/arctic_ocean_case.md#2026-10-07-issue-43-故事与交互升级)。
