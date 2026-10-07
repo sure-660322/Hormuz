@@ -717,6 +717,7 @@ function restore() {
   globalViewRequest.value++
 }
 function togglePanel(value: Panel) {
+  closeAreaPanel()
   panel.value = value
   workspaceMode.value = 'explore'
   panelOpen.value = true
@@ -954,6 +955,7 @@ async function showVisitTrack(payload: { shipId: number; startAt: string; endAt:
 }
 
 function useAreaInDialog(payload: { text: string }) {
+  closeAreaPanel()
   agentDraftVersion += 1
   agentDraft.value = { text: payload.text, version: agentDraftVersion }
   panel.value = 'agent'
@@ -1360,7 +1362,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @speed-change="playbackSpeed = $event" @retry="retryPlayback" @toggle-compact="timelineCompact = !timelineCompact"
       />
     </div>
-    <aside v-show="panelOpen" class="inspector" aria-label="上下文工作面板" :style="{ width: `min(${inspectorWidth}px, calc(100vw - 48px))` }">
+    <aside v-show="panelOpen && !areaOpen" class="inspector" aria-label="上下文工作面板" :style="{ width: `min(${inspectorWidth}px, calc(100vw - 48px))` }">
       <button
         class="inspector-resize-handle"
         role="separator"

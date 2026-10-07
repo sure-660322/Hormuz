@@ -1576,6 +1576,7 @@ button.primary:hover {
 .event-pop-actions button { font-size: 11px; padding: 4px 12px; }
 .alert-toast { position: absolute; z-index: 860; top: 72px; left: 20px; width: min(420px, calc(100% - 165px)); display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--amber); font-size: 12px; box-shadow: var(--shadow-overlay); }
 .alert-toast button { margin-left: auto; }
+.workbench.area-open .alert-toast { z-index: 1105; }
 .acknowledge { flex: none; margin: 8px 16px; }
 .directory-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 0 16px 12px; color: var(--muted); font-size: 11px; }
 .ship-table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
