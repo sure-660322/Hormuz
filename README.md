@@ -8,6 +8,8 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 
 文档入口：[当前文档索引](docs/README.md) · [前端工作台](FRONTEND_WORKBENCH.md) · [数据库说明](docs/database_setup.md) · [历史交付记录](docs/archive/delivery_notes_2026-10-03.md)。
 
+协作入口：[智能体规则](AGENTS.md) · [GitHub 任务技能](.agents/skills/github-issue-workflow/SKILL.md) · [协作与技能接入](docs/collaboration.md)。使用「处理 #编号」交付 PR，「收尾」合并、同步、清理，或「闭环处理 #编号」完成全过程；共享 main 按指定整合者规则处理。
+
 ## 当前进度
 
 | 模块 | 当前状态 |
