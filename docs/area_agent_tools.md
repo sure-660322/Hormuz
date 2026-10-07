@@ -1,9 +1,10 @@
-# 区域活动智能体工具（issue #41 阶段三）草稿
+# 区域活动智能体工具（issue #41 阶段三）
 
-> 状态：已实现待验证（离线测试通过；真实模型与浏览器端到端由 Lead 在 8031 端口验收）。
-> 本文件是**阶段三负责人的草稿**，供 Lead 整合进 `docs/agent_integration.md`；
-> 区域算法、边界与 REST 口径见 `docs/area_activity.md`（第一阶段，另行维护）。
-> 记录日期：2026-10-07；基线 `aca8d3c`；工作树 `codex/area-activity-ui`。
+> 状态：**已实现，浏览器与真实模型端到端已验收**（2026-10-07，分支 `codex/area-activity-ui`，
+> HEAD 见[验收报告](area_activity_acceptance.md)）。工具清单与 `area_context`/`analysis_actions`
+> 契约已整合进[智能体接入契约](agent_integration.md)（当前共 13 个业务工具）；本文件保留阶段三的
+> 详细口径与字段清单，**契约冲突时以 `docs/agent_integration.md` 与代码为准**。
+> 区域算法、边界与 REST 口径见[区域活动模块](area_activity.md)；前端展示见[区域活动前端](area_activity_frontend.md)。
 
 ## 1. 范围与两种入口
 

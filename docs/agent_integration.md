@@ -79,7 +79,7 @@ question 必填，去除首尾空白后 1–2000 字符。时间字段可省略�
 
 history 可选，为此前对话的消息列表（role 限 user/assistant，content 去除首尾空白后 1–2000 字符），最多携带最近 10 条消息（user/assistant 各计一条，通常为 5 组问答）；服务端将 history 插在 system 与本次问题之间。单轮问答不传 history。
 
-以下九工具注册表为 LC-01 前历史实现；当前版本保留十一个业务工具，新增知识库工具并将 `query_analytics` 拆成 schema/check/execute 三工具。SQL 默认关闭时三工具均不向模型暴露；所有工具只通过 `/agent/analyze` 使用，不单独公开 SQL 路由：
+以下九工具注册表为 LC-01 前历史实现；当前版本保留十三个业务工具（8 个既有 + issue #40 通行统计 2 个 + issue #41 区域活动 3 个），新增知识库工具并将 `query_analytics` 拆成 schema/check/execute 三工具。SQL 默认关闭时三工具均不向模型暴露；所有工具只通过 `/agent/analyze` 使用，不单独公开 SQL 路由：
 
 | 工具 | 参数 | 说明 |
 | --- | --- | --- |

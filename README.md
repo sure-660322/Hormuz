@@ -19,9 +19,9 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 | 历史回放 | 原模拟数据分窗加载路径仍在；真实 AIS 以至多 4 帧的小窗口预取和有界缓存连续播放，未下载七日 1,792 万条报位。单船轨迹按时间桶抽稀并分段；1,985 个刻度为旧模拟批次历史结果 |
 | 新闻浏览 | Issue #6 已在左侧新增「时间线 / 列表」切换：纵向时间线按来源发生日期分组，宽屏两侧交错、窄屏单侧；日期级事件在当前显示时区进入该日时与地图同步出现，不声称具体小时。[PR #11](https://github.com/sure-660322/Hormuz/pull/11) 已合入 main。[Issue #17](https://github.com/sure-660322/Hormuz/issues/17) 在两种视图的事件分类文字前显示统一分类图标，前端构建、工作台检查和当时可见事件的浏览器核对通过，详见[前端工作台](FRONTEND_WORKBENCH.md)。列表保留封面缩略图，地图事件弹卡保留配图与回退；有发生日期但无代表坐标的事件仍可读详情。缺少 `event_datetime` 的事件放在可展开的「时间未明确」区，仅能阅读详情，不用报道日期补造发生日期或地图回放点。关联报道与来源仍在事件详情中。 |
 | MobilityDB / PostGIS | **P0–P4 已实现，P5 部分实现**：派生轨迹、速度着色、事件关联、停留和相遇分析、data-health 已有代码；主回放仍读原始船位，未切换 simplified 派生层。本机新数据的派生表仍为空；旧试验数量与验收见下表 |
-| 区域船舶活动分析 | **后端算法与接口已实现待验收（issue #41 第一阶段，2026-10-07，算法版本 1.0.1）**：默认项目分析区域 + 半开矩形、时刻在场/时段进出/停留/按日汇总/A-B 比较共用同一服务；批次筛选同时作用于统计、上下文与越界探测；独立测试库样例验证 PASS=2131、FAIL=0，真实库只读验证通过（1 小时 ≈2.1 s、1 天 ≈2.8 s、7 天 ≈7.2 s，扫描 ≤400 万报位）。**前端矩形交互、三模式面板、地图联动与三个智能体业务工具均未开始**；口径见[区域活动模块](docs/area_activity.md)，证据见[验证报告](docs/area_activity_backend_verification.md) |
+| 区域船舶活动分析 | **三个阶段已实现，浏览器手动/智能体全链路冒烟通过，独立验收报告待最终确认（issue #41，2026-10-07，算法版本 1.0.1，分支 `codex/area-activity-ui`，未推送/未合并）**：默认项目分析区域 + 半开矩形、手动圈选矩形、时刻在场/时段进出停留/按日汇总/A-B 比较三模式面板与地图证据联动，以及智能体三个只读工具（`query_area_ship_snapshot`/`query_area_ship_activity`/`compare_area_ship_activity`）与 `area_context`+`analysis_actions`「查看区域分析」入口，手动 API 与工具共用同一服务。批次筛选同时作用于统计、上下文与越界探测。第一阶段：独立测试库样例验证 PASS=2131、FAIL=0，真实库只读验证通过（1 小时 ≈2.1 s、1 天 ≈2.8 s、7 天 ≈7.2 s，扫描 ≤400 万报位）。第二、三阶段：后端 366 passed / 14 skipped、前端 build 与 check:workbench 通过、浏览器冒烟 15/15、真实模型三问数字与独立复算一致；证据见[验收报告](docs/area_activity_acceptance.md)与[合并预检](docs/area_activity_merge_check.md)。**未推送、未合并、未部署；main 当前尚未包含本分支** |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
-| 智能体 | **本地 main 已接入七日真实 AIS 语义并通过工具层验证**：LangChain `create_agent`、8 个只读业务工具与知识库保持 v4 契约。船舶检索、轨迹和有界虚拟门线通行已在应用库只读验证；**SQL 三工具已按 catalog v2 + 016 只读语义层在本机恢复启用**（`agent_data.v_ships` 一船一行，`v_ships=4,462` 与源表一致；执行器全链路核验通过，真实 DeepSeek 对「多少艘油轮」自主完成 schema→check→execute 并回答 793 艘）。含 TimescaleDB 的集群须为读者角色设 `timescaledb.disable_load=on`（016 已内置）。浏览器端到端仍未验证；合并后后端 257 passed / 12 skipped，旧版 254/245 passed 为历史离线验收 |
+| 智能体 | **本地 main 已接入七日真实 AIS 语义并通过工具层验证**：LangChain `create_agent`、13 个只读业务工具（8 个既有 + 2 个动态通行统计 + 3 个区域活动）与知识库保持 v4 契约。船舶检索、轨迹和有界虚拟门线通行已在应用库只读验证；**SQL 三工具已按 catalog v2 + 016 只读语义层在本机恢复启用**（`agent_data.v_ships` 一船一行，`v_ships=4,462` 与源表一致；执行器全链路核验通过，真实 DeepSeek 对「多少艘油轮」自主完成 schema→check→execute 并回答 793 艘）。含 TimescaleDB 的集群须为读者角色设 `timescaledb.disable_load=on`（016 已内置）。浏览器端到端仍未验证；合并后后端 257 passed / 12 skipped，旧版 254/245 passed 为历史离线验收 |
 
 旧模拟批次依据同期新闻构造等待等行为，具体船数、响应时刻、航迹及比例属于模拟假设；其报告仅作历史记录，见[旧批次说明](sim_ais_demo/output_news_aligned/README.md)。用这些 AIS 作研究结论前仍须核验来源、授权、覆盖和完整性。
 
@@ -30,7 +30,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 - 前端：Vue 3、TypeScript、Vite、Leaflet；底图使用 OpenStreetMap（可切换自建本地瓦片服务，见下），海事参考使用 OpenSeaMap。
 - 后端：FastAPI、SQLAlchemy、Psycopg。
 - 本机数据库：PostgreSQL；已核对扩展 PostGIS 3.5.2、MobilityDB 1.3.0、TimescaleDB 2.22.0。
-- 主数据流：数据库 → FastAPI → Vue / Leaflet；前端区域船舶查询仍按当前视野在浏览器内计算，后端 `/api/area-activity/*` 已提供区域时刻在场、时段进出/停留与 A/B 比较能力（前端未接入）。
+- 主数据流：数据库 → FastAPI → Vue / Leaflet；前端地图视野内的船舶筛选仍在浏览器内计算；区域活动分析（圈选矩形、三模式、证据联动）改由后端 `/api/area-activity/*` 计算，前端只展示后端字段，智能体三个区域工具与手动界面共用同一服务。
 
 | 路径 | 用途 |
 | --- | --- |
@@ -111,7 +111,9 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 | GET | `/api/encounters?from=&to=&max_distance_nm=` | P4 相遇分析派生层（`encounters`）：一船对一行（最近距离 NM/米、时间重叠分钟、最近接近点、period），阈值快照入 params |
 | POST | `/api/encounters/analyze` | P4 受控同步重建相遇派生层：body `{distance_nm, overlap_min, sample_seconds}`，成功后写表并回 summary；模拟时空邻近，接近不等于实际交互 |
 | GET | `/api/data-health` | P5 数据健康：按 `data_source` 的报位数/船数/覆盖区间/中位 gap、全局计数、四张派生表行数 + built_at + stale |
-| GET | `/api/area-activity/default-area` | 默认分析区域（`hormuz_core_v1`）的版本、半开边界、跨度与依据；供后续前端「开启功能/恢复默认区域」使用 |
+| GET | `/api/area-activity/default-area` | 默认分析区域（`hormuz_core_v1`）的版本、半开边界、跨度与依据；供前端「开启功能/恢复默认区域」使用 |
+| GET | `/api/area-activity/ship-types` | 船型候选目录（来自 `ships` 当前取值分布，含保留值 `__missing__`/`__unknown__`），手动多选与智能体共用，不在前端硬编码 |
+| POST | `/api/area-activity/resolve-area` | 圈选矩形解析/校验：与查询同一套半开与跨度规则，非法/超限/跨 180° 直接 422，避免前端拿无效区域去查询 |
 | GET | `/api/area-activity/snapshot?at=&west=&south=&east=&north=&ship_type=` | 历史时刻区域在场：每船取 `at` 之前最新有效报位（默认 3600 s 新鲜度），过期不计入、不回退到更早的区域内报位；返回在场摘要与有界船舶列表 |
 | GET | `/api/area-activity/activity?start=&end=&west=&south=&east=&north=&ship_type=&batch_ids=` | 时段出现/进出/停留：按船去重出现数、观测进入/离开次数、观测支持的停留时长与按 UTC 自然日汇总；窗口 ≤7 天，超限或超读取上限直接拒绝 |
 | GET | `/api/area-activity/compare?start_a=&end_a=&start_b=&end_b=&…` | 同一矩形/筛选/算法版本下的 A/B 两时段比较：绝对差与变化率（基期 0 时为 null）、日均分母为窗口实际长度、覆盖可比性警告 |
@@ -139,7 +141,7 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 
 历史验收记录：默认问题曾返回 1 艘 SIM V2 化学品船 019（证据 P1，观测完成于 2026-02-28T18:14:54Z）；v3 三场景联调记录见 [当前契约](docs/agent_integration.md)。本轮未重新调用模型，不能把历史数量当作当前查询结果；自由回答正文尚无逐项事实核验器。
 
-后续再做：地图定位当前指向回放快照位置，历史轨迹逐点回放联动尚未实现；服务端会话持久化未做（history 由客户端逐请求携带）。受限 SQL 底座已按真实 AIS 重做并启用：`016` 重建 `agent_data` 语义层与只读角色，catalog v2 哈希与口径已在本机核验，真实模型聚合问答通过；报位级 SQL 不在 catalog 范围，报位级分析仍走业务工具。八个业务工具的应用库复核见[智能体开发任务](docs/agent_development_plan.md)：停留、相遇及 observed 事件关联未构建，不能据零结果推断没有真实行为或关联；mentioned 文本提及仍可查询。
+后续再做：地图定位当前指向回放快照位置，历史轨迹逐点回放联动尚未实现；服务端会话持久化未做（history 由客户端逐请求携带）。受限 SQL 底座已按真实 AIS 重做并启用：`016` 重建 `agent_data` 语义层与只读角色，catalog v2 哈希与口径已在本机核验，真实模型聚合问答通过；报位级 SQL 不在 catalog 范围，报位级分析仍走业务工具。业务工具（现为 13 个）的应用库复核见[智能体开发任务](docs/agent_development_plan.md)：停留、相遇及 observed 事件关联未构建，不能据零结果推断没有真实行为或关联；mentioned 文本提及仍可查询。
 
 受限分析主链 SQL-01～06 已完成。SQL-02～06 文档作为现有安全执行底座的历史验收证据继续保留；它们不再定义下一版交互方式。LC-01～04 已按阶段引入 LangChain 单智能体、轻量知识库、原生业务 Skills 和受限 SQL Agent，并完成等价回归：固定短语分类器和手写模型工具循环已移除（LC-03/LC-04），旧 `runner.py` 已删除。任务状态见 [开发计划](docs/agent_development_plan.md)。
 
@@ -165,7 +167,7 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 ## 尚未实现与限制
 
 - 真实 AIS 派生层重建、四艘新闻船关联、整周浏览器与并发验收、来源授权及区域覆盖核实、实时推送、自动刷新、认证授权和正式部署。七日已在本机应用库导入，未推送或部署。
-- 智能体契约为 v4：工具集为 8 个只读业务工具 + 知识库工具，受限 SQL 工具（`get_database_schema`/`check_sql`/`execute_sql`）在 catalog v2 口径与 `SHIP_DATA_SOURCE` 一致且功能开关完整时暴露（本机已启用，fail-closed）；多轮 history 仍由客户端逐请求携带。真实 DeepSeek 聚合问答已于 2026-09-25 在本机验收（油轮计数 793）；浏览器端到端未重验。共享业务库统计、认证限流、正式部署、长时间多 worker 压测和无密钥 503 仍未做本轮实测。
+- 智能体契约为 v4：工具集为 13 个只读业务工具（8 个既有 + issue #40 的通行统计 2 个 + issue #41 的区域活动 3 个）+ 知识库工具，受限 SQL 工具（`get_database_schema`/`check_sql`/`execute_sql`）在 catalog v2 口径与 `SHIP_DATA_SOURCE` 一致且功能开关完整时暴露（本机已启用，fail-closed）；多轮 history 仍由客户端逐请求携带。真实 DeepSeek 聚合问答已于 2026-09-25 在本机验收（油轮计数 793）；浏览器端到端未重验。共享业务库统计、认证限流、正式部署、长时间多 worker 压测和无密钥 503 仍未做本轮实测。
 - 新闻事件与模拟船舶的自动因果关联、事件多点完整展示。事件面板现提供演示级 observed 关联（模拟数据时空邻近，明确标注不构成真实因果）与 mentioned 原文船名，二者严格分列。
 - 通用双地图对比、AIS 密度分析；MobilityDB 底座 P0–P4 已实现、P5 部分实现，回放主链路切换 simplified 抽稀层及特征保留规则未实施，见 [技术方案](docs/mobility_capability_plan.md)。
 - 派生层 stale 当前只比较 built_at 与源报位最大时间，不能识别所有历史更正/删除；事件关联仍有 EPSG:32640 距离误差限制，相遇分析已使用 geography 采样距离。上述限制不能在智能体中省略。
