@@ -1,4 +1,4 @@
-> 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。并发预算、触屏与纯键盘范围继续保留，Issue #41 仍开放。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
+> 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。用户随后确认触屏与纯键盘相关范围暂不做，已移出本 Issue 的待办；[Issue #41](https://github.com/sure-660322/Hormuz/issues/41) 已按已交付范围关闭。并发预算等未验证限制不因关闭而视为已验证。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
 
 > 2026-10-07 Issue #41 接手复测：任务分支已整合最新 main，13 个只读业务工具及通行/区域 analysis_actions 联合契约通过回归；知识库区域章节已补齐。真实模型默认区身份与面板回填证据见[区域验收报告](area_activity_acceptance.md) §七。未合入 main、未部署，多轮模型追问与并发预算未验证。
 
