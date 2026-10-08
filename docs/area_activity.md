@@ -1,3 +1,5 @@
+> 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。并发预算、触屏与纯键盘范围继续保留，Issue #41 仍开放。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
+
 # 区域船舶活动与进出分析：矩形圈选、手动与智能体共用（issue #41）
 
 状态（2026-10-07）：三个阶段已实现；任务分支已整合最新 main，修复后端到端复测见[验收报告](area_activity_acceptance.md) §七。后端 390 passed / 14 skipped；前端 build、check:workbench、区域检查 30/30 与类型检查通过；API 14 组/163 项断言与已有独立复算证据一致。未合入 main、未部署；并发预算、触屏与纯键盘绘制等限制保留，已推送并交付[草稿 PR #45](https://github.com/sure-660322/Hormuz/pull/45)，详细交接见验收报告。

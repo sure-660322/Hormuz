@@ -1,5 +1,8 @@
 # 海事态势工作台
 
+> 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。并发预算、触屏与纯键盘范围继续保留，Issue #41 仍开放。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
+
+
 当前前端由地图、自然日回放、新闻浏览、态势总览、典型案例和智能体面板组成；Issue #30 UI 升级已在2026-10-03经 PR #37 合入 main。历史构建、浏览器样本和未验证范围见[任务计划](docs/agent_development_plan.md)及[历史交付记录](docs/archive/delivery_notes_2026-10-03.md)，不作为本轮复验。
 
 2026-10-06：未引用的 Vite 示例组件及其两个 SVG 已随 `2acd881` 合入 main 并推送；任务 worktree 与本地分支已清理。现行回归检查和运行资产保留。清理与验证状态见[清理记录](docs/repository_cleanup_2026-10-06.md)。

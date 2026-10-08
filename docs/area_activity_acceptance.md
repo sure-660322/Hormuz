@@ -1,3 +1,5 @@
+> 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。并发预算、触屏与纯键盘范围继续保留，Issue #41 仍开放。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
+
 # 区域船舶活动与进出分析：第二、三阶段独立验收报告
 
 验收日期：2026-10-07（本机，UTC 记录）
@@ -264,3 +266,13 @@ backend/.venv/Scripts/python.exe scripts/verify_area_activity_timeout.py
 7. 视觉细节（配色、图例、趋势图在窄屏的具体呈现）需人工确认；本轮只做了溢出与控制台检查。
 8. 真实模型的措辞质量与拒答边界——只验证了工具调用、`analysis_actions` 与关键数字，未做多轮追问与对抗性提问。
 9. 合并与部署未执行；PR 交付状态见 §七。
+
+## 九、收尾记录（2026-10-08）
+
+- github-issue-workflow 1.0.0 / 收尾模式，负责人及本轮整合者 Codex；用户明确授权合并本次交付范围，剩余验收不自动豁免，Issue #41 保持开放。
+- 复核 PR head 374846b：后端 390 passed / 14 skipped（12.84 s），前端 build、check:workbench、区域检查 30/30、隔离类型检查 0 errors；git diff --check 通过。0 个未解决审查线程，无远端检查项，mergeable=MERGEABLE。
+- PR #45 从草稿转为 ready 后以合并提交方式合入 main，合并 SHA 3bcfea18e2eb8eac7f0a01ac329bfada6cc772c4。本地 main 从 2efd0ef 快进到合并提交，交付 HEAD 374846b 的祖先检查通过。收尾文档提交另记于 Git 历史。
+- 未重做 2026-10-07 的浏览器、独立复算、模型或 PostgreSQL 慢查询验收；原结构化证据保留，不将其日期改为本轮。
+- codex-area-activity-ui 工作树及本地/远端任务分支已移除；8031/5177 已核实为本任务进程后停止，8032/5178 本轮未运行。其他工作树与服务未处理。
+- 原始证据保留于主目录 Git 忽略的 local-archive/issue41-2026-10-08/output；最后被占用的 _vite5177.log 保存到 output_remaining，复制后原件/归档 SHA256 一致。共 110 个文件，不含 .env 或数据库备份。主目录凭据硬链接与依赖目录仍在，未复制或输出凭据。
+- 未部署；并发响应预算、触屏与纯键盘圈选、纯键盘表单走查、真实模型多轮等限制保持。第一阶段及旧整合预检工作树保留，本轮只清理本次交付的 codex-area-activity-ui 工作树。

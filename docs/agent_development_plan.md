@@ -1,3 +1,5 @@
+> 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。并发预算、触屏与纯键盘范围继续保留，Issue #41 仍开放。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
+
 # 智能体下一阶段开发任务
 
 ## 2026-10-07 Issue #40 动态海峡通行统计（分支 `kimi/strait-passage-stats`）

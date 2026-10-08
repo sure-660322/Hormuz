@@ -1,3 +1,5 @@
+> 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。并发预算、触屏与纯键盘范围继续保留，Issue #41 仍开放。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
+
 > 2026-10-07 Issue #41 接手复测：任务分支已整合最新 main，13 个只读业务工具及通行/区域 analysis_actions 联合契约通过回归；知识库区域章节已补齐。真实模型默认区身份与面板回填证据见[区域验收报告](area_activity_acceptance.md) §七。未合入 main、未部署，多轮模型追问与并发预算未验证。
 
 > 2026-10-07 Issue #40（分支 `kimi/strait-passage-stats`，待合入）：v4 响应新增 `analysis_actions`（当前仅 `passage_analysis`），由成功的 `query_strait_passage_statistics` / `compare_strait_passage_statistics` 工具结果生成并绑定该次调用自己的查询参数；前端据此在总览打开「通行分析」面板并恢复条件与结果。业务工具由 8 个增至 10 个（新增两工具与手动面板 `/api/strait-passages/*` 共用同一统计服务，同条件结果一致；船型过滤含 `__unknown__` 未知/缺失桶，A/B 比较变化率 A=0 为 null）。手动 API 为 GET/POST，CORS 既有白名单与 Vite 代理已覆盖；`query_strait_passages` 单船能力不变。口径、性能预算与验证见[通行统计模块说明](agent_tool_strait_statistics.md)；真实模型问答与浏览器端到端待验收。
