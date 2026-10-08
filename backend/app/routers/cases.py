@@ -4,8 +4,46 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.schemas import MaritimeCaseResponse
+from backend.app.services import athe_nova_case
 
 router = APIRouter(prefix="/cases", tags=["cases"])
+
+
+@router.get("/athe-nova", response_model=MaritimeCaseResponse)
+def athe_nova(db: Session = Depends(get_db)):
+    rows = db.execute(text("""
+        SELECT s.id, count(p.id) AS position_count,
+               min(p.recorded_at) AS start_at, max(p.recorded_at) AS end_at
+        FROM ships s
+        LEFT JOIN ship_positions p ON p.ship_id = s.id
+            AND p.data_source = :source
+            AND p.recorded_at BETWEEN :start AND :end
+            AND EXISTS (SELECT 1 FROM ais_import_batches b
+                        WHERE b.id = p.source_batch_id
+                          AND b.source_file = b.source_day::text || '.csv')
+        WHERE s.mmsi = :mmsi AND s.imo = :imo
+        GROUP BY s.id
+    """), dict(source="nnu_ais", mmsi="334931000", imo="9188116",
+                 start="2026-02-24T16:00:00Z", end="2026-03-03T15:59:59Z")).mappings().all()
+    row = rows[0] if len(rows) == 1 else None
+    ready = bool(row and row["position_count"])
+    return dict(id="athe-nova", title="ATHE NOVA：报道与报位的对照",
+                display_title="ATHE NOVA", vessel_label="沥青船（平台分类） · ATHE NOVA",
+                date_label="2026.02.25 — 03.03",
+                overview_summary="先看身份与先前缺报，再对照3月2日报道和当天轨迹，最后核对3月3日仍存在的报位。缺报不补线；不把报道说法当作AIS结论。",
+                mmsi="334931000", imo="9188116", data_source="nnu_ais",
+                supplier="现有七日AIS批次；供应商授权与覆盖完整性未核实",
+                ready=ready, ship_id=row["id"] if row else None,
+                start_at=row["start_at"] if ready else None,
+                end_at=row["end_at"] if ready else None,
+                position_count=row["position_count"] if row else 0,
+                unavailable_reason="当前库没有双标识一致的目标船及七日来源报位；可阅读调查证据，不能播放。",
+                stages=athe_nova_case.STAGES, evidence=athe_nova_case.EVIDENCE,
+                limitations=["证据卡为2026-10-08本机七日来源调查快照，报位数量与可播放范围按当前库查询。",
+                             "报道发布日期不是精确事件时刻；阶段按北京时间组织。",
+                             "超过90分钟缺报断线，船位仅在此前1小时内有效；不从缺报推断损伤或关闭AIS。",
+                             "只用现有七日原始报位，不导入新数据，不重建MobilityDB。",
+                             "AIS来源授权、接收覆盖与字段质量仍有待核实；不宣称具备公开再分发授权。"])
 
 STAGES = [
     dict(id="first-attempt", title="首次尝试与折返", date="2026-03-27", start_at="2026-03-26T16:01:33Z", end_at="2026-03-27T15:59:59Z",

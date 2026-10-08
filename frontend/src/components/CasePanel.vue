@@ -1,33 +1,35 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { ApiMaritimeCase, ApiTrackWindow } from '../api'
+import type { ApiMaritimeCase, ApiTrackWindow, MaritimeCaseId } from '../api'
 import { safeNewsUrl } from '../domain/maritime'
 import CaseSpeedPlot from './CaseSpeedPlot.vue'
-const props = defineProps<{ data: ApiMaritimeCase | null; activeStage: string; loading: boolean; error: string; active: boolean; pointsVisible: boolean; stageStatus?: string; track: ApiTrackWindow | null; at: string | null; playing: boolean }>()
-defineEmits<{ select: [id: string]; close: []; retry: []; exit: []; togglePoints: []; play: [id: string]; pause: []; seek: [at: string] }>()
+const props = defineProps<{ caseId: MaritimeCaseId; data: ApiMaritimeCase | null; activeStage: string; loading: boolean; error: string; active: boolean; pointsVisible: boolean; stageStatus?: string; track: ApiTrackWindow | null; at: string | null; playing: boolean }>()
+defineEmits<{ switchCase: [id: MaritimeCaseId]; select: [id: string]; close: []; retry: []; exit: []; togglePoints: []; play: [id: string]; pause: []; seek: [at: string] }>()
 const failedImages = ref(new Set<string>())
 const navigation = computed(() => props.data?.stages.filter(s => s.id !== 'confirmation') ?? [])
 const stage = computed(() => props.data?.stages.find(s => s.id === props.activeStage))
 const articles = computed(() => stage.value ? stage.value.articles : props.data?.stages.flatMap(s => s.articles) ?? [])
 const followup = computed(() => props.data?.stages.find(s => s.id === 'confirmation'))
 function imageFailed(url: string) { failedImages.value = new Set([...failedImages.value, url]) }
-const stageNames = ['首次尝试与折返', '两次尝试之间', '再次尝试并通过']
+const isArctic = computed(() => props.caseId === 'arctic-ocean')
+const displayTitle = computed(() => props.data?.display_title ?? (isArctic.value ? '中海北冰洋' : 'ATHE NOVA'))
 const stageIndex = computed(() => navigation.value.findIndex(s => s.id === props.activeStage))
 const period = computed(() => ({ from: stage.value?.start_at ?? props.data?.start_at, to: stage.value?.end_at ?? props.data?.end_at }))
 const ready = computed(() => props.active && !!props.track && !props.loading && !props.error)
-function stageName(item: { id: string }, index: number) { return stageNames[index] ?? item.id }
+
 </script>
 
 <template>
-  <aside class="case-panel" aria-label="中海北冰洋过航案例">
-    <header><div><small>2026.03.27 — 03.31 / 北京时间</small><h2>中海北冰洋</h2><p>两次尝试，一条过航故事</p></div><div class="header-actions"><button @click="$emit('close')" aria-label="收起案例面板，保留案例模式" title="收起面板">‹</button><button @click="$emit('exit')" aria-label="退出案例，恢复原态势" title="退出案例">×</button></div></header>
-    <div class="case-identity" v-if="data"><span>集装箱船 · CSCL ARCTIC OCEAN</span><details><summary>船舶与数据</summary><p>MMSI {{ data.mmsi }}<br>IMO {{ data.imo }}<br>{{ data.position_count.toLocaleString() }} 条源报位</p></details></div>
+  <aside class="case-panel" :aria-label="`${displayTitle}案例`">
+    <header><div><small>{{ data?.date_label ?? (isArctic ? '2026.03.27 — 03.31' : '2026.02.25 — 03.03') }} / 北京时间</small><h2>{{ displayTitle }}</h2><p>{{ isArctic ? '两次尝试，一条过航故事' : '报道与报位的对照' }}</p></div><div class="header-actions"><button @click="$emit('close')" aria-label="收起案例面板，保留案例模式" title="收起面板">‹</button><button @click="$emit('exit')" aria-label="退出案例，恢复原态势" title="退出案例">×</button></div></header>
+    <label class="case-selector">选择案例 <select :value="caseId" :disabled="loading" @change="$emit('switchCase', ($event.target as HTMLSelectElement).value as MaritimeCaseId)"><option value="arctic-ocean">中海北冰洋</option><option value="athe-nova">ATHE NOVA</option></select></label>
+    <div class="case-identity" v-if="data"><span>{{ data.vessel_label ?? '集装箱船 · CSCL ARCTIC OCEAN' }}</span><details><summary>船舶与数据</summary><p>MMSI {{ data.mmsi }}<br>IMO {{ data.imo }}<br>{{ data.position_count.toLocaleString() }} 条源报位</p></details></div>
     <p v-if="loading" role="status">正在加载完整案例…</p>
     <p v-if="error" role="alert">{{ error }} <button @click="$emit('retry')">重试</button></p>
     <template v-if="data">
-      <p v-if="!data.ready" role="status">轨迹尚未导入，可先阅读报道。</p>
+      <p v-if="!data.ready" role="status">{{ data.unavailable_reason ?? '轨迹尚未导入，可先阅读报道。' }}</p>
       <div class="case-view-controls">
-        <button :aria-pressed="activeStage === 'overview'" :disabled="loading" @click="$emit('select', 'overview')"><strong>完整故事</strong><span>五日轨迹与全部报道</span></button>
+        <button :aria-pressed="activeStage === 'overview'" :disabled="loading" @click="$emit('select', 'overview')"><strong>完整故事</strong><span>完整轨迹与全部证据</span></button>
       </div>
       <nav class="case-stages" aria-label="航行阶段">
         <button
@@ -39,18 +41,26 @@ function stageName(item: { id: string }, index: number) { return stageNames[inde
           @click="$emit('select', item.id)"
         >
           <span class="case-step-index" aria-hidden="true">{{ i + 1 }}</span>
-          <span class="case-step-copy"><span class="case-step-date">{{ item.id === 'waiting' ? '03.28–03.29' : item.date.slice(5).replace('-', '.') }}</span><strong>{{ stageName(item, i) }}</strong></span><span class="step-arrow" aria-hidden="true">›</span>
+          <span class="case-step-copy"><span class="case-step-date">{{ isArctic && item.id === 'waiting' ? '03.28–03.29' : item.date.slice(5).replace('-', '.') }}</span><strong>{{ item.title }}</strong></span><span class="step-arrow" aria-hidden="true">›</span>
         </button>
       </nav>
       <section class="case-detail" aria-live="polite">
-        <div class="detail-heading"><span>{{ stage && stageIndex >= 0 ? `第 ${stageIndex + 1} 段 / 共 ${navigation.length} 段` : '案例概况' }}</span><span>{{ stage ? stage.date.slice(5).replace('-', '.') : '03.27–31' }}</span></div>
-        <h3>{{ stage?.title ?? '从首次折返，到再次通过' }}</h3>
-        <p>{{ stage?.summary ?? '沿五日历史航迹，查看首次尝试、两次尝试之间的航行过程与再次通过。阶段用于组织浏览，报道与 AIS 观测分别提供证据。' }}</p>
+        <div class="detail-heading"><span>{{ stage && stageIndex >= 0 ? `第 ${stageIndex + 1} 段 / 共 ${navigation.length} 段` : '案例概况' }}</span><span>{{ stage ? stage.date.slice(5).replace('-', '.') : (isArctic ? '03.27–31' : '02.25–03.03') }}</span></div>
+        <h3>{{ stage?.title ?? (isArctic ? '从首次折返，到再次通过' : '报道、缺报与后续观测') }}</h3>
+        <p>{{ stage?.summary ?? data.overview_summary ?? '沿历史航迹查看航行过程；报道与AIS分别提供证据。' }}</p>
         <div class="case-play-actions"><button class="primary" :disabled="!ready" @click="playing ? $emit('pause') : $emit('play', activeStage)">{{ playing ? '暂停回放' : stage ? '从本段开始播放' : '从故事起点播放' }}</button><button :disabled="!ready" @click="$emit('select', activeStage)">查看{{ stage ? '本段' : '完整' }}轨迹</button></div>
         <p v-if="stageStatus" class="case-stage-status" role="status">{{ stageStatus }}</p>
-        <div class="case-legend"><span><i class="legend-full" />五日完整轨迹</span><span><i />{{ stage ? '本段' : '故事' }}已回放 · 航速着色</span><label><input type="checkbox" :checked="pointsVisible" @change="$emit('togglePoints')">报位点</label></div>
+        <div class="case-legend"><span><i class="legend-full" />完整观测轨迹</span><span><i />{{ stage ? '本段' : '故事' }}已回放 · 航速着色</span><label><input type="checkbox" :checked="pointsVisible" @change="$emit('togglePoints')">报位点</label></div>
       </section>
       <CaseSpeedPlot v-if="period.from && period.to" :track="track" :from="period.from" :to="period.to" :at="at" :disabled="!ready" @seek="$emit('seek', $event)" />
+      <section v-if="data.evidence?.length" class="case-evidence">
+        <h3>报道 / AIS / 不能确认</h3>
+        <article v-for="item in data.evidence" :key="item.title">
+          <strong>{{ item.title }}</strong><p v-if="item.at">{{ item.at.replace('T', ' ').replace('+00:00', ' UTC').replace('Z', ' UTC') }}</p><p>{{ item.observation }}</p><p class="evidence-label">{{ item.boundary }}</p>
+          <button v-if="item.at" :disabled="!ready" @click="$emit('seek', item.at)">定位观测时间</button>
+          <a v-if="item.url && safeNewsUrl(item.url)" :href="safeNewsUrl(item.url)!" target="_blank" rel="noopener noreferrer">阅读证据来源 ↗</a>
+        </article>
+      </section>
       <section class="case-report-section">
         <div class="report-heading"><h3>{{ stage ? '这一阶段的报道' : '报道与后续回应' }}</h3><span>{{ articles.length }} 篇</span></div>
         <p class="evidence-label">报道提供事件叙述，航迹提供位置观测；两者不自动证明因果。</p>
@@ -71,6 +81,7 @@ function stageName(item: { id: string }, index: number) { return stageNames[inde
 </template>
 
 <style scoped>
+.case-selector { display: flex; gap: 10px; align-items: center; font-size: 12px; margin-top: 12px }.case-selector select { flex: 1; min-width: 0; background: var(--wash); color: var(--ink); padding: 6px }.case-evidence article { border-bottom: 1px solid var(--line); padding: 10px 0; font-size: 12px }.case-evidence p { line-height: 1.8 }.case-evidence button, .case-evidence a { font-size: 11px; margin-right: 8px }
 .case-panel { position: absolute; left: 18px; top: 14px; bottom: 18px; width: 340px; max-width: calc(100vw - 36px); z-index: 1050; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-l); overflow: auto; padding: 0 20px 18px; scrollbar-width: thin; scrollbar-color: var(--subtle) transparent }
 header { display: flex; justify-content: space-between; align-items: flex-start; padding-top: 22px }header small { font-size: 10px; color: var(--muted); letter-spacing: .3px }h2 { font-size: 27px; font-weight: 650; letter-spacing: .8px; line-height: 1.25; margin: 9px 0 6px }header p { margin: 0; color: var(--muted) }.header-actions { display: flex; gap: 2px }.header-actions button { padding: 2px 5px; border: 0; color: var(--muted); font-size: 18px }
 .case-identity { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; color: var(--muted); font-size: 10px; line-height: 1.7; margin-top: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line) }.case-identity details { margin: 0 }.case-identity p { margin: 8px 0; font-size: 11px }
