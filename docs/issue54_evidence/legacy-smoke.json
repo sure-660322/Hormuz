@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-10-08T14:14:42.088Z",
+  "counts": {
+    "PASS": 6
+  },
+  "results": [
+    {
+      "step": "S0",
+      "name": "面板可打开",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S0",
+      "name": "控制台 0 error",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S1",
+      "name": "状态条显示默认区域",
+      "status": "PASS",
+      "detail": "分析区域默认区域当前区域：默认区域霍尔木兹海峡核心通行区（项目分析区域）显示区域边界开启区域详情（非官方航道边界）25.8000°N–27.1000°N，55.8000°E–57.1000°E包含规则（半开矩形）：west ≤ 经度 < e"
+    },
+    {
+      "step": "S1",
+      "name": "面板显示默认区域名与标记",
+      "status": "PASS",
+      "detail": "name=当前区域：默认区域 chip=默认区域"
+    },
+    {
+      "step": "S1",
+      "name": "默认区无「待查询」标记",
+      "status": "PASS",
+      "detail": "25.8000°N–27.1000°N，55.8000°E–57.1000°E"
+    },
+    {
+      "step": "S1",
+      "name": "控制台 0 error",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "console_errors": [],
+  "source_commit": "947fff6f768a9069b86ee54f1010ad76396ba293"
+}

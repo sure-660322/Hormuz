@@ -35,6 +35,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 - 前端：Vue 3、TypeScript、Vite、Leaflet；底图使用 OpenStreetMap（可切换自建本地瓦片服务，见下），海事参考使用 OpenSeaMap。
 - 后端：FastAPI、SQLAlchemy、Psycopg。
 - 本机数据库：PostgreSQL；已核对扩展 PostGIS 3.5.2、MobilityDB 1.3.0、TimescaleDB 2.22.0。
+- 区域显示交互 #54：分析面板、边界显示偏好与圈选状态已分离；隐藏保留条件与结果，案例退出恢复偏好，详细坐标收进「区域详情」。任务分支已实现，验证与交付状态见[本轮记录](docs/issue54_area_boundary.md)；未合并、未部署。
 - 主数据流：数据库 → FastAPI → Vue / Leaflet；前端地图视野内的船舶筛选仍在浏览器内计算；区域活动分析（圈选矩形、三模式、证据联动）改由后端 `/api/area-activity/*` 计算，前端只展示后端字段，智能体三个区域工具与手动界面共用同一服务。
 
 | 路径 | 用途 |

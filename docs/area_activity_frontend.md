@@ -24,6 +24,10 @@
 // props
 {
   open: boolean
+  boundaryVisible: boolean          // 用户显示偏好，与查询区域独立
+  drawing: boolean
+  resolving: boolean
+  areaNotice: string
   bounds: ApiAreaBounds              // 当前分析矩形 { west, south, east, north }
   defaultBounds: ApiAreaBounds       // 默认区域矩形（用于对照展示）
   areaLabel: string                  // 例如「霍尔木兹海峡核心通行区」或「自定义分析矩形」
@@ -34,6 +38,9 @@
 
 // emits
 close: []
+'update:boundary-visible': [visible: boolean]
+'restore-default': []
+'cancel-draw': []
 'update:bounds': []                                            // 无参数：请父组件进入重新圈选流程
 'results-updated': []                                          // 每次成功得到新结果时一次；失败/取消不发
 'locate-ship': [{ shipId: number; startAt: string; endAt: string }]        // startAt/endAt = visit.first_inside_at / last_inside_at（ISO Z）
@@ -186,5 +193,15 @@ npm run build
 1. `area` 采用后端真实结构（嵌套 `bounds`、`version` 可为 null、`containment` 字符串）；`domain/areaActivity.ts` 的 `readBounds` 同时兼容嵌套与扁平写法，因此 api.ts 保持现在的 `ApiAreaInfo.bounds` 即可，无需改动。
 2. 组件不 import api.ts 的响应 interface，只用 `type ApiAreaBounds` + 4 个函数；响应经 `toAreaXxxResult()` 宽松归一化。若后续 api.ts 增删字段，只要函数名/参数名不变，组件不受影响。
 3. 截断提示只认 `limits.list_truncated` / `limits.detail_truncated`；比较模式没有顶层 `coverage`，组件按 `a.coverage`/`b.coverage` 展示两期覆盖。
-4. 未使用 `fetchAreaDefault()`/`resolveAreaBounds()`；若希望面板显示后端默认区域版本或让「重新圈选」先经 `resolve-area` 规范化，需要在 App.vue 侧已完成并把结果经 `areaLabel`/`bounds` 传入。
+4. 面板不直接使用 `fetchAreaDefault()`/`resolveAreaBounds()`；App.vue 已负责加载默认区域、规范化圈选与失败回滚，经 `areaLabel`/`bounds` 传入。
 5. 面板根元素不做定位；App.vue 需要给它一个确定高度/宽度的容器（推荐右侧栏或浮层，`min-height: 0` 保证内部滚动）。
+
+## 2026-10-08 Issue #54 显示状态与分析状态
+
+App.vue 分别维护面板打开、边界偏好和临时绘制；有效可见性为「面板打开且偏好开启且不在案例」。MapView 仅据有效可见性增删已确认矩形，不修改父层 bounds。默认面板首次开启才初始化显示偏好，以后关闭/重开沿用偏好。
+
+面板首次打开后保留组件，关闭用 v-show 隐藏，筛选、日期、现有结果及版本保留；关闭仍取消在途查询。对话建议仅消费新动作，重开不重复查询或重新预填。圈选自动显示边界，完成经真实 resolve-area 校验；取消、隐藏、关闭面板与进入案例递增校验序号，迟到响应不提交。恢复默认沿用已有区域变更/结果过期规则，不修改显示偏好。
+
+「当前区域：默认区域 / 自定义区域」常显；坐标、半开规则与范围依据放进「区域详情（非官方航道边界）」。隐藏时面板提示分析范围不变；绘制/取消与失败反馈收进面板，地图不再常驻长坐标条。区域编辑限地图探索；案例入口给出解释与切换按钮，案例退出恢复原面板/显示状态，不恢复拖拽。
+
+本轮状态、复跑命令及截图见[Issue #54 记录](issue54_area_boundary.md)。开关的 Space 键与 aria-checked 纳入本轮验证；触屏和纯键盘创建矩形仍未支持。
