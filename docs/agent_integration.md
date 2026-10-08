@@ -202,3 +202,5 @@ AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，�
 ## 2026-10-08 第二案例契约（Issue #49）
 
 新增只读GET /cases/athe-nova，复用MaritimeCaseResponse并追加展示字段/证据列表默认值；旧北冰洋接口保留。按MMSI/IMO双标识、来源日批次与七日窗口解析当前库船舶ID；缺少唯一匹配或报位返回ready=false及原因。前端案例上下文继续复用既有船舶ID/起止窗口契约，不新增击沉识别工具。报道证据不提供虚构事件at，只有AIS观测卡提供时间定位；详细验收与来源限制见[案例说明](athe_nova_case.md)。
+
+[PR #52](https://github.com/sure-660322/Hormuz/pull/52)已于2026-10-08合入main（`39eb3d7`），Issue #49已关闭；本地已同步，任务工作树/分支与预览已清理，未部署。 2026-10-08收尾仅核对已验收head与Git状态，既有业务/真实模型验收边界不变。

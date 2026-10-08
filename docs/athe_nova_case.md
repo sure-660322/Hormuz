@@ -2,7 +2,7 @@
 
 ## 范围与身份门槛
 
-2026-10-08，负责人Codex；技能github-issue-workflow 1.0.0，处理模式。基线`33f2b69715be824d4c15a91cf966a149504c9ad2`，任务分支`codex/athe-nova-evidence`。只修改案例API/schema、案例选择与面板、相关测试和文档；不改数据库、依赖、底图或共享服务。实现已完成，验收见下；交付止于PR，未合并、未部署。
+2026-10-08，负责人Codex；技能github-issue-workflow 1.0.0，处理模式。基线`33f2b69715be824d4c15a91cf966a149504c9ad2`，任务分支`codex/athe-nova-evidence`。只修改案例API/schema、案例选择与面板、相关测试和文档；不改数据库、依赖、底图或共享服务。实现及验收已完成；[PR #52](https://github.com/sure-660322/Hormuz/pull/52)已于2026-10-08合入main（`39eb3d7`），Issue #49已关闭；本地已同步，任务工作树/分支与预览已清理，未部署。
 
 当前ships中唯一双标识匹配为ATHE NOVA：MMSI **334931000**、IMO **9188116**；本机ship_id=628仅为此次数据库编号，API不硬编码此ID。呼号HQZT4，库中长度96米、船型未知、旗国为空。[VesselFinder](https://www.vesselfinder.com/vessels/details/9188116)显示相同MMSI/IMO、95.50米、洪都拉斯旗、沥青船；不回写库中缺失属性。该平台是信息资料，不是船籍登记证，当前页面不是3月2日的登记快照。模糊检索athe/athen/athena/nova及历史名OCEAN TOPAZ I、GP ASPHALT III后，其他候选标识不同，不关联。
 
@@ -62,7 +62,7 @@ ORDER BY recorded_at-previous_at DESC NULLS LAST LIMIT 10;
 
 ## 验证（2026-10-08）
 
-状态：**已验证，待PR整合**，未合并、未部署。
+状态：**已验证，已合并**。[PR #52](https://github.com/sure-660322/Hormuz/pull/52)已于2026-10-08合入main（`39eb3d7`），Issue #49已关闭；本地已同步，任务工作树/分支与预览已清理，未部署。
 
 - `python -m pytest backend/tests -q`：394 passed、14 skipped。跳过项包含需显式独立测试库/源CSV的检查，未执行写库测试；针对本案例身份与无数据门槛另有4种情况通过，既有北冰洋解析回归一并覆盖。
 - `frontend/`下`npm run build`、`npm run check:workbench`通过；保留既有大bundle警告。`git diff --check`与变更文档相对链接核对通过。
@@ -73,4 +73,12 @@ ORDER BY recorded_at-previous_at DESC NULLS LAST LIMIT 10;
 - 控制台存在既有新闻封面404：本工作树没有主目录的忽略封面缓存，卡片降级占位；首次预览在后端启动前有3次502，重载后API正常；503夹具产生预期资源错误。未宣称控制台零资源错误，新案例未发生页面脚本异常。
 - 未验证：真实模型问答、数据供应商授权/接收覆盖、历史船籍登记、精确袭击时刻/损伤/军事关联、公开部署与跨环境数据复制。无新增依赖、导入、迁移或派生重建；现有七日范围未变。
 
-交接：仓库sure-660322/Hormuz，Issue #49；负责人Codex，指定整合者未指定。技能1.0.0/处理，基线33f2b69；当前head以关联PR为准。同步README、FRONTEND_WORKBENCH、案例说明、docs索引、agent_integration与agent_development_plan。下一步由指定整合者核验PR当前head后按“收尾”流程合并；本任务不直接操作main。
+交接：仓库sure-660322/Hormuz，Issue #49；负责人/本轮整合者Codex，用户在本聊天授权收尾。技能1.0.0/收尾，基线33f2b69；验收head为`13abafd62966cd112eefc40fe4c64f67b8e39997`，合并commit为`39eb3d7921406b485664f38f3c1b9a7c0f45ba31`。同步README、FRONTEND_WORKBENCH、案例说明、docs索引、agent_integration与agent_development_plan。已核对GitHub当前head、无未解决审查、合并状态与本地祖先关系，并完成串行main同步与本任务清理。
+
+## 2026-10-08 收尾核验
+
+用户授权收尾后，PR head仍为13abafd，覆盖上述同日验收，无代码变化；GitHub无未解决审查/冲突、无配置CI检查项。采用merge commit合并PR #52，Issue #49自动关闭；本地main快进至39eb3d7并核对包含13abafd，再单独同步本段收尾文档。没有重跑业务/模型验收或重查数据库，先前来源与损伤结论限制仍然保留。
+
+任务工作树已通过Codex归档并移除；本地/远端codex/athe-nova-evidence分支已删除。只关闭本任务前端5184、后端8004及Playwright issue49浏览器；原8000和其他工作树保留。原主目录未跟踪output/未改动。
+
+忽略的验收资料已移至主目录`local-archive/issue49-pr52-20261008/`，其中`playwright/`为截图/夹具记录/交接资料，`.playwright-cli/`为快照与控制台；13个文件逐一SHA256核对一致。前文“任务目录内”路径是实现验收时的位置，清理后使用此归档入口。未正式部署，不将合并视为来源授权或伤损结论已核实。
