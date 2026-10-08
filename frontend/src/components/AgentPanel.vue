@@ -147,6 +147,11 @@ const statusMeta: Record<string, { label: string; tone: 'ok' | 'warn' | 'info' }
 
 const toolLabels: Record<string, string> = {
   query_strait_passages: '海峡通行',
+  query_strait_passage_statistics: '通行统计',
+  compare_strait_passage_statistics: '通行比较',
+  query_area_ship_snapshot: '区域在场',
+  query_area_ship_activity: '区域活动',
+  compare_area_ship_activity: '区域比较',
   search_ships: '船舶检索',
   get_ship_track: '单船轨迹',
   get_event_context: '新闻事件',

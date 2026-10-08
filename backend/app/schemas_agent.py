@@ -139,17 +139,29 @@ class AgentAnalyzeResponse(BaseModel):
     limitations: list[str]
     clarification: str | None  # 非澄清状态为空
     map_actions: list["AgentMapAction"] = Field(default_factory=list)
-    # issue #40：分析面板动作（当前仅 passage_analysis）。由成功的统计/比较工具结果生成，
-    # 绑定该次调用自己的查询参数，前端据此打开「通行分析」面板并恢复条件与结果。
-    analysis_actions: list["AgentAnalysisAction"] = Field(default_factory=list)
+    # issue #40/#41：分析面板动作（通行分析与区域分析两个判别联合成员）。
+    # 由成功的统计/比较工具结果生成，绑定该次调用自己的查询参数，
+    # 前端据此打开「通行分析」/「区域分析」面板并恢复条件与结果。
+    analysis_actions: list["AgentPassageAnalysisAction | AgentAreaAnalysisAction"] = Field(
+        default_factory=list
+    )
 
 
-class AgentAnalysisAction(BaseModel):
+class AgentPassageAnalysisAction(BaseModel):
+    """结果中的建议分析动作（「查看通行分析」，issue #40）。
+
+    由本轮成功调用过的通行统计/比较工具生成；query/summary 与该次调用
+    同一时间口径，供前端打开通行分析面板时回填。
+    """
+
     type: Literal["passage_analysis"] = "passage_analysis"
     trigger: Literal["suggested"] = "suggested"
     query: dict[str, Any]  # {mode, start_at, end_at, a/b 起止, ship_types, direction}
     summary: dict[str, Any]  # 该次调用的有界统计摘要，供面板直接恢复展示
-    """结果中的建议分析动作（「查看区域分析」）。
+
+
+class AgentAreaAnalysisAction(BaseModel):
+    """结果中的建议分析动作（「查看区域分析」，issue #41）。
 
     由本轮成功调用过的区域活动工具生成（同名工具多次调用只保留最后一次）；
     query/summary 与对应工具结果同一区域、同一时间口径，供前端打开分析面板时回填。
@@ -162,6 +174,10 @@ class AgentAnalysisAction(BaseModel):
     summary: dict[str, Any]
     tool: str
     call_id: str
+
+
+# 兼容别名：历史文档/导入使用的联合入口名称。
+AgentAnalysisAction = AgentPassageAnalysisAction | AgentAreaAnalysisAction
 
 
 class AgentMapAction(BaseModel):

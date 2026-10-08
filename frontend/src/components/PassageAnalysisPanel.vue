@@ -175,41 +175,6 @@ function cancelQuery() {
   loading.value = false
 }
 
-// ------------------------------------------------------------- 恢复（智能体交接）
-watch(() => props.restore, (action) => {
-  if (!action) return
-  const query = action.query
-  mode.value = query.mode
-  // 方向兼容门线侧别别名（east_to_west=入湾 / west_to_east=出湾），后端已规范为 inbound/outbound。
-  const rawDirection = query.direction as string | undefined
-  direction.value = rawDirection === 'inbound' || rawDirection === 'east_to_west'
-    ? 'inbound'
-    : rawDirection === 'outbound' || rawDirection === 'west_to_east' ? 'outbound' : ''
-  if (query.ship_types && meta.value) {
-    const known = new Set(allTypeValues.value)
-    selectedTypes.value = query.ship_types.filter((value) => known.has(value))
-  }
-  if (query.mode === 'single') {
-    if (query.start_at) { startDate.value = query.start_at.slice(0, 10); endDate.value = (query.end_at ?? query.start_at).slice(0, 10) }
-    if (action.summary && typeof action.summary.window === 'object') {
-      singleResult.value = restoreSingleFromSummary(action.summary)
-      compareResult.value = null
-      resultStamp.value = { key: currentConditionsKey(), at: Date.now() }
-    }
-  } else {
-    if (query.a_start_at) aStartDate.value = query.a_start_at.slice(0, 10)
-    if (query.a_end_at) aEndDate.value = query.a_end_at.slice(0, 10)
-    if (query.b_start_at) bStartDate.value = query.b_start_at.slice(0, 10)
-    if (query.b_end_at) bEndDate.value = query.b_end_at.slice(0, 10)
-    if (action.summary && Array.isArray(action.summary.metrics)) {
-      compareResult.value = restoreCompareFromSummary(action.summary)
-      singleResult.value = null
-      resultStamp.value = { key: currentConditionsKey(), at: Date.now() }
-    }
-  }
-  if (singleResult.value || compareResult.value) void nextEvidencePage(1)
-})
-
 function restoreSingleFromSummary(summary: Record<string, unknown>): ApiPassageStatistics {
   return {
     status: (summary.status as ApiPassageStatistics['status']) ?? 'ok',
@@ -234,7 +199,8 @@ function restoreCompareFromSummary(summary: Record<string, unknown>): ApiPassage
       status: (record.status as ApiPassageStatistics['status']) ?? 'ok',
       start_at: String(record.start_at ?? ''),
       end_at: String(record.end_at ?? ''),
-      requested_days: 0, ship_types: null, direction: null, daily: [],
+      requested_days: 0, ship_types: null, direction: null,
+      daily: (record.daily as ApiPassageStatistics['daily']) ?? [],
       window: record.window as ApiPassageStatistics['window'],
       determination_version: String(summary.determination_version ?? ''),
       schema_version: '4', data_source: 'nnu_ais', limitations: [],
@@ -267,6 +233,45 @@ const evidencePage = ref(1)
 const includeUncertain = ref(false)
 const mapMessage = ref('')
 const mapBusyKey = ref('')
+
+// ------------------------------------------------------------- 恢复（智能体交接）
+// immediate：面板随 analysisOpen 首次挂载时 restore 已就位，变化监听 alone 会漏掉首帧回填。
+watch(() => props.restore, (action) => {
+  if (!action) return
+  const query = action.query
+  mode.value = query.mode
+  // 方向兼容门线侧别别名（east_to_west=入湾 / west_to_east=出湾），后端已规范为 inbound/outbound。
+  const rawDirection = query.direction as string | undefined
+  direction.value = rawDirection === 'inbound' || rawDirection === 'east_to_west'
+    ? 'inbound'
+    : rawDirection === 'outbound' || rawDirection === 'west_to_east' ? 'outbound' : ''
+  if (query.ship_types && meta.value) {
+    const known = new Set(allTypeValues.value)
+    selectedTypes.value = query.ship_types.filter((value) => known.has(value))
+  }
+  if (query.mode === 'single') {
+    if (query.start_at) { startDate.value = query.start_at.slice(0, 10); endDate.value = (query.end_at ?? query.start_at).slice(0, 10) }
+    if (action.summary && typeof action.summary.window === 'object') {
+      singleResult.value = restoreSingleFromSummary(action.summary)
+      compareResult.value = null
+      resultStamp.value = { key: currentConditionsKey(), at: Date.now() }
+    }
+  } else {
+    if (query.a_start_at) aStartDate.value = query.a_start_at.slice(0, 10)
+    if (query.a_end_at) aEndDate.value = query.a_end_at.slice(0, 10)
+    if (query.b_start_at) bStartDate.value = query.b_start_at.slice(0, 10)
+    if (query.b_end_at) bEndDate.value = query.b_end_at.slice(0, 10)
+    if (action.summary && Array.isArray(action.summary.metrics)) {
+      compareResult.value = restoreCompareFromSummary(action.summary)
+      singleResult.value = null
+      resultStamp.value = { key: currentConditionsKey(), at: Date.now() }
+      // compare 模式的证据接口一次只查一期：默认选中 B 期首日，让回填后证据明细直接可用。
+      const days = [...compareResult.value.b.daily, ...compareResult.value.a.daily].map(d => d.day)
+      evidenceDay.value = days[0] ?? ''
+    }
+  }
+  if (singleResult.value || compareResult.value) void nextEvidencePage(1)
+}, { immediate: true })
 
 function activeQueryWindow(): { start: string; end: string } | null {
   if (singleResult.value) return { start: singleResult.value.start_at, end: singleResult.value.end_at }
@@ -434,6 +439,8 @@ onMounted(() => {
   void fetchPassageMeta()
     .then((result) => {
       meta.value = result
+      // issue #47：元数据到达晚于智能体回填时，不得用默认条件覆盖已恢复的条件与结果。
+      if (resultStamp.value) return
       selectedTypes.value = result.ship_type_options.map((option) => option.value)
       const sevenDay = result.coverage.filter((batch) => batch.kind === 'seven_day_batch')
       if (sevenDay.length) {

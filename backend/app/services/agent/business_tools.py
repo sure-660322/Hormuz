@@ -150,6 +150,11 @@ def _mask_uncounted_direction(payload: dict) -> dict:
     for day in payload.get("daily") or []:
         if isinstance(day, dict):
             day[f"{opposite}_count"] = None
+    for period_key in ("a_period", "b_period"):
+        period = payload.get(period_key)
+        for day in (period or {}).get("daily") or []:
+            if isinstance(day, dict):
+                day[f"{opposite}_count"] = None
     label = "入湾（东→西）" if own == "inbound" else "出湾（西→东）"
     payload["direction_note"] = (
         f"本结果仅统计{label}方向；另一方向的计数为 null（未统计，不是 0），"
@@ -182,9 +187,11 @@ def _compare_payload(result) -> dict:
         "ship_types": result.ship_types,
         "direction": result.direction,
         "a_period": {"start_at": result.a.start_at, "end_at": result.a.end_at,
-                     "status": result.a.status, "window": result.a.window},
+                     "status": result.a.status, "window": result.a.window,
+                     "daily": result.a.daily},
         "b_period": {"start_at": result.b.start_at, "end_at": result.b.end_at,
-                     "status": result.b.status, "window": result.b.window},
+                     "status": result.b.status, "window": result.b.window,
+                     "daily": result.b.daily},
         "metrics": result.metrics,
         "a_avg_passages_per_day": result.a_avg_passages_per_day,
         "b_avg_passages_per_day": result.b_avg_passages_per_day,
