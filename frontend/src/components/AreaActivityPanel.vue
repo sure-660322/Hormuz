@@ -571,7 +571,8 @@ function bootstrapOnOpen() {
 watch(() => props.open, (open, wasOpen) => {
   if (open && !wasOpen) bootstrapOnOpen()
   if (!open) abortInFlight()
-})
+  // immediate：面板 v-if 首次挂载时 open 已为 true，变化监听不会触发，首帧 bootstrap 会丢失。
+}, { immediate: true })
 
 watch(() => props.pendingAction, value => {
   const hint = readAreaHint(value)

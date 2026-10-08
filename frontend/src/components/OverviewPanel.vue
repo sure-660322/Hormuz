@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { AgentAnalysisAction, AgentMapAction, ApiEvent, ApiMapShip } from '../api'
 import { eventKind, formatTime, zoneLabel } from '../domain/maritime'
 import { BRENT_SOURCE_URL } from '../domain/brentPrices'
@@ -43,6 +43,11 @@ const hotEvents = computed(() =>
 const composition = computed(() => shipComposition(props.viewShips))
 // issue #40：「通行分析」动态查询面板（默认折叠，保持总览克制的工作区风格）。
 const analysisOpen = ref(false)
+// issue #47：智能体「查看通行分析」动作到达时自动展开面板并回填该次条件/结果，
+// 避免用户切换总览后还需再点一次「通行分析」才能看到恢复内容。
+watch(() => props.analysisRestore, (action) => {
+  if (action) analysisOpen.value = true
+})
 </script>
 <template>
   <section class="panel-content overview-panel">
