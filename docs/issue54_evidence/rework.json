@@ -1,0 +1,100 @@
+{
+  "generated_at": "2026-10-08T15:06:09.172Z",
+  "counts": {
+    "PASS": 15
+  },
+  "results": [
+    {
+      "step": "S12",
+      "name": "1086×900事件列表占侧栏一半以上",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "事件标题完整换行、不做行数截断",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "船型默认仅显示三个主要项与其它总开关",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "勾选其它总项选中全部子类型",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "单个子类型取消后其它呈部分选中",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "分组查询仍提交具体真实船型值，没有其它伪值",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "取消其它总项清空全部子类型",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "活动默认开始位于AIS七日范围",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "活动默认结束为次日UTC边界",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "两期默认日期均在AIS数据内",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "重开不覆盖用户编辑日期",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "案例提示文字未被卡片遮挡",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "提示切换按钮可点击并退出案例",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "390px无页面横向溢出",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S12",
+      "name": "控制台 0 error",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "console_errors": [],
+  "source_commit": "5ff773520f7efff4f52c139b6a594ccc636ac20b"
+}

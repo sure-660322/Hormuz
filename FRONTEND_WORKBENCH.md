@@ -63,7 +63,7 @@
 | frontend/src/domain/maritime.ts | 时间格式、展示类型和距离计算 |
 | frontend/src/services/workbench.ts | 本地船舶搜索及尚未实现的服务契约 |
 | frontend/src/services/countryLayer.ts | 国家边界与标签 |
-| frontend/checks/area-activity.cjs | 区域活动面板语义检查（30 项，`node checks/area-activity.cjs`，`--types` 追加隔离 vue-tsc） |
+| frontend/checks/area-activity.cjs | 区域活动面板语义检查（32 项，`node checks/area-activity.cjs`，`--types` 追加隔离 vue-tsc） |
 | frontend/checks/workbench.cjs | 工作台轻量语义检查 |
 
 ## 智能体接入（当前契约 v4；保留 v3 演进记录）
@@ -107,3 +107,5 @@ PR #44 已合入main（b0ed92f），本地已同步并保留原技能提交，�
 ## 2026-10-08 Issue #54 区域边界显示交互
 
 任务分支已实现；首次进入地图与案例不出现未触发区域边界，绘制时可取消，迟到校验不会覆盖取消后的区域。面板在低高度屏幕避让工具栏，圈选期间缩小浮层。已在原浏览器验收脚本追加 S11，复用真实只读查询与真实区域校验，不调用模型。验证范围与截图见[交付记录](docs/issue54_area_boundary.md)。未合并、未部署。
+
+2026-10-08 #54 用户注释返工：案例区域提示避开卡片；探索侧栏缩小搜索/筛选控件与留白，事件标题完整换行；区域船型默认显示油轮、集装箱、货船和可展开的其它（支持总选/子选/部分选中）；活动和比较初始窗口来自已加载 AIS 时间轴，首个完整 UTC 日与次日均在源范围内，用户修改不被重开覆盖。构建/工作台/32项语义检查、28项边界回归、15项专项检查通过；详见[返工证据](docs/issue54_area_boundary.md#2026-10-08-用户注释返工)。

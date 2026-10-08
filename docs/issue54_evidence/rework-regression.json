@@ -1,0 +1,180 @@
+{
+  "generated_at": "2026-10-08T15:07:01.598Z",
+  "counts": {
+    "PASS": 28
+  },
+  "results": [
+    {
+      "step": "S11",
+      "name": "首次进入不显示区域面板",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "首次打开默认显示边界",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "默认区开关保持边界、身份、筛选、结果和版本且无新分析请求",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "重开保持隐藏偏好与已有条件和结果",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "重新圈选自动开启：Escape",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "Escape取消临时绘制",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "重新圈选自动开启：取消绘制",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "取消绘制取消临时绘制",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "重新圈选自动开启：关闭开关",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "关闭开关取消临时绘制",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "重新圈选自动开启：关闭面板",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "关闭面板取消临时绘制",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "案例暂停区域面板与绘制：true",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "案例区域入口提示切换探索且不打开全量分析",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "退出恢复偏好且不复活拖拽：true",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "案例暂停区域面板与绘制：false",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "案例区域入口提示切换探索且不打开全量分析",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "退出恢复偏好且不复活拖拽：false",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "自定义区开关保持边界、筛选、结果与版本且无新分析请求",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "恢复默认不额外打开隐藏边界",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "真实422保留原区域、条件、结果与版本",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "关闭开关后丢弃真实校验的迟到响应",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "取消后地图拖拽恢复",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "开关键盘可达：1280",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "开关键盘可达：1024",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "开关键盘可达：390",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "S11",
+      "name": "预期 4xx（负向用例）",
+      "status": "PASS",
+      "detail": "HTTP 422 /api/area-activity/resolve-are"
+    },
+    {
+      "step": "S11",
+      "name": "控制台 0 error",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 422 (Unprocessable Content)"
+  ],
+  "source_commit": "5ff773520f7efff4f52c139b6a594ccc636ac20b"
+}
