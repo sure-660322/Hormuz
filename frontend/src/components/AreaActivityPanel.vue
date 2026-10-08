@@ -90,6 +90,10 @@ import {
 // pendingAction 为不可信外部输入（unknown），只在 readAreaHint 里做运行时收窄。
 const props = defineProps<{
   open: boolean
+  boundaryVisible: boolean
+  drawing: boolean
+  resolving: boolean
+  areaNotice: string
   bounds: ApiAreaBounds
   defaultBounds: ApiAreaBounds
   areaLabel: string
@@ -102,6 +106,9 @@ type AreaDialogPayload = AreaQueryDraft & { text: string }
 
 const emit = defineEmits<{
   close: []
+  'update:boundary-visible': [visible: boolean]
+  'restore-default': []
+  'cancel-draw': []
   'update:bounds': []
   // 成功得到一组新结果时 emit 一次（失败/取消不发）：父组件据此推进「结果版本」。
   'results-updated': []
@@ -556,13 +563,19 @@ async function applyHintWithQuery(hint: AreaConditionHint) {
   applyHint(hint, true)
 }
 
+let bootstrapped = false
+let consumedAction: unknown = null
 function bootstrapOnOpen() {
-  const pending = readAreaHint(props.pendingAction) ?? queuedHint.value
+  const pending = (props.pendingAction !== consumedAction ? readAreaHint(props.pendingAction) : null) ?? queuedHint.value
   if (pending) {
+    consumedAction = props.pendingAction
     queuedHint.value = null
+    bootstrapped = true
     void applyHintWithQuery(pending)
     return
   }
+  if (bootstrapped) return
+  bootstrapped = true
   const context = readAreaHint(props.agentContext)
   if (!shipTypeOptions.value.length && !shipTypesLoading.value) void loadShipTypes(context?.shipTypes ?? null)
   if (context) applyHint(context, false)
@@ -581,6 +594,7 @@ watch(() => props.pendingAction, value => {
     queuedHint.value = hint
     return
   }
+  consumedAction = value
   void applyHintWithQuery(hint)
 }, { deep: true })
 
@@ -715,7 +729,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside v-if="open" class="aa-panel" aria-label="区域船舶活动分析">
+  <aside v-show="open" class="aa-panel" aria-label="区域船舶活动分析">
     <header class="aa-head">
       <h2>区域活动分析</h2>
       <span class="aa-head-note">UTC · 判定与汇总由后端算法给出</span>
@@ -729,13 +743,26 @@ onBeforeUnmount(() => {
           <h3 id="aa-area-heading">分析区域</h3>
           <span class="aa-chip" :class="props.areaIsDefault ? 'aa-chip-ok' : 'aa-chip-warn'">{{ props.areaIsDefault ? '默认区域' : '自定义矩形' }}</span>
         </div>
-        <p class="aa-area-name">{{ dash(props.areaLabel) }}</p>
-        <p class="aa-mono aa-muted">{{ boundsText(props.bounds) }}</p>
-        <p class="aa-muted">包含规则（半开矩形）：west ≤ 经度 &lt; east，south ≤ 纬度 &lt; north；区域不是官方航道边界。</p>
+        <p class="aa-area-name">当前区域：{{ props.areaIsDefault ? '默认区域' : '自定义区域' }}</p>
+        <p class="aa-muted">{{ dash(props.areaLabel) }}</p>
+        <label class="aa-boundary-switch">
+          <input type="checkbox" role="switch" aria-label="显示区域边界" :checked="boundaryVisible" :aria-checked="boundaryVisible" @change="emit('update:boundary-visible', ($event.target as HTMLInputElement).checked)" />
+          <span>显示区域边界</span><strong>{{ boundaryVisible ? '开启' : '关闭' }}</strong>
+        </label>
+        <p v-if="!boundaryVisible" class="aa-muted" role="status">边界已隐藏，分析范围不变</p>
+        <details class="aa-advanced">
+          <summary>区域详情（非官方航道边界）</summary>
+          <p class="aa-mono aa-muted">{{ boundsText(props.bounds) }}</p>
+          <p class="aa-muted">包含规则（半开矩形）：west ≤ 经度 &lt; east，south ≤ 纬度 &lt; north；默认范围为项目分析区域，自定义范围来自用户圈选，均不是官方航道边界。</p>
+        </details>
         <div class="aa-row">
-          <button type="button" class="aa-btn" @click="emit('update:bounds')">重新圈选</button>
-          <span class="aa-muted">圈选后由主界面更新区域；旧结果会标记「区域已变更，待查询」。</span>
+          <button type="button" class="aa-btn" :disabled="resolving" @click="emit('update:bounds')">重新圈选</button>
+          <button type="button" class="aa-btn" :disabled="resolving" @click="emit('restore-default')">恢复默认区域</button>
+          <button v-if="drawing || resolving" type="button" class="aa-btn" @click="emit('cancel-draw')">取消绘制</button>
         </div>
+        <p v-if="drawing" class="aa-notice" role="status">在地图上拖拽圈选；Esc 或取消绘制保留原区域。</p>
+        <p v-if="resolving" class="aa-muted" role="status">正在校验新区域…</p>
+        <p v-if="areaNotice" class="aa-notice" role="status">{{ areaNotice }}</p>
       </section>
 
       <!-- 分析模式 -->
@@ -1248,6 +1275,9 @@ onBeforeUnmount(() => {
 .aa-section h5 { margin: 10px 0 4px; font-size: 11px; font-weight: 600; color: var(--muted); }
 .aa-section-head { display: flex; align-items: center; gap: 8px; }
 .aa-section-head h3 { flex: 1; }
+.aa-boundary-switch { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 12px; cursor: pointer; min-height: 32px; }
+.aa-boundary-switch strong { margin-left: auto; color: var(--accent); font-size: 11px; }
+.aa-boundary-switch input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .aa-area-name { margin: 0 0 2px; font-size: 12px; }
 .aa-muted { margin: 4px 0; color: var(--muted); font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
 .aa-mono { font-family: Consolas, 'Courier New', monospace; font-variant-numeric: tabular-nums; }

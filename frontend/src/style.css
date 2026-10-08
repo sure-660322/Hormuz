@@ -1970,7 +1970,9 @@ button.primary:hover {
   right: 16px;
   bottom: 96px;
   width: min(620px, calc(100% - 40px));
-  height: min(620px, calc(100% - 120px));
+  top: 70px;
+  height: auto;
+  max-height: 620px;
   display: flex;
   overflow: hidden;
   border-radius: 12px;
@@ -2005,3 +2007,9 @@ button.primary:hover {
   font-size: 11px;
 }
 .area-suggest-bar span { color: var(--muted); }
+
+/* 圈选期间留下可拖拽地图，取消和开关仍可达。 */
+.area-panel-placement.is-drawing { bottom: auto; max-height: 260px; width: min(400px, calc(100% - 40px)); }
+@media (max-width: 900px) {
+  .area-panel-placement.is-drawing { width: auto; right: 10px; max-height: 230px; }
+}
