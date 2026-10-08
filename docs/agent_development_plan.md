@@ -31,6 +31,34 @@ SQL 候选计算前过滤）、方向筛选、A/B 比较（差值/变化率 A=0 
   schemas_agent）由本会话按本任务整合。
 - 未验证：真实 DeepSeek 对统计/比较问题的工具选择与表述、浏览器端到端（控件/图表/
   地图联动/窄屏/控制台）、独立测试库验证；历史油轮固定批次数字仅作对照。
+## 2026-10-07 Issue #41 接手与最终复测
+
+状态：三个阶段已实现，[草稿 PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已创建、任务分支已推送，接手文档已保存；已在任务分支整合最新远端 main（4ce8184）与本地 main（2efd0ef），未合入 main、未部署。负责人 Codex，处理模式，交付到 PR。原始实现基线 aca8d3c，整合代码基线 6c5ff4d，交付 HEAD 以 PR 为准。
+
+本轮验证：后端 390 passed / 14 skipped；前端 build、check:workbench、区域检查 30/30 与隔离类型检查通过；14 组 API 条件与已有独立复算证据的 163 项断言全部一致（162 数值/字段 + 1 状态，历史报告的 165 计数有误）。完整浏览器复测与真实模型调用见[验收报告](area_activity_acceptance.md) §七。知识库已补齐区域工具口径；#40 通行与 #41 区域工具/动作均保留。
+
+限制：触屏及纯键盘矩形绘制尚未支持；真实超时已通过只读慢查询注入验证；并发预算、纯键盘表单走查、真实模型多轮追问仍未验收。共享库只读，未迁移、未改凭据、未重启已有服务。本轮使用独立 8032/5178，资源收尾见验收报告。下方阶段记录保留当时事实，不以历史数量替代复测。
+
+## 2026-10-07 Issue #41 第一阶段：区域活动后端算法与接口
+
+状态：**已实现、已在独立测试库与真实库只读验证，本地分支已提交，待用户验收；未推送、未合并、未部署**。负责人 Codex（本会话）。基线 `main` / `ead29ac`，分支 `codex/area-ship-activity`，工作树 `D:/my_project/Hormuz-worktrees/codex-area-ship-activity`。数据库目标：只读 `aisdb`（本机 PostgreSQL 17.10 + PostGIS 3.5.2）+ 独立测试库 `hormuz_area_test`；未建索引、未迁移、未重建派生层、未写业务库。允许修改路径：`backend/app/services/area_activity/**`、`backend/app/routers/area_activity.py`、`backend/app/schemas_area_activity.py`、`backend/app/main.py`（仅注册）、`backend/tests/test_area_activity_*.py`、`scripts/area_activity_samples.py`、`scripts/verify_area_activity_samples.py`、`scripts/verify_area_activity_backend.py`、`docs/area_activity*.md|json`、README 摘要。
+
+- 交付：默认项目分析区域 `hormuz_core_v1`（25.8/55.8/27.1/57.1，半开矩形，附来源与版本）、`/api/area-activity/default-area|snapshot|activity|compare`、共享服务 `backend/app/services/area_activity/`（边界、参数、固定参数化 SQL、状态机、按日裁剪与 A/B）。口径与契约见[区域活动模块](area_activity.md)。
+- 算法：时刻在场用每船最新有效报位（默认 3600 s 新鲜度，过期不回退）；时段分析按状态转换识别访问与进出，`left_returned` 拆访问、`gap` 标缺报中断、`jump` 标跳点，停留时长只累计连续观测区间并按窗口/自然日交集裁剪；A/B 允许不等长窗口，基期 0 时变化率为 null。
+- 验证：单元+HTTP 契约 37 passed；全量后端 **329 passed / 14 skipped**；独立测试库样例验证 **PASS=2131 / WARN=0 / FAIL=0**（52 个场景/校验组，self-check 19/19，脚本只依据文档重写规则，不引用后端实现；含跳点双阈值回归 S20、批次范围一致性 S21、短时外出 S22 及其负向对照）；真实库只读验证通过（无非只读语句、源表行数与写入计数不变），性能基线 1 小时 ≈2.1 s、1 天 ≈2.8 s、7 天 ≈7.2 s、快照 40–60 ms；真实 HTTP 冒烟（8030，验证后关闭）通过。证据见[验证报告](area_activity_backend_verification.md)与 `docs/area_activity_*_result.json`。
+- 本轮修复：segment 边界误判（`IS NOT NULL` 含 `'none'`）、短间隔 GPS 抖动被当成跳点（加入 ≥1 km 位移条件）、PostGIS 逐行粗筛拖慢查询（移除，7 天 5.6 s→4.7 s）。用户复核后追加两处修复（算法版本升到 `1.0.1`）：**批次筛选下沉到上下文与越界探测**（此前只作用于快照，统计与覆盖说明可能不同批次）、**越界探测阈值改为 480 s**（此前只在 >30 min 缺报或跳点时探测，船短时驶出 0.05° 外扩带再返回会被当成连续停留）。验证暴露的 9 条文档歧义已逐条定版，见验证报告 §四。
+- **未开始（待验收后推进）**：前端矩形圈选与三模式面板、地图轨迹联动、三个智能体业务工具（`query_area_ship_snapshot/activity/compare`）与知识库/系统提示同步、真实模型问答、浏览器（桌面/窄屏）验收。与 #40 的共享文件（`App.vue`、前端 API 类型、智能体 schema）本轮未改动。
+
+## 2026-10-07 Issue #41 第二、三阶段：手动矩形圈选、三模式面板与智能体区域工具
+
+状态：**已实现，前端构建/语义检查与后端全量回归通过，浏览器手动全链路冒烟 15/15 通过，独立验收报告见[验收报告](area_activity_acceptance.md)；未推送、未合并、未部署**。负责人：Lead（整合）+ 两名 teammate（前端面板、智能体工具）+ 独立验证 teammate。分支 `codex/area-activity-ui`，worktree `D:/my_project/Hormuz-worktrees/codex-area-activity-ui`；基线 `aca8d3c`（含第一阶段两个提交）。数据库目标：只读 `aisdb`（本机）+ 独立测试库；未迁移、未重建派生层、未写业务库。端口：后端 8031、前端 5177（验证用临时实例，其他会话的 5174/8000 未改动）。
+
+- 交付（第二阶段）：`AreaActivityPanel.vue` + `domain/areaActivity.ts` 三模式面板（时刻在场/时段活动含每日汇总与趋势/两时段比较）、船型多选（`GET /api/area-activity/ship-types`）、访问证据明细（entry/exit 证据报位、segments、flags）、`limits` 截断提示、`limitations` 原文、`no_data` 与有效零结果分流、`requestSeq`+`AbortController` 旧响应守卫、无障碍与窄屏；`MapView.vue` 分析区域矩形显示与拖拽圈选（原生事件 + Esc 取消 + 后端 `POST /api/area-activity/resolve-area` 校验后回滚）；`App.vue`/`ToolRail`/`style.css` 区域入口、状态条（重新圈选/恢复默认/取消绘制/「区域已变更，待查询」）、面板右下停靠与证据联动（复用既有 `ship_track` 有界轨迹，>24h 访问裁剪为末 24 小时并提示）。
+- 交付（第三阶段）：三个只读工具 `query_area_ship_snapshot`/`query_area_ship_activity`/`compare_area_ship_activity`，与 `/api/area-activity` **共用同一 service 与算法版本**；`area_context` 请求字段（当前区域为权威值，默认区域不传以保留 `hormuz_core_v1` 身份）；`analysis_actions[type=area_activity]` 与前端「查看区域分析」入口（恢复区域、模式、时间、船型）；系统提示与知识库口径追加；工具数 8→13（含 #40 的 2 个通行统计工具）。
+- 验证：后端 **366 passed / 14 skipped**（新增区域工具 32 项、区域上下文 8 项）；`frontend` 的 `npm run build`、`npm run check:workbench`、`node checks/area-activity.cjs`（30/30，`--types` 0 errors）通过；浏览器手动全链路 15/15（默认区查询与 API 一致、圈选、区域变更标记、恢复默认、三模式、Esc 取消）；独立验收（复算 14 组/165 字段、浏览器 S0–S8、真实模型三问）见验收报告。证据：`output/acceptance/**`（忽略目录，不提交）。
+- 验收修复（提交 `4edec3e`）：`agentDraft` 漏声明导致「写入对话」ReferenceError 与构建失败；`L.DomEvent` handler 类型改为 `Event` 内部收窄；默认区域面积身份（面板传 `bounds=null`、`context.resolve_area_context` 兜底）；>24h 访问的轨迹裁剪。
+- 与 #40 的合并预检：main 已含 #40（`acfc7af`）。在临时 worktree 做过一次合并预检，10 个文件冲突、解决口径与合并后 390 passed / 14 skipped 记录在[合并预检](area_activity_merge_check.md)；**没有执行真实合并**。
+- 未验证/未包含：真实合并与 main 同步、推送与部署；并发与多用户响应预算、`statement_timeout` 真实触发路径、AIS 来源授权与覆盖完整性；知识库区域章节已在接手复测时补齐。
 
 ## 2026-10-06 仓库清理与文档整理
 

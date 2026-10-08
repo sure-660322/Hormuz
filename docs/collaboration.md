@@ -1,5 +1,24 @@
 # 多会话协作与工作区交接
 
+## GitHub 任务技能接入（2026-10-07）
+
+项目固定技能为 [github-issue-workflow](../.agents/skills/github-issue-workflow/SKILL.md)，版本 1.0.0。通用源仓库为本机 `D:/my_project/agent-skills`；源文件相对路径为 `github-issue-workflow/SKILL.md`，来源 commit 为 `e928d055a7f38f4db2bff58f7a8a9ec4ca875efe`。项目内副本正常纳入 Git，无需访问源仓库即可执行。更新时从源仓库同步、核对文件哈希和版本、记录来源 commit；项目差异放 AGENTS.md，不直接改出同名不同义的副本。
+
+Codex、Kimi 和 DeepSeek Harness 使用相同的项目文件：支持 `.agents/skills/` 的运行工具通过技能发现加载，并遵守 AGENTS.md 的明确入口；不支持技能扫描或 AGENTS.md 的 Harness，在其启动说明中加入以下要求。该要求不是聊天里每次重复输入的任务提示，而是该运行工具一次性的项目接入配置：
+
+```text
+开始 Hormuz 任务前读取仓库根目录的 AGENTS.md。
+遇到“处理 #编号”“收尾”“闭环处理 #编号”或相应明确任务时，
+读取 .agents/skills/github-issue-workflow/SKILL.md，再按相应模式执行。
+报告实际读取路径、版本、模式与任务目标；缺失时报告，不凭记忆替代。
+```
+
+接入状态：本轮只安装文件和项目引用，未修改各智能体全局设置，未验证三个运行工具的自动加载行为；DeepSeek Harness 的技能扫描和启动配置接口尚未确认。已有聊天和旧 worktree 不会自动获得新提交，接手前先确认包含本次技能提交并重新读取规则，不擅自更新他人活跃工作树。
+
+首次在每个运行工具的新聊天中做只读核验：要求读取规则、报告技能路径和版本，并解释三个模式的结束位置；明确不执行 GitHub 写入、合并或清理。再通过实际任务验证 PR 交付和跨智能体收尾。格式校验通过不等于运行工具加载已验证。
+
+多智能体分别在独立工作树实现不同任务；同一任务记录负责人，main 的合并和同步由指定整合者串行完成。「收尾」接手需核对 PR 当前 head 与核验记录；交接至少包含 Issue、PR、任务分支、SHA、负责人、检查结果、未验证项和下一步。本机工作树、端口等私有信息按本地交接记录保留，不发布到公共 PR。
+
 2026-10-06：本轮仓库清理使用独立 codex/repository-cleanup worktree；共享主目录仅清理用户明确授权的 Git 忽略模拟数据，未修改其跟踪文件。清理提交2acd881已快进合入main并推送；本次worktree已归档移除，本地任务分支已删除，未创建远端任务分支。当前文档入口见[索引](README.md)，任务范围与验证见[清理记录](repository_cleanup_2026-10-06.md)。
 
 

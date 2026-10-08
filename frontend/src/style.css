@@ -1576,6 +1576,7 @@ button.primary:hover {
 .event-pop-actions button { font-size: 11px; padding: 4px 12px; }
 .alert-toast { position: absolute; z-index: 860; top: 72px; left: 20px; width: min(420px, calc(100% - 165px)); display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--amber); font-size: 12px; box-shadow: var(--shadow-overlay); }
 .alert-toast button { margin-left: auto; }
+.workbench.area-open .alert-toast { z-index: 1105; }
 .acknowledge { flex: none; margin: 8px 16px; }
 .directory-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 0 16px 12px; color: var(--muted); font-size: 11px; }
 .ship-table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -1906,3 +1907,101 @@ button.primary:hover {
 .overview-scope summary { cursor: pointer; color: var(--muted); font-size: 11px; }
 .overview-scope p { margin-top: 6px; color: var(--muted); font-size: 11px; line-height: 1.7; max-width: 72ch; }
 .overview-stage .overview-panel { padding-top: 14px; }
+
+/* ---- issue #41: 分析区域状态条、圈选提示与区域面板容器 ---- */
+/* 状态条停在地图左下角（与右侧面板分开），把顶部与左上区域留给拖拽圈选 */
+.area-status-bar {
+  position: absolute;
+  z-index: 880;
+  left: 20px;
+  bottom: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: min(720px, calc(100% - 96px));
+  padding: 7px 10px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.area-status-bar strong { color: var(--blue); font-size: 11px; }
+.area-status-bar .area-coord { color: var(--muted); font-variant-numeric: tabular-nums; }
+.area-status-bar .area-tag { padding: 1px 6px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); }
+.area-status-bar .area-tag.ok { color: #7ee2a8; border-color: #2f7d52; }
+.area-status-bar .area-tag.warn { color: #f0b45a; border-color: #8a6420; }
+.area-status-bar .area-note { flex-basis: 100%; color: var(--muted); }
+.area-btn {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--blue);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.area-btn:hover:not(:disabled) { border-color: var(--blue); }
+.area-btn:disabled { opacity: 0.55; cursor: default; }
+.area-draw-hint {
+  position: absolute;
+  z-index: 890;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid #f0b45a;
+  border-radius: 8px;
+  font-size: 11px;
+  pointer-events: none;
+}
+.maritime-map.area-draw-ready { cursor: crosshair; }
+.maritime-map.area-drawing { cursor: crosshair; }
+/* 面板停靠在地图右下角：左上大块区域留给手动圈选拖拽，避免面板盖住绘制起点 */
+.area-panel-placement {
+  position: absolute;
+  z-index: 870;
+  right: 16px;
+  bottom: 96px;
+  width: min(620px, calc(100% - 40px));
+  height: min(620px, calc(100% - 120px));
+  display: flex;
+  overflow: hidden;
+  border-radius: 12px;
+}
+@media (max-width: 900px) {
+  .area-panel-placement {
+    left: 10px;
+    right: 10px;
+    top: 58px;
+    bottom: 150px;
+    width: auto;
+    height: auto;
+  }
+  .area-status-bar { left: 10px; right: 10px; bottom: auto; top: auto; max-width: calc(100% - 20px); }
+}
+.area-suggest-bar {
+  position: absolute;
+  z-index: 885;
+  left: 50%;
+  bottom: 150px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: min(680px, calc(100% - 60px));
+  padding: 7px 11px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 11px;
+}
+.area-suggest-bar span { color: var(--muted); }

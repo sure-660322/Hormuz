@@ -24,6 +24,7 @@
 | 相遇分析 | 总览列表与重新分析入口已于 2026-09-30 移除；地图相遇图层保留，仍读取 GET /api/encounters；后端分析接口保留 |
 | 数据健康 | 总览区块与页面初始化请求已于 2026-09-30 移除；后端 GET /api/data-health 和智能体工具保留，stale 仍是时间启发式判断 |
 | 异常与空状态 | 请求失败、空结果和重试提示；新闻请求有20秒超时 |
+| 区域活动分析 | 地图工具栏「区域」打开区域活动面板（AreaActivityPanel.vue）：显示默认分析区域与半开边界，支持按住左键拖拽圈选新矩形（Esc 取消，后端 `POST /api/area-activity/resolve-area` 校验，失败回滚并显示后端说明），缩放平移不改变分析区；三模式查询（时刻在场 / 时段活动含每日汇总与趋势图 / 两时段比较）；船型多选来自 `GET /api/area-activity/ship-types`（默认全部，含缺失/未知保留值）；访问明细可展开 entry/exit 证据报位、segments 与质量 flags，并可「地图定位」（复用既有 ship_track 有界轨迹，>24h 访问裁剪为末 24 小时并提示；打开区域面板时详情面板隐藏，进入智能体对话时关闭区域面板，提示条可点击关闭）；区域变更后旧结果标「区域已变更，待查询」；请求用 requestSeq + AbortController，旧响应不覆盖新条件；结果只展示后端字段（area/version/coverage/limits/limitations），前端不重算业务判定 |
 | 智能体问答 | 地图工具栏「智能体」打开右侧聊天面板（AgentPanel.vue），调用 POST /agent/analyze；独立异步加载、取消与重试，前端 75 秒超时覆盖后端 60 秒预算；已加入 Markdown 消毒渲染、v4 工具结果折叠、消息流与固定输入区。回答继续附船只、证据、统计与限制说明；该 UI 改动已合入本地 main |
 | 通行分析（issue #40，分支待合入） | 总览「油价 · 油轮通行量」区块新增「通行分析」开关，展开 PassageAnalysisPanel.vue：单时段/A-B 比较、UTC 日期、船型多选（含未知/缺失）、方向筛选、按日柱状图、比较表、证据明细分页与地图轨迹联动；智能体统计/比较回答附「查看通行分析」恢复条件。固定历史油轮序列保留为历史独立复核对照（已标注非动态结果） |
 
@@ -45,16 +46,19 @@
 | frontend/src/App.vue | 选择、面板、回放与图层状态 |
 | frontend/src/api.ts | 后端请求、响应类型、事件展示字段适配 |
 | frontend/src/composables/usePlayback.ts | 时间范围加载及最近报位回放 |
-| frontend/src/components/MapView.vue | 地图对象、船位、轨迹（含派生层速度着色渲染）、事件代表点、就地信息卡与参考图层 |
+| frontend/src/components/MapView.vue | 地图对象、船位、轨迹（含派生层速度着色渲染）、事件代表点、就地信息卡与参考图层；分析区域矩形显示与拖拽圈选 |
 | frontend/src/components/ExplorerSidebar.vue | 左侧新闻/模拟船舶探索列表、筛选及搜索入口 |
 | frontend/src/components/EventPanel.vue | 事件筛选、详情、关联报道与事件×船舶关联区 |
 | frontend/src/components/ShipInspector.vue | 船舶详情、航速曲线与派生层速度着色开关 |
-| frontend/src/components/ToolRail.vue | 地图工具栏（图层、智能体入口，图标+文字标签） |
+| frontend/src/components/ToolRail.vue | 地图工具栏（图层、区域、智能体入口，图标+文字标签） |
+| frontend/src/components/AreaActivityPanel.vue | 区域活动面板：三模式表单、船型多选、每日/访问/比较结果、证据联动与请求守卫 |
 | frontend/src/components/PassageAnalysisPanel.vue | 通行分析（issue #40）：动态通行统计/比较查询、按日图表、证据分页与地图轨迹联动 |
 | frontend/src/components/TimelineControls.vue | 回放控件 |
+| frontend/src/domain/areaActivity.ts | 区域活动纯函数：响应归一化、UTC 换算、格式化、截断与 change_rate 文案、对话提示词 |
 | frontend/src/domain/maritime.ts | 时间格式、展示类型和距离计算 |
 | frontend/src/services/workbench.ts | 本地船舶搜索及尚未实现的服务契约 |
 | frontend/src/services/countryLayer.ts | 国家边界与标签 |
+| frontend/checks/area-activity.cjs | 区域活动面板语义检查（30 项，`node checks/area-activity.cjs`，`--types` 追加隔离 vue-tsc） |
 | frontend/checks/workbench.cjs | 工作台轻量语义检查 |
 
 ## 智能体接入（当前契约 v4；保留 v3 演进记录）
@@ -86,3 +90,7 @@ npm run check:workbench
 ## 2026-10-07 北冰洋故事交互（Issue #43）
 
 PR #44 已合入main（b0ed92f），本地已同步并保留原技能提交，未部署；build/check:workbench及浏览器样本验证通过。CasePanel组织三段故事、报道和证据边界，新增CaseSpeedPlot使用已有采样轨迹定位时间；TimelineControls支持可选阶段末界及播放状态，MapView可在开播时聚焦完整阶段并避开手机底部面板。支持起点播放/暂停、上一段/下一段、收起/展开和退出恢复。未导入仍能阅读报道，图片失败占位，503可重试；无后端或工具契约变更，真实模型未重验。日期、命令、截图与未验证范围见[案例说明](docs/arctic_ocean_case.md#2026-10-07-issue-43-故事与交互升级)。
+
+## Issue #41 接手复测（2026-10-07）
+
+任务分支 codex/area-activity-ui 已整合最新 main；未合入 main、未部署。最终浏览器与真实模型回填结果见[区域验收报告](docs/area_activity_acceptance.md) §七。构建、check:workbench、区域检查 30/30 与隔离类型检查通过。访问轨迹后船舶详情遮挡区域表、提示关闭按钮被遮挡的问题已修复，验收脚本只用真实点击，不用 DOM click 绕过遮挡。触屏/纯键盘矩形绘制尚未支持。

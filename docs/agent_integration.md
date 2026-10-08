@@ -1,3 +1,5 @@
+> 2026-10-07 Issue #41 接手复测：任务分支已整合最新 main，13 个只读业务工具及通行/区域 analysis_actions 联合契约通过回归；知识库区域章节已补齐。真实模型默认区身份与面板回填证据见[区域验收报告](area_activity_acceptance.md) §七。未合入 main、未部署，多轮模型追问与并发预算未验证。
+
 > 2026-10-07 Issue #40（分支 `kimi/strait-passage-stats`，待合入）：v4 响应新增 `analysis_actions`（当前仅 `passage_analysis`），由成功的 `query_strait_passage_statistics` / `compare_strait_passage_statistics` 工具结果生成并绑定该次调用自己的查询参数；前端据此在总览打开「通行分析」面板并恢复条件与结果。业务工具由 8 个增至 10 个（新增两工具与手动面板 `/api/strait-passages/*` 共用同一统计服务，同条件结果一致；船型过滤含 `__unknown__` 未知/缺失桶，A/B 比较变化率 A=0 为 null）。手动 API 为 GET/POST，CORS 既有白名单与 Vite 代理已覆盖；`query_strait_passages` 单船能力不变。口径、性能预算与验证见[通行统计模块说明](agent_tool_strait_statistics.md)；真实模型问答与浏览器端到端待验收。
 
 > 2026-09-30 Issue #24（PR #25 已合入 main，合并提交 af41d37）：`get_ship_track` 的模型 observation 改为 `track_summary`，无完整 `fixes` 数组，只含身份、UTC 查询/覆盖窗口、报位数、首末报位及限制。JSON UTF-8 上限 8192 字节，字符串字段最多 80 字符，原限制最多保留 8 条并给出省略计数；首末报位不是采样轨迹，不能用于精确通行/停留推断。完整 envelope 继续保存在服务端 state 和 v4 `results`，地图动作仍从完整证据生成，前端按 ID/窗口读取轨迹，HTTP 契约不变。后端 `uvicorn.error.agent_usage` 在 INFO 记录 `agent_model_usage`（每次调用）与 `agent_request_usage`（整次问答）；缺失 token/cache 数值为 null、usage_status 为 unavailable，缓存缺失不单独影响输入/输出完整性。model_calls 是 LangChain 模型调用数；SDK 内部网络重试次数不可见，network_attempts 为 null，不能当作供应商 HTTP 请求次数。无价格估算；日志不含提示词、工具原始数据、错误正文或密钥。验证范围见[开发任务](agent_development_plan.md#issue-24-轨迹模型上下文优化2026-09-30)。
@@ -81,7 +83,7 @@ question 必填，去除首尾空白后 1–2000 字符。时间字段可省略�
 
 history 可选，为此前对话的消息列表（role 限 user/assistant，content 去除首尾空白后 1–2000 字符），最多携带最近 10 条消息（user/assistant 各计一条，通常为 5 组问答）；服务端将 history 插在 system 与本次问题之间。单轮问答不传 history。
 
-以下九工具注册表为 LC-01 前历史实现；当前版本保留八个业务工具，新增知识库工具并将 `query_analytics` 拆成 schema/check/execute 三工具。SQL 默认关闭时三工具均不向模型暴露；所有工具只通过 `/agent/analyze` 使用，不单独公开 SQL 路由：
+以下九工具注册表为 LC-01 前历史实现；当前版本保留十三个业务工具（8 个既有 + issue #40 通行统计 2 个 + issue #41 区域活动 3 个），新增知识库工具并将 `query_analytics` 拆成 schema/check/execute 三工具。SQL 默认关闭时三工具均不向模型暴露；所有工具只通过 `/agent/analyze` 使用，不单独公开 SQL 路由：
 
 | 工具 | 参数 | 说明 |
 | --- | --- | --- |
@@ -93,6 +95,9 @@ history 可选，为此前对话的消息列表（role 限 user/assistant，cont
 | query_ship_dwell | kind, start_at/end_at, limit | 只读既有 ship_dwell；kind 限 at_anchor/drift/slow_transit，窗口成对且 ≤24h，缺省为全批次；返回阈值快照、stale、真实匹配数与截断状态，不重建 |
 | query_encounters | start_at/end_at, max_distance_nm, limit | 只读既有 encounters；距离过滤只能缩小构建阈值，窗口筛选为与预计算 period 重叠，最小距离是离散采样近似；不调用写入型 analyze |
 | query_event_ship_links | event_id 或 ship_id（二选一）, link_type, start_at/end_at | 按事件查 mentioned/observed 或按船反查 observed；当前七日 AIS 的 observed 未重建，mentioned 没有已核验的 AIS ship_id；不重建 |
+| query_area_ship_snapshot | at（必填）, west/south/east/north（可选，四个同给）, ship_type, freshness_seconds | 某历史时刻在分析区域内的船（每船最新有效报位，过期报位不计入在场）；矩形省略时用本轮请求区域，无请求则用默认分析区域 `hormuz_core_v1`；明细最多 50 艘并说明未列出数量；与 `/api/area-activity` 共用同一 service |
+| query_area_ship_activity | start_at/end_at（必填）, west/south/east/north（可选）, ship_type, batch_ids | 时段出现去重船数、观测进入/离开、累计船时、每日汇总与 ≤30 条访问明细；窗口最长 7 天；明细截断不裁剪汇总；no_data 只表示读取范围内没有报位 |
+| compare_area_ship_activity | start_a/end_a/start_b/end_b（必填）, west/south/east/north（可选）, ship_type, batch_ids | 同区域同筛选的两期比较：`metrics` 给 a/b/delta/change_rate（基期为 0 时 change_rate 为 null 并单独说明）、`comparability` 与 `warnings`；只返回聚合指标，不返回逐次访问明细 |
 | query_analytics | sql（必填）, params, purpose（必填） | catalog v1 内单条参数化 SELECT，覆盖筛选、排序、聚合和批准 JOIN；默认关闭，仅本地回环 + 独立 agent_reader 配置完整时暴露，所有输入经 AST/权限/限额强制校验 |
 
 AG-02～05 已合入。SQL-06 后完整后端回归 207 passed / 13 skipped，前端 build 与 check:workbench 通过；一次性 PostgreSQL 17 + 真实 DeepSeek 共 57 项通过，浏览器成功表格、待澄清、已拒绝三状态通过且控制台无错误。共享业务库统计未执行，固定 fixture 数量不能视为当前业务数据。服务侧此前同步修正：来源无任何报位时 stale 由 false 改为 null（缺数据不报「未过期」）。

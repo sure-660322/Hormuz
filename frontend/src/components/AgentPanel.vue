@@ -13,6 +13,7 @@ import {
   type AgentAnalysisAction,
   type AgentAnalyzeResponse,
   type AgentMapAction,
+  type AgentAreaAnalysisAction,
   type AgentEvidence,
   type AgentTurn,
   type AgentToolEventContextResult,
@@ -31,6 +32,8 @@ const emit = defineEmits<{
   'locate-event': [eventId: string]
   // issue #40：打开总览「通行分析」面板并恢复该次统计/比较调用的条件与结果。
   'open-analysis': [action: AgentAnalysisAction]
+  // issue #41：本轮回答产生的「查看区域分析」动作，交给 App 暂存并显示入口。
+  'area-analysis-suggested': [action: AgentAreaAnalysisAction]
 }>()
 const props = defineProps<{
   executeMapAction: (action: AgentMapAction, signal: AbortSignal) => Promise<{ message: string; outcome: 'ok' | 'error' | 'cancelled' }>
@@ -39,6 +42,10 @@ const props = defineProps<{
   caseContext?: { ship_id: number; title: string; start_at: string; end_at: string } | null
   // issue #36：输入区顶部的简短上下文摘要（当前船舶/事件），详细说明可展开。
   contextSummary?: { label: string; detail: string } | null
+  // issue #41：当前选定的分析区域；作为本请求区域的权威值传给后端，模型不得悄悄改写。
+  areaContext?: { west: number; south: number; east: number; north: number; area_id?: string | null; label?: string | null } | null
+  // issue #41：把区域面板的条件带入对话（只填入输入框，不自动发送）。
+  pendingDraft?: { text: string; version: number } | null
 }>()
 
 interface AgentTurnState {
@@ -49,6 +56,18 @@ interface AgentTurnState {
 }
 
 const markdown = new MarkdownIt({ html: false, linkify: false, breaks: true })
+
+function passageAnalysisActions(response: AgentAnalyzeResponse): AgentAnalysisAction[] {
+  return (response.analysis_actions ?? []).filter(
+    (action): action is AgentAnalysisAction => action.type === 'passage_analysis',
+  )
+}
+
+function areaAnalysisActions(response: AgentAnalyzeResponse): AgentAreaAnalysisAction[] {
+  return (response.analysis_actions ?? []).filter(
+    (action): action is AgentAreaAnalysisAction => action.type === 'area_activity',
+  )
+}
 
 function renderAnswer(value: string): string {
   return DOMPurify.sanitize(markdown.render(value), { USE_PROFILES: { html: true } })
@@ -231,6 +250,7 @@ async function submit() {
         end_at: parseTime(endAt.value) ?? inferredWindow?.[1] ?? scopedWindow?.[1] ?? null,
         history,
         ...(props.playbackAt ? { map_context: { playback_at: props.playbackAt, target_ship_id: targetShipId } } : {}),
+        ...(props.areaContext ? { area_context: props.areaContext } : {}),
       },
       controller.signal,
     )
@@ -238,6 +258,10 @@ async function submit() {
       turns.value[turnIndex]!.response = response
       const automatic = response.map_actions?.find(action => action.trigger === 'automatic')
       if (automatic) void runMapAction(turnIndex, automatic)
+      // issue #41：本轮若有区域分析动作，交给父组件暂存并给出「查看区域分析」入口；
+      // 不自动打开面板，用户点击后才切换视图。
+      const areaAction = response.analysis_actions?.find(action => action.type === 'area_activity')
+      if (areaAction) emit('area-analysis-suggested', areaAction)
       void scrollToLatest()
     }
   } catch (e) {
@@ -411,6 +435,11 @@ function cellText(value: unknown): string {
 watch(() => props.caseContext ? `${props.caseContext.ship_id}|${props.caseContext.start_at}|${props.caseContext.end_at}` : '', () => {
   cancel()
 })
+// issue #41：「把区域条件带入对话」只填入输入框，不自动发送；version 变化才重放。
+watch(() => props.pendingDraft?.version ?? 0, () => {
+  const draft = props.pendingDraft
+  if (draft?.text) question.value = draft.text
+})
 onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
 </script>
 
@@ -467,11 +496,11 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
         <section v-if="turn.response.answer" class="answer-block">
           <div class="answer-text" v-html="renderAnswer(turn.response.answer)"></div>
         </section>
-        <section v-if="turn.response.analysis_actions?.length" class="facts-block">
+        <section v-if="passageAnalysisActions(turn.response).length" class="facts-block">
           <h3>通行分析</h3>
           <button
-            v-for="(action, actionIndex) in turn.response.analysis_actions"
-            :key="`analysis-${actionIndex}`"
+            v-for="(action, actionIndex) in passageAnalysisActions(turn.response)"
+            :key="`passage-${actionIndex}`"
             type="button"
             class="locate-btn"
             @click="emit('open-analysis', action)"
@@ -479,6 +508,20 @@ onBeforeUnmount(() => { request?.abort(); cancelMap(); stopClock() })
             {{ action.query.mode === 'compare' ? '查看通行比较分析' : '查看通行分析' }}
           </button>
           <p class="caption">在总览打开「通行分析」面板，恢复本次条件与统计结果，可继续手动调整。</p>
+        </section>
+
+        <section v-if="areaAnalysisActions(turn.response).length" class="facts-block">
+          <h3>区域分析</h3>
+          <button
+            v-for="(action, actionIndex) in areaAnalysisActions(turn.response)"
+            :key="`area-${actionIndex}`"
+            type="button"
+            class="locate-btn"
+            @click="emit('area-analysis-suggested', action)"
+          >
+            {{ action.mode === 'snapshot' ? '查看时刻在场分析' : action.mode === 'compare' ? '查看两时段比较' : '查看时段活动分析' }}
+          </button>
+          <p class="caption">在地图区打开「区域分析」面板，恢复本次区域、模式与筛选条件后可继续手动调整。</p>
         </section>
 
         <section v-if="turn.response.map_actions?.length" class="facts-block">

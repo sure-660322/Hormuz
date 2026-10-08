@@ -11,6 +11,13 @@
 - MobilityDB/PostGIS 派生能力 P0–P4 已有实现，P5 部分实现（data-health 已接入，主回放尚未切换 simplified 派生层）。TimescaleDB 已安装，业务未使用时序表。
 - `main` 已合入 LangChain `create_agent` 单智能体、知识库、8 个业务工具和默认关闭的 SQL 三工具，以及整合前安全修复；响应继续保持 v4 契约。`f14eceb` 记录的候选缺陷已修复并保留历史复核证据。真实模型、独立数据库 SQL 链路及浏览器验收状态见 docs/agent_development_plan.md；当前契约见 docs/agent_integration.md。
 
+## GitHub 任务工作流
+
+- 用户要求「处理 #编号」「收尾」「闭环处理 #编号」，或明确要求完成 Issue 并提交 PR / 合并 PR 收尾时，执行前必须读取仓库根目录下 [.agents/skills/github-issue-workflow/SKILL.md](.agents/skills/github-issue-workflow/SKILL.md)。开始时报告读取路径、版本、模式和目标 Issue/PR；文件缺失时报告，不凭记忆替代。
+- 「处理」授权实现、核验、提交和推送任务分支、创建或更新 PR，止于 PR 交付；「收尾」授权明确关联 PR 的核验、合并、本地同步和本任务清理；「闭环处理」授权上述全过程。用户临时缩小范围时以用户指令为准。
+- 项目隔离、文档同步、数据库、凭据和服务规则仍适用；闭环模式也须由指定整合者串行处理 main，不赋予每个智能体同时操作共享主目录的权限。整合者按本任务明确指定，无固定默认智能体。
+- 技能以本项目固定版本为准，随 Git 和新 worktree 分发，不忽略整个 `.agents/`。不支持技能发现或 AGENTS.md 的 Harness 须在启动说明中明确要求读取上述文件；接入和交接见 [协作说明](docs/collaboration.md)。
+
 ## 修改与协作
 
 - 先检查 git status、当前分支和相关真实文件，保留已有修改。

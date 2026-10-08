@@ -1,0 +1,1644 @@
+{
+  "verification_date": "2026-10-07",
+  "code_commit": "904e5babf2ec328b2efaf598d9ba37f8062c9721",
+  "browser": {
+    "generated_at": "2026-10-07T14:02:23.455Z",
+    "base": "http://127.0.0.1:5178",
+    "counts": {
+      "PASS": 62
+    },
+    "results": [
+      {
+        "step": "S0",
+        "name": "面板可打开",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S0",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S0",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S1",
+        "name": "状态条显示默认区域",
+        "status": "PASS",
+        "detail": "分析区域霍尔木兹海峡核心通行区（项目分析区域）25.800–27.100°N · 55.800–57.100°E（跨度 1.300°×1.300°）默认项目分析区域（非官方航道）重新圈选恢复默认区域"
+      },
+      {
+        "step": "S1",
+        "name": "面板显示默认区域名与标记",
+        "status": "PASS",
+        "detail": "name=霍尔木兹海峡核心通行区（项目分析区域） chip=默认区域"
+      },
+      {
+        "step": "S1",
+        "name": "默认区无「待查询」标记",
+        "status": "PASS",
+        "detail": "25.800–27.100°N · 55.800–57.100°E（跨度 1.300°×1.300°）"
+      },
+      {
+        "step": "S1",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S1",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S2",
+        "name": "缩放平移不改变分析区",
+        "status": "PASS",
+        "detail": "coord 不变 = 25.800–27.100°N · 55.800–57.100°E（跨度 1.300°×1.300°）"
+      },
+      {
+        "step": "S2",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S2",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S3",
+        "name": "拖拽圈选应用为自定义矩形",
+        "status": "PASS",
+        "detail": "分析区域自定义分析矩形24.916–27.000°N · 53.712–54.630°E（跨度 2.084°×0.917°）自选矩形（非官方航道）重新圈选恢复默认区域已接受自选矩形：西/南含、东/北不含（半开），跨度上限 10°；空白区范围 {\"blockFx\":0.22,\"blockFy\":0.62}"
+      },
+      {
+        "step": "S3",
+        "name": "ESC 取消圈选不改变区域",
+        "status": "PASS",
+        "detail": "coord 不变；draw-hint 残留=0"
+      },
+      {
+        "step": "S3",
+        "name": "超大矩形被拒绝并回滚原区域",
+        "status": "PASS",
+        "detail": "第 1 次（缩放 3 步）被拒：矩形单边跨度不能超过 10°，当前纬度 4.3056°、经度 14.6777°"
+      },
+      {
+        "step": "S3",
+        "name": "恢复默认区域",
+        "status": "PASS",
+        "detail": "25.800–27.100°N · 55.800–57.100°E（跨度 1.300°×1.300°）；分析区域霍尔木兹海峡核心通行区（项目分析区域）25.800–27.100°N · 55.800–57.100°E（跨度 "
+      },
+      {
+        "step": "S3",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S3",
+        "name": "预期 4xx（负向用例）",
+        "status": "PASS",
+        "detail": "HTTP 422 http://127.0.0.1:5178/api/area-activity/resolve-are"
+      },
+      {
+        "step": "S3",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S4",
+        "name": "快照查询成功",
+        "status": "PASS",
+        "detail": "{\"区域\":\"霍尔木兹海峡核心通行区（项目分析区域） · v1.0.0默认区域\",\"区域边界\":\"25.8000°N–27.1000°N，55.8000°E–57.1000°E（跨度 1.30° × 1.30°）\",\"area_id\":\"hormuz_core_v1\",\"算法版本\":\"area_activity v1.0.1\",\"覆盖\":\"来源 nnu_ais；批次 1、2、3、4、5、6、7、8"
+      },
+      {
+        "step": "S4",
+        "name": "数字核对：在场船数",
+        "status": "PASS",
+        "detail": "面板=175 独立复算=175 tol=0"
+      },
+      {
+        "step": "S4",
+        "name": "默认区结果回显 area_id=hormuz_core_v1",
+        "status": "PASS",
+        "detail": "霍尔木兹海峡核心通行区（项目分析区域） · v1.0.0默认区域"
+      },
+      {
+        "step": "S4",
+        "name": "时段活动查询成功",
+        "status": "PASS",
+        "detail": "{\"区域\":\"霍尔木兹海峡核心通行区（项目分析区域） · v1.0.0默认区域\",\"区域边界\":\"25.8000°N–27.1000°N，55.8000°E–57.1000°E（跨度 1.30° × 1.30°）\",\"area_id\":\"hormuz_core_v1\",\"算法版本\":\"area_activity v1.0.1\",\"覆盖\":\"来源 nnu_ais；批次 1、2、3、4、5、6、7、8（2026-02-25、2026-02-26、2026-02-27、2026-0"
+      },
+      {
+        "step": "S4",
+        "name": "数字核对：去重出现船数",
+        "status": "PASS",
+        "detail": "面板=430 独立复算=430 tol=0"
+      },
+      {
+        "step": "S4",
+        "name": "数字核对：观测进入次数",
+        "status": "PASS",
+        "detail": "面板=298 独立复算=298 tol=0"
+      },
+      {
+        "step": "S4",
+        "name": "数字核对：观测离开次数",
+        "status": "PASS",
+        "detail": "面板=313 独立复算=313 tol=0"
+      },
+      {
+        "step": "S4",
+        "name": "数字核对：累计船时",
+        "status": "PASS",
+        "detail": "面板=4098.5 独立复算=4098.465 tol=0.1"
+      },
+      {
+        "step": "S4",
+        "name": "两时段比较查询成功",
+        "status": "PASS",
+        "detail": "7 行"
+      },
+      {
+        "step": "S4",
+        "name": "A/B 指标核对：ships_observed",
+        "status": "PASS",
+        "detail": "面板 A=429 B=430 delta=1 rate=0.2 | 独立复算 A=429 B=430 delta=1 rate=0.002331002331002331"
+      },
+      {
+        "step": "S4",
+        "name": "A/B 指标核对：observed_entry_count",
+        "status": "PASS",
+        "detail": "面板 A=204 B=298 delta=94 rate=46.1 | 独立复算 A=204 B=298 delta=94 rate=0.46078431372549017"
+      },
+      {
+        "step": "S4",
+        "name": "A/B 指标核对：observed_exit_count",
+        "status": "PASS",
+        "detail": "面板 A=215 B=313 delta=98 rate=45.6 | 独立复算 A=215 B=313 delta=98 rate=0.4558139534883721"
+      },
+      {
+        "step": "S4",
+        "name": "A/B 指标核对：observed_ship_hours",
+        "status": "PASS",
+        "detail": "面板 A=4606.59 B=4098.47 delta=-508.12 rate=-11 | 独立复算 A=4606.588889 B=4098.465 delta=-508.123889 rate=-0.11030371957292313"
+      },
+      {
+        "step": "S4",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S4",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S5",
+        "name": "有效零结果（ok + 0 在场）",
+        "status": "PASS",
+        "detail": "在场船数=0，提示元素=1"
+      },
+      {
+        "step": "S5",
+        "name": "参数错误（start >= end）被拒",
+        "status": "PASS",
+        "detail": "结束时刻必须晚于开始时刻（半开区间 [start, end)）"
+      },
+      {
+        "step": "S5",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S5",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S6",
+        "name": "取消后加载态结束",
+        "status": "PASS",
+        "detail": "尚未查询"
+      },
+      {
+        "step": "S6",
+        "name": "旧响应不覆盖新条件",
+        "status": "PASS",
+        "detail": "快照在场船数=175"
+      },
+      {
+        "step": "S6",
+        "name": "区域变更后旧结果标「区域已变更，待查询」",
+        "status": "PASS",
+        "detail": "状态条标记=false 面板标记=1"
+      },
+      {
+        "step": "S6",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S6",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S7",
+        "name": "访问明细行可解析",
+        "status": "PASS",
+        "detail": "共 500 行；0<跨度≤24h 362 行；跨度>24h 或为 0 138 行"
+      },
+      {
+        "step": "S7",
+        "name": "访问行「地图定位」轨迹与访问时段一致",
+        "status": "PASS",
+        "detail": "访问 NOATUM NEPTUNE#6026 · 352006409 · 货船s6026:f11707360 2026-02-27 18:00:00~2026-02-28 06:24:36；请求 2026-02-27T18:00:00.000Z~2026-02-28T06:24:36.000Z；图形 76->162；toast=已在地图显示 NOATUM NEPTUNE（ID 6026）的轨迹（2026-0"
+      },
+      {
+        "step": "S7",
+        "name": "跨度 >24h 的访问按 24h 裁剪并显示轨迹",
+        "status": "PASS",
+        "detail": "访问键=COLBART#381 · 212524000 · 其他类型的船舶s381:f10487701 2026-02-27 18:00:00~2026-03-01 05:59:58（跨度 36.00h） → 请求 2026-02-28T05:59:58.000Z~2026-03-01T05:59:58.000Z（24.00h）；图形 162->298；toast=\"已在地图显示 COLBART（ID 381）的轨迹（2026-02-28T05:59:58.000Z 至 2026-03\""
+      },
+      {
+        "step": "S7",
+        "name": "零长度访问「地图定位」被明确拒绝",
+        "status": "PASS",
+        "detail": "访问键=HADI 2#1589 · 422564000 · 引航船s1589:f10851126 2026-02-28 01:24:20~2026-02-28 01:24:20 → toast=\"该访问的观测区间无效（首末区内报位时间缺失或倒置），无法显示轨迹×\"；图形 298->298"
+      },
+      {
+        "step": "S7",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×7；leaflet 默认图标 403 ×4（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S7",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S8",
+        "name": "desktop-1440 无横向溢出",
+        "status": "PASS",
+        "detail": "{\"docScrollW\":1440,\"clientW\":1440,\"bodyScrollW\":1440,\"panelScrollW\":619,\"panelW\":619}"
+      },
+      {
+        "step": "S8",
+        "name": "narrow-390 无横向溢出",
+        "status": "PASS",
+        "detail": "{\"docScrollW\":390,\"clientW\":390,\"bodyScrollW\":390,\"panelScrollW\":369,\"panelW\":369}"
+      },
+      {
+        "step": "S8",
+        "name": "prefers-reduced-motion 生效且无报错",
+        "status": "PASS",
+        "detail": "matchMedia(reduce)=true"
+      },
+      {
+        "step": "S8",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S8",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S9",
+        "name": "智能体回答渲染",
+        "status": "PASS",
+        "detail": "成功query_area_ship_snapshot 使用了 query_area_ship_snapshotquery_area_ship_snapshotokcall_001服务端未返回可展示的参数或计数query_area_ship_"
+      },
+      {
+        "step": "S9",
+        "name": "analysis_actions.query 区域身份（F5 复测）",
+        "status": "PASS",
+        "detail": "area_id=hormuz_core_v1 area_is_default=true mode=snapshot at=2026-02-28T11:59:00+00:00 bounds=55.8/25.8/57.1/27.1 status=ok tools=[\"query_area_ship_snapshot\"]"
+      },
+      {
+        "step": "S9",
+        "name": "出现「查看区域分析」建议条",
+        "status": "PASS",
+        "detail": "本轮回答可用区域分析复现：时刻在场（query_area_ship_snapshot）查看区域分析忽略"
+      },
+      {
+        "step": "S9",
+        "name": "打开面板并回填模式/时刻",
+        "status": "PASS",
+        "detail": "mode=时刻在场 at=2026-02-28T11:59 start= end= area=霍尔木兹海峡核心通行区（项目分析区域） chip=默认区域"
+      },
+      {
+        "step": "S9",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S9",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      },
+      {
+        "step": "S10",
+        "name": "「写入对话」带入区域条件",
+        "status": "PASS",
+        "detail": "提示词长度=168；前 80 字=\"请分析以下区域船舶活动：\n- 区域：霍尔木兹海峡核心通行区（项目分析区域）（默认分析区域，25.8000°N–27.1000°N，55.8000°E–57.10\""
+      },
+      {
+        "step": "S10",
+        "name": "已知环境项（非本功能）",
+        "status": "PASS",
+        "detail": "新闻封面 404 ×1；leaflet 默认图标 403 ×0（工作树路径/Junction 导致，主仓库为 200）"
+      },
+      {
+        "step": "S10",
+        "name": "控制台 0 error",
+        "status": "PASS",
+        "detail": ""
+      }
+    ],
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  "api_recompute": {
+    "base": "http://127.0.0.1:8032",
+    "checks": {
+      "snapshot_default_2026-02-28T12:00Z": {
+        "checks": [
+          {
+            "field": "in_area_count",
+            "expected": 175,
+            "actual": 175,
+            "ok": true,
+            "tol": 0.0
+          },
+          {
+            "field": "out_of_area_fresh_count",
+            "expected": 1438,
+            "actual": 1438,
+            "ok": true,
+            "tol": 0.0
+          },
+          {
+            "field": "stale_fix_count",
+            "expected": 2240,
+            "actual": 2240,
+            "ok": true,
+            "tol": 0.0
+          },
+          {
+            "field": "evaluated_ship_count",
+            "expected": 3853,
+            "actual": 3853,
+            "ok": true,
+            "tol": 0.0
+          },
+          {
+            "field": "status_is_ok",
+            "expected": true,
+            "actual": true,
+            "ok": true,
+            "tol": 0.0
+          }
+        ],
+        "failed": [],
+        "api_status": "ok"
+      },
+      "activity_default_1d_2026-02-28": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 430,
+            "actual": 430,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 298,
+            "actual": 298,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 313,
+            "actual": 313,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 4098.465,
+            "actual": 4098.465,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 577,
+            "actual": 577,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].ships_observed",
+            "expected": 430,
+            "actual": 430,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_entry_count",
+            "expected": 298,
+            "actual": 298,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_exit_count",
+            "expected": 313,
+            "actual": 313,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_ship_seconds",
+            "expected": 14754474.0,
+            "actual": 14754474.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-28].visits_touching_day",
+            "expected": 577,
+            "actual": 577,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "activity_custom_26.0-26.8N_56.0-56.9E_1d": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 220,
+            "actual": 220,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 256,
+            "actual": 256,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 283,
+            "actual": 283,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 1032.806944,
+            "actual": 1032.807,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 345,
+            "actual": 345,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].ships_observed",
+            "expected": 220,
+            "actual": 220,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_entry_count",
+            "expected": 256,
+            "actual": 256,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_exit_count",
+            "expected": 283,
+            "actual": 283,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_ship_seconds",
+            "expected": 3718105.0,
+            "actual": 3718105.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-28].visits_touching_day",
+            "expected": 345,
+            "actual": 345,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "activity_rectA_west_1d": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 352,
+            "actual": 352,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 240,
+            "actual": 240,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 239,
+            "actual": 239,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 2949.766667,
+            "actual": 2949.767,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 451,
+            "actual": 451,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].ships_observed",
+            "expected": 352,
+            "actual": 352,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_entry_count",
+            "expected": 240,
+            "actual": 240,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_exit_count",
+            "expected": 239,
+            "actual": 239,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_ship_seconds",
+            "expected": 10619160.0,
+            "actual": 10619160.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-28].visits_touching_day",
+            "expected": 451,
+            "actual": 451,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "activity_rectB_east_1d": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 185,
+            "actual": 185,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 171,
+            "actual": 171,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 188,
+            "actual": 188,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 1145.426944,
+            "actual": 1145.427,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 244,
+            "actual": 244,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].ships_observed",
+            "expected": 185,
+            "actual": 185,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_entry_count",
+            "expected": 171,
+            "actual": 171,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_exit_count",
+            "expected": 188,
+            "actual": 188,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_ship_seconds",
+            "expected": 4123537.0,
+            "actual": 4123537.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-28].visits_touching_day",
+            "expected": 244,
+            "actual": 244,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "activity_default_1d_batch4": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 399,
+            "actual": 399,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 243,
+            "actual": 243,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 244,
+            "actual": 244,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 2823.34,
+            "actual": 2823.34,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 508,
+            "actual": 508,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].ships_observed",
+            "expected": 399,
+            "actual": 399,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_entry_count",
+            "expected": 243,
+            "actual": 243,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_exit_count",
+            "expected": 244,
+            "actual": 244,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_ship_seconds",
+            "expected": 10164024.0,
+            "actual": 10164024.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-28].visits_touching_day",
+            "expected": 508,
+            "actual": 508,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "activity_default_1d_ship_type_oil": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 105,
+            "actual": 105,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 115,
+            "actual": 115,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 123,
+            "actual": 123,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 999.846944,
+            "actual": 999.847,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 163,
+            "actual": 163,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].ships_observed",
+            "expected": 105,
+            "actual": 105,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_entry_count",
+            "expected": 115,
+            "actual": 115,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_exit_count",
+            "expected": 123,
+            "actual": 123,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_ship_seconds",
+            "expected": 3599449.0,
+            "actual": 3599449.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-28].visits_touching_day",
+            "expected": 163,
+            "actual": 163,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "activity_default_prev1d_2026-02-27": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 429,
+            "actual": 429,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 204,
+            "actual": 204,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 215,
+            "actual": 215,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 4606.588889,
+            "actual": 4606.589,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 461,
+            "actual": 461,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].ships_observed",
+            "expected": 429,
+            "actual": 429,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_entry_count",
+            "expected": 204,
+            "actual": 204,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_exit_count",
+            "expected": 215,
+            "actual": 215,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_ship_seconds",
+            "expected": 16583720.0,
+            "actual": 16583720.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-27].visits_touching_day",
+            "expected": 461,
+            "actual": 461,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "activity_default_3d_2026-02-26_03-01": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 818,
+            "actual": 818,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 742,
+            "actual": 742,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 758,
+            "actual": 758,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 13424.081111,
+            "actual": 13424.081,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 1080,
+            "actual": 1080,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-26].ships_observed",
+            "expected": 477,
+            "actual": 477,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-26].observed_entry_count",
+            "expected": 229,
+            "actual": 229,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-26].observed_exit_count",
+            "expected": 228,
+            "actual": 228,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-26].observed_ship_seconds",
+            "expected": 16988498.0,
+            "actual": 16988498.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-26].visits_touching_day",
+            "expected": 510,
+            "actual": 510,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].ships_observed",
+            "expected": 429,
+            "actual": 429,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_entry_count",
+            "expected": 210,
+            "actual": 210,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_exit_count",
+            "expected": 217,
+            "actual": 217,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_ship_seconds",
+            "expected": 16583720.0,
+            "actual": 16583720.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-27].visits_touching_day",
+            "expected": 461,
+            "actual": 461,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].ships_observed",
+            "expected": 430,
+            "actual": 430,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_entry_count",
+            "expected": 303,
+            "actual": 303,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_exit_count",
+            "expected": 313,
+            "actual": 313,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-28].observed_ship_seconds",
+            "expected": 14754474.0,
+            "actual": 14754474.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-28].visits_touching_day",
+            "expected": 577,
+            "actual": 577,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "activity_rectA_west_prev1d": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 363,
+            "actual": 363,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 200,
+            "actual": 200,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 216,
+            "actual": 216,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 3317.935556,
+            "actual": 3317.936,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 393,
+            "actual": 393,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].ships_observed",
+            "expected": 363,
+            "actual": 363,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_entry_count",
+            "expected": 200,
+            "actual": 200,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_exit_count",
+            "expected": 216,
+            "actual": 216,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_ship_seconds",
+            "expected": 11944568.0,
+            "actual": 11944568.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-27].visits_touching_day",
+            "expected": 393,
+            "actual": 393,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "activity_rectB_east_prev1d": {
+        "checks": [
+          {
+            "field": "ships_observed",
+            "expected": 214,
+            "actual": 214,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_entry_count",
+            "expected": 150,
+            "actual": 150,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_exit_count",
+            "expected": 147,
+            "actual": 147,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "observed_ship_hours",
+            "expected": 1285.323611,
+            "actual": 1285.324,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "visit_count",
+            "expected": 218,
+            "actual": 218,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].ships_observed",
+            "expected": 214,
+            "actual": 214,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_entry_count",
+            "expected": 150,
+            "actual": 150,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_exit_count",
+            "expected": 147,
+            "actual": 147,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "daily[2026-02-27].observed_ship_seconds",
+            "expected": 4627165.0,
+            "actual": 4627165.0,
+            "ok": true,
+            "tol": 1.0
+          },
+          {
+            "field": "daily[2026-02-27].visits_touching_day",
+            "expected": 218,
+            "actual": 218,
+            "ok": true,
+            "tol": 0
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "compare_default_prev1d_vs_1d": {
+        "checks": [
+          {
+            "field": "metrics[ships_observed].a",
+            "expected": 429,
+            "actual": 429.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[ships_observed].b",
+            "expected": 430,
+            "actual": 430.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[ships_observed].delta",
+            "expected": 1,
+            "actual": 1.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[ships_observed].change_rate",
+            "expected": 0.002331002331002331,
+            "actual": 0.0023,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          },
+          {
+            "field": "metrics[observed_entry_count].a",
+            "expected": 204,
+            "actual": 204.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_entry_count].b",
+            "expected": 298,
+            "actual": 298.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_entry_count].delta",
+            "expected": 94,
+            "actual": 94.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_entry_count].change_rate",
+            "expected": 0.46078431372549017,
+            "actual": 0.4608,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          },
+          {
+            "field": "metrics[observed_exit_count].a",
+            "expected": 215,
+            "actual": 215.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_exit_count].b",
+            "expected": 313,
+            "actual": 313.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_exit_count].delta",
+            "expected": 98,
+            "actual": 98.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_exit_count].change_rate",
+            "expected": 0.4558139534883721,
+            "actual": 0.4558,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          },
+          {
+            "field": "metrics[observed_ship_hours].a",
+            "expected": 4606.588889,
+            "actual": 4606.589,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "metrics[observed_ship_hours].b",
+            "expected": 4098.465,
+            "actual": 4098.465,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "metrics[observed_ship_hours].delta",
+            "expected": -508.123889,
+            "actual": -508.124,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "metrics[observed_ship_hours].change_rate",
+            "expected": -0.11030371957292313,
+            "actual": -0.1103,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "compare_rectA_prev1d_vs_1d": {
+        "checks": [
+          {
+            "field": "metrics[ships_observed].a",
+            "expected": 363,
+            "actual": 363.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[ships_observed].b",
+            "expected": 352,
+            "actual": 352.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[ships_observed].delta",
+            "expected": -11,
+            "actual": -11.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[ships_observed].change_rate",
+            "expected": -0.030303030303030304,
+            "actual": -0.0303,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          },
+          {
+            "field": "metrics[observed_entry_count].a",
+            "expected": 200,
+            "actual": 200.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_entry_count].b",
+            "expected": 240,
+            "actual": 240.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_entry_count].delta",
+            "expected": 40,
+            "actual": 40.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_entry_count].change_rate",
+            "expected": 0.2,
+            "actual": 0.2,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          },
+          {
+            "field": "metrics[observed_exit_count].a",
+            "expected": 216,
+            "actual": 216.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_exit_count].b",
+            "expected": 239,
+            "actual": 239.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_exit_count].delta",
+            "expected": 23,
+            "actual": 23.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_exit_count].change_rate",
+            "expected": 0.10648148148148148,
+            "actual": 0.1065,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          },
+          {
+            "field": "metrics[observed_ship_hours].a",
+            "expected": 3317.935556,
+            "actual": 3317.936,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "metrics[observed_ship_hours].b",
+            "expected": 2949.766667,
+            "actual": 2949.767,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "metrics[observed_ship_hours].delta",
+            "expected": -368.168889,
+            "actual": -368.169,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "metrics[observed_ship_hours].change_rate",
+            "expected": -0.1109632428918701,
+            "actual": -0.111,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      },
+      "compare_rectB_prev1d_vs_1d": {
+        "checks": [
+          {
+            "field": "metrics[ships_observed].a",
+            "expected": 214,
+            "actual": 214.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[ships_observed].b",
+            "expected": 185,
+            "actual": 185.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[ships_observed].delta",
+            "expected": -29,
+            "actual": -29.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[ships_observed].change_rate",
+            "expected": -0.13551401869158877,
+            "actual": -0.1355,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          },
+          {
+            "field": "metrics[observed_entry_count].a",
+            "expected": 150,
+            "actual": 150.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_entry_count].b",
+            "expected": 171,
+            "actual": 171.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_entry_count].delta",
+            "expected": 21,
+            "actual": 21.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_entry_count].change_rate",
+            "expected": 0.14,
+            "actual": 0.14,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          },
+          {
+            "field": "metrics[observed_exit_count].a",
+            "expected": 147,
+            "actual": 147.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_exit_count].b",
+            "expected": 188,
+            "actual": 188.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_exit_count].delta",
+            "expected": 41,
+            "actual": 41.0,
+            "ok": true,
+            "tol": 0
+          },
+          {
+            "field": "metrics[observed_exit_count].change_rate",
+            "expected": 0.2789115646258503,
+            "actual": 0.2789,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          },
+          {
+            "field": "metrics[observed_ship_hours].a",
+            "expected": 1285.323611,
+            "actual": 1285.324,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "metrics[observed_ship_hours].b",
+            "expected": 1145.426944,
+            "actual": 1145.427,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "metrics[observed_ship_hours].delta",
+            "expected": -139.896667,
+            "actual": -139.897,
+            "ok": true,
+            "tol": 0.01
+          },
+          {
+            "field": "metrics[observed_ship_hours].change_rate",
+            "expected": -0.10884159117808347,
+            "actual": -0.1088,
+            "ok": true,
+            "tol": 5.1e-05,
+            "equals_round_4dp": true
+          }
+        ],
+        "failed": [],
+        "api_status": "partial"
+      }
+    },
+    "failures": [],
+    "not_api_comparable": {
+      "rectA_vs_rectB_same_window": "§2.5 要求两期同一矩形；跨矩形同窗口仅在独立复算里作几何对照"
+    },
+    "passed": true
+  },
+  "statement_timeout": {
+    "read_only": "on",
+    "timeout": "20s",
+    "http_status": 503,
+    "error_code": "QUERY_TIMEOUT",
+    "elapsed_seconds": 20.056,
+    "configured_timeout_ms": 20000,
+    "passed": true
+  }
+}

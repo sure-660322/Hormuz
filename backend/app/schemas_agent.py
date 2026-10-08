@@ -39,12 +39,27 @@ class AgentMapContext(BaseModel):
         return value
 
 
+class AgentAreaContext(BaseModel):
+    """本轮请求的「当前区域」（前端面板区域），作为区域工具的权威矩形。
+
+    四个边界必填（半开矩形）；不做跨度校验，越界/跨 180° 由区域服务按 REST 同口径拒绝。
+    """
+
+    west: float = Field(ge=-180, le=180)
+    south: float = Field(ge=-90, le=90)
+    east: float = Field(ge=-180, le=180)
+    north: float = Field(ge=-90, le=90)
+    area_id: str | None = None
+    label: str | None = None
+
+
 class AgentAnalyzeRequest(BaseModel):
     question: str  # 必填，去除首尾空白后 1–2000 字符
     closure_at: datetime | None = None  # 可省略，须带时区，统一 UTC
     end_at: datetime | None = None
     history: list[AgentTurn] | None = None  # 多轮对话历史，可省略（单轮问答）
     map_context: AgentMapContext | None = None
+    area_context: AgentAreaContext | None = None  # 当前区域（面板矩形），可省略 → 默认分析区域
 
     @field_validator("question")
     @classmethod
@@ -134,6 +149,19 @@ class AgentAnalysisAction(BaseModel):
     trigger: Literal["suggested"] = "suggested"
     query: dict[str, Any]  # {mode, start_at, end_at, a/b 起止, ship_types, direction}
     summary: dict[str, Any]  # 该次调用的有界统计摘要，供面板直接恢复展示
+    """结果中的建议分析动作（「查看区域分析」）。
+
+    由本轮成功调用过的区域活动工具生成（同名工具多次调用只保留最后一次）；
+    query/summary 与对应工具结果同一区域、同一时间口径，供前端打开分析面板时回填。
+    """
+
+    type: Literal["area_activity"]
+    trigger: Literal["suggested"]
+    mode: Literal["snapshot", "activity", "compare"]
+    query: dict[str, Any]
+    summary: dict[str, Any]
+    tool: str
+    call_id: str
 
 
 class AgentMapAction(BaseModel):
