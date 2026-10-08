@@ -3,6 +3,8 @@
 > 分支 `kimi/strait-passage-stats`（基线 `ead29ac`，负责人 Kimi）。本文件是通行统计模块说明；
 > 智能体总契约见 [agent_integration.md](agent_integration.md)，任务过程见 [agent_development_plan.md](agent_development_plan.md)。
 
+> 当前状态（2026-10-08文档核对）：PR #42已合入main（f555ec7），2026-10-07真实模型/浏览器单业务样本已验证，未部署；原分支信息保留为历史。
+
 ## 功能定位
 
 「动态海峡观测通行统计」：按选定历史条件查询已入库 `nnu_ais` AIS（不是实时接入），
@@ -121,7 +123,7 @@
   `analysis_actions` 绑定自身查询参数（direction 规范为 inbound），前端「查看通行分析」
   可恢复同条件结果。期间修复：统计类提问（含「2月28日」「油轮」字样）被地图窗口校验误拒
   422（仅地图意图问题才做该校验）；`analysis_actions` 方向别名 east_to_west 未规范化。
-- 未验证：真实 DeepSeek 问答与工具选择、窄屏布局、独立测试库验证（本机应用库只读验证，
+- 未验证：综合多轮与更广真实模型题集、可见浏览器最终相机确认、窄屏布局、独立测试库验证（本机应用库只读验证，
   未写入）。历史报告
   [daily_tanker_passages_2026-09-30.md](daily_tanker_passages_2026-09-30.md) 的
   253 次/244 艘是油轮固定批次对照，不用于本轮验收。
