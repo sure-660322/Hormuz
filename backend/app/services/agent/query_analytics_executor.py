@@ -501,7 +501,10 @@ class QueryAnalyticsExecutor:
             mismatches.append("schema_privileges")
         checks.append("schema_privileges")
 
-        expected_names = tuple(sorted(view["name"] for view in catalog["views"]))
+        expected_names = tuple(sorted(
+            [view["name"] for view in catalog["views"]]
+            + [table["name"] for table in catalog.get("meta_tables", [])]
+        ))
         actual_names = tuple(row[0] for row in connection.exec_driver_sql(
             """
             SELECT n.nspname || '.' || c.relname
@@ -537,13 +540,19 @@ class QueryAnalyticsExecutor:
             ).one_or_none()
             if meta is None or meta[0] != view["owner"] or meta[1] is not True:
                 mismatches.append(f"view_access:{name}")
-            definition = connection.exec_driver_sql(
-                "SELECT pg_get_viewdef(%(view_name)s::regclass, false)",
-                {"view_name": name},
-            ).scalar_one()
-            actual_hash = hashlib.sha256(definition.encode("utf-8")).hexdigest()
-            if actual_hash != view["definition_sha256"]:
-                mismatches.append(f"view_hash:{name}")
+            if view.get("kind", "view") == "view":
+                definition = connection.exec_driver_sql(
+                    "SELECT pg_get_viewdef(%(view_name)s::regclass, false)",
+                    {"view_name": name},
+                ).scalar_one()
+                actual_hash = hashlib.sha256(definition.encode("utf-8")).hexdigest()
+                if actual_hash != view["definition_sha256"]:
+                    mismatches.append(f"view_hash:{name}")
+            else:
+                # kind="table"（catalog v3 受控快照）：无定义哈希，漂移检测 =
+                # 列签名 + owner + SELECT 权限 + 快照清单行存在（下方统一核验）。
+                if not view.get("snapshot_manifest"):
+                    mismatches.append(f"snapshot_manifest:{name}")
             actual_columns = tuple(connection.exec_driver_sql(
                 """
                 SELECT a.attname, format_type(a.atttypid, a.atttypmod),
@@ -567,7 +576,33 @@ class QueryAnalyticsExecutor:
             )
             if actual_columns != expected_columns:
                 mismatches.append(f"view_columns:{name}")
-            checks.extend((f"view_access:{name}", f"view_hash:{name}", f"view_columns:{name}"))
+            checks.extend((f"view_access:{name}", f"view_columns:{name}"))
+            checks.append(f"view_hash:{name}" if view.get("kind", "view") == "view"
+                          else f"snapshot_manifest:{name}")
+
+        # 快照清单核验：catalog 声明的清单行必须存在且窗口非空，否则 fail closed。
+        for table in catalog.get("meta_tables", []):
+            name = table["name"]
+            meta = connection.exec_driver_sql(
+                """
+                SELECT pg_get_userbyid(c.relowner),
+                       has_table_privilege(current_user, c.oid, 'SELECT')
+                FROM pg_class AS c WHERE c.oid = %(name)s::regclass
+                """,
+                {"name": name},
+            ).one_or_none()
+            if meta is None or meta[0] != table["owner"] or meta[1] is not True:
+                mismatches.append(f"meta_access:{name}")
+            manifest_rows = connection.exec_driver_sql(
+                """
+                SELECT count(*) FROM agent_data.v_snapshot_manifest
+                WHERE snapshot_name = %(snapshot)s
+                """,
+                {"snapshot": table.get("snapshot_manifest", "")},
+            ).scalar_one()
+            if manifest_rows != 1:
+                mismatches.append(f"manifest_row:{name}")
+            checks.extend((f"meta_access:{name}", f"manifest_row:{name}"))
 
         source_access = tuple(connection.exec_driver_sql(
             """

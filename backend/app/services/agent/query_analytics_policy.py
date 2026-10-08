@@ -23,7 +23,7 @@ from sqlglot.errors import ParseError, TokenError
 
 SQLGLOT_VERSION = "30.18.0"
 SQL_DIALECT = "postgres"
-CATALOG_PATH = Path(__file__).resolve().parents[2] / "query_analytics_catalog_v2.json"
+CATALOG_PATH = Path(__file__).resolve().parents[2] / "query_analytics_catalog_v3.json"
 
 MAX_SQL_BYTES = 16 * 1024
 MAX_PARAMS = 50
@@ -92,9 +92,9 @@ def load_catalog(path: Path = CATALOG_PATH) -> dict[str, Any]:
     try:
         catalog = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise QueryInputError("catalog v2 无法加载") from exc
-    if catalog.get("catalog_version") != "2.0" or not isinstance(catalog.get("views"), list):
-        raise QueryInputError("catalog v2 结构无效")
+        raise QueryInputError("catalog v3 无法加载") from exc
+    if catalog.get("catalog_version") not in {"2.0", "3.0"} or not isinstance(catalog.get("views"), list):
+        raise QueryInputError("catalog 结构无效")
     return catalog
 
 
@@ -395,6 +395,114 @@ def _validate_functions_and_operators(
                 raise QueryRefusedError("IS TRUE/FALSE 左侧必须是布尔表达式")
 
 
+def _validate_required_filters(
+    tree: exp.Select,
+    views: dict[str, dict[str, Any]],
+    aliases: dict[str, str],
+    bound_params: dict[str, BoundParameter],
+) -> None:
+    """catalog v3：快照表必须带必要过滤（catalog #48）。
+
+    证据粒度表要求时间列双边界（绑定参数）且跨度不超过 max_span_hours；
+    required_columns（如 area_id）必须出现等值/IN 条件。缺少边界或超范围
+    属于安全拒绝（refused），不是语法错误。
+    """
+    where = tree.args.get("where")
+    conditions = list(where.walk()) if where is not None else []
+
+    def column_of(node: exp.Expression) -> tuple[str | None, str | None]:
+        """返回 (别名, 列名)；无表限定时按单表解析。"""
+        if not isinstance(node, exp.Column) or isinstance(node.this, exp.Star):
+            return None, None
+        qualifier = node.table
+        if qualifier:
+            return (qualifier if qualifier in aliases else None), node.name
+        if len(aliases) == 1:
+            return next(iter(aliases)), node.name
+        return None, None
+
+    for alias, full_name in aliases.items():
+        spec = views[full_name].get("required_filters")
+        if not spec:
+            continue
+        time_column = spec["time_column"]
+        max_span = float(spec.get("max_span_hours", 24)) * 3600.0
+        required_columns = list(spec.get("required_columns", []))
+        matched = {name: False for name in required_columns}
+        lowers: list[exp.Expression] = []
+        uppers: list[exp.Expression] = []
+
+        for node in conditions:
+            if isinstance(node, exp.Between):
+                qual, name = column_of(node.this)
+                if qual == alias:
+                    if name == time_column:
+                        lowers.append(node.args["low"])
+                        uppers.append(node.args["high"])
+                    if name in matched:
+                        matched[name] = True
+                continue
+            if not isinstance(node, (exp.GT, exp.GTE, exp.LT, exp.LTE, exp.EQ, exp.In)):
+                continue
+            for left, right in ((node.this, node.expression), (node.expression, node.this)):
+                qual, name = column_of(left)
+                if qual != alias:
+                    continue
+                if isinstance(node, (exp.EQ, exp.In)):
+                    if name in matched:
+                        matched[name] = True
+                    continue
+                if name != time_column:
+                    continue
+                # 列在左：GT/GTE 是下界、LT/LTE 是上界；列在右则相反。
+                column_left = left is node.this
+                if isinstance(node, (exp.GT, exp.GTE)):
+                    (lowers if column_left else uppers).append(right)
+                else:
+                    (uppers if column_left else lowers).append(right)
+
+        missing = [name for name, flag in matched.items() if not flag]
+        if missing:
+            raise QueryRefusedError(
+                f"缺少必要过滤：{full_name} 需要 {', '.join(missing)} 的等值条件"
+            )
+        if not lowers or not uppers:
+            raise QueryRefusedError(
+                f"缺少必要过滤：{full_name} 的 {time_column} 必须给出双边界"
+                f"（下界与上界，绑定参数）"
+            )
+
+        def bound_value(node: exp.Expression) -> Any:
+            if not isinstance(node, exp.Placeholder):
+                raise QueryRefusedError("必要过滤的时间边界必须使用绑定参数")
+            item = bound_params.get(node.name)
+            if item is None or item.value is None:
+                raise QueryRefusedError("必要过滤的时间边界参数缺失")
+            raw = item.value
+            if isinstance(raw, str):
+                if item.type == "date":
+                    return date.fromisoformat(raw)
+                if item.type == "timestamptz":
+                    return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            return raw
+
+        try:
+            lower = max(bound_value(node) for node in lowers)
+            upper = min(bound_value(node) for node in uppers)
+        except QueryRefusedError:
+            raise
+        except (TypeError, ValueError) as exc:
+            raise QueryRefusedError("必要过滤的时间边界不是有效日期/时间参数") from exc
+        span = (upper - lower).total_seconds()
+        if span <= 0:
+            raise QueryRefusedError("必要过滤的时间边界下界必须早于上界")
+        if span > max_span:
+            raise QueryRefusedError(
+                f"查询时间跨度 {span / 3600.0:.1f}h 超过 {full_name} 的"
+                f"上限 {max_span / 3600.0:.0f}h，请缩小范围"
+            )
+
+
 def validate_query(
     sql: str,
     params: list[dict[str, Any]] | None = None,
@@ -553,6 +661,8 @@ def validate_query(
         }
         if pair != approved:
             raise QueryRefusedError("JOIN 条件不在白名单")
+
+    _validate_required_filters(tree, views, aliases, bound_params)
 
     for star in tree.find_all(exp.Star):
         if not isinstance(star.parent, exp.Count):
