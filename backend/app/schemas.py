@@ -142,6 +142,14 @@ class CaseStageResponse(BaseModel):
     articles: list[CaseArticleResponse]
 
 
+class CaseEvidenceResponse(BaseModel):
+    title: str
+    observation: str
+    boundary: str
+    at: datetime | None = None
+    url: str | None = None
+
+
 class MaritimeCaseResponse(BaseModel):
     id: str
     title: str
@@ -156,3 +164,9 @@ class MaritimeCaseResponse(BaseModel):
     position_count: int
     stages: list[CaseStageResponse]
     limitations: list[str]
+    display_title: str = "中海北冰洋"
+    vessel_label: str = "集装箱船 · CSCL ARCTIC OCEAN"
+    date_label: str = "2026.03.27 — 03.31"
+    overview_summary: str = "沿五日历史航迹，查看首次尝试、两次尝试之间的航行过程与再次通过。阶段用于组织浏览，报道与 AIS 观测分别提供证据。"
+    unavailable_reason: str = "轨迹尚未导入，可先阅读报道。"
+    evidence: list[CaseEvidenceResponse] = []

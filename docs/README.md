@@ -6,7 +6,7 @@
 
 - [项目说明](../README.md)、[前端工作台](../FRONTEND_WORKBENCH.md)
 - [数据库初始化与交接](database_setup.md)
-- [真实 AIS 七日导入](real_ais_seven_day_import.md)、[中海北冰洋案例](arctic_ocean_case.md)
+- [真实 AIS 七日导入](real_ais_seven_day_import.md)、[中海北冰洋案例](arctic_ocean_case.md)、[ATHE NOVA证据案例](athe_nova_case.md)
 - [新闻批次导入](chinanews_news_import.md)、[每日油轮观测口径](daily_tanker_passages_2026-09-30.md)
 - [国家边界与中文标注](country_overlay.md)
 

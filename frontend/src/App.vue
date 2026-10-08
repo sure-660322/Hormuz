@@ -27,7 +27,7 @@ import OverviewPanel from './components/OverviewPanel.vue'
 import LayersPopover from './components/LayersPopover.vue'
 import ExplorerSidebar from './components/ExplorerSidebar.vue'
 import CasePanel from './components/CasePanel.vue'
-import { fetchArcticOceanCase, type ApiMaritimeCase } from './api'
+import { fetchMaritimeCase, type MaritimeCaseId, type ApiMaritimeCase } from './api'
 import { caseTrackChunks, mergeCaseTracks, clipCaseTracks } from './domain/casePlayback'
 
 const {
@@ -52,6 +52,8 @@ const {
 const caseOpen = ref(false)
 const caseDetailsOpen = ref(true)
 const caseData = ref<ApiMaritimeCase | null>(null)
+const caseId = ref<MaritimeCaseId>('arctic-ocean')
+let caseLoadVersion = 0
 const caseLoading = ref(false)
 const caseError = ref('')
 const caseActive = ref(false)
@@ -78,11 +80,37 @@ const savedCaseView = ref<{
 } | null>(null)
 let caseVersion = 0
 async function loadCase() {
+  const version = ++caseLoadVersion
   caseLoading.value = true
   caseError.value = ''
-  try { caseData.value = await fetchArcticOceanCase() }
-  catch (e) { caseError.value = describeApiError(e, '案例加载失败') }
-  finally { caseLoading.value = false }
+  try {
+    const data = await fetchMaritimeCase(caseId.value)
+    if (version === caseLoadVersion && caseOpen.value) caseData.value = data
+  } catch (e) { if (version === caseLoadVersion) caseError.value = describeApiError(e, '案例加载失败') }
+  finally { if (version === caseLoadVersion) caseLoading.value = false }
+}
+async function switchCase(id: MaritimeCaseId) {
+  if (id === caseId.value || caseLoading.value || caseSwitching.value) return
+  pauseCase()
+  caseVersion++
+  cancelMapAction()
+  clearShip()
+  agentTrack.value = null
+  caseActive.value = false
+  caseFullTrack.value = null
+  caseWindow.value = null
+  caseStageId.value = 'overview'
+  caseData.value = null
+  caseId.value = id
+  await loadCase()
+  if (!caseOpen.value) return
+  const selected = caseData.value as ApiMaritimeCase | null
+  if (!caseError.value && selected?.ready) await initializeCase()
+  else {
+    // A failed/empty selection must not leave the previous vessel's timeline visible.
+    await load()
+    if (savedCaseView.value?.time) seek(savedCaseView.value.time)
+  }
 }
 async function openCase() {
   caseDetailsOpen.value = true
@@ -183,9 +211,13 @@ function pauseCase() {
   timelineControls.value?.stop()
 }
 async function exitCase() {
-  const version = ++caseVersion
   const previous = savedCaseView.value
-  const reload = caseActive.value
+  caseLoadVersion++
+  caseLoading.value = false
+  pauseCase()
+  cancelMapAction()
+  const version = ++caseVersion
+  const reload = caseWindow.value !== null || !!savedCaseView.value
   clearShip()
   caseActive.value = false
   caseOpen.value = false
@@ -1185,7 +1217,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @open-agent="togglePanel('agent')"
         @open-area="areaOpen ? closeAreaPanel() : openAreaPanel()"
       />
-      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
+      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :case-id="caseId" @switch-case="switchCase" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
       <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开案例阶段与报道</button>
       <LayersPopover
         v-if="layersOpen"
@@ -1267,7 +1299,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </button>
       </div>
       <div v-if="isRealAis && (!caseOpen || caseActive) && !caseSwitching && !loading" class="ais-snapshot-strip" role="status">
-        <strong v-if="caseActive">案例窗口：仅中海北冰洋，非海峡全量船舶</strong>
+        <strong v-if="caseActive">案例窗口：仅{{ caseData?.display_title ?? caseData?.title }}，非海峡全量船舶</strong>
         <strong>历史 AIS · {{ formatTime(time, true) }} {{ zoneLabel() }}</strong>
         <span>快照 {{ currentShips.length }} 艘，视野内 {{ viewShips.length }} 艘</span>
         <span>仅采用此前 1 小时内的最新报位</span>

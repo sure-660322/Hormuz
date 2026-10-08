@@ -1,5 +1,7 @@
 # 中海北冰洋过航案例（Issue #26）
 
+> 2026-10-08：#49在独立任务分支复用本案例契约与回放，新增ATHE NOVA选择器；详情见[第二案例](athe_nova_case.md)。下方北冰洋批次与历史验收保持当时范围。
+
 ## 范围与状态
 
 2026-09-30，负责人 Codex。基线 `937556b`，分支 `codex/arctic-ocean-case`，独立工作区 `D:/my_project/Hormuz-worktrees/codex-arctic-ocean-case`。允许修改案例 API、CSV 导入、回放范围、地图/智能体联动与对应文档；共享文件由本任务整合。预览前端 5176、后端 8002；原 5174/8000 服务未停止。独立验证库 `hormuz_arctic_case_test`，应用目标 `aisdb`；不包含凭据。

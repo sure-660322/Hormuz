@@ -18,13 +18,19 @@ export interface ApiCaseStage {
   summary: string
   articles: { title: string; media: string; publish_date: string; url: string; image_url: string | null; image_source_url: string | null; image_kind: string | null }[]
 }
+export interface ApiCaseEvidence {
+  title: string; observation: string; boundary: string; at: string | null; url: string | null
+}
 export interface ApiMaritimeCase {
   id: string; title: string; mmsi: string; imo: string; data_source: string; supplier: string
   ready: boolean; ship_id: number | null; start_at: string | null; end_at: string | null
   position_count: number; stages: ApiCaseStage[]; limitations: string[]
+  display_title?: string; vessel_label?: string; date_label?: string; overview_summary?: string
+  unavailable_reason?: string; evidence?: ApiCaseEvidence[]
 }
-export async function fetchArcticOceanCase(): Promise<ApiMaritimeCase> {
-  const response = await fetch(`${API_BASE_URL}/cases/arctic-ocean`, { signal: AbortSignal.timeout(20_000) })
+export type MaritimeCaseId = 'arctic-ocean' | 'athe-nova'
+export async function fetchMaritimeCase(id: MaritimeCaseId): Promise<ApiMaritimeCase> {
+  const response = await fetch(`${API_BASE_URL}/cases/${id}`, { signal: AbortSignal.timeout(20_000) })
   if (!response.ok) throw new Error(`案例加载失败：${response.status}`)
   return response.json()
 }
@@ -1458,3 +1464,5 @@ export async function fetchAreaCompare(
   return areaRequest<ApiAreaCompareResponse>(`/api/area-activity/compare?${params}`, { method: 'GET' }, signal)
 }
 
+
+export const fetchArcticOceanCase = () => fetchMaritimeCase('arctic-ocean')
