@@ -28,8 +28,8 @@ import {
   changeRateText,
   dailySeries,
   dash,
-  defaultActivityWindow,
-  defaultCompareWindows,
+  areaInitialWindows,
+  groupAreaShipTypes,
   emptyResultText,
   eventFlagLabels,
   flagLabel,
@@ -94,6 +94,7 @@ const props = defineProps<{
   drawing: boolean
   resolving: boolean
   areaNotice: string
+  dataWindow?: { start: string; end: string } | null
   bounds: ApiAreaBounds
   defaultBounds: ApiAreaBounds
   areaLabel: string
@@ -121,10 +122,21 @@ echarts.use([LineChart, GridComponent, LegendComponent, TooltipComponent, Canvas
 
 // —— 表单状态 ——
 const mode = ref<AreaPanelMode>('snapshot')
-const snapshotAt = ref(utcInputValue(new Date()))
-const activityStart = ref(defaultActivityWindow().start)
-const activityEnd = ref(defaultActivityWindow().end)
-const compareWindows = ref(defaultCompareWindows())
+const snapshotAt = ref('')
+const activityStart = ref('')
+const activityEnd = ref('')
+const compareWindows = ref({ startA: '', endA: '', startB: '', endB: '' })
+let dataWindowInitialized = false
+watch(() => props.dataWindow, range => {
+  if (dataWindowInitialized || !range) return
+  const defaults = areaInitialWindows(range.start, range.end)
+  if (!defaults) return
+  dataWindowInitialized = true
+  if (!snapshotAt.value) snapshotAt.value = utcInputValue(range.start)
+  if (!activityStart.value && !activityEnd.value) { activityStart.value = defaults.start; activityEnd.value = defaults.end }
+  if (!compareWindows.value.startA && !compareWindows.value.startB)
+    compareWindows.value = { startA: defaults.startA, endA: defaults.endA, startB: defaults.startB, endB: defaults.endB }
+}, { immediate: true })
 const freshnessSeconds = ref('')
 const visitLimit = ref('')
 
@@ -137,6 +149,15 @@ const shipTypeError = ref('')
 const shipTypesLoading = ref(false)
 const selectedShipTypes = ref<string[]>([])
 const shipTypeHintIgnored = ref(false)
+
+const shipTypeGroups = computed(() => groupAreaShipTypes(shipTypeOptions.value))
+const otherShipTypeValues = computed(() => shipTypeGroups.value.other.map(option => option.value))
+const otherShipTypesChecked = computed(() => otherShipTypeValues.value.length > 0 && otherShipTypeValues.value.every(value => selectedShipTypes.value.includes(value)))
+const otherShipTypesMixed = computed(() => !otherShipTypesChecked.value && otherShipTypeValues.value.some(value => selectedShipTypes.value.includes(value)))
+function toggleOtherShipTypes() {
+  const rest = selectedShipTypes.value.filter(value => !otherShipTypeValues.value.includes(value))
+  selectedShipTypes.value = otherShipTypesChecked.value ? rest : [...rest, ...otherShipTypeValues.value]
+}
 
 const allShipTypeValues = computed(() => shipTypeOptions.value.map(option => option.value))
 const allShipTypesChecked = computed(() => allShipTypesSelected(selectedShipTypes.value, allShipTypeValues.value))
@@ -797,7 +818,7 @@ onBeforeUnmount(() => {
         <p v-if="shipTypeError" class="aa-warn" role="status">{{ shipTypeError }}。本次查询按「全部船型」提交。</p>
         <p v-else-if="!shipTypeOptions.length && !shipTypesLoading" class="aa-muted">船型列表为空（或未加载），本次查询按「全部船型」提交。</p>
         <ul v-if="shipTypeOptions.length" class="aa-checks">
-          <li v-for="(option, index) in shipTypeOptions" :key="option.value">
+          <li v-for="(option, index) in shipTypeGroups.primary" :key="option.value">
             <label :for="`aa-ship-type-${index}`">
               <input
                 :id="`aa-ship-type-${index}`"
@@ -811,17 +832,43 @@ onBeforeUnmount(() => {
             <small v-if="option.count !== null" :title="option.count_scope ?? ''">{{ formatCount(option.count) }} 艘</small>
           </li>
         </ul>
+        <div v-if="shipTypeGroups.other.length" class="aa-other-types">
+          <label class="aa-other-check">
+            <input type="checkbox" aria-label="其它船型（全部）" :checked="otherShipTypesChecked" :indeterminate="otherShipTypesMixed" :aria-checked="otherShipTypesMixed ? 'mixed' : otherShipTypesChecked" @change="toggleOtherShipTypes" />
+            <span>其它</span><small>{{ shipTypeGroups.other.length }} 种船型</small>
+          </label>
+          <details>
+            <summary>展开其它船型</summary>
+        <ul class="aa-checks">
+          <li v-for="(option, index) in shipTypeGroups.other" :key="option.value">
+            <label :for="`aa-other-type-${index}`">
+              <input
+                :id="`aa-other-type-${index}`"
+                type="checkbox"
+                :value="option.value"
+                :checked="selectedShipTypes.includes(option.value)"
+                @change="toggleShipType(option.value)"
+              >
+              <span>{{ option.label }}</span>
+            </label>
+            <small v-if="option.count !== null" :title="option.count_scope ?? ''">{{ formatCount(option.count) }} 艘</small>
+          </li>
+        </ul>
+          </details>
+        </div>
         <p v-if="shipTypeHintIgnored" class="aa-warn" role="status">对话上下文给出的船型不在当前列表中，已回退为全选。</p>
+        <details class="aa-advanced"><summary>船型来源与口径说明</summary>
         <p v-if="shipTypeSource || shipTypeTotal !== null" class="aa-muted">列表来源：{{ dash(shipTypeSource) }}；船舶总数 {{ formatCount(shipTypeTotal) }}。计数口径见各船型标注，保留值（缺失/未知）来自后端 reserved。</p>
         <ul v-if="shipTypeLimitations.length" class="aa-limits">
           <li v-for="(item, index) in shipTypeLimitations" :key="index">{{ item }}</li>
         </ul>
+        </details>
       </section>
 
       <!-- 查询条件 -->
       <form class="aa-section" aria-labelledby="aa-cond-heading" @submit.prevent="runQuery">
         <h3 id="aa-cond-heading">查询条件</h3>
-        <p class="aa-muted">时间一律按 UTC 输入与显示，界面不做本地时区换算。</p>
+        <p class="aa-muted">时间按 UTC 输入；默认时段取自已加载的 AIS 数据，修改后保留。</p>
 
         <template v-if="mode === 'snapshot'">
           <div class="aa-field">
@@ -1299,6 +1346,10 @@ onBeforeUnmount(() => {
 .aa-mode:focus-visible, .aa-btn:focus-visible, .aa-check input:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 .aa-btn:disabled { opacity: .45; cursor: not-allowed; }
 .aa-btn-primary { border-color: var(--accent); color: var(--accent); }
+.aa-other-types { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+.aa-other-check { display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; }
+.aa-other-check small { color: var(--muted); margin-left: auto; }
+.aa-other-types summary { padding: 6px 0; font-size: 11px; color: var(--muted); cursor: pointer; }
 .aa-checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 10px; }
 .aa-checks li { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; }
 .aa-checks label { display: flex; align-items: center; gap: 6px; cursor: pointer; min-width: 0; }

@@ -812,6 +812,10 @@ const areaSuggestedLabel = computed(() => {
 const areaAgentContext = ref<{ shipTypes?: string[] | null; at?: string | null; start?: string | null; end?: string | null } | null>(null)
 // 面板条件预填：默认把「时刻在场」的时刻对齐到当前地图回放时刻（历史数据窗口内），
 // 避免默认用「现在」查历史 AIS 得到必然的空结果；用户可以再改成任意历史时刻。
+const areaDataWindow = computed(() => {
+  const start = times.value[0], end = times.value.at(-1)
+  return start && end && start !== end ? { start, end } : null
+})
 const areaPanelContext = computed(() => {
   const context = areaAgentContext.value ?? {}
   return { ...context, at: context.at ?? time.value ?? null }
@@ -1319,6 +1323,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           :area-label="areaLabel"
           :area-is-default="areaIsDefault"
           :agent-context="areaPanelContext"
+          :data-window="areaDataWindow"
           :pending-action="areaPendingAction"
           @close="closeAreaPanel"
           @update:boundary-visible="setAreaBoundaryVisible"
@@ -1353,7 +1358,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <button type="button" class="area-btn" data-testid="open-area-analysis" @click="openSuggestedArea">查看区域分析</button>
         <button type="button" class="area-btn" @click="dismissAreaSuggestion">忽略</button>
       </div>
-      <div v-if="areaCaseNotice && caseOpen" class="alert-toast" role="status">
+      <div v-if="areaCaseNotice && caseOpen" class="alert-toast area-case-notice" role="status">
         <span>区域分析使用海峡全量数据。请先点击「地图探索」退出典型案例，再打开区域分析。</span>
         <button type="button" @click="changeWorkspace('explore')">地图探索</button>
         <button type="button" aria-label="关闭区域分析提示" @click="areaCaseNotice = false">×</button>

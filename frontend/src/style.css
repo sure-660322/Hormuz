@@ -1639,22 +1639,22 @@ button.primary:hover {
 .top-status { margin-left: 0; }
 .sidebar-toggle { display: none; }
 .explorer-sidebar { grid-column: 1; grid-row: 3; min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); container-type: inline-size; }
-.explorer-intro { flex: none; padding: 22px 20px 16px; }
-.explorer-intro h2 { font-size: 20px; letter-spacing: .01em; }
-.explorer-intro p { margin: 5px 0 17px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.explorer-intro { flex: none; padding: 12px 16px 8px; }
+.explorer-intro h2 { font-size: 17px; letter-spacing: .01em; }
+.explorer-intro p { margin: 3px 0 8px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .explorer-intro .ship-search { width: 100%; }
-.explorer-intro .search-input { height: 42px; border-radius: 7px; box-shadow: none; }
+.explorer-intro .search-input { height: 34px; border-radius: 7px; box-shadow: none; }
 .explorer-intro .search-results { z-index: 1200; border-radius: 8px; }
-.explorer-tabs { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 20px 18px; }
-.explorer-tabs button { height: 40px; font-weight: 600; color: var(--muted); }
+.explorer-tabs { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 16px 8px; }
+.explorer-tabs button { height: 32px; font-weight: 600; color: var(--muted); }
 .explorer-tabs button.active { color: var(--ink); border-color: var(--blue); background: color-mix(in srgb, var(--blue) 12%, var(--panel)); }
-.event-view-switch { display: flex; gap: 4px; margin: 0 20px 12px; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: var(--wash); }
-.event-view-switch button { flex: 1; min-height: 30px; border: 0; border-radius: 5px; color: var(--muted); font-size: 11px; font-weight: 600; }
+.event-view-switch { display: flex; gap: 4px; margin: 0 16px 6px; padding: 2px; border: 1px solid var(--line); border-radius: 7px; background: var(--wash); }
+.event-view-switch button { flex: 1; min-height: 26px; border: 0; border-radius: 5px; color: var(--muted); font-size: 11px; font-weight: 600; }
 .event-view-switch button.active { background: var(--panel); color: var(--ink); box-shadow: 0 1px 4px rgb(0 0 0 / .12); }
-.explorer-filters { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 20px 12px; }
+.explorer-filters { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 16px 6px; }
 .explorer-filters.single { grid-template-columns: minmax(0, 1fr); }
-.explorer-filters select { width: 100%; min-width: 0; height: 34px; font-size: 11px; }
-.explorer-count { flex: none; padding: 0 20px 10px; font-size: 11px; color: var(--muted); }
+.explorer-filters select { width: 100%; min-width: 0; height: 30px; font-size: 11px; }
+.explorer-count { flex: none; padding: 0 16px 6px; font-size: 11px; color: var(--muted); }
 .explorer-list { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; }
 .explorer-item { display: block; width: calc(100% - 24px); margin: 0 12px 7px; padding: 11px 12px; text-align: left; border-radius: 8px; background: var(--panel); }
 .explorer-item.event-item { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 10px; }
@@ -1665,7 +1665,7 @@ button.primary:hover {
 .event-item .explorer-item-meta { flex-wrap: wrap; justify-content: flex-start; gap: 2px 8px; }
 .explorer-item:hover { background: var(--wash); }
 .explorer-item.selected { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, var(--panel)); }
-.explorer-item-title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; line-height: 1.5; min-height: 3em; font-size: 13px; font-weight: 600; }
+.explorer-item-title { display: block; overflow: visible; overflow-wrap: anywhere; line-height: 1.5; min-height: 3em; font-size: 13px; font-weight: 600; }
 .explorer-item-meta { display: flex; gap: 10px; justify-content: space-between; margin-top: 8px; color: var(--muted); font-size: 11px; }
 .event-category { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
 .event-category img { flex: none; width: 18px; height: 18px; object-fit: contain; }
@@ -1689,7 +1689,7 @@ button.primary:hover {
 .dayline-card-cover { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; overflow: hidden; border-radius: 5px; background: var(--wash); }
 .dayline-card-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .dayline-card-cover img.cover-fallback { width: 24px; height: 24px; object-fit: contain; }
-.dayline-card strong { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; font-size: 12px; line-height: 1.45; }
+.dayline-card strong { display: block; overflow: visible; font-size: 12px; line-height: 1.45; }
 .dayline-card-content strong { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .dayline-card small { color: var(--muted); font-size: 11px; }
 .dayline-jump { flex: none; align-self: flex-start; margin: 7px 20px 12px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); color: var(--muted); font-size: 10px; }
@@ -2012,4 +2012,21 @@ button.primary:hover {
 .area-panel-placement.is-drawing { bottom: auto; max-height: 260px; width: min(400px, calc(100% - 40px)); }
 @media (max-width: 900px) {
   .area-panel-placement.is-drawing { width: auto; right: 10px; max-height: 230px; }
+}
+
+/* Review #54: case feedback must remain above the case card and away from its content. */
+.area-case-notice { z-index: 1120; left: auto; right: 18px; top: 118px; width: min(420px, calc(100% - 36px)); flex-wrap: wrap; }
+.area-case-notice > span { flex: 1 1 100%; }
+.area-case-notice button { margin-left: 0; flex: 0 0 auto; }
+.area-case-notice button:last-child { margin-left: auto; }
+@media (max-width: 760px) {
+  .area-case-notice { right: 10px; top: 100px; width: calc(100% - 20px); }
+}
+
+.explorer-event-tools { display: flex; align-items: start; gap: 8px; padding: 0 16px 6px; flex: none; }
+.explorer-event-tools .event-view-switch { flex: 0 0 130px; margin: 0; }
+.explorer-event-tools .event-filters { flex: 1; min-width: 0; padding: 0; }
+@container (max-width: 330px) {
+  .explorer-event-tools { flex-wrap: wrap; }
+  .explorer-event-tools .event-view-switch { flex: 1 1 100%; }
 }
