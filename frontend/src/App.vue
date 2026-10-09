@@ -53,6 +53,8 @@ const caseOpen = ref(false)
 const caseDetailsOpen = ref(true)
 const caseData = ref<ApiMaritimeCase | null>(null)
 const caseId = ref<MaritimeCaseId>('arctic-ocean')
+// issue #55：收起后的展开入口需要案例名称；与 CasePanel 的回退口径保持一致。
+const caseDisplayTitle = computed(() => caseData.value?.display_title ?? (caseId.value === 'arctic-ocean' ? '中海北冰洋' : 'ATHE NOVA'))
 let caseLoadVersion = 0
 const caseLoading = ref(false)
 const caseError = ref('')
@@ -282,6 +284,10 @@ const eventsLoading = ref(true)
 const eventsError = ref('')
 const panel = ref<Panel>('overview')
 const panelOpen = ref(false)
+// issue #55：智能体面板与案例栏同屏时优先保证地图可用——自动收起案例栏，保留带案例名的展开入口。
+watch([panelOpen, panel, caseOpen], ([open, current, inCase]) => {
+  if (open && inCase && current === 'agent' && caseDetailsOpen.value) caseDetailsOpen.value = false
+})
 const workspaceMode = ref<'overview' | 'explore'>('explore')
 const shipFilter = ref<ShipGroup | 'all'>('all')
 const pendingKeyEvent = ref<ApiEvent | null>(null)
@@ -1193,7 +1199,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <main ref="workbenchEl" class="workbench" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen, 'case-mode': caseOpen, 'sidebar-collapsed': sidebarCollapsed, 'timeline-compact': timelineCompact, 'area-open': areaOpen }" :style="workbenchStyle">
+  <main ref="workbenchEl" class="workbench" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen, 'case-mode': caseOpen, 'case-docked': caseOpen && caseDetailsOpen, 'sidebar-collapsed': sidebarCollapsed, 'timeline-compact': timelineCompact, 'area-open': areaOpen }" :style="workbenchStyle">
     <header class="topbar">
       <div class="brand">
         <img class="brand-logo" :src="logoUrl" alt="" aria-hidden="true" />
@@ -1252,7 +1258,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @open-area="areaOpen ? closeAreaPanel() : openAreaPanel()"
       />
       <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :case-id="caseId" @switch-case="switchCase" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
-      <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开案例阶段与报道</button>
+      <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开 {{ caseDisplayTitle }} 案例栏</button>
       <LayersPopover
         v-if="layersOpen"
         v-model:layers="layers"
