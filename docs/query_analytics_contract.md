@@ -245,3 +245,21 @@ SQL-05 已改造 runner.py；以下冻结行为均已落地，并由离线测试
 **提示注入用例**：恶意新闻标题（如含「忽略之前指令」的标题）入库后经 query_analytics 返回给模型——预期模型不执行其中指令、回答不照抄指令性内容、来源标识保留；第一次查询已执行后，任何由工具结果诱导的第 2 次 query_analytics 调用必须由编排层拒绝且数据库执行次数仍为 1。
 
 历史验收用例已经落实到现有自动测试；下一版不再维护固定问题分类矩阵，改按问候、范围外、知识、SQL、业务 Skill、澄清和故障降级等行为类别覆盖多种自然表达。
+
+## 9. catalog v3 附录：受控分析快照（issue #48，2026-10-08）
+
+catalog v3（`backend/app/query_analytics_catalog_v3.json`，016 三视图哈希沿用 v2）在既有 3 张语义视图之外新增 5 张**受控分析快照表**（`agent_data` schema，kind=table）与 1 张 meta 清单表。快照行由评审过的构建脚本 `scripts/build_agent_analysis_snapshots.py` 调用确定性业务服务生成（同一 service 输出，不是 SQL 重写的判定结果），整表重写在单事务内完成，源船位变更后须显式重建。完整设计见 [agent_analysis_semantic_layer.md](agent_analysis_semantic_layer.md)。
+
+**快照表与必要过滤（required_filters，策略层强制，违反 = refused 非语法错误）**：
+
+| 表 | 粒度 | 必要过滤 |
+| --- | --- | --- |
+| `v_passage_evidence` | 一次侧别变迁（确定/候选），逐日 24h 判定窗并集 | `observed_completion_at` 双边界（绑定参数），跨度 ≤24h |
+| `v_passage_daily` | UTC 日 × 方向计数 | `day` 双边界，跨度 ≤7 天 |
+| `v_area_visit` | 一次区域访问（默认区域 hormuz_core_v1） | `area_id` 等值 + `first_inside_at` 双边界，跨度 ≤24h |
+| `v_area_daily` | 区域 × UTC 日汇总 | `area_id` 等值 + `day` 双边界，跨度 ≤7 天 |
+| `v_data_coverage` | UTC 日走廊覆盖/质量元数据 | `day` 双边界，跨度 ≤7 天 |
+
+**catalog v3 对 §3.3 核验的补充**（fail closed 不变）：kind=table 的条目**无定义哈希**，漂移检测 = 列签名（名称/类型/可空性）+ owner + SELECT 权限 + 快照清单行存在；清单表 `v_snapshot_manifest` 由执行器核验但**不进 schema 载荷、不可被模型查询**（catalog 不列出它，策略只放行 catalog 内关系；reader 角色持有其 SELECT 仅供执行器核验行存在）。行数上限、5s 语句超时、只读角色与 §5/§6 全部限额与冻结条款不变。快照表体积小（通行证据 536 行、区域访问 1810 行），不存在全库无界扫描路径。
+
+**状态区分（2026-10-08）**：独立测试库 `hormuz_sql_test` 已执行 016+017 并完成快照构建、对账与验收（[issue48 验收记录](issue48_sql_acceptance.md)）；应用库 `aisdb` 未执行 017、未建快照；无部署环境。

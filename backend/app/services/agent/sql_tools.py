@@ -65,9 +65,11 @@ def _schema_payload() -> dict:
         "views": [
             {
                 "name": view["name"],
+                "kind": view.get("kind", "view"),
                 "data_scope": view["data_scope"],
                 "row_limit": view["row_limit"],
                 "limitations": view["limitations"],
+                "required_filters": view.get("required_filters"),
                 "columns": [
                     {
                         "name": column["name"],
@@ -84,6 +86,8 @@ def _schema_payload() -> dict:
             "仅允许单条 SELECT；关系必须使用 agent_data 全限定视图名",
             "条件值必须使用 :name 命名绑定参数，不得使用字面量绕过参数",
             "唯一批准 JOIN：v_news.event_id = v_events.event_id（INNER/LEFT）",
+            "快照表（kind=table）必须满足 required_filters：时间列双边界且跨度不超上限，"
+            "涉及区域访问的表还必须带 area_id 等值条件",
             "禁止任何写入、底表/系统目录访问和策略放宽尝试",
         ],
     }

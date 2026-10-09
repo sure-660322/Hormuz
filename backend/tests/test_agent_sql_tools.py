@@ -113,9 +113,19 @@ def test_schema_tool_returns_catalog_views():
     envelope = outcome["results"]["call_001"]
     assert envelope["status"] == "ok"
     names = {view["name"] for view in envelope["views"]}
-    assert names == {"agent_data.v_ships", "agent_data.v_events", "agent_data.v_news"}
+    assert names == {
+        "agent_data.v_ships", "agent_data.v_events", "agent_data.v_news",
+        "agent_data.v_passage_evidence", "agent_data.v_passage_daily",
+        "agent_data.v_area_visit", "agent_data.v_area_daily",
+        "agent_data.v_data_coverage",
+    }
     ships = next(v for v in envelope["views"] if v["name"] == "agent_data.v_ships")
     assert any(column["name"] == "ship_type" for column in ships["columns"])
+    assert ships["kind"] == "view"
+    visits = next(v for v in envelope["views"] if v["name"] == "agent_data.v_area_visit")
+    assert visits["kind"] == "table"
+    assert visits["required_filters"]["time_column"] == "first_inside_at"
+    assert "area_id" in visits["required_filters"]["required_columns"]
     assert envelope["allowed_joins"]
 
 
