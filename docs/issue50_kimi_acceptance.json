@@ -1,0 +1,189 @@
+{
+  "date": "2026-10-09",
+  "baseline_commit": "74dcbdc",
+  "client": "@moonshot-ai/kimi-code 2.1.1",
+  "model": "kimi-for-coding-highspeed (K2.7 Code Highspeed)",
+  "database": "hormuz_sql_test",
+  "sql_enabled": false,
+  "comparison": "same-condition existing business services; independent real Kimi MCP calls",
+  "records": [
+    {
+      "transport": "stdio",
+      "tool": "search_ships",
+      "arguments": {
+        "keyword": "ATHE NOVA",
+        "limit": 10
+      },
+      "request_id": "req_14717c3e1c584e82a41b0b177d6a43ea",
+      "status": "ok",
+      "metrics": {
+        "ship_id": 628,
+        "mmsi": "334931000",
+        "imo": "9188116"
+      }
+    },
+    {
+      "transport": "stdio",
+      "tool": "query_strait_passage_statistics",
+      "arguments": {
+        "start_at": "2026-02-26T00:00:00Z",
+        "end_at": "2026-02-27T00:00:00Z",
+        "direction": "all"
+      },
+      "request_id": "req_a4b1a88ac2874310b1480c582df30ef2",
+      "status": "partial",
+      "metrics": {
+        "passage_count": 132,
+        "unique_ship_count": 131,
+        "inbound_count": 81,
+        "outbound_count": 51,
+        "uncertain_candidate_count": 8,
+        "position_count": 753130
+      },
+      "determination_version": "strait-gates-v1+stats-2026-10-07"
+    },
+    {
+      "transport": "stdio",
+      "tool": "query_area_ship_snapshot",
+      "arguments": {
+        "at": "2026-02-26T12:00:00Z"
+      },
+      "request_id": "req_d4c504568d0b44c4af110f7ac8823601",
+      "status": "ok",
+      "metrics": {
+        "in_area_count": 199,
+        "out_of_area_fresh_count": 139,
+        "stale_fix_count": 622,
+        "evaluated_ship_count": 960,
+        "freshness_seconds": 3600
+      },
+      "versions": {
+        "area": "1.0.0",
+        "algorithm": "1.0.1"
+      }
+    },
+    {
+      "transport": "stdio",
+      "tool": "query_area_ship_activity",
+      "arguments": {
+        "start_at": "2026-02-26T00:00:00Z",
+        "end_at": "2026-02-27T00:00:00Z"
+      },
+      "request_id": "req_11d98845600e4feb9a4a6b810f4aec6b",
+      "status": "partial",
+      "metrics": {
+        "ships_observed": 477,
+        "observed_entry_count": 229,
+        "observed_exit_count": 224,
+        "observed_ship_seconds": 16988498.0,
+        "observed_ship_hours": 4719.027,
+        "visit_count": 510,
+        "complete_visit_count": 1,
+        "truncated_start_visit_count": 281,
+        "truncated_end_visit_count": 62,
+        "interrupted_visit_count": 15,
+        "uncertain_visit_count": 151,
+        "prior_state_unknown_visit_count": 224,
+        "near_boundary_event_count": 311,
+        "unobserved_gap_seconds": 3177526.0
+      },
+      "versions": {
+        "area": "1.0.0",
+        "algorithm": "1.0.1"
+      }
+    },
+    {
+      "transport": "http",
+      "tool": "search_ships",
+      "arguments": {
+        "keyword": "ATHE NOVA",
+        "limit": 10
+      },
+      "request_id": "req_8a9da95bc1de4566905db03aedd3c45a",
+      "status": "ok",
+      "metrics": {
+        "ship_id": 628,
+        "mmsi": "334931000",
+        "imo": "9188116"
+      }
+    },
+    {
+      "transport": "http",
+      "tool": "query_strait_passage_statistics",
+      "arguments": {
+        "start_at": "2026-02-26T00:00:00Z",
+        "end_at": "2026-02-27T00:00:00Z",
+        "direction": "all"
+      },
+      "request_id": "req_5164e35b19c745d39614f7bb0012a63c",
+      "status": "partial",
+      "metrics": {
+        "passage_count": 132,
+        "unique_ship_count": 131,
+        "inbound_count": 81,
+        "outbound_count": 51,
+        "uncertain_candidate_count": 8,
+        "position_count": 753130
+      },
+      "determination_version": "strait-gates-v1+stats-2026-10-07"
+    },
+    {
+      "transport": "http",
+      "tool": "query_area_ship_snapshot",
+      "arguments": {
+        "at": "2026-02-26T12:00:00Z"
+      },
+      "request_id": "req_5bdc3922ac2a4738ab8f246a87d289f4",
+      "status": "ok",
+      "metrics": {
+        "in_area_count": 199,
+        "out_of_area_fresh_count": 139,
+        "stale_fix_count": 622,
+        "evaluated_ship_count": 960,
+        "freshness_seconds": 3600
+      },
+      "versions": {
+        "area": "1.0.0",
+        "algorithm": "1.0.1"
+      }
+    },
+    {
+      "transport": "http",
+      "tool": "query_area_ship_activity",
+      "arguments": {
+        "start_at": "2026-02-26T00:00:00Z",
+        "end_at": "2026-02-27T00:00:00Z"
+      },
+      "request_id": "req_a0ac4de0cdc84c5ba866b4df9835c1ea",
+      "status": "partial",
+      "metrics": {
+        "ships_observed": 477,
+        "observed_entry_count": 229,
+        "observed_exit_count": 224,
+        "observed_ship_seconds": 16988498.0,
+        "observed_ship_hours": 4719.027,
+        "visit_count": 510,
+        "complete_visit_count": 1,
+        "truncated_start_visit_count": 281,
+        "truncated_end_visit_count": 62,
+        "interrupted_visit_count": 15,
+        "uncertain_visit_count": 151,
+        "prior_state_unknown_visit_count": 224,
+        "near_boundary_event_count": 311,
+        "unobserved_gap_seconds": 3177526.0
+      },
+      "versions": {
+        "area": "1.0.0",
+        "algorithm": "1.0.1"
+      }
+    }
+  ],
+  "source_sha256": {
+    "backend/mcp_server/__init__.py": "ab01fb0a506983f6842f222268ccba6cd287663c5a64521f7d9d40cfb5477ecb",
+    "backend/mcp_server/__main__.py": "3aba2a6a8a34715894fc893b3c85bbe8a581b6e6ef7fe1448c84ae00dbb90632",
+    "backend/mcp_server/adapter.py": "a42ea57a53e51b03c83de0c1609c2e00954914fb4132e54cd4b0e313ba26acaa",
+    "backend/mcp_server/credentials.py": "6b7ed265d95f1e3f539e17074c8a5677d2d5b4be2ef95c2c5c920a2d03607def",
+    "backend/mcp_server/schemas.py": "4cefa029065bf213d112d26c97fbbe99409d08157a68ffa0a45cad970c2a52ef",
+    "backend/mcp_server/server.py": "24b5db6d1f614a134de4817dc16520e7548f11717027aec840abe7f7c261a240"
+  }
+}
