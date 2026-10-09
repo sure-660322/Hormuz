@@ -1,10 +1,12 @@
+> 2026-10-09 收尾：[PR #59](https://github.com/sure-660322/Hormuz/pull/59)（#48 受控 Text-to-SQL catalog v3 受控分析快照）已合入 main（45cfe83），[Issue #48](https://github.com/sure-660322/Hormuz/issues/48) 已关闭；kimi/issue-48 工作树与本地分支已清理。catalog v3 快照层仅在独立测试库 hormuz_sql_test 验证，应用库 aisdb 未执行 017/未建快照；应用库实施与部署待另行授权。
+
 > 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。用户随后确认触屏与纯键盘相关范围暂不做，已移出本 Issue 的待办；[Issue #41](https://github.com/sure-660322/Hormuz/issues/41) 已按已交付范围关闭。并发预算等未验证限制不因关闭而视为已验证。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
 
 # 智能体下一阶段开发任务
 
 ## 2026-10-08 当前摘要与下一阶段路线图
 
-状态核对：通行统计 #40（PR #42 / f555ec7）、区域活动 #41（PR #45 / 3bcfea1）及北冰洋交互 #43（PR #44 / b0ed92f）已合入 main。当前 LangChain 单智能体有13个只读业务工具（8既有+2通行+3区域）、知识库及条件启用的SQL三工具；catalog v2 仍仅含船舶/事件/新闻。通行与区域各有2026-10-07真实模型/浏览器样本，综合多轮尚未系统验收；SQL分析事实层（#48）已在任务分支完成独立测试库验收（catalog v3：5 张受控分析快照表+清单核验+必要过滤；对账 ALL PASS、真实模型筛选/分组/排名三题、15 项失败关闭实测、EXPLAIN 毫秒级小扫描，见[issue48 验收记录](issue48_sql_acceptance.md)），**应用库 aisdb 未执行 017/未建快照，PR 待整合**；产品MCP Server未实现。下方旧分支状态和历史数量不代表本轮重新验收。
+状态核对：通行统计 #40（PR #42 / f555ec7）、区域活动 #41（PR #45 / 3bcfea1）及北冰洋交互 #43（PR #44 / b0ed92f）已合入 main。当前 LangChain 单智能体有13个只读业务工具（8既有+2通行+3区域）、知识库及条件启用的SQL三工具；catalog v2 仍仅含船舶/事件/新闻。通行与区域各有2026-10-07真实模型/浏览器样本，综合多轮尚未系统验收；SQL分析事实层（#48）已在任务分支完成独立测试库验收（catalog v3：5 张受控分析快照表+清单核验+必要过滤；对账 ALL PASS、真实模型筛选/分组/排名三题、15 项失败关闭实测、EXPLAIN 毫秒级小扫描，见[issue48 验收记录](issue48_sql_acceptance.md)），**应用库 aisdb 未执行 017/未建快照**；产品MCP Server未实现。下方旧分支状态和历史数量不代表本轮重新验收。
 
 总路线图：[Issue #46](https://github.com/sure-660322/Hormuz/issues/46)。路线图发布时四项均为待开始；2026-10-08 #49已完成身份调查并实现案例，验证与交付见[案例记录](athe_nova_case.md)。其余任务状态仍按各自记录核对。
 
