@@ -22,6 +22,7 @@
 ## 本轮整理与历史
 
 - [2026-10-06 清理记录](repository_cleanup_2026-10-06.md)
+- [2026-10-09 本地工作区清理](workspace_cleanup_2026-10-09.md)
 - [历史阶段与交付索引](archive/README.md)
 
 backend/app/services/agent/knowledge 下的 Markdown 是运行时知识库输入，不能按历史文档清除。历史批次报告不代表当前数据库数量；付费 AIS 源数据和数据库备份不通过文档归档自动公开。

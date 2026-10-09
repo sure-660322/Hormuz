@@ -6,6 +6,8 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 
 2026-10-06：废弃 AIS CSV、旧模拟本地输出及示例/中间清单已清理，文档整理已随提交 `2acd881` 合入 main 并推送，任务 worktree 与本地分支已清理。验证和范围见[清理记录](docs/repository_cleanup_2026-10-06.md)。这不清除 Git 历史，也不改变实际应用数据库。
 
+2026-10-09：本地临时输出和遗留任务工作树已整理，独有材料归档，废弃报告配图没有合入 main；主目录未提交文件已清空。范围与残留空目录见[本轮清理记录](docs/workspace_cleanup_2026-10-09.md)；本轮文档仅本地提交，未推送。
+
 文档入口：[当前文档索引](docs/README.md) · [前端工作台](FRONTEND_WORKBENCH.md) · [数据库说明](docs/database_setup.md) · [历史交付记录](docs/archive/delivery_notes_2026-10-03.md)。
 
 协作入口：[智能体规则](AGENTS.md) · [GitHub 任务技能](.agents/skills/github-issue-workflow/SKILL.md) · [协作与技能接入](docs/collaboration.md)。使用「处理 #编号」交付 PR，「收尾」合并、同步、清理，或「闭环处理 #编号」完成全过程；共享 main 按指定整合者规则处理。

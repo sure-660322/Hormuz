@@ -1,5 +1,7 @@
 # 每日油轮观测通行统计
 
+> 2026-10-09 路径更新：原 daily-tanker-count 工作树已移除。下方原运行命令与工作树位置属于历史记录；JSON、独立 SQL 和审计脚本归档至本机忽略目录 `local-archive/workspace-cleanup-2026-10-09/final-cleanup/daily-tanker-count/original-files/`，不随 Git 发布。本轮未重新计算统计，main 中报告与前端汇总不变。
+
 > 历史统计范围：以下数字及 SQL 复核属于 2026-09-30 批次，本轮没有重新计算。2026-10-02 Issue #28 分支已接入这批 UTC 日统计的总次数/入湾/出湾图表并完成前端与浏览器验证，[PR #29](https://github.com/sure-660322/Hormuz/pull/29) 已合入 main（2e4270a），本地同步与清理完成；动态统计 API 与航道校准仍未实现。当前 UI 状态见[前端工作台](../FRONTEND_WORKBENCH.md)。下方“图表未实施/未提交”保留当时独立统计任务事实。
 
 > 核验日期：2026-09-30。状态：本机数据库只读统计及独立 SQL 复核已验证；专用统计 API、图表和真实航道校准未实施。
