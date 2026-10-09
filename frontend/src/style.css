@@ -34,10 +34,15 @@
   --radius-m: 8px;
   --radius-l: 12px;
 }
+/* issue #55：案例栏停靠在地图工作区左侧，地图按真实剩余区域计算尺寸（ResizeObserver 自动校正）；收起后恢复默认边距。 */
 .workbench.case-mode { grid-template-columns: 0 minmax(0, 1fr); }
-.case-mode .map-top-tools { left: 380px; }
-.case-mode .ais-snapshot-strip { left: 380px; max-width: calc(100% - 398px); }
+.workbench.case-mode .map-workspace { display: flex; }
+.case-mode .maritime-map { flex: 1 1 0; min-width: 0; }
 .case-reopen { position: absolute; top: 18px; left: 18px; z-index: 900; padding: 9px 12px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; }
+@media (min-width: 761px) {
+  .workbench.case-mode.case-docked .map-top-tools { left: 362px; }
+  .workbench.case-mode.case-docked .ais-snapshot-strip { left: 362px; max-width: calc(100% - 380px); }
+}
 @media (max-width: 760px) {
   .workbench.case-mode { grid-template-columns: minmax(0, 1fr); }
 }
