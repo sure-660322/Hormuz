@@ -98,4 +98,8 @@ ORDER BY recorded_at-previous_at DESC NULLS LAST LIMIT 10;
 - 航速展开/收起与点击曲线定位时间可用；证据视图 6 张证据卡、阶段报道与限制完整；过程交互期间无新增控制台错误、无失败资源。
 - 未验证：后端故障/未导入路径本轮未复测（沿用 #49/#43 已验收的 ready=false 与 503 重试 markup，本轮未改动）；真实模型案例内问答未重验；未部署。
 
-状态：**任务分支交付待整合**，[PR #60](https://github.com/sure-660322/Hormuz/pull/60) 已创建；未合并、未部署。
+状态：**已验证，PR #60 已合入 main（`a500923`），Issue #55 已关闭；本地已同步，任务工作树/分支已清理，未部署**。
+
+### 2026-10-09 收尾核验
+
+用户授权收尾后，核对 PR #60 head 为 `0ce8f9bc5477187c9c17e2aad232bd9a1eb42bd3`（7554bcb 实现 + 文档 PR 链接）、base=main、无未解决审查意见，采用 merge commit 合入为 `a500923`，Issue #55 关闭；本地主目录 fast-forward 至 a500923 并核对任务 head 为祖先。本轮仅文档状态同步与 Git 核验，未重跑业务/模型验收；5177 临时预览已停止，后端 8000 为原主目录服务、未改动。任务 worktree `Hormuz-worktrees/kimi-issue-55`（先移除 node_modules 目录联接）与本地/远端 `kimi/issue-55` 分支已清理。
