@@ -28,8 +28,8 @@ import {
   changeRateText,
   dailySeries,
   dash,
-  defaultActivityWindow,
-  defaultCompareWindows,
+  areaInitialWindows,
+  groupAreaShipTypes,
   emptyResultText,
   eventFlagLabels,
   flagLabel,
@@ -90,6 +90,11 @@ import {
 // pendingAction 为不可信外部输入（unknown），只在 readAreaHint 里做运行时收窄。
 const props = defineProps<{
   open: boolean
+  boundaryVisible: boolean
+  drawing: boolean
+  resolving: boolean
+  areaNotice: string
+  dataWindow?: { start: string; end: string } | null
   bounds: ApiAreaBounds
   defaultBounds: ApiAreaBounds
   areaLabel: string
@@ -102,6 +107,9 @@ type AreaDialogPayload = AreaQueryDraft & { text: string }
 
 const emit = defineEmits<{
   close: []
+  'update:boundary-visible': [visible: boolean]
+  'restore-default': []
+  'cancel-draw': []
   'update:bounds': []
   // 成功得到一组新结果时 emit 一次（失败/取消不发）：父组件据此推进「结果版本」。
   'results-updated': []
@@ -114,10 +122,21 @@ echarts.use([LineChart, GridComponent, LegendComponent, TooltipComponent, Canvas
 
 // —— 表单状态 ——
 const mode = ref<AreaPanelMode>('snapshot')
-const snapshotAt = ref(utcInputValue(new Date()))
-const activityStart = ref(defaultActivityWindow().start)
-const activityEnd = ref(defaultActivityWindow().end)
-const compareWindows = ref(defaultCompareWindows())
+const snapshotAt = ref('')
+const activityStart = ref('')
+const activityEnd = ref('')
+const compareWindows = ref({ startA: '', endA: '', startB: '', endB: '' })
+let dataWindowInitialized = false
+watch(() => props.dataWindow, range => {
+  if (dataWindowInitialized || !range) return
+  const defaults = areaInitialWindows(range.start, range.end)
+  if (!defaults) return
+  dataWindowInitialized = true
+  if (!snapshotAt.value) snapshotAt.value = utcInputValue(range.start)
+  if (!activityStart.value && !activityEnd.value) { activityStart.value = defaults.start; activityEnd.value = defaults.end }
+  if (!compareWindows.value.startA && !compareWindows.value.startB)
+    compareWindows.value = { startA: defaults.startA, endA: defaults.endA, startB: defaults.startB, endB: defaults.endB }
+}, { immediate: true })
 const freshnessSeconds = ref('')
 const visitLimit = ref('')
 
@@ -130,6 +149,15 @@ const shipTypeError = ref('')
 const shipTypesLoading = ref(false)
 const selectedShipTypes = ref<string[]>([])
 const shipTypeHintIgnored = ref(false)
+
+const shipTypeGroups = computed(() => groupAreaShipTypes(shipTypeOptions.value))
+const otherShipTypeValues = computed(() => shipTypeGroups.value.other.map(option => option.value))
+const otherShipTypesChecked = computed(() => otherShipTypeValues.value.length > 0 && otherShipTypeValues.value.every(value => selectedShipTypes.value.includes(value)))
+const otherShipTypesMixed = computed(() => !otherShipTypesChecked.value && otherShipTypeValues.value.some(value => selectedShipTypes.value.includes(value)))
+function toggleOtherShipTypes() {
+  const rest = selectedShipTypes.value.filter(value => !otherShipTypeValues.value.includes(value))
+  selectedShipTypes.value = otherShipTypesChecked.value ? rest : [...rest, ...otherShipTypeValues.value]
+}
 
 const allShipTypeValues = computed(() => shipTypeOptions.value.map(option => option.value))
 const allShipTypesChecked = computed(() => allShipTypesSelected(selectedShipTypes.value, allShipTypeValues.value))
@@ -556,13 +584,19 @@ async function applyHintWithQuery(hint: AreaConditionHint) {
   applyHint(hint, true)
 }
 
+let bootstrapped = false
+let consumedAction: unknown = null
 function bootstrapOnOpen() {
-  const pending = readAreaHint(props.pendingAction) ?? queuedHint.value
+  const pending = (props.pendingAction !== consumedAction ? readAreaHint(props.pendingAction) : null) ?? queuedHint.value
   if (pending) {
+    consumedAction = props.pendingAction
     queuedHint.value = null
+    bootstrapped = true
     void applyHintWithQuery(pending)
     return
   }
+  if (bootstrapped) return
+  bootstrapped = true
   const context = readAreaHint(props.agentContext)
   if (!shipTypeOptions.value.length && !shipTypesLoading.value) void loadShipTypes(context?.shipTypes ?? null)
   if (context) applyHint(context, false)
@@ -581,6 +615,7 @@ watch(() => props.pendingAction, value => {
     queuedHint.value = hint
     return
   }
+  consumedAction = value
   void applyHintWithQuery(hint)
 }, { deep: true })
 
@@ -715,7 +750,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside v-if="open" class="aa-panel" aria-label="区域船舶活动分析">
+  <aside v-show="open" class="aa-panel" aria-label="区域船舶活动分析">
     <header class="aa-head">
       <h2>区域活动分析</h2>
       <span class="aa-head-note">UTC · 判定与汇总由后端算法给出</span>
@@ -729,13 +764,26 @@ onBeforeUnmount(() => {
           <h3 id="aa-area-heading">分析区域</h3>
           <span class="aa-chip" :class="props.areaIsDefault ? 'aa-chip-ok' : 'aa-chip-warn'">{{ props.areaIsDefault ? '默认区域' : '自定义矩形' }}</span>
         </div>
-        <p class="aa-area-name">{{ dash(props.areaLabel) }}</p>
-        <p class="aa-mono aa-muted">{{ boundsText(props.bounds) }}</p>
-        <p class="aa-muted">包含规则（半开矩形）：west ≤ 经度 &lt; east，south ≤ 纬度 &lt; north；区域不是官方航道边界。</p>
+        <p class="aa-area-name">当前区域：{{ props.areaIsDefault ? '默认区域' : '自定义区域' }}</p>
+        <p class="aa-muted">{{ dash(props.areaLabel) }}</p>
+        <label class="aa-boundary-switch">
+          <input type="checkbox" role="switch" aria-label="显示区域边界" :checked="boundaryVisible" :aria-checked="boundaryVisible" @change="emit('update:boundary-visible', ($event.target as HTMLInputElement).checked)" />
+          <span>显示区域边界</span><strong>{{ boundaryVisible ? '开启' : '关闭' }}</strong>
+        </label>
+        <p v-if="!boundaryVisible" class="aa-muted" role="status">边界已隐藏，分析范围不变</p>
+        <details class="aa-advanced">
+          <summary>区域详情（非官方航道边界）</summary>
+          <p class="aa-mono aa-muted">{{ boundsText(props.bounds) }}</p>
+          <p class="aa-muted">包含规则（半开矩形）：west ≤ 经度 &lt; east，south ≤ 纬度 &lt; north；默认范围为项目分析区域，自定义范围来自用户圈选，均不是官方航道边界。</p>
+        </details>
         <div class="aa-row">
-          <button type="button" class="aa-btn" @click="emit('update:bounds')">重新圈选</button>
-          <span class="aa-muted">圈选后由主界面更新区域；旧结果会标记「区域已变更，待查询」。</span>
+          <button type="button" class="aa-btn" :disabled="resolving" @click="emit('update:bounds')">重新圈选</button>
+          <button type="button" class="aa-btn" :disabled="resolving" @click="emit('restore-default')">恢复默认区域</button>
+          <button v-if="drawing || resolving" type="button" class="aa-btn" @click="emit('cancel-draw')">取消绘制</button>
         </div>
+        <p v-if="drawing" class="aa-notice" role="status">在地图上拖拽圈选；Esc 或取消绘制保留原区域。</p>
+        <p v-if="resolving" class="aa-muted" role="status">正在校验新区域…</p>
+        <p v-if="areaNotice" class="aa-notice" role="status">{{ areaNotice }}</p>
       </section>
 
       <!-- 分析模式 -->
@@ -770,7 +818,7 @@ onBeforeUnmount(() => {
         <p v-if="shipTypeError" class="aa-warn" role="status">{{ shipTypeError }}。本次查询按「全部船型」提交。</p>
         <p v-else-if="!shipTypeOptions.length && !shipTypesLoading" class="aa-muted">船型列表为空（或未加载），本次查询按「全部船型」提交。</p>
         <ul v-if="shipTypeOptions.length" class="aa-checks">
-          <li v-for="(option, index) in shipTypeOptions" :key="option.value">
+          <li v-for="(option, index) in shipTypeGroups.primary" :key="option.value">
             <label :for="`aa-ship-type-${index}`">
               <input
                 :id="`aa-ship-type-${index}`"
@@ -784,17 +832,43 @@ onBeforeUnmount(() => {
             <small v-if="option.count !== null" :title="option.count_scope ?? ''">{{ formatCount(option.count) }} 艘</small>
           </li>
         </ul>
+        <div v-if="shipTypeGroups.other.length" class="aa-other-types">
+          <label class="aa-other-check">
+            <input type="checkbox" aria-label="其它船型（全部）" :checked="otherShipTypesChecked" :indeterminate="otherShipTypesMixed" :aria-checked="otherShipTypesMixed ? 'mixed' : otherShipTypesChecked" @change="toggleOtherShipTypes" />
+            <span>其它</span><small>{{ shipTypeGroups.other.length }} 种船型</small>
+          </label>
+          <details>
+            <summary>展开其它船型</summary>
+        <ul class="aa-checks">
+          <li v-for="(option, index) in shipTypeGroups.other" :key="option.value">
+            <label :for="`aa-other-type-${index}`">
+              <input
+                :id="`aa-other-type-${index}`"
+                type="checkbox"
+                :value="option.value"
+                :checked="selectedShipTypes.includes(option.value)"
+                @change="toggleShipType(option.value)"
+              >
+              <span>{{ option.label }}</span>
+            </label>
+            <small v-if="option.count !== null" :title="option.count_scope ?? ''">{{ formatCount(option.count) }} 艘</small>
+          </li>
+        </ul>
+          </details>
+        </div>
         <p v-if="shipTypeHintIgnored" class="aa-warn" role="status">对话上下文给出的船型不在当前列表中，已回退为全选。</p>
+        <details class="aa-advanced"><summary>船型来源与口径说明</summary>
         <p v-if="shipTypeSource || shipTypeTotal !== null" class="aa-muted">列表来源：{{ dash(shipTypeSource) }}；船舶总数 {{ formatCount(shipTypeTotal) }}。计数口径见各船型标注，保留值（缺失/未知）来自后端 reserved。</p>
         <ul v-if="shipTypeLimitations.length" class="aa-limits">
           <li v-for="(item, index) in shipTypeLimitations" :key="index">{{ item }}</li>
         </ul>
+        </details>
       </section>
 
       <!-- 查询条件 -->
       <form class="aa-section" aria-labelledby="aa-cond-heading" @submit.prevent="runQuery">
         <h3 id="aa-cond-heading">查询条件</h3>
-        <p class="aa-muted">时间一律按 UTC 输入与显示，界面不做本地时区换算。</p>
+        <p class="aa-muted">时间按 UTC 输入；默认时段取自已加载的 AIS 数据，修改后保留。</p>
 
         <template v-if="mode === 'snapshot'">
           <div class="aa-field">
@@ -1248,6 +1322,9 @@ onBeforeUnmount(() => {
 .aa-section h5 { margin: 10px 0 4px; font-size: 11px; font-weight: 600; color: var(--muted); }
 .aa-section-head { display: flex; align-items: center; gap: 8px; }
 .aa-section-head h3 { flex: 1; }
+.aa-boundary-switch { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 12px; cursor: pointer; min-height: 32px; }
+.aa-boundary-switch strong { margin-left: auto; color: var(--accent); font-size: 11px; }
+.aa-boundary-switch input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .aa-area-name { margin: 0 0 2px; font-size: 12px; }
 .aa-muted { margin: 4px 0; color: var(--muted); font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
 .aa-mono { font-family: Consolas, 'Courier New', monospace; font-variant-numeric: tabular-nums; }
@@ -1269,6 +1346,10 @@ onBeforeUnmount(() => {
 .aa-mode:focus-visible, .aa-btn:focus-visible, .aa-check input:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 .aa-btn:disabled { opacity: .45; cursor: not-allowed; }
 .aa-btn-primary { border-color: var(--accent); color: var(--accent); }
+.aa-other-types { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+.aa-other-check { display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; }
+.aa-other-check small { color: var(--muted); margin-left: auto; }
+.aa-other-types summary { padding: 6px 0; font-size: 11px; color: var(--muted); cursor: pointer; }
 .aa-checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 10px; }
 .aa-checks li { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; }
 .aa-checks label { display: flex; align-items: center; gap: 6px; cursor: pointer; min-width: 0; }

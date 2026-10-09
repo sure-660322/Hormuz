@@ -88,11 +88,12 @@ watch(eventView, view => { if (view === 'timeline') void nextTick(scrollToCurren
       <button :class="{ active: category === 'ships' }" :aria-pressed="category === 'ships'" @click="category = 'ships'">船舶</button>
     </div>
     <template v-if="category === 'events'">
+      <div class="explorer-event-tools">
       <div class="event-view-switch" role="group" aria-label="新闻事件展示方式">
         <button :class="{ active: eventView === 'timeline' }" :aria-pressed="eventView === 'timeline'" @click="eventView = 'timeline'">时间线</button>
         <button :class="{ active: eventView === 'list' }" :aria-pressed="eventView === 'list'" @click="eventView = 'list'">列表</button>
       </div>
-      <div class="explorer-filters" :class="{ single: eventView === 'timeline' }">
+      <div class="explorer-filters event-filters" :class="{ single: eventView === 'timeline' }">
         <select aria-label="新闻事件类型" :value="eventType" @change="emit('typeChange', ($event.target as HTMLSelectElement).value)">
           <option value="all">全部类型</option>
           <option v-for="(kind, key) in eventKinds" :key="key" :value="key">{{ kind.label }}</option>
@@ -101,8 +102,9 @@ watch(eventView, view => { if (view === 'timeline') void nextTick(scrollToCurren
           <option value="desc">较晚日期在前</option><option value="asc">较早日期在前</option>
         </select>
       </div>
+      </div>
       <p class="explorer-count">截至当前回放时刻 {{ events.length }} / {{ totalEvents }} 条新闻事件</p>
-      <p class="explorer-count">{{ eventView === 'timeline' ? '按发生日期展示，不代表具体时刻。' : '日期未明确的事件可在下方单独阅读。' }}</p>
+
       <div v-if="eventsLoading" class="explorer-message" role="status">正在加载新闻事件…</div>
       <div v-else-if="eventsError" class="explorer-message" role="alert">{{ eventsError }} <button v-if="eventsAvailable" @click="emit('retry')">重试</button></div>
       <div v-else-if="eventView === 'list'" class="explorer-list">
@@ -127,7 +129,7 @@ watch(eventView, view => { if (view === 'timeline') void nextTick(scrollToCurren
           <section v-for="group in dayGroups" :key="group.day" class="dayline-day" :class="{ current: group.day === currentDay }" :data-day="group.day">
             <h3><time :datetime="group.day">{{ dayLabel(group.day) }}</time><small>{{ group.events.length }} 条</small></h3>
             <div class="dayline-cards">
-              <button v-for="(event, i) in group.events" :key="event.event_id" class="dayline-card" :class="{ right: i % 2 === 1, selected: selectedEventId === event.event_id }" :title="eventTimeText(event)" @click="selectEvent(event)">
+              <button v-for="(event, i) in group.events" :key="event.event_id" class="dayline-card" :class="{ right: i % 2 === 1, selected: selectedEventId === event.event_id }" :title="`${event.title} · ${eventTimeText(event)}`" @click="selectEvent(event)">
                 <span class="event-category dayline-card-kind" :style="{ color: eventKind(event.event_type).color }"><img :src="eventKind(event.event_type).icon" alt="" />{{ eventKind(event.event_type).label }}</span>
                 <span class="dayline-card-content">
                   <span class="dayline-card-cover" aria-hidden="true">

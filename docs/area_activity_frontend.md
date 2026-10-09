@@ -13,7 +13,7 @@
 | --- | --- |
 | `frontend/src/domain/areaActivity.ts` | 纯函数：视图类型、响应归一化、UTC 时间换算、数值/时长格式化、`change_rate` 空值文案、截断提示、状态与标记文案、emit 参数与对话提示词。无副作用、无 import |
 | `frontend/src/components/AreaActivityPanel.vue` | 三模式面板：区域/模式/船型/条件表单 + 结果展示 + 请求守卫 + 无障碍与窄屏；样式全部在 `<style scoped>` 内（不改 `style.css`） |
-| `frontend/checks/area-activity.cjs` | 静态语义检查（30 项）+ 纯函数行为检查；`--types` 追加隔离类型检查 |
+| `frontend/checks/area-activity.cjs` | 静态语义检查（32 项）+ 纯函数行为检查；`--types` 追加隔离类型检查 |
 | `docs/area_activity_frontend.md` | 本文档 |
 
 组件只调用 4 个 `api.ts` 函数：`fetchAreaShipTypes()`、`fetchAreaSnapshot(query, signal?)`、`fetchAreaActivity(query, signal?)`、`fetchAreaCompare(query, signal?)`；不自己拼 URL，不调用 `fetch`。`fetchAreaDefault()` / `resolveAreaBounds()` 未使用：区域名称/版本/默认标记由 props 传入、结果区回显响应里的 `area`。
@@ -24,6 +24,11 @@
 // props
 {
   open: boolean
+  boundaryVisible: boolean          // 用户显示偏好，与查询区域独立
+  drawing: boolean
+  resolving: boolean
+  areaNotice: string
+  dataWindow?: { start: string; end: string } | null // 已加载AIS时间轴范围；只初始化一次
   bounds: ApiAreaBounds              // 当前分析矩形 { west, south, east, north }
   defaultBounds: ApiAreaBounds       // 默认区域矩形（用于对照展示）
   areaLabel: string                  // 例如「霍尔木兹海峡核心通行区」或「自定义分析矩形」
@@ -34,6 +39,9 @@
 
 // emits
 close: []
+'update:boundary-visible': [visible: boolean]
+'restore-default': []
+'cancel-draw': []
 'update:bounds': []                                            // 无参数：请父组件进入重新圈选流程
 'results-updated': []                                          // 每次成功得到新结果时一次；失败/取消不发
 'locate-ship': [{ shipId: number; startAt: string; endAt: string }]        // startAt/endAt = visit.first_inside_at / last_inside_at（ISO Z）
@@ -60,9 +68,9 @@ close: []
 
 | 模式 | 表单 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| 时刻在场 | 时刻 `datetime-local` | 当前 UTC 时刻 | 标签与说明均标注 UTC；内部转 ISO Z |
-| 时段活动 | 起止 `datetime-local` | 当日 UTC 自然日 `[今天 00:00, 明天 00:00)` | 界面写明终点不含（半开区间） |
-| 两时段比较 | A/B 各起止 | A = 前一日、B = 当日 UTC 自然日 | 说明两期共用区域/筛选/算法，允许不等长 |
+| 时刻在场 | 时刻 `datetime-local` | 当前地图回放时刻（未回填时用数据范围起点） | 标签与说明均标注 UTC；内部转 ISO Z |
+| 时段活动 | 起止 `datetime-local` | 数据范围内第一个完整 UTC 自然日 | 界面写明终点不含（半开区间） |
+| 两时段比较 | A/B 各起止 | A = 数据范围内第一个完整UTC日，B = 紧接的下一个UTC日；短范围回退到有效区间 | 说明两期共用区域/筛选/算法，允许不等长 |
 
 - `<input type="datetime-local">` 的值按 UTC 读数，`utcInputToIso` 补 `:00Z`；非法日期（如 `2026-02-30`）返回 null 并在提交前拦下，不发请求。
 - 高级参数（可折叠）：`freshness_seconds`（时刻在场）、`visit_limit`（时段活动/两时段比较），留空用后端默认。
@@ -71,6 +79,7 @@ close: []
 ## 四、船型筛选
 
 - 选项来自 `fetchAreaShipTypes()`，由 `mergeShipTypeOptions(ship_types, reserved)` 合并后端 `ship_types` 与 `reserved`（含 `__missing__`/`__unknown__`），前端不硬编码任何船型值。
+- 展示默认保留油轮、集装箱、货船三个重要标签，其余真实选项放进可展开「其它」。总开关选中/取消全部子项，单个子项选择产生部分选中状态；分组只改变展示，查询仍提交接口返回的具体 value，缺失/未知均保留。来源与限制集中在折叠说明。
 - 默认全选；全选等价于查询值 `null`（不带 `ship_type` 参数），部分选择传数组。
 - 「清空」后禁止提交并提示：后端把「空船型」解释为全部，静默提交会变成全选。
 - 船型列表加载失败或为空时按「全部船型」提交，并如实提示失败原因；`count`/`count_scope` 逐项展示（`raw_values` 不展示，label 已足够）。
@@ -186,5 +195,17 @@ npm run build
 1. `area` 采用后端真实结构（嵌套 `bounds`、`version` 可为 null、`containment` 字符串）；`domain/areaActivity.ts` 的 `readBounds` 同时兼容嵌套与扁平写法，因此 api.ts 保持现在的 `ApiAreaInfo.bounds` 即可，无需改动。
 2. 组件不 import api.ts 的响应 interface，只用 `type ApiAreaBounds` + 4 个函数；响应经 `toAreaXxxResult()` 宽松归一化。若后续 api.ts 增删字段，只要函数名/参数名不变，组件不受影响。
 3. 截断提示只认 `limits.list_truncated` / `limits.detail_truncated`；比较模式没有顶层 `coverage`，组件按 `a.coverage`/`b.coverage` 展示两期覆盖。
-4. 未使用 `fetchAreaDefault()`/`resolveAreaBounds()`；若希望面板显示后端默认区域版本或让「重新圈选」先经 `resolve-area` 规范化，需要在 App.vue 侧已完成并把结果经 `areaLabel`/`bounds` 传入。
+4. 面板不直接使用 `fetchAreaDefault()`/`resolveAreaBounds()`；App.vue 已负责加载默认区域、规范化圈选与失败回滚，经 `areaLabel`/`bounds` 传入。
 5. 面板根元素不做定位；App.vue 需要给它一个确定高度/宽度的容器（推荐右侧栏或浮层，`min-height: 0` 保证内部滚动）。
+
+## 2026-10-08 Issue #54 显示状态与分析状态
+
+App.vue 分别维护面板打开、边界偏好和临时绘制；有效可见性为「面板打开且偏好开启且不在案例」。MapView 仅据有效可见性增删已确认矩形，不修改父层 bounds。默认面板首次开启才初始化显示偏好，以后关闭/重开沿用偏好。
+
+面板首次打开后保留组件，关闭用 v-show 隐藏，筛选、日期、现有结果及版本保留；关闭仍取消在途查询。对话建议仅消费新动作，重开不重复查询或重新预填。圈选自动显示边界，完成经真实 resolve-area 校验；取消、隐藏、关闭面板与进入案例递增校验序号，迟到响应不提交。恢复默认沿用已有区域变更/结果过期规则，不修改显示偏好。
+
+「当前区域：默认区域 / 自定义区域」常显；坐标、半开规则与范围依据放进「区域详情（非官方航道边界）」。隐藏时面板提示分析范围不变；绘制/取消与失败反馈收进面板，地图不再常驻长坐标条。区域编辑限地图探索；案例入口给出解释与切换按钮，案例退出恢复原面板/显示状态，不恢复拖拽。
+
+本轮状态、复跑命令及截图见[Issue #54 记录](issue54_area_boundary.md)。开关的 Space 键与 aria-checked 纳入本轮验证；触屏和纯键盘创建矩形仍未支持。
+
+2026-10-08 用户注释返工（实现 `5ff7735`）：案例提示改为右侧独立高层级浮层；左侧筛选头部紧凑化、事件标题完整换行；船型分组与AIS默认时段已验证。区域纯函数/语义检查32/32、S11回归28项、S12专项15项通过，证据见[返工记录](issue54_area_boundary.md#2026-10-08-用户注释返工)。

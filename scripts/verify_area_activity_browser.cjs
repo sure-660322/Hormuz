@@ -71,13 +71,13 @@ const SEL = {
   modeTabs: ['.aa-modes button.aa-mode'],
   areaLabel: ['p.aa-area-name'],
   areaChip: ['.aa-section-head .aa-chip'],
-  statusBar: ['.area-status-bar'],
-  statusCoord: ['.area-status-bar .area-coord'],
-  statusTag: ['.area-status-bar .area-tag'],
-  statusNote: ['.area-status-bar .area-note'],
-  restoreDefault: ['.area-status-bar button.area-btn:has-text("恢复默认区域")', 'button:has-text("恢复默认区域")'],
-  reselectRect: ['.area-status-bar button.area-btn:has-text("重新圈选")', 'button:has-text("重新圈选")'],
-  cancelDraw: ['.area-status-bar button.area-btn:has-text("取消绘制")'],
+  statusBar: ['.aa-section:first-child'],
+  statusCoord: ['.aa-section:first-child .aa-mono'],
+  statusTag: ['.aa-section:first-child .aa-chip'],
+  statusNote: ['.aa-section:first-child .aa-notice'],
+  restoreDefault: ['.aa-section:first-child button.aa-btn:has-text("恢复默认区域")', 'button:has-text("恢复默认区域")'],
+  reselectRect: ['.aa-section:first-child button.aa-btn:has-text("重新圈选")', 'button:has-text("重新圈选")'],
+  cancelDraw: ['.aa-section:first-child button.aa-btn:has-text("取消绘制")'],
   drawHint: ['.area-draw-hint'],
   suggestBar: ['.area-suggest-bar'],
   openSuggested: ['[data-testid="open-area-analysis"]'],
@@ -166,12 +166,17 @@ const step = (id, name, fn) => steps.push({ id, name, run: stepGuard(fn, id, nam
 
 async function openAreaPanel(page) {
   let panel = await findFirst(page, SEL.panel, { timeout: 1500 })
-  if (panel) return panel
+  if (panel) {
+    const details = panel.locator('.aa-section:first-child details')
+    if (!await details.getAttribute('open').then(value => value !== null)) await details.locator('summary').click()
+    return panel
+  }
   const opener = await findFirst(page, SEL.openPanel, { timeout: 8000 })
   if (!opener) throw new Error('找不到打开区域活动面板的入口（App.vue 未接入？SEL.openPanel 待补齐）')
   await opener.click()
   panel = await findFirst(page, SEL.panel, { timeout: 8000 })
   if (!panel) throw new Error('面板未出现（aside.aa-panel）')
+  await panel.locator('.aa-section:first-child details summary').click()
   return panel
 }
 
@@ -229,7 +234,7 @@ async function statusText(page) {
   return el ? ((await el.textContent()) || '').trim() : ''
 }
 
-/** 地图被 .aa-panel / .area-status-bar / .tool-rail 覆盖，且面板宽度在运行间会变化，
+/** 地图被 .aa-panel / .aa-section:first-child / .tool-rail 覆盖，且面板宽度在运行间会变化，
  *  因此在每次圈选前按实际几何算出「空白区」的最长对角，保证鼠标事件落在 .leaflet-container 上。 */
 async function safeDragPoints(page, { horizontal = false } = {}) {
   const geo = await page.evaluate(() => {
@@ -242,7 +247,7 @@ async function safeDragPoints(page, { horizontal = false } = {}) {
     const controls = ['.leaflet-control-attribution', '.leaflet-control-scale', '.leaflet-control-zoom',
                       '.map-top-tools', '.legend-toggle', '.map-hud', '.ais-snapshot-strip']
       .map(r).filter(Boolean)
-    return { map: r('.leaflet-container'), panel: r('.aa-panel'), status: r('.area-status-bar'),
+    return { map: r('.leaflet-container'), panel: r('.aa-panel'), status: r('.aa-section:first-child'),
              rail: r('.tool-rail'), controls }
   })
   const m = geo.map
@@ -345,7 +350,7 @@ async function performDraw(page, { zoomOutSteps = 0, horizontal = false } = {}) 
   await page.mouse.up()
   await page.waitForTimeout(3500)
   const diagAfter = await page.evaluate(() => {
-    const note = document.querySelector('.area-status-bar .area-note')
+    const note = document.querySelector('.aa-section:first-child .aa-notice')
     return { note: (note?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120),
              hint: document.querySelectorAll('.area-draw-hint').length }
   })
@@ -375,9 +380,9 @@ step('S0', '应用可访问 + 面板可打开 + 控制台无 error', async ({ pa
 step('S1', '默认区域显示（状态条 + 面板名称/边界/默认标记）', async ({ page }) => {
   await openAreaPanel(page)
   const statusBar = await findFirst(page, SEL.statusBar)
-  if (!statusBar) { record('S1', '默认区域状态条', 'BLOCKED', '找不到 .area-status-bar'); return }
+  if (!statusBar) { record('S1', '默认区域状态条', 'BLOCKED', '找不到 .aa-section:first-child'); return }
   const statusText = ((await statusBar.textContent()) || '').replace(/\s+/g, ' ').trim()
-  if (!/默认项目分析区域/.test(statusText)) throw new Error(`状态条未标记默认区域：${statusText.slice(0, 120)}`)
+  if (!/默认区域/.test(statusText)) throw new Error(`状态条未标记默认区域：${statusText.slice(0, 120)}`)
   record('S1', '状态条显示默认区域', 'PASS', statusText.slice(0, 120))
   const label = await findFirst(page, SEL.areaLabel)
   const labelText = label ? ((await label.textContent()) || '').trim() : ''
@@ -421,7 +426,7 @@ step('S3', '手动矩形圈选：拖拽 / ESC 取消 / 超大矩形被拒 / 恢�
   await openAreaPanel(page)
   const pts = await performDraw(page)
   const statusText = ((await page.locator(SEL.statusBar[0]).first().textContent()) || '').replace(/\s+/g, ' ').trim()
-  if (!/自选矩形/.test(statusText)) throw new Error(`圈选后状态条未变为自选矩形：${statusText.slice(0, 140)}（拖动点 ${JSON.stringify(pts.extent)}）`)
+  if (!/自定义区域/.test(statusText)) throw new Error(`圈选后状态条未变为自选矩形：${statusText.slice(0, 140)}（拖动点 ${JSON.stringify(pts.extent)}）`)
   record('S3', '拖拽圈选应用为自定义矩形', 'PASS', `${statusText.slice(0, 120)}；空白区范围 ${JSON.stringify(pts.extent)}`)
   await shot(page, 'S3-rect-drag')
 
@@ -476,7 +481,7 @@ step('S3', '手动矩形圈选：拖拽 / ESC 取消 / 超大矩形被拒 / 恢�
   const statusRestored = ((await page.locator(SEL.statusBar[0]).first().textContent()) || '').replace(/\s+/g, ' ').trim()
   const coordRestored = ((await page.locator(SEL.statusCoord[0]).first().textContent()) || '').trim()
   const boundsOk = /25\.800–27\.100.*55\.800–57\.100/.test(coordRestored)
-  const tagOk = /默认项目分析区域/.test(statusRestored)
+  const tagOk = /默认区域/.test(statusRestored)
   if (boundsOk && tagOk) {
     record('S3', '恢复默认区域', 'PASS', `${coordRestored}；${statusRestored.slice(0, 60)}`)
   } else {
@@ -865,6 +870,184 @@ step('S10', '「写入对话」：区域条件带入智能体输入框且无 Ref
 })
 
 // ---------------------------------------------------------------- 主流程
+
+// Issue #54: focused regression without a model call; source/query state survives display actions.
+step('S11', '边界显示偏好、结果保留、绘制取消与案例恢复', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await page.goto(BASE)
+  const panel = page.getByRole('complementary', { name: '区域船舶活动分析' })
+  const sw = page.getByRole('switch', { name: '显示区域边界' })
+  const button = name => page.getByRole('button', { name, exact: true })
+  const assert = (ok, label) => { if (!ok) throw new Error(label); record('S11', label, 'PASS', '') }
+  const queries = []
+  page.on('request', request => { if (/area-activity\/(snapshot|activity|compare)/.test(request.url())) queries.push(request.url()) })
+  assert(!await panel.isVisible(), '首次进入不显示区域面板')
+  await shot(page, 'S11-initial')
+  await openAreaPanel(page)
+  assert(await sw.isChecked(), '首次打开默认显示边界')
+  await page.getByLabel('时刻（UTC）', { exact: true }).fill('2026-02-25T12:00')
+  await runQuery(page)
+  const state = async () => JSON.stringify({
+    bounds: await panel.locator('.aa-mono').first().textContent(),
+    id: await panel.getAttribute('data-area-id'),
+    boundsVersion: await panel.getAttribute('data-bounds-version'),
+    resultVersion: await panel.getAttribute('data-result-version'),
+    time: await page.getByLabel('时刻（UTC）', { exact: true }).inputValue(),
+    filters: await panel.locator('.aa-checks input:checked').evaluateAll(nodes => nodes.map(node => node.value)),
+    result: await panel.locator('.aa-status').textContent(),
+  })
+  const saved = await state(), count = queries.length
+  await sw.uncheck(); await sw.check()
+  assert(await state() === saved && queries.length === count, '默认区开关保持边界、身份、筛选、结果和版本且无新分析请求')
+  await sw.uncheck(); await button('关闭区域活动分析').click(); await button('区域分析').click()
+  assert(!await sw.isChecked() && await state() === saved && queries.length === count, '重开保持隐藏偏好与已有条件和结果')
+  for (const cancel of ['Escape', '取消绘制', '关闭开关', '关闭面板']) {
+    await button('重新圈选').click()
+    assert(await sw.isChecked(), `重新圈选自动开启：${cancel}`)
+    const map = await page.getByLabel('交互地图', { exact: true }).boundingBox()
+    await page.mouse.move(map.x + 30, map.y + 300); await page.mouse.down()
+    await page.mouse.move(map.x + 110, map.y + 390, { steps: 5 })
+    if (cancel === 'Escape') await page.keyboard.press('Escape')
+    else if (cancel === '关闭开关') { await sw.focus(); await page.keyboard.press('Space') }
+    else { await button(cancel === '关闭面板' ? '关闭区域活动分析' : cancel).focus(); await page.keyboard.press('Enter') }
+    await page.mouse.up()
+    if (cancel === '关闭面板') await button('区域分析').click()
+    assert(await page.locator('.area-draw-hint').count() === 0, `${cancel}取消临时绘制`)
+  }
+  for (const visible of [true, false]) {
+    await sw.setChecked(visible)
+    await button('典型案例').click()
+    await page.getByRole('button', { name: '退出案例，恢复原态势' }).first().waitFor()
+    assert(!await panel.isVisible() && await page.locator('.area-draw-hint').count() === 0, `案例暂停区域面板与绘制：${visible}`)
+    await shot(page, `S11-case-${visible}`)
+    const selector = page.getByRole('combobox', { name: '选择案例' })
+    await page.waitForFunction(() => !document.querySelector('.case-selector select')?.disabled)
+    await selector.selectOption('athe-nova')
+    await page.getByRole('complementary', { name: 'ATHE NOVA案例' }).waitFor()
+    await shot(page, `S11-athe-${visible}`)
+    await button('区域分析').click()
+    await page.getByRole('button', { name: '关闭区域分析提示' }).waitFor()
+    assert(!await panel.isVisible(), '案例区域入口提示切换探索且不打开全量分析')
+    await page.getByRole('button', { name: '退出案例，恢复原态势' }).first().click()
+    await panel.waitFor({ state: 'visible' })
+    assert(await sw.isChecked() === visible && await page.locator('.area-draw-hint').count() === 0, `退出恢复偏好且不复活拖拽：${visible}`)
+  }
+
+  const drag = async () => {
+    await button('重新圈选').click()
+    const map = await page.getByLabel('交互地图', { exact: true }).boundingBox()
+    await page.mouse.move(map.x + 30, map.y + 315); await page.mouse.down()
+    await page.mouse.move(map.x + 145, map.y + 405, { steps: 8 }); await page.mouse.up()
+  }
+  await drag()
+  await panel.getByText('当前区域：自定义区域', { exact: true }).waitFor()
+  await runQuery(page)
+  const custom = await state(), customQueries = queries.length
+  await sw.uncheck(); await sw.check()
+  assert(await state() === custom && queries.length === customQueries, '自定义区开关保持边界、筛选、结果与版本且无新分析请求')
+  await shot(page, 'S11-custom')
+  await sw.uncheck(); await shot(page, 'S11-custom-hidden')
+  await button('恢复默认区域').click()
+  await panel.getByText('当前区域：默认区域', { exact: true }).waitFor()
+  assert(!await sw.isChecked(), '恢复默认不额外打开隐藏边界')
+  const defaultState = await state()
+  const zoomMap = await page.getByLabel('交互地图', { exact: true }).boundingBox()
+  await page.mouse.move(zoomMap.x + 100, zoomMap.y + 240)
+  for (let index = 0; index < 6; index++) { await page.mouse.wheel(0, 500); await page.waitForTimeout(180) }
+  await drag()
+  await panel.getByText(/单边跨度不能超过/).waitFor()
+  assert(await state() === defaultState, '真实422保留原区域、条件、结果与版本')
+  await button('⌖ 全局视野').click()
+  let release, received
+  const gate = new Promise(resolve => { release = resolve })
+  const ready = new Promise(resolve => { received = resolve })
+  await page.route('**/api/area-activity/resolve-area', async route => {
+    const response = await route.fetch(); received(); await gate; await route.fulfill({ response })
+  })
+  await drag(); await ready; await sw.uncheck(); release()
+  await page.waitForTimeout(500)
+  await page.unroute('**/api/area-activity/resolve-area')
+  assert(await state() === defaultState && !await sw.isChecked(), '关闭开关后丢弃真实校验的迟到响应')
+  await button('关闭区域活动分析').click()
+  const map = await page.getByLabel('交互地图', { exact: true }).boundingBox()
+  const pane = page.locator('.leaflet-map-pane'), before = await pane.getAttribute('style')
+  await page.mouse.move(map.x + 200, map.y + 240); await page.mouse.down()
+  await page.mouse.move(map.x + 265, map.y + 275, { steps: 8 }); await page.mouse.up()
+  await page.waitForTimeout(200)
+  assert(await pane.getAttribute('style') !== before, '取消后地图拖拽恢复')
+  await button('区域分析').click()
+  for (const width of [1280, 1024, 390]) {
+    await page.setViewportSize({ width, height: 720 })
+    await sw.focus(); await page.keyboard.press('Space'); await page.keyboard.press('Space')
+    const box = await sw.boundingBox()
+    assert(box.x >= 0 && box.x + box.width <= width && box.y >= 0 && box.y + box.height <= 720, `开关键盘可达：${width}`)
+    await shot(page, `S11-${width}`)
+  }
+})
+
+
+step('S12', '用户注释返工：提示遮挡、紧凑侧栏、船型分组和AIS默认时段', async ({ page }) => {
+  const assert = (ok, label) => { if (!ok) throw new Error(label); record('S12', label, 'PASS', '') }
+  const button = name => page.getByRole('button', { name, exact: true })
+  await page.setViewportSize({ width: 1086, height: 900 })
+  await page.goto(BASE)
+  await page.locator('.ais-snapshot-strip').waitFor()
+  const sidebar = page.getByRole('complementary', { name: '事件与船舶探索' })
+  const sidebarBox = await sidebar.boundingBox(), listBox = await sidebar.locator('.explorer-list').boundingBox()
+  assert(listBox.height > sidebarBox.height * .5, '1086×900事件列表占侧栏一半以上')
+  const title = sidebar.locator('.dayline-card strong').first()
+  assert(await title.evaluate(el => getComputedStyle(el).webkitLineClamp) === 'none', '事件标题完整换行、不做行数截断')
+  await shot(page, 'S12-explorer-1086')
+  await openAreaPanel(page)
+  const panel = page.getByRole('complementary', { name: '区域船舶活动分析' })
+  await page.waitForFunction(() => document.querySelectorAll('.aa-checks input').length > 3)
+  assert(await panel.locator('input[type=checkbox]:not([role=switch]):visible').count() === 4, '船型默认仅显示三个主要项与其它总开关')
+  const other = page.getByRole('checkbox', { name: '其它船型（全部）' })
+  await button('清空').click()
+  await page.getByRole('checkbox', { name: '油轮', exact: true }).check()
+  await other.check()
+  await panel.getByText('展开其它船型', { exact: true }).click()
+  const leaves = panel.locator('.aa-other-types .aa-checks input')
+  assert(await leaves.evaluateAll(nodes => nodes.every(node => node.checked)), '勾选其它总项选中全部子类型')
+  await leaves.first().uncheck()
+  assert(await other.getAttribute('aria-checked') === 'mixed' && await other.evaluate(el => el.indeterminate), '单个子类型取消后其它呈部分选中')
+  const wanted = await panel.locator('.aa-checks input:checked').evaluateAll(nodes => nodes.map(node => node.value).sort())
+  await page.getByLabel('时刻（UTC）', { exact: true }).fill('2026-02-25T12:00')
+  const request = page.waitForRequest(request => request.url().includes('/area-activity/snapshot?'))
+  await runQuery(page)
+  assert(JSON.stringify(new URL((await request).url()).searchParams.getAll('ship_type').sort()) === JSON.stringify(wanted), '分组查询仍提交具体真实船型值，没有其它伪值')
+  await other.check(); await other.uncheck()
+  assert(await leaves.evaluateAll(nodes => nodes.every(node => !node.checked)), '取消其它总项清空全部子类型')
+  await panel.getByText('展开其它船型', { exact: true }).click()
+  await button('时段活动').click()
+  assert(await page.getByLabel('开始时刻（UTC，含）').inputValue() === '2026-02-25T00:00', '活动默认开始位于AIS七日范围')
+  assert(await page.getByLabel('结束时刻（UTC，不含）').inputValue() === '2026-02-26T00:00', '活动默认结束为次日UTC边界')
+  await shot(page, 'S12-area-1086')
+  await button('两时段比较').click()
+  assert(await page.locator('#aa-compare-start-a').inputValue() === '2026-02-25T00:00' && await page.locator('#aa-compare-start-b').inputValue() === '2026-02-26T00:00', '两期默认日期均在AIS数据内')
+  await page.locator('#aa-compare-start-b').fill('2026-02-27T00:00')
+  await button('关闭区域活动分析').click(); await button('区域分析').click()
+  assert(await page.locator('#aa-compare-start-b').inputValue() === '2026-02-27T00:00', '重开不覆盖用户编辑日期')
+  await button('典型案例').click()
+  await page.waitForFunction(() => !document.querySelector('.case-selector select')?.disabled)
+  await button('区域分析').click()
+  const toast = page.locator('.area-case-notice')
+  await toast.waitFor()
+  const hit = await toast.evaluate(el => {
+    const span = el.querySelector('span'), bounds = span.getBoundingClientRect()
+    return el.contains(document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2))
+  })
+  assert(hit, '案例提示文字未被卡片遮挡')
+  await shot(page, 'S12-case-notice-1086')
+  await toast.getByRole('button', { name: '地图探索', exact: true }).click()
+  await panel.waitFor({ state: 'visible' })
+  assert(!await toast.isVisible(), '提示切换按钮可点击并退出案例')
+  await page.setViewportSize({ width: 390, height: 900 })
+  await panel.getByText('分析模式', { exact: true }).scrollIntoViewIfNeeded()
+  await shot(page, 'S12-area-390')
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), '390px无页面横向溢出')
+})
+
 async function main() {
   const accessErrors = []
   const browser = await chromium.launch({ channel: 'msedge', headless: !HEADFUL })

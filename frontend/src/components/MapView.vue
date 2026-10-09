@@ -42,6 +42,7 @@ const props = defineProps<{
   encounters: ApiEncounter[] | null
   selectedEncounter: ApiEncounter | null
   // issue #41：分析区域矩形（独立于地图视野，缩放/平移不改变它）
+  areaVisible?: boolean
   areaBounds?: { west: number; south: number; east: number; north: number } | null
   areaLabel?: string
   areaMeta?: string
@@ -323,7 +324,7 @@ function scheduleArea() {
 function renderArea() {
   if (!map || !areaLayer) return
   const bounds = props.areaBounds
-  if (!bounds) {
+  if (!bounds || !props.areaVisible) {
     if (areaRect) {
       areaLayer.removeLayer(areaRect)
       areaRect = null
@@ -580,7 +581,7 @@ watch(
 )
 watch(() => props.globalViewRequest, globalView)
 watch(
-  () => [props.areaBounds, props.areaLabel, props.areaMeta, props.areaIsDefault],
+  () => [props.areaVisible, props.areaBounds, props.areaLabel, props.areaMeta, props.areaIsDefault],
   scheduleArea,
 )
 watch(() => props.areaDrawing, (active) => {
@@ -687,12 +688,12 @@ onMounted(() => {
     vectorLayer,
     canvas,
     getMap: () => map,
-    onSelectShip: (ship) => { emit('selectShip', ship) },
+    onSelectShip: (ship) => { if (!props.areaDrawing) emit('selectShip', ship) },
   })
   eventManager = new EventLayerManager({
     eventLayer,
     getMap: () => map,
-    onSelectEvent: (event) => emit('selectEvent', event),
+    onSelectEvent: (event) => { if (!props.areaDrawing) emit('selectEvent', event) },
   })
   trackManager = new TrackLayerManager({ trackLayer, canvas, map })
   map.on('moveend', () => {
@@ -704,6 +705,7 @@ onMounted(() => {
   map.on('zoomend', () => { eventManager.setZoom(map!.getZoom()); scheduleShips(); scheduleEvents() })
   map.on('popupclose', () => { eventManager.onPopupClosed(); scheduleEvents() })
   map.on('click', () => {
+    if (props.areaDrawing) return
     emit('clearSelection')
   })
   // 圈选绘制：仅在 areaDrawing 时绑定，避免影响既有选船/选事件交互

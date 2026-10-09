@@ -551,6 +551,32 @@ export function utcDayEndIso(day: string | null | undefined): string | null {
   return utcInputToIso(`${shiftUtcDay(start.slice(0, 10), 1)}T00:00`)
 }
 
+// Presentation groups use only options returned by the API; never invent query values.
+export function groupAreaShipTypes(options: AreaShipTypeOption[]) {
+  const labels = ['油轮', '集装箱', '货船']
+  return {
+    primary: labels.flatMap(label => options.filter(option => option.label === label)),
+    other: options.filter(option => !labels.includes(option.label)),
+  }
+}
+
+// Seed once from loaded AIS coverage, never from the computer clock.
+export function areaInitialWindows(startAt: string, endAt: string) {
+  const start = Date.parse(startAt), end = Date.parse(endAt)
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
+  const day = 86400000
+  const firstMidnight = Math.ceil(start / day) * day
+  const from = firstMidnight + day <= end ? firstMidnight : start
+  const to = Math.min(from + day, end)
+  const secondFrom = to + day <= end ? to : from
+  const secondTo = Math.min(secondFrom + day, end)
+  return {
+    start: utcInputValue(new Date(from)), end: utcInputValue(new Date(to)),
+    startA: utcInputValue(new Date(from)), endA: utcInputValue(new Date(to)),
+    startB: utcInputValue(new Date(secondFrom)), endB: utcInputValue(new Date(secondTo)),
+  }
+}
+
 // 默认时段：当日 UTC 自然日 [今天 00:00Z, 明天 00:00Z)。
 export function defaultActivityWindow(now: Date = new Date()): { start: string; end: string } {
   const today = utcToday(now)

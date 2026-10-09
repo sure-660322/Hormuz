@@ -118,8 +118,7 @@ check('船型筛选来自接口、默认全选、不在前端硬编码', () => {
   assert.match(source, /selectedShipTypes\.value = \[\.\.\.values\]/, '默认全选逻辑缺失')
   for (const literal of ['__missing__', '__unknown__', '油轮', '货船', '集装箱', '拖轮'])
     assert.ok(!source.includes(literal), `组件硬编码了船型值 ${literal}`)
-  for (const literal of ['油轮', '货船', '集装箱'])
-    assert.ok(!domainSource.includes(literal), `domain 硬编码了船型值 ${literal}`)
+
 })
 
 check('清空船型时不提交（后端空船型=全部）', () => {
@@ -484,6 +483,28 @@ check('对话联动：读取 agentContext/pendingAction 与生成提示词', () 
   assert.ok(text.includes('全部'))
   assert.ok(text.includes('半开区间'))
   assert.ok(domain.utcRangeText('2026-02-25T00:00:00Z', '2026-02-26T00:00:00Z').includes('终点不含'))
+})
+
+check('重要船型仅展示真实接口选项，其余完整保留', () => {
+  const options = [
+    { value: 'cargo', label: '货船' }, { value: 'tanker', label: '油轮' },
+    { value: 'container', label: '集装箱' }, { value: '__unknown__', label: '未知' },
+    { value: 'other', label: '其他类型的船舶' },
+  ]
+  const groups = domain.groupAreaShipTypes(options)
+  assert.deepEqual(groups.primary.map(item => item.value), ['tanker', 'container', 'cargo'])
+  assert.deepEqual(groups.other.map(item => item.value), ['__unknown__', 'other'])
+  assert.equal(domain.groupAreaShipTypes(options.slice(3)).primary.length, 0)
+  assert.equal(groups.primary.length + groups.other.length, options.length)
+})
+
+check('初始区域时段来自AIS范围，覆盖首个完整UTC日并保持比较范围有效', () => {
+  const defaults = domain.areaInitialWindows('2026-02-24T16:00:00Z', '2026-03-03T15:55:00Z')
+  assert.deepEqual(defaults, { start: '2026-02-25T00:00', end: '2026-02-26T00:00', startA: '2026-02-25T00:00', endA: '2026-02-26T00:00', startB: '2026-02-26T00:00', endB: '2026-02-27T00:00' })
+  assert.equal(domain.areaInitialWindows('bad', '2026-03-01'), null)
+  const short = domain.areaInitialWindows('2026-02-25T12:00:00Z', '2026-02-25T13:00:00Z')
+  assert.equal(short.start, '2026-02-25T12:00')
+  assert.equal(short.end, '2026-02-25T13:00')
 })
 
 // —— 输出 ——

@@ -77,6 +77,7 @@ const savedCaseView = ref<{
   ship: number | null; event: ApiEvent | null; panel: Panel; panelOpen: boolean
   workspace: 'overview' | 'explore'; layers: LayerState; isolated: boolean; trackVisible: boolean
   sidebarOpen: boolean; category: 'events' | 'ships'
+  areaOpen: boolean; areaBoundaryVisible: boolean
 } | null>(null)
 let caseVersion = 0
 async function loadCase() {
@@ -120,7 +121,10 @@ async function openCase() {
     event: selectedEvent.value, panel: panel.value, panelOpen: panelOpen.value,
     workspace: workspaceMode.value, layers: { ...layers.value }, isolated: isolated.value,
     trackVisible: trackVisible.value, sidebarOpen: sidebarOpen.value, category: exploreCategory.value,
+    areaOpen: areaOpen.value, areaBoundaryVisible: areaBoundaryVisible.value,
   }
+  cancelAreaDraw()
+  areaOpen.value = false
   caseOpen.value = true
   workspaceMode.value = 'explore'
   panelOpen.value = false
@@ -211,6 +215,7 @@ function pauseCase() {
   timelineControls.value?.stop()
 }
 async function exitCase() {
+  areaCaseNotice.value = false
   const previous = savedCaseView.value
   caseLoadVersion++
   caseLoading.value = false
@@ -237,6 +242,8 @@ async function exitCase() {
     trackVisible.value = previous.trackVisible
     sidebarOpen.value = previous.sidebarOpen
     exploreCategory.value = previous.category
+    areaOpen.value = previous.areaOpen
+    areaBoundaryVisible.value = previous.areaBoundaryVisible
     await nextTick()
     mapView.value?.restoreView(previous.view)
   }
@@ -780,6 +787,11 @@ const agentContextSummary = computed(() => {
 // 都走同一套 resolve-area 校验，保证两侧区域口径一致。
 // ---------------------------------------------------------------------------
 const areaOpen = ref(false)
+const areaCaseNotice = ref(false)
+const areaPanelInitialized = ref(false)
+const areaBoundaryVisible = ref(false)
+const areaBoundaryEffective = computed(() => areaOpen.value && areaBoundaryVisible.value && !caseOpen.value)
+let areaResolveSequence = 0
 const areaDrawing = ref(false)
 const areaResolving = ref(false)
 const areaNotice = ref('')
@@ -800,6 +812,10 @@ const areaSuggestedLabel = computed(() => {
 const areaAgentContext = ref<{ shipTypes?: string[] | null; at?: string | null; start?: string | null; end?: string | null } | null>(null)
 // 面板条件预填：默认把「时刻在场」的时刻对齐到当前地图回放时刻（历史数据窗口内），
 // 避免默认用「现在」查历史 AIS 得到必然的空结果；用户可以再改成任意历史时刻。
+const areaDataWindow = computed(() => {
+  const start = times.value[0], end = times.value.at(-1)
+  return start && end && start !== end ? { start, end } : null
+})
 const areaPanelContext = computed(() => {
   const context = areaAgentContext.value ?? {}
   return { ...context, at: context.at ?? time.value ?? null }
@@ -807,12 +823,6 @@ const areaPanelContext = computed(() => {
 const agentDraft = ref<{ text: string; version: number } | null>(null)
 let agentDraftVersion = 0
 let areaDefaultLoaded = false
-
-function areaSummaryText(bounds: ApiAreaBounds = areaBounds.value): string {
-  const lat = (bounds.north - bounds.south).toFixed(3)
-  const lon = (bounds.east - bounds.west).toFixed(3)
-  return `${bounds.south.toFixed(3)}–${bounds.north.toFixed(3)}°N · ${bounds.west.toFixed(3)}–${bounds.east.toFixed(3)}°E（跨度 ${lat}°×${lon}°）`
-}
 
 async function loadAreaDefault() {
   if (areaDefaultLoaded) return null
@@ -831,6 +841,14 @@ async function loadAreaDefault() {
 }
 
 function openAreaPanel() {
+  if (caseOpen.value) {
+    areaCaseNotice.value = true
+    return
+  }
+  if (!areaPanelInitialized.value) {
+    areaPanelInitialized.value = true
+    areaBoundaryVisible.value = true
+  }
   areaOpen.value = true
   workspaceMode.value = 'explore'
   void loadAreaDefault()
@@ -852,27 +870,39 @@ async function openSuggestedArea() {
 }
 
 function closeAreaPanel() {
+  cancelAreaDraw()
   areaOpen.value = false
-  areaDrawing.value = false
+}
+
+function setAreaBoundaryVisible(visible: boolean) {
+  if (!visible) cancelAreaDraw()
+  areaBoundaryVisible.value = visible
 }
 
 function startAreaDraw() {
-  areaOpen.value = true
+  if (caseOpen.value) return
+  cancelAreaDraw()
+  openAreaPanel()
+  areaBoundaryVisible.value = true
   areaDrawing.value = true
   areaNotice.value = ''
-  void loadAreaDefault()
 }
 
 function cancelAreaDraw() {
+  if (areaDrawing.value || areaResolving.value) areaNotice.value = '已取消圈选，保留原分析区域'
+  areaResolveSequence += 1
+  areaResolving.value = false
   areaDrawing.value = false
 }
 
 async function applyAreaBounds(bounds: ApiAreaBounds, options: { label?: string | null; areaId?: string | null } = {}) {
+  const sequence = ++areaResolveSequence
   areaResolving.value = true
   areaNotice.value = ''
   const previous = { ...areaBounds.value }
   try {
     const result = await resolveAreaBounds(bounds, options.areaId ?? 'custom')
+    if (sequence !== areaResolveSequence || caseOpen.value) return false
     areaBounds.value = { ...result.area.bounds }
     areaIsDefault.value = result.area.is_default
     areaLabel.value = options.label?.trim() || result.area.name
@@ -881,11 +911,12 @@ async function applyAreaBounds(bounds: ApiAreaBounds, options: { label?: string 
     areaNotice.value = result.message
     return true
   } catch (e) {
+    if (sequence !== areaResolveSequence) return false
     areaBounds.value = previous
     areaNotice.value = describeApiError(e, '区域校验失败：矩形无效或超出跨度上限，已保留原区域')
     return false
   } finally {
-    areaResolving.value = false
+    if (sequence === areaResolveSequence) areaResolving.value = false
   }
 }
 
@@ -895,6 +926,8 @@ async function onAreaDrawn(bounds: ApiAreaBounds) {
 }
 
 async function restoreDefaultArea() {
+  cancelAreaDraw()
+  const sequence = areaResolveSequence
   // 直接使用 default-area 的权威值：不把「默认矩形」重新当成自定义矩形提交，
   // 否则 resolve-area 会按自定义矩形返回 area_id=custom（同一坐标但语义不同）。
   const data = (await loadAreaDefault()) ?? (await fetchAreaDefault().catch(() => null))
@@ -902,6 +935,7 @@ async function restoreDefaultArea() {
     areaNotice.value = '默认分析区域加载失败，未改变当前区域'
     return
   }
+  if (sequence !== areaResolveSequence || caseOpen.value) return
   areaBounds.value = { ...data.area.bounds }
   areaDefaultBounds.value = { ...data.area.bounds }
   areaIsDefault.value = true
@@ -913,12 +947,12 @@ async function restoreDefaultArea() {
 }
 
 function requestAreaDrawFromPanel() {
-  areaDrawing.value = true
-  areaNotice.value = ''
+  startAreaDraw()
 }
 
 // 智能体「查看区域分析」：打开面板并恢复该次调用的区域、模式与条件。
 async function openAreaAnalysis(action: AgentAreaAnalysisAction) {
+  if (caseOpen.value) { openAreaPanel(); return }
   const query = action.query
   areaSuggestedAction.value = null
   const bounds: ApiAreaBounds = {
@@ -945,6 +979,7 @@ async function openAreaAnalysis(action: AgentAreaAnalysisAction) {
     end: query.end_at ?? null,
   }
   await loadAreaDefault()
+  if (caseOpen.value) return
   if (query.area_is_default && areaDefaultBounds.value) {
     areaBounds.value = { ...areaDefaultBounds.value }
     areaIsDefault.value = true
@@ -952,10 +987,9 @@ async function openAreaAnalysis(action: AgentAreaAnalysisAction) {
     areaVersionLabel.value = '1.0.0'
     areaBoundsVersion.value += 1
   } else {
-    await applyAreaBounds(bounds, { areaId: query.area_id ?? 'custom' })
+    if (!await applyAreaBounds(bounds, { areaId: query.area_id ?? 'custom' })) return
   }
-  areaOpen.value = true
-  workspaceMode.value = 'explore'
+  openAreaPanel()
 }
 
 // 证据联动：加载该访问时段的有界轨迹（复用现有轨迹接口与地图图层）。
@@ -1258,6 +1292,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :encounters="encounterList"
         :selected-encounter="selectedEncounter"
         :area-bounds="areaBounds"
+        :area-visible="areaBoundaryEffective"
         :area-label="areaLabel"
         :area-meta="areaIsDefault ? `area_id hormuz_core_v1 · v${areaVersionLabel ?? '—'}` : '自定义矩形（未做权威性核验）'"
         :area-is-default="areaIsDefault"
@@ -1272,16 +1307,28 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @area-drawn="onAreaDrawn"
         @area-draw-cancel="cancelAreaDraw"
       />
-      <div v-if="areaOpen" class="area-panel-placement">
+      <div v-if="areaPanelInitialized" v-show="areaOpen && !caseOpen" class="area-panel-placement" :class="{ 'is-drawing': areaDrawing }">
         <AreaActivityPanel
-          :open="areaOpen"
+          :open="areaOpen && !caseOpen"
+          data-testid="area-state"
+          :data-area-id="areaIsDefault ? 'hormuz_core_v1' : 'custom'"
+          :data-bounds-version="areaBoundsVersion"
+          :data-result-version="areaResultVersion"
+          :boundary-visible="areaBoundaryVisible"
+          :drawing="areaDrawing"
+          :resolving="areaResolving"
+          :area-notice="areaNotice"
           :bounds="areaBounds"
           :default-bounds="areaDefaultBounds"
           :area-label="areaLabel"
           :area-is-default="areaIsDefault"
           :agent-context="areaPanelContext"
+          :data-window="areaDataWindow"
           :pending-action="areaPendingAction"
           @close="closeAreaPanel"
+          @update:boundary-visible="setAreaBoundaryVisible"
+          @restore-default="restoreDefaultArea"
+          @cancel-draw="cancelAreaDraw"
           @update:bounds="requestAreaDrawFromPanel"
           @locate-ship="showVisitTrack"
           @focus-visit="showVisitTrack"
@@ -1306,33 +1353,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <span v-if="caseActive && !currentShips.length">该时刻缺少有效报位，不表示船舶不存在</span>
         <span v-if="snapshotLoading && requestedTime !== time">正在获取 {{ formatTime(requestedTime, true) }} 的快照</span>
       </div>
-      <div
-        v-if="areaOpen || !areaIsDefault"
-        class="area-status-bar"
-        role="status"
-        aria-live="polite"
-        data-testid="area-status"
-        :data-area-id="areaIsDefault ? 'hormuz_core_v1' : 'custom'"
-        :data-bounds="`${areaBounds.west},${areaBounds.south},${areaBounds.east},${areaBounds.north}`"
-        :data-stale="areaResultVersion < areaBoundsVersion ? 'true' : 'false'"
-        :data-drawing="areaDrawing ? 'true' : 'false'"
-      >
-        <strong>分析区域</strong>
-        <span>{{ areaLabel }}</span>
-        <span class="area-coord">{{ areaSummaryText() }}</span>
-        <span v-if="areaIsDefault" class="area-tag ok">默认项目分析区域（非官方航道）</span>
-        <span v-else class="area-tag">自选矩形（非官方航道）</span>
-        <span v-if="areaResolving" class="area-tag warn">正在校验新区域…</span>
-        <span v-else-if="areaResultVersion > areaBoundsVersion" class="area-tag warn">区域已变更，待查询</span>
-        <button type="button" class="area-btn" :disabled="areaResolving" @click="startAreaDraw">重新圈选</button>
-        <button type="button" class="area-btn" :disabled="areaResolving" @click="restoreDefaultArea">恢复默认区域</button>
-        <button v-if="areaDrawing" type="button" class="area-btn" @click="cancelAreaDraw">取消绘制</button>
-        <span v-if="areaNotice" class="area-note">{{ areaNotice }}</span>
-      </div>
-      <div v-if="areaSuggestedAction" class="area-suggest-bar" role="status">
+      <div v-if="areaSuggestedAction && !caseOpen" class="area-suggest-bar" role="status">
         <span>本轮回答可用区域分析复现：{{ areaSuggestedLabel }}（{{ areaSuggestedAction.tool }}）</span>
         <button type="button" class="area-btn" data-testid="open-area-analysis" @click="openSuggestedArea">查看区域分析</button>
         <button type="button" class="area-btn" @click="dismissAreaSuggestion">忽略</button>
+      </div>
+      <div v-if="areaCaseNotice && caseOpen" class="alert-toast area-case-notice" role="status">
+        <span>区域分析使用海峡全量数据。请先点击「地图探索」退出典型案例，再打开区域分析。</span>
+        <button type="button" @click="changeWorkspace('explore')">地图探索</button>
+        <button type="button" aria-label="关闭区域分析提示" @click="areaCaseNotice = false">×</button>
       </div>
       <div v-if="notice" class="alert-toast" role="status"><span>{{ notice }}</span><button @click="notice = ''" aria-label="关闭提醒">×</button></div>
       <div v-if="isolated" class="isolation-banner">
