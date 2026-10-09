@@ -519,6 +519,41 @@ button.primary:hover {
 .vessel-marker.muted {
   opacity: 0.38;
 }
+/* issue #56：案例证据「定位地图」的观测点高亮。减少动态模式下只保留静态圆环。 */
+.case-locate-marker {
+  background: transparent;
+  border: 0;
+}
+.case-locate-marker .case-locate-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #59c7bd;
+  box-shadow: 0 0 0 2px rgba(16, 39, 36, 0.55);
+}
+.case-locate-marker .case-locate-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 2px solid #59c7bd;
+  border-radius: 50%;
+  animation: case-locate-pulse 1.6s ease-out infinite;
+}
+@keyframes case-locate-pulse {
+  0% { transform: scale(0.55); opacity: 0.95; }
+  80% { transform: scale(1); opacity: 0.15; }
+  100% { transform: scale(1); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .case-locate-marker .case-locate-ring { animation: none; opacity: 0.6; }
+}
 .incident-marker {
   display: grid;
   place-items: center;

@@ -28,7 +28,7 @@ import LayersPopover from './components/LayersPopover.vue'
 import ExplorerSidebar from './components/ExplorerSidebar.vue'
 import CasePanel from './components/CasePanel.vue'
 import { fetchMaritimeCase, type MaritimeCaseId, type ApiMaritimeCase } from './api'
-import { caseTrackChunks, mergeCaseTracks, clipCaseTracks } from './domain/casePlayback'
+import { caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } from './domain/casePlayback'
 
 const {
   tracks,
@@ -101,6 +101,7 @@ async function switchCase(id: MaritimeCaseId) {
   agentTrack.value = null
   caseActive.value = false
   caseFullTrack.value = null
+  caseLocatePoint.value = null
   caseWindow.value = null
   caseStageId.value = 'overview'
   caseData.value = null
@@ -146,6 +147,7 @@ async function initializeCase() {
   caseActive.value = true
   caseStageId.value = 'overview'
   caseWindow.value = { start_at: data.start_at, end_at: data.end_at }
+  caseLocatePoint.value = null
   try {
     const windows = caseTrackChunks(data.start_at, data.end_at)
     const [, results] = await Promise.all([
@@ -178,6 +180,7 @@ async function initializeCase() {
 }
 async function selectCaseStage(id: string, position: 'start' | 'end' = 'end') {
   caseStageId.value = id
+  caseLocatePoint.value = null
   if (!caseActive.value || caseSwitching.value) return false
   const version = ++caseVersion
   cancelMapAction()
@@ -212,6 +215,20 @@ function seekCaseTime(at: string) {
   seekRequest.value++
   seek(at)
 }
+// issue #56：证据「定位地图」——暂停当前播放、复用 seek 链路，并在轨迹上突出对应观测点。
+// caseVersion 递增保证快速连续点击时最后一次选择生效，旧定位不会覆盖新定位。
+const caseLocatePoint = ref<{ latitude: number; longitude: number; at: string } | null>(null)
+function locateCaseTime(at: string) {
+  if (!caseActive.value) return
+  pauseCase()
+  caseVersion++
+  cancelMapAction()
+  agentTrack.value = null
+  seekRequest.value++
+  seek(at)
+  const point = trackPointAt(caseFullTrack.value, at)
+  caseLocatePoint.value = point ? { ...point, at } : null
+}
 function pauseCase() {
   caseVersion++
   timelineControls.value?.stop()
@@ -231,6 +248,7 @@ async function exitCase() {
   caseSwitching.value = false
   caseWindow.value = null
   caseFullTrack.value = null
+  caseLocatePoint.value = null
   if (reload) { await load(); if (version !== caseVersion) return }
   if (previous) {
     if (previous.time && reload) seek(previous.time)
@@ -1257,7 +1275,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @open-agent="togglePanel('agent')"
         @open-area="areaOpen ? closeAreaPanel() : openAreaPanel()"
       />
-      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :case-id="caseId" @switch-case="switchCase" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
+      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :case-id="caseId" @switch-case="switchCase" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @locate="locateCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
       <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开 {{ caseDisplayTitle }} 案例栏</button>
       <LayersPopover
         v-if="layersOpen"
@@ -1303,6 +1321,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :area-meta="areaIsDefault ? `area_id hormuz_core_v1 · v${areaVersionLabel ?? '—'}` : '自定义矩形（未做权威性核验）'"
         :area-is-default="areaIsDefault"
         :area-drawing="areaDrawing"
+        :locate-point="caseLocatePoint"
         @clear-selection="selectedEvent = null; clearShip(); panelOpen = false"
         @select-ship="chooseShip"
         @select-event="chooseEvent"
