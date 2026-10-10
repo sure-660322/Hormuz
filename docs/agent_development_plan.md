@@ -369,4 +369,4 @@ SQL-02～06 的阶段验收文档继续保留，但不再作为当前任务看�
 
 实现「当前阶段 → 相关证据 → 原始细节/来源/地图观测」链路：证据带稳定 id、kind（ais_observation / report / boundary / identity）与 stage_ids（空 = 案例级）；报道按 url 去重合成并补摘要；证据视图「当前阶段 / 全部」筛选默认跟随当前阶段、手动保持，分组列表默认只显摘要，坐标/行号/身份匹配收进单层展开详情；AIS 证据「定位地图」暂停播放 + seek + 地图观测点标记（尊重减少动态），缺报/范围外/未加载给具体原因，`trackPointAt` 不向缺报区间外推；快速定位末次生效（caseVersion）。build/check:workbench（新增 trackPointAt 断言）/git diff --check 与后端案例契约测试（11 passed / 2 skipped）通过；内置浏览器 DOM 实测两案例筛选/去重/展开/定位/键盘/多视口。详情与未验证范围见[案例说明](athe_nova_case.md#2026-10-09-issue-56-阶段关联证据视图)。
 
-状态：**已验证，[PR #61](https://github.com/sure-660322/Hormuz/pull/61) 已创建待合入**；本地未同步，工作树待收尾清理，未部署。
+状态：**已验证，[PR #61](https://github.com/sure-660322/Hormuz/pull/61) 已合入 main（`4e46299`），Issue #56 已关闭；本地已同步，任务工作树/分支已清理，未部署**.

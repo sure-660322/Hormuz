@@ -125,4 +125,8 @@ ORDER BY recorded_at-previous_at DESC NULLS LAST LIMIT 10;
 - 键盘：页签获焦后方向键切换过程/证据视图；1280×720、约 1024、390×844 视口无横向溢出，窄屏为底部阅读面板；减少动态模式下定位标记动画关闭（animation-name: none，静态圆环保留）；图片加载失败时降级为无图并保留来源说明（注入 error 事件实测）；ATHE NOVA 报道无图不渲染占位块。
 - 未验证：真实缺报区间内的定位禁用文案未在浏览器复测（现有 curated 观测时刻均为实际报位点；缺报/范围外返回 null 由 workbench 检查覆盖）；后端故障/未导入路径沿用 #49/#43 已验收 markup，本轮未改动；真实模型案例内问答未重验；内置浏览器面板不可见导致无法截图存档；未部署。
 
-状态：**已验证，[PR #61](https://github.com/sure-660322/Hormuz/pull/61) 已创建待合入**；本地未同步，工作树待收尾清理，未部署。
+状态：**已验证，[PR #61](https://github.com/sure-660322/Hormuz/pull/61) 已合入 main（`4e46299`），Issue #56 已关闭；本地已同步，任务工作树/分支已清理，未部署**.
+
+### 2026-10-10 收尾核验
+
+用户授权收尾后，核对 PR #61 head 为 `e889d96`、base=main（`74dcbdc`）、无未解决审查意见，采用 merge commit 合入为 `4e46299`，Issue #56 关闭；本地主目录 fast-forward 至 `4e46299` 并核对与远端一致。合并后在主目录复核：后端案例契约测试 11 passed / 2 skipped、`npm run build`、`npm run check:workbench` 通过；本轮仅合并与 Git/构建核验，未重跑浏览器验收（实现与 2026-10-09 已验收内容一致）。任务工作树 `Hormuz-issue-56`（先移除 node_modules 目录联接与 .env 硬链接）与本地/远端 `kimi/issue-56` 分支已清理；预览用后端 8004 已停止，主目录 8000/5174 服务未改动。按用户要求，界面证据详情不展示来源文件与行号（commit `e889d96`）。
