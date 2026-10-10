@@ -72,8 +72,19 @@ Hormuz 桌面插件，不能将 CLI 验收或配置文件存在视为该桌面�
 Kimi Code 的官方说明将 MCP 配置与插件清单区分；Kimi Work 的个人插件须经
 创建/转换、登记、安装流程，见[个人插件说明](https://www.kimi.com/help/plugins-and-skills/create)。
 若使用 Kimi Code，配置入口见[官方 MCP 文档](https://www.kimi.com/code/docs/kimi-code-cli/customization/mcp.html)。
-**用户当前桌面端接入仍待完成**，本轮仅诊断并修正文档，没有修改其桌面配置，
-没有使用 computer use。下列问题在当前桌面端尚不能直接据此宣称可用。
+2026-10-10 追加授权后：[Hormuz 个人插件](../plugins/kimi/personal/hormuz/README.md)
+0.1.1 已制作，Kimi 自带 Plugin Builder 校验 0 error / 0 warning，官方 CLI
+已登记到当前桌面端的 personal 市场，回读 id/version/sourcePath 通过、health=ok。
+Windows 本机运行配置保存在 `%LOCALAPPDATA%/Hormuz/kimi-mcp.json`，只含目标元数据
+和具名凭据名称，无密码；插件本身仅有相对路径启动器及 Skill，不携带本机配置。
+启动器实测发现 7 工具，四题实际查询与同条件既有基线一致；缺失配置时 exit 1，
+stdout 为空、stderr 为通用错误。未改变后端实现，因此没有重复运行不相关回归。
+
+**状态：已登记，未安装，桌面会话加载/回答待用户验证。** 官方 CLI 拒绝直接安装
+市场管理插件，要求使用个人市场安装入口；独立安装实验也缺运行时网关 key，未注入假 key
+或复制真实登录凭据来绕过。用户在 **插件 → 个人 → Hormuz 船舶分析 → ＋ 安装**；
+详情链接 `kimi-work://plugin?id=hormuz`。重新打开插件页刷新条目，无需停止现有会话。
+全程未用 computer use。下列问题应在桌面安装完成且发现工具后再测。
 
 以下问题可以逐条发送，要求 Kimi 实际调用 Hormuz MCP 并列出状态与 request_id：
 

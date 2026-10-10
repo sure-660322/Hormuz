@@ -185,5 +185,53 @@
     "backend/mcp_server/credentials.py": "6b7ed265d95f1e3f539e17074c8a5677d2d5b4be2ef95c2c5c920a2d03607def",
     "backend/mcp_server/schemas.py": "4cefa029065bf213d112d26c97fbbe99409d08157a68ffa0a45cad970c2a52ef",
     "backend/mcp_server/server.py": "24b5db6d1f614a134de4817dc16520e7548f11717027aec840abe7f7c261a240"
+  },
+  "desktop_plugin_validation": {
+    "date": "2026-10-10",
+    "tools": [
+      "search_ships",
+      "get_ship_track",
+      "query_strait_passage_statistics",
+      "compare_strait_passage_statistics",
+      "query_area_ship_snapshot",
+      "query_area_ship_activity",
+      "compare_area_ship_activity"
+    ],
+    "calls": [
+      {
+        "tool": "search_ships",
+        "status": "ok",
+        "request_id": "req_e6956530479640348627c5c157242323"
+      },
+      {
+        "tool": "query_strait_passage_statistics",
+        "status": "partial",
+        "request_id": "req_3b3874d9a3af46279ea7f02f41507ce4"
+      },
+      {
+        "tool": "query_area_ship_snapshot",
+        "status": "ok",
+        "request_id": "req_de3c2acfdd264f7393af4e000a57f297"
+      },
+      {
+        "tool": "query_area_ship_activity",
+        "status": "partial",
+        "request_id": "req_6f7f3bc7daa84272b13bb6c918445628"
+      }
+    ],
+    "plugin_version": "0.1.1",
+    "validator": "Kimi bundled Plugin Builder: 0 error, 0 warning",
+    "market": "personal",
+    "registration": "verified id/version/sourcePath, health ok",
+    "desktop_installation": "pending user action; official market-managed CLI installation refused",
+    "missing_config": "exit 1, empty stdout, generic stderr",
+    "source_sha256": {
+      "plugins/kimi/personal/hormuz/configure.ps1": "7d91b0d08e67ee6845b6062f506350a5d2eba6a42189128c3d4b0edb48e488ce",
+      "plugins/kimi/personal/hormuz/kimi.plugin.json": "f4a20b276dd6ae7b536d28ae95cbca32e289cbdbcdf54f7aabb6c8f6f1b5cdcb",
+      "plugins/kimi/personal/hormuz/locales/en-US.json": "e6699243a144e756780f0bb3259e06c7a77d4ba71203539a11641dd6ddd10e9e",
+      "plugins/kimi/personal/hormuz/README.md": "3a7b882fdc32ce49a948fb46c3d897f680650ba32db7559f042f694ba44e9795",
+      "plugins/kimi/personal/hormuz/scripts/launch.mjs": "59fd02aa2cad97f415641e0724d24dcb79a3482d9fcfa4471d1b5fc5666b3811",
+      "plugins/kimi/personal/hormuz/skills/hormuz/SKILL.md": "1d37283a88916e623b9622fda62fa75b49ae269390a377f2bad7d21bb202255d"
+    }
   }
 }
