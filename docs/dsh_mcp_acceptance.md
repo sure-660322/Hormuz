@@ -26,6 +26,8 @@ DSH 使用 Cordis profile patch，不能将 Kimi 的 `mcp.json` 原样放入。�
         command: 'C:/Program Files/PowerShell/7/pwsh.exe'
         args: ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', './scripts/launch.ps1']
         cwd: 'C:/path/to/Hormuz/plugins/kimi/personal/hormuz'
+        env:
+          HORMUZ_KIMI_CONFIG: 'C:/Users/your-user/AppData/Local/Hormuz/kimi-mcp.json'
         toolCallTimeoutMs: 45000
         failOnStartupError: false
         reconnect:
@@ -70,3 +72,11 @@ CLI 每次独立运行并退出，不连接或中止桌面现有会话。项目�
 DSH JSON 事件对两项区域工具的大型明细设置 `truncated=true`，本轮前置 summary、状态和 request_id 保留完整，并且模型正确回显主要汇总。未证明所有工具明细完整传递；需要完整明细时使用业务接口/导出能力，不以模型回答替代完整结果。AIS 是有限覆盖的历史观测，不能由无观测推断未发生，也不能关联新闻因果。
 
 未验证：DSH 桌面加载及问答、DSH HTTP 传输、SQL 三工具、其余业务工具、多轮和持续负载。本轮沿用已验证启动器，仅配置与文档改变，不重复全量后端或前端测试。Kimi 桌面官方更新阻塞仍见[原记录](issue50_kimi_acceptance.md)，与 DSH headless 成功分别记录；PR 继续 Draft，不合并、不部署。
+
+## 同日复核：配置不存在的诊断与本机事实不符
+
+用户转述桌面 agent 报告配置不存在、启动失败及两个 profile 均不可用。本轮在非沙箱化的真实 Windows 路径上只读确认 `%LOCALAPPDATA%/Hormuz/kimi-mcp.json` 存在，目录存在，文件修改时间为本地 2026-10-10 13:37:23。按 desktop 的 command/args/cwd 启动独立 MCP SDK，发现 7 工具并成功查询 ATHE NOVA（request_id `req_6b3a848e4a974713b6e3635703f6a556`）。随后官方 DSH CLI 的持久 profile 真实调用成功，request_id `req_9ee595f114804762be8cddf74b6639fc`。故不能将 agent 的执行环境内路径检查失败解释为主机文件不存在，也不能推断独立 profile 不可用。其执行环境、权限及具体失败类别尚未核实。
+
+为减少对子进程 `LOCALAPPDATA` 的依赖，两份 profile 的 Hormuz 条目增加非敏感 `env.HORMUZ_KIMI_CONFIG`，显式指向现有文件；其余配置保持原值，并保留本机备份。未枚举或复制凭据、未重新生成本机配置。启动器的通用 stderr 有意不输出异常详情，单凭该句不能判断是缺文件、无权限、无效配置或子进程启动失败；`failOnStartupError=false` 允许主应用继续运行，不能理解为服务成功连接。DSH 桌面仍未完成工具发现和问答，亦未证实必须重启；本轮保持不重启。
+
+增加显式配置路径后的官方 DSH CLI 复测退出码 0，实际调用 `mcp__hormuz__search_ships` 返回 ok、ID 628 / MMSI 334931000 / IMO 9188116，request_id `req_6c15ea16ff0244cdbc2b4362e1b3498d`。未观察到由桌面 host 启动的 Hormuz 子进程，桌面验收仍待完成。

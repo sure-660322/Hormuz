@@ -136,5 +136,22 @@
     "ship_id": 628,
     "mmsi": "334931000",
     "imo": "9188116"
+  },
+  "same_day_path_recheck": {
+    "runtime_config_exists": true,
+    "config_recreated": false,
+    "sdk_tool_count": 7,
+    "sdk_request_id": "req_6b3a848e4a974713b6e3635703f6a556",
+    "dsh_request_id_before_explicit_path": "req_9ee595f114804762be8cddf74b6639fc",
+    "explicit_config_env_added": true,
+    "dsh_request_id_after_explicit_path": "req_6c15ea16ff0244cdbc2b4362e1b3498d",
+    "dsh_exit_code": 0,
+    "business_status": "ok",
+    "ship_id": 628,
+    "mmsi": "334931000",
+    "imo": "9188116",
+    "desktop_mcp_child_observed": false,
+    "desktop_query_verified": false,
+    "reported_agent_environment_difference": "unverified"
   }
 }

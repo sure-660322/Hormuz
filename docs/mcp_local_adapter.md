@@ -145,3 +145,5 @@ Kimi Code 的 mcp.json 不会自动生成桌面插件卡片。本项目新增
 ## DeepSeek Harness（2026-10-10）
 
 DSH 官方 MCP client 支持本机 stdio，已配置独立 headless profile 与桌面 profile。独立真实模型四题与基线一致；桌面热加载和问答尚未验证，没有重启应用。SQL 保持关闭，大型区域工具事件存在明细截断，前置汇总完整。配置格式、四题、request_id 与范围见[DSH 记录](dsh_mcp_acceptance.md)。
+
+同日路径复核确认本机运行配置存在、独立 DSH profile 仍可调用；两份 profile 已显式设置非敏感 HORMUZ_KIMI_CONFIG，桌面 agent 的缺文件诊断尚未证实，不据此重新生成配置或要求重启。

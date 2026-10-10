@@ -21,6 +21,8 @@ Kimi 测试和成功后 PR 交付。stdio/Streamable HTTP 共用 7 个业务工�
 
 2026-10-10 DSH：用户追加授权接入 DeepSeek Harness。官方 MCP client / stdio 与独立 headless 真实模型四题已验证，与同参数业务基线一致；独立 profile 已持久配置。桌面 profile 单条增量已保存并保留原配置及本机备份，运行进程核对路径正确，但桌面 MCP 启动和问答未证实；状态为「已配置待桌面验证」。没有重启或停止其他任务。大型区域工具的 DSH 事件截断明细，前置汇总完整。SQL 仍关闭，HTTP/其余工具/多轮/负载未测，PR #62 保持 Draft。详见[DSH 验收及使用](dsh_mcp_acceptance.md)。
 
+同日收到桌面 agent 的“本机配置不存在”报告后复核：真实 Windows 路径下文件存在，SDK 7 工具发现和持久 DSH profile 的 ATHE NOVA 查询均再次成功。两份 profile 仅增加显式 HORMUZ_KIMI_CONFIG 路径；不重新生成配置、不枚举凭据、不重启。桌面连接继续待验证，执行环境差异未核实，详见 DSH 记录。
+
 ## 2026-10-08 当前摘要与下一阶段路线图
 
 状态核对：通行统计 #40（PR #42 / f555ec7）、区域活动 #41（PR #45 / 3bcfea1）及北冰洋交互 #43（PR #44 / b0ed92f）已合入 main。当前 LangChain 单智能体有13个只读业务工具（8既有+2通行+3区域）、知识库及条件启用的SQL三工具；catalog v2 仍仅含船舶/事件/新闻。通行与区域各有2026-10-07真实模型/浏览器样本，综合多轮已随 #47 / PR #57 合入并在 2026-10-08 验收（[记录](issue47_multi_turn_acceptance.md)）；SQL分析事实层（#48）已随 PR #59 合入，并完成独立测试库验收（catalog v3：5 张受控分析快照表+清单核验+必要过滤；对账 ALL PASS、真实模型筛选/分组/排名三题、15 项失败关闭实测、EXPLAIN 毫秒级小扫描，见[issue48 验收记录](issue48_sql_acceptance.md)），**应用库 aisdb 未执行 017/未建快照**；产品 MCP 本机 stdio/Streamable HTTP 适配已在 #50 任务分支实现并经开发验证，Kimi 双传输业务样本已验证，完整 SQL 客户端验收、合并及部署待完成，见[说明](mcp_local_adapter.md)。下方旧分支状态和历史数量不代表本轮重新验收。

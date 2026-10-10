@@ -1,6 +1,6 @@
 ## 当前契约与验证边界（2026-10-09 文档核对）
 
-> 2026-10-10 DSH 接入：DeepSeek Harness 0.2.0-rc.2 独立 headless 真实模型四题已通过，使用修复后的 stdio 启动器；桌面 profile 已配置，热加载与桌面问答尚未验证。SQL 保持关闭，Kimi 桌面更新阻塞仍存在。见[配置与验收](dsh_mcp_acceptance.md)。
+> 2026-10-10 DSH 接入：DeepSeek Harness 0.2.0-rc.2 独立 headless 真实模型四题已通过，使用修复后的 stdio 启动器；桌面 profile 已配置，热加载与桌面问答尚未验证。同日复核确认本机配置存在，独立 profile 仍可调用；已显式指定配置路径。SQL 保持关闭，Kimi 桌面更新阻塞仍存在。见[配置与验收](dsh_mcp_acceptance.md)。
 
 通行统计（PR #42）、区域活动（PR #45）已合入 main。当前为 LangChain 单智能体，13 个只读业务工具（8 个既有 + 2 个通行统计 + 3 个区域活动）、知识库及条件启用的 SQL 三工具；v4 同时支持 passage_analysis/area_activity 的 analysis_actions。模型工具与手动 API 复用业务服务，轨迹/证据动作支持有界时间跳转、选船和聚焦。
 
