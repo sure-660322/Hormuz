@@ -1,6 +1,7 @@
 """Parser tests plus explicitly isolated Postgres import/API checks."""
 import csv
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -104,3 +105,45 @@ def test_isolated_import_and_routes():
     with engine.connect() as conn:
         assert conn.scalar(text("SELECT count(*) FROM ais_import_batches")) == 0
         assert conn.scalar(text("SELECT count(*) FROM ship_positions")) == 0
+
+
+class FakeDB:
+    def __init__(self, row):
+        self.row = row
+
+    def execute(self, statement, params=None):
+        assert "case/arctic-ocean/" in str(statement)
+        return self
+
+    def mappings(self):
+        return self
+
+    def first(self):
+        return self.row
+
+
+def test_arctic_evidence_contract():
+    """issue #56：北极案例证据清单的稳定 id、类型与阶段范围；不依赖真实数据库。"""
+    from backend.app.database import get_db
+    from backend.app.main import app
+    app.dependency_overrides[get_db] = lambda: FakeDB(
+        dict(id=771, start_at=datetime(2026, 3, 26, tzinfo=timezone.utc),
+             end_at=datetime(2026, 3, 31, tzinfo=timezone.utc), position_count=11640))
+    try:
+        data = TestClient(app).get("/cases/arctic-ocean").json()
+    finally:
+        app.dependency_overrides.clear()
+    stage_ids = {s["id"] for s in data["stages"]}
+    kinds = {"ais_observation", "report", "boundary", "identity"}
+    seen = set()
+    for item in data["evidence"]:
+        assert item["id"] and item["id"] not in seen
+        seen.add(item["id"])
+        assert item["kind"] in kinds
+        assert set(item["stage_ids"]) <= stage_ids
+        assert item["summary"]
+        if item["kind"] == "ais_observation":
+            assert item["at"], "无精确观测时刻不得提供可定位的AIS证据"
+    identity = next(e for e in data["evidence"] if e["kind"] == "identity")
+    assert identity["stage_ids"] == []
+    assert all(a["summary"] for s in data["stages"] for a in s["articles"])

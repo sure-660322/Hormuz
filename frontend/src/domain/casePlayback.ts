@@ -33,6 +33,34 @@ export function mergeCaseTracks(windows: ApiTrackWindow[]): ApiTrackWindow | nul
     point_count: points.length, segments, gaps }
 }
 
+// 按观测时刻在合并轨迹上取位置：优先精确报位点，否则在相邻两点间线性插值。
+// 处于缺报区间或覆盖范围外时返回 null，调用方不得用相邻点冒充定位成功。
+export function trackPointAt(track: ApiTrackWindow | null, at: string): { latitude: number; longitude: number } | null {
+  if (!track) return null
+  const target = Date.parse(at)
+  if (!Number.isFinite(target)) return null
+  for (const segment of track.segments) {
+    const points = segment.points
+    if (points.length < 1) continue
+    const first = Date.parse(points[0].recorded_at), last = Date.parse(points[points.length - 1].recorded_at)
+    if (target < first || target > last) continue
+    let previous = points[0]
+    for (const point of points) {
+      const recorded = Date.parse(point.recorded_at)
+      if (recorded === target) return { latitude: point.latitude, longitude: point.longitude }
+      if (recorded > target) {
+        const span = recorded - Date.parse(previous.recorded_at)
+        const ratio = span > 0 ? (target - Date.parse(previous.recorded_at)) / span : 0
+        return { latitude: previous.latitude + (point.latitude - previous.latitude) * ratio,
+                 longitude: previous.longitude + (point.longitude - previous.longitude) * ratio }
+      }
+      previous = point
+    }
+    return { latitude: previous.latitude, longitude: previous.longitude }
+  }
+  return null
+}
+
 // Clip each original segment separately: observation gaps remain gaps.
 export function clipCaseTracks(track: ApiTrackWindow | null, from: string, to: string): ApiTrackWindow['segments'] {
   const start = Date.parse(from), end = Date.parse(to)

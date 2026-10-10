@@ -130,6 +130,8 @@ class CaseArticleResponse(BaseModel):
     media: str
     publish_date: date
     url: str
+    # issue #56：1–2 句摘要，证据列表默认展示；不复制报道全文。
+    summary: str = ""
 
 
 class CaseStageResponse(BaseModel):
@@ -143,6 +145,12 @@ class CaseStageResponse(BaseModel):
 
 
 class CaseEvidenceResponse(BaseModel):
+    # issue #56：展示元数据。kind 为 ais_observation / report / boundary / identity；
+    # stage_ids 为空表示适用于整个案例（案例级证据），否则列出适用阶段 id。
+    id: str
+    kind: str
+    stage_ids: list[str] = []
+    summary: str = ""
     title: str
     observation: str
     boundary: str

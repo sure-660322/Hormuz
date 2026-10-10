@@ -302,7 +302,7 @@ async function main() {
   await nextTick()
   assert.equal(realPlayback.frameReady.value, true, 'Adjacent cached frame is ready without a new request')
   assert.equal(realPlayback.currentShips.value[0].speed, 10)
-  const { caseTrackChunks, mergeCaseTracks, clipCaseTracks } = require(path.join(out, 'domain/casePlayback.js'))
+  const { caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } = require(path.join(out, 'domain/casePlayback.js'))
   const chunks = caseTrackChunks('2026-03-27T16:00:00Z','2026-03-29T15:59:59Z')
   assert.equal(chunks.length,2)
   assert.ok(chunks.every(([a,b]) => Date.parse(b)-Date.parse(a) <= 86400000))
@@ -317,6 +317,13 @@ async function main() {
   assert.deepEqual(clipped.flatMap(s => s.points.map(p => p.id)), [1,2], 'No future point in playback highlight')
   assert.equal(clipCaseTracks(merged, a.recorded_at, c.recorded_at).length, 2, 'Clipping must preserve gaps')
   assert.equal(caseTrackChunks('2026-03-26T16:01:33Z','2026-03-31T15:59:51Z').length, 5, 'Full case uses five bounded requests')
+  // issue #56：证据「定位地图」只允许落在真实观测上的时刻；缺报区间与覆盖范围外返回 null，不用相邻点冒充定位成功。
+  assert.deepEqual(trackPointAt(merged, '2026-03-28T16:00:00Z'), { latitude: 26, longitude: 56 }, 'Exact fix is locatable')
+  const interpolated = trackPointAt(merged, '2026-03-28T15:57:30Z')
+  assert.ok(interpolated && Math.abs(interpolated.latitude - 26) < 1e-9, 'Between-fix time interpolates within the segment')
+  assert.equal(trackPointAt(merged, '2026-03-28T18:00:00Z'), null, 'Gap time must not locate to a neighbouring fix')
+  assert.equal(trackPointAt(merged, '2026-03-29T00:00:00Z'), null, 'Outside coverage must not locate')
+  assert.equal(trackPointAt(null, '2026-03-28T16:00:00Z'), null, 'Missing track must not locate')
   api.fetchShipSnapshot = async () => [{...ship,id:1},{...ship,id:2}]
   await realPlayback.load({start_at:'2026-03-30T00:00:00Z',end_at:'2026-03-30T00:10:00Z',ship_id:2})
   assert.deepEqual(realPlayback.currentShips.value.map(s => s.id),[2],'Case snapshot must contain only its vessel')

@@ -48,6 +48,8 @@ const props = defineProps<{
   areaMeta?: string
   areaIsDefault?: boolean
   areaDrawing?: boolean
+  // issue #56：案例证据「定位地图」的观测点高亮；null 时清除。
+  locatePoint?: { latitude: number; longitude: number; at: string } | null
 }>()
 const emit = defineEmits<{
   selectShip: [ship: ApiMapShip]
@@ -78,6 +80,7 @@ let canvas: L.Canvas
 let shipManager: ShipLayerManager
 let eventManager: EventLayerManager
 let trackManager: TrackLayerManager
+let locateLayer: L.LayerGroup
 // 统一渲染调度：watcher 只入队最新状态，实际渲染按浏览器帧批量执行（latest-state-wins）
 const scheduler = new RenderScheduler()
 let initialFitDone = false
@@ -573,6 +576,20 @@ watch(() => props.focusTrackRequest, () => {
     { ...focusPadding(), maxZoom: 11, animate: false },
   ) }
 })
+// issue #56：证据「定位地图」的观测点高亮。只随最新定位请求更新，旧动画不覆盖新定位。
+watch(() => props.locatePoint, (point) => {
+  if (!map) return
+  locateLayer.clearLayers()
+  if (!point) return
+  const icon = L.divIcon({
+    className: 'case-locate-marker',
+    html: '<span class="case-locate-dot"></span><span class="case-locate-ring"></span>',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  })
+  L.marker([point.latitude, point.longitude], { icon, interactive: false, keyboard: false, zIndexOffset: 800 }).addTo(locateLayer)
+  smoothlyCenterOn([point.latitude, point.longitude])
+})
 watch(
   () => props.selectedEvent,
   (event) => {
@@ -682,6 +699,7 @@ onMounted(() => {
   dwellLayer = L.layerGroup().addTo(map)
   encounterLayer = L.layerGroup().addTo(map)
   areaLayer = L.layerGroup().addTo(map)
+  locateLayer = L.layerGroup().addTo(map)
   shipManager = new ShipLayerManager({
     shipLayer,
     clusterLayer,

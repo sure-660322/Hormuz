@@ -16,9 +16,12 @@ export interface ApiCaseStage {
   start_at: string
   end_at: string
   summary: string
-  articles: { title: string; media: string; publish_date: string; url: string; image_url: string | null; image_source_url: string | null; image_kind: string | null }[]
+  articles: { title: string; media: string; publish_date: string; url: string; image_url: string | null; image_source_url: string | null; image_kind: string | null; summary: string }[]
 }
+// issue #56：证据必须有明确类型与适用范围。stage_ids 为空 = 适用于整个案例。
+export type CaseEvidenceKind = 'ais_observation' | 'report' | 'boundary' | 'identity'
 export interface ApiCaseEvidence {
+  id: string; kind: CaseEvidenceKind; stage_ids: string[]; summary: string
   title: string; observation: string; boundary: string; at: string | null; url: string | null
 }
 export interface ApiMaritimeCase {
