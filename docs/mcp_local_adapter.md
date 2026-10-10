@@ -137,7 +137,7 @@ Kimi CLI 2.1.1 / Highspeed 经两种传输各完成检索、通行、在场和�
 ## Kimi Work 桌面个人插件（2026-10-10）
 
 Kimi Code 的 mcp.json 不会自动生成桌面插件卡片。本项目新增
-[Hormuz 个人插件](../plugins/kimi/personal/hormuz/README.md)，以相对路径 Node 启动器
+[Hormuz 个人插件](../plugins/kimi/personal/hormuz/README.md)，以相对路径 PowerShell 7 启动器
 读取 Windows 本机配置，启动既有 stdio MCP；SQL 保持关闭。
-0.1.1 已经官方校验/登记并验证启动器四题，用户随后已安装启用，但桌面工具发现失败，未完成桌面回答验收。
-入口为 **插件 → 个人 → Hormuz 船舶分析 → ＋ 安装**，完整状态见[记录](issue50_kimi_acceptance.md)。
+0.1.1 已安装启用，但桌面 node 转换入口发生 MODULE_NOT_FOUND。2026-10-10 的 0.1.2 改用 PowerShell 7 原始字节转发入口，发现 7 工具、四题对账和 11 项相关回归通过并已官方登记；官方更新因运行中会话被延后，受管副本仍为 0.1.1，桌面查询验收阻塞。
+首次入口为 **插件 → 个人 → Hormuz 船舶分析 → ＋ 安装**；已安装版本通过该详情页的“更新”加载新版本，须等待运行中任务自然空闲。完整状态见[记录](issue50_kimi_acceptance.md)。

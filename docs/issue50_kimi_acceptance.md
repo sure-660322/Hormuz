@@ -80,7 +80,7 @@ Windows 本机运行配置保存在 `%LOCALAPPDATA%/Hormuz/kimi-mcp.json`，只�
 启动器实测发现 7 工具，四题实际查询与同条件既有基线一致；缺失配置时 exit 1，
 stdout 为空、stderr 为通用错误。未改变后端实现，因此没有重复运行不相关回归。
 
-**状态：已登记，未安装，桌面会话加载/回答待用户验证。** 官方 CLI 拒绝直接安装
+**该次登记时状态：已登记，未安装；当前状态见文末 0.1.2 修复记录。** 官方 CLI 拒绝直接安装
 市场管理插件，要求使用个人市场安装入口；独立安装实验也缺运行时网关 key，未注入假 key
 或复制真实登录凭据来绕过。用户在 **插件 → 个人 → Hormuz 船舶分析 → ＋ 安装**；
 详情链接 `kimi-work://plugin?id=hormuz`。重新打开插件页刷新条目，无需停止现有会话。
@@ -106,6 +106,70 @@ hormuz 0.1.1 已安装并 enabled=true；本机 `%LOCALAPPDATA%/Hormuz/kimi-mcp.
 没有 Hormuz 查询工具。Kimi 的“本机配置不存在”来自 Bash 中反斜杠/正斜杠混合路径的
 失败检查，不能作为真实配置缺失证据。
 
-当前状态更新为 **已安装启用，桌面 MCP 工具发现失败，启动原因待查**；
-不能直接归因未重启，尚未请求或执行桌面重启，不修改插件或配置，不用 computer use。
+当前状态更新为 **已安装启用，桌面 MCP 启动失败，原因已定位，待修复验收**；
+当时不能直接归因未重启；该诊断轮未请求或执行桌面重启，未修改插件或配置，未用 computer use。
 前述“待点击安装”为该次登记时的状态；不代表安装已完成真实桌面查询验收。
+
+## 2026-10-10 新会话启动错误诊断
+
+遵从用户要求，不使用 computer use、不重启 Kimi、不停止在跑任务。只读调用当前
+本机 daemon 控制接口的 `mcp.inspect` 和指定失败会话的 `mcp.runtime.list`，
+认证凭据仅在进程内使用，未输出或保存。配置检查显示 enabled=true；运行状态
+为 `failed`、toolCount=0。安装端将清单中的 `node ./scripts/launch.mjs` 转换为
+`Kimi.exe __plugin_run_node ./scripts/launch.mjs`，cwd 为受管插件目录。
+实际 stderr 是 `Cannot find module .../hormuz/__plugin_run_node`、
+`MODULE_NOT_FOUND`、`Connection closed`（Node.js v24.21.0）。因此失败发生在
+启动器执行之前，未到 MCP 握手或数据库查询；源启动器四题通过不能证明桌面
+转换后的命令可运行。具体环境变量导致该转换失效的机制尚未验证。
+
+建议针对插件启动入口制作兼容修复，使用独立测试启动验证后，经官方插件更新与
+仅针对 Hormuz 的 MCP 重连再验收。重启整个 Kimi 不是目前必要的排查步骤，
+也没有证据证明重启可以修复。上一诊断轮只同步诊断文档，未修改插件清单、启动器、
+本机配置、受管副本、数据库或运行中任务；修复及桌面真实查询仍未完成。
+
+## 2026-10-10 启动入口修复与官方更新尝试
+
+本轮接手基线 `d3b272c`，保留六份既有未提交诊断文档。负责人 Codex，模式为
+处理 Issue #50 / Draft PR #62；仅修改任务工作树内插件、相关测试和文档。
+0.1.2 使用相对路径 PowerShell 7 入口直接启动既有 Python MCP，绕开失效的桌面
+node 转换。仍从外部本机配置定位运行路径与具名凭据，清除继承的 DB/MCP/SQL
+设置，SQL 三工具关闭。不改变本机配置、数据库目标或数据。
+
+启动器使用原始字节转发协议，显式丢弃异步复制返回值，避免 PowerShell 对象进入 stdout。
+以清单的实际 command/args/cwd 启动独立 MCP SDK 客户端，成功初始化并发现 7 工具，
+四题真实查询与此前同条件测试库基线逐字段断言一致（不是桌面模型回答）：
+
+| 查询 | 状态与指标 | 本轮 request_id |
+| --- | --- | --- |
+| ATHE NOVA | ok；ID 628 / MMSI 334931000 / IMO 9188116 | req_de28c5c2d0634bc5a545f6c990b55306 |
+| UTC 2026-02-26 通行 | partial；132 次 / 131 船，入湾 81 / 出湾 51，不确定 8 | req_fd8d31f79e0a4a129c2794adb22e11a3 |
+| UTC 2026-02-26 12:00 默认区域 | ok；观测在场 199 船，新鲜度 3600 秒 | req_e35baa59ff12451fb619948f72adee99 |
+| UTC 2026-02-26 默认区域活动 | partial；477 船出现 / 229 次进入 / 224 次离开 / 4719.027 船小时 | req_c09f3b55ac3741a48e4b78cf1aaee199 |
+
+通行版本 `strait-gates-v1+stats-2026-10-07`；区域/算法版本 1.0.0 / 1.0.1。
+结果保留覆盖与质量限制、partial 状态；AIS 缺报不能证明事故或主动关闭设备，
+船名相同不能确认新闻实体。精简参数、指标及 request_id 见同名 JSON 的
+`desktop_plugin_validation.desktop_startup_fix`，旧批次记录和哈希保持历史含义。
+
+相关回归命令：`backend/.venv/Scripts/python.exe -m pytest
+backend/tests/test_kimi_plugin_launcher.py backend/tests/test_mcp_credentials.py -q`，
+**11 passed**。覆盖缺失/无效配置的通用 stderr 与空 stdout、BOM、带空格路径、
+大型 Unicode 原始字节输出、EOF、子进程退出码及继承环境隔离；测试不访问数据库或凭据。
+真实四题另行通过。后端业务实现未修改，未重跑此前 466/14 全量回归。
+
+官方 Plugin Builder 校验 **0 error / 0 warning**；通过官方 CLI 重登记 personal
+源版本 0.1.2，回读 id/version/sourcePath 通过，health=ok、状态 updatable。
+经当前 daemon 官方 `kimiPlugin.personal.updatePlugin`（仅 `id=hormuz`）更新时，
+返回 `RUNTIME_FAILED`：`Plugin update deferred: a Kimi Code session is starting or running.
+Retry when idle.` 回读 installedVersion 与受管清单均仍为 0.1.1，入口仍为 node。
+没有手改 installed.json 或受管副本。
+
+随后仅对上一会话的失败 conversationKey、`name=plugin-hormuz:hormuz` 调用
+`mcp.runtime.reconnect`，返回 -32003：该失败会话已不存在。没有对其他会话、
+MCP 或全局运行时执行重连，也没有重启 Kimi 或停止其他任务。控制认证仅在进程内使用，
+未输出或保存。没有创建桌面模型验收会话，因为新版本尚未被官方更新加载。
+
+**当前：源启动修复已实现并验证、0.1.2 已登记；桌面更新及真实查询验收阻塞。**
+等其他任务自然空闲后，通过个人插件官方“更新”加载 0.1.2，确认版本与 7 工具，
+再在新查询会话测试上文四题及拒绝题。当前不能宣称桌面启动/模型回答验收成功。
+SQL 客户端链路等其余 Issue 验收仍待完成，PR #62 保持 Draft，不合并、不部署。
