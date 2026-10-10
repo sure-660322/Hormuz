@@ -147,3 +147,7 @@ Kimi Code 的 mcp.json 不会自动生成桌面插件卡片。本项目新增
 DSH 官方 MCP client 支持本机 stdio，已配置独立 headless profile 与桌面 profile。独立真实模型四题与基线一致；桌面热加载和问答尚未验证，没有重启应用。SQL 保持关闭，大型区域工具事件存在明细截断，前置汇总完整。配置格式、四题、request_id 与范围见[DSH 记录](dsh_mcp_acceptance.md)。
 
 同日路径复核确认本机运行配置存在、独立 DSH profile 仍可调用；两份 profile 已显式设置非敏感 HORMUZ_KIMI_CONFIG，桌面 agent 的缺文件诊断尚未证实，不据此重新生成配置或要求重启。
+
+23:25 后已在真实桌面 MCP 子进程复现旧配置目录不可见。改用 DSH profile 内白名单运行元数据，桌面 tools/list 返回 7 工具，无协议错误；仅重载 Hormuz，桌面模型问答尚待验证。前文缺文件报告的否定只适用于 CLI 环境，不能用于桌面环境。
+
+桌面所属同连接 search_ships 只读探测也已通过（req_d62c66dd64bf43c9bb8bde1b42d6f02d）；临时诊断入口已撤除，正常 pwsh/launch.ps1 恢复。桌面协议发现与进程内数据库调用已验证，模型实际回答仍待用户发送验收题。

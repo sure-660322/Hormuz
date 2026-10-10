@@ -118,14 +118,16 @@
   "desktop": {
     "profile_patch_added": true,
     "existing_entries_preserved": true,
-    "mcp_child_observed": false,
+    "mcp_child_observed": true,
     "model_query_verified": false,
-    "restarted": false
+    "restarted": false,
+    "runtime_metadata_path": "DSH desktop profile/hormuz-runtime.json",
+    "tools_list_verified": true
   },
   "limitations": [
     "Area tool_result events are truncated; summary fields remained complete.",
-    "DSH desktop hot loading and desktop queries remain unverified.",
-    "HTTP, SQL, remaining tools, multi-turn and sustained load are not verified in this batch."
+    "HTTP, SQL, remaining tools, multi-turn and sustained load are not verified in this batch.",
+    "Desktop tools/list and desktop-owned connection query verified; desktop model answer not yet verified."
   ],
   "persisted_profile_check": {
     "command": "dsh.cmd --profile hormuz-mcp-check --json <ATHE NOVA question>",
@@ -153,5 +155,31 @@
     "desktop_mcp_child_observed": false,
     "desktop_query_verified": false,
     "reported_agent_environment_difference": "unverified"
+  },
+  "desktop_runtime_fix": {
+    "date": "2026-10-10",
+    "original_path_visible_to_cli": true,
+    "original_path_visible_to_actual_desktop_mcp_process": false,
+    "desktop_failure_stage": "runtime metadata read; ItemNotFoundException",
+    "mechanism": "underlying filesystem visibility or isolation mechanism not established",
+    "nonsecret_runtime_metadata_in_dsh_profile": true,
+    "same_database_and_named_credential_target_preserved": true,
+    "config_recreated_from_existing_metadata_only": true,
+    "desktop_tools_list_count": 7,
+    "desktop_tools_list_rpc_error": false,
+    "desktop_model_query_verified": false,
+    "host_restarted": false,
+    "other_sessions_stopped": false,
+    "temporary_diagnostic_entry_removed": true,
+    "desktop_owned_transport_readonly_probe": {
+      "tool": "search_ships",
+      "keyword": "ATHE NOVA",
+      "status": "ok",
+      "request_id": "req_d62c66dd64bf43c9bb8bde1b42d6f02d",
+      "ship_id": 628,
+      "mmsi": "334931000",
+      "imo": "9188116",
+      "method": "temporary relay probe on desktop-owned connection; not a desktop model turn"
+    }
   }
 }

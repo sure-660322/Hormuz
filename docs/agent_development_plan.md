@@ -23,6 +23,10 @@ Kimi 测试和成功后 PR 交付。stdio/Streamable HTTP 共用 7 个业务工�
 
 同日收到桌面 agent 的“本机配置不存在”报告后复核：真实 Windows 路径下文件存在，SDK 7 工具发现和持久 DSH profile 的 ATHE NOVA 查询均再次成功。两份 profile 仅增加显式 HORMUZ_KIMI_CONFIG 路径；不重新生成配置、不枚举凭据、不重启。桌面连接继续待验证，执行环境差异未核实，详见 DSH 记录。
 
+23:25 后桌面复核：真实桌面 MCP 子进程也看不到旧 AppData 配置，先前仅凭 CLI 可见性否定其报告的判断不完整。改用 DSH profile 内白名单运行元数据后，桌面配置可读、Python/MCP 模块可见，真实桌面 tools/list 返回 7 工具且无协议错误；状态更新为「桌面协议发现已验证，桌面模型问答待验收」。只重载 Hormuz 条目，未重启、未读取复制凭据；底层文件系统隔离机制未确认。
+
+桌面所属同连接 search_ships 只读探测也已通过（req_d62c66dd64bf43c9bb8bde1b42d6f02d）；临时诊断入口已撤除，正常 pwsh/launch.ps1 恢复。桌面协议发现与进程内数据库调用已验证，模型实际回答仍待用户发送验收题。
+
 ## 2026-10-08 当前摘要与下一阶段路线图
 
 状态核对：通行统计 #40（PR #42 / f555ec7）、区域活动 #41（PR #45 / 3bcfea1）及北冰洋交互 #43（PR #44 / b0ed92f）已合入 main。当前 LangChain 单智能体有13个只读业务工具（8既有+2通行+3区域）、知识库及条件启用的SQL三工具；catalog v2 仍仅含船舶/事件/新闻。通行与区域各有2026-10-07真实模型/浏览器样本，综合多轮已随 #47 / PR #57 合入并在 2026-10-08 验收（[记录](issue47_multi_turn_acceptance.md)）；SQL分析事实层（#48）已随 PR #59 合入，并完成独立测试库验收（catalog v3：5 张受控分析快照表+清单核验+必要过滤；对账 ALL PASS、真实模型筛选/分组/排名三题、15 项失败关闭实测、EXPLAIN 毫秒级小扫描，见[issue48 验收记录](issue48_sql_acceptance.md)），**应用库 aisdb 未执行 017/未建快照**；产品 MCP 本机 stdio/Streamable HTTP 适配已在 #50 任务分支实现并经开发验证，Kimi 双传输业务样本已验证，完整 SQL 客户端验收、合并及部署待完成，见[说明](mcp_local_adapter.md)。下方旧分支状态和历史数量不代表本轮重新验收。
