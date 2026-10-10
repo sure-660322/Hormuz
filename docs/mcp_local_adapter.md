@@ -139,5 +139,5 @@ Kimi CLI 2.1.1 / Highspeed 经两种传输各完成检索、通行、在场和�
 Kimi Code 的 mcp.json 不会自动生成桌面插件卡片。本项目新增
 [Hormuz 个人插件](../plugins/kimi/personal/hormuz/README.md)，以相对路径 Node 启动器
 读取 Windows 本机配置，启动既有 stdio MCP；SQL 保持关闭。
-0.1.1 已经官方校验/登记并验证启动器四题，尚未在用户桌面点击安装或完成桌面回答验收。
+0.1.1 已经官方校验/登记并验证启动器四题，用户随后已安装启用，但桌面工具发现失败，未完成桌面回答验收。
 入口为 **插件 → 个人 → Hormuz 船舶分析 → ＋ 安装**，完整状态见[记录](issue50_kimi_acceptance.md)。
