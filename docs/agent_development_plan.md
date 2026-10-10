@@ -19,6 +19,8 @@ Kimi 测试和成功后 PR 交付。stdio/Streamable HTTP 共用 7 个业务工�
 2026-10-10：用户当前 Kimi 桌面端未见 Hormuz。此前仅添加 Kimi Code MCP 配置，
 未安装桌面插件；CLI 验收成立；随后按授权补做 Hormuz 个人插件 0.1.1，官方校验/登记通过，启动器发现 7 工具并通过四题对账。用户随后已安装启用；当前桌面会话未发现 Hormuz MCP 工具，只读控制接口已确认启动错误：Kimi 将 node 转换为 Kimi.exe __plugin_run_node，运行时却把后者当作模块，MODULE_NOT_FOUND；0.1.2 已改用 PowerShell 7 入口并通过 7 工具发现、四题对账和 11 项相关回归，官方登记成功。官方个人市场更新因运行中会话被延后，受管副本仍为 0.1.1；仅对原失败会话的 Hormuz 重连返回该会话已不存在。桌面查询验收阻塞，需等待任务自然空闲后官方更新，见[记录](issue50_kimi_acceptance.md)。
 
+2026-10-10 DSH：用户追加授权接入 DeepSeek Harness。官方 MCP client / stdio 与独立 headless 真实模型四题已验证，与同参数业务基线一致；独立 profile 已持久配置。桌面 profile 单条增量已保存并保留原配置及本机备份，运行进程核对路径正确，但桌面 MCP 启动和问答未证实；状态为「已配置待桌面验证」。没有重启或停止其他任务。大型区域工具的 DSH 事件截断明细，前置汇总完整。SQL 仍关闭，HTTP/其余工具/多轮/负载未测，PR #62 保持 Draft。详见[DSH 验收及使用](dsh_mcp_acceptance.md)。
+
 ## 2026-10-08 当前摘要与下一阶段路线图
 
 状态核对：通行统计 #40（PR #42 / f555ec7）、区域活动 #41（PR #45 / 3bcfea1）及北冰洋交互 #43（PR #44 / b0ed92f）已合入 main。当前 LangChain 单智能体有13个只读业务工具（8既有+2通行+3区域）、知识库及条件启用的SQL三工具；catalog v2 仍仅含船舶/事件/新闻。通行与区域各有2026-10-07真实模型/浏览器样本，综合多轮已随 #47 / PR #57 合入并在 2026-10-08 验收（[记录](issue47_multi_turn_acceptance.md)）；SQL分析事实层（#48）已随 PR #59 合入，并完成独立测试库验收（catalog v3：5 张受控分析快照表+清单核验+必要过滤；对账 ALL PASS、真实模型筛选/分组/排名三题、15 项失败关闭实测、EXPLAIN 毫秒级小扫描，见[issue48 验收记录](issue48_sql_acceptance.md)），**应用库 aisdb 未执行 017/未建快照**；产品 MCP 本机 stdio/Streamable HTTP 适配已在 #50 任务分支实现并经开发验证，Kimi 双传输业务样本已验证，完整 SQL 客户端验收、合并及部署待完成，见[说明](mcp_local_adapter.md)。下方旧分支状态和历史数量不代表本轮重新验收。

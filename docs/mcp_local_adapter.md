@@ -141,3 +141,7 @@ Kimi Code 的 mcp.json 不会自动生成桌面插件卡片。本项目新增
 读取 Windows 本机配置，启动既有 stdio MCP；SQL 保持关闭。
 0.1.1 已安装启用，但桌面 node 转换入口发生 MODULE_NOT_FOUND。2026-10-10 的 0.1.2 改用 PowerShell 7 原始字节转发入口，发现 7 工具、四题对账和 11 项相关回归通过并已官方登记；官方更新因运行中会话被延后，受管副本仍为 0.1.1，桌面查询验收阻塞。
 首次入口为 **插件 → 个人 → Hormuz 船舶分析 → ＋ 安装**；已安装版本通过该详情页的“更新”加载新版本，须等待运行中任务自然空闲。完整状态见[记录](issue50_kimi_acceptance.md)。
+
+## DeepSeek Harness（2026-10-10）
+
+DSH 官方 MCP client 支持本机 stdio，已配置独立 headless profile 与桌面 profile。独立真实模型四题与基线一致；桌面热加载和问答尚未验证，没有重启应用。SQL 保持关闭，大型区域工具事件存在明细截断，前置汇总完整。配置格式、四题、request_id 与范围见[DSH 记录](dsh_mcp_acceptance.md)。

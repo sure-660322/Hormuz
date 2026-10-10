@@ -1,5 +1,7 @@
 # 霍尔木兹海峡船舶态势地图
 
+> 2026-10-10 DSH 接入：DeepSeek Harness 0.2.0-rc.2 独立 headless 真实模型四题已通过，使用修复后的 stdio 启动器；桌面 profile 已配置，热加载与桌面问答尚未验证。SQL 保持关闭，Kimi 桌面更新阻塞仍存在。见[配置与验收](docs/dsh_mcp_acceptance.md)。
+
 Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件及有界智能体问答；后端使用 FastAPI、PostgreSQL、PostGIS/MobilityDB。新闻与 AIS 观测不自动构成身份或因果关联。
 
 当前主线已合入案例、自然语言地图动作、态势图表及 Issue #30 UI 升级；各功能的历史验证和未验证范围见[任务计划](docs/agent_development_plan.md)。未正式部署，认证授权、数据展示许可和公开前整改尚未完成。
