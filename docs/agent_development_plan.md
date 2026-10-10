@@ -16,6 +16,8 @@ Kimi 测试和成功后 PR 交付。stdio/Streamable HTTP 共用 7 个业务工�
 后端回归 466 passed / 14 skipped。配置与边界见[本机 MCP 记录](mcp_local_adapter.md)。
 [PR #62](https://github.com/sure-660322/Hormuz/pull/62)（Draft）已创建，实现提交 `15a9cfb` 已推送；交付本机实现和业务样本，未合并、未部署；真实 SQL 客户端链路因缺少
 专用只读账号运行凭据保持待验证。Issue #50/#46 不关闭。
+2026-10-10：用户当前 Kimi 桌面端未见 Hormuz。此前仅添加 Kimi Code MCP 配置，
+未安装桌面插件；CLI 验收成立，用户桌面接入保持待完成。诊断与更正见[记录](issue50_kimi_acceptance.md)。
 
 ## 2026-10-08 当前摘要与下一阶段路线图
 

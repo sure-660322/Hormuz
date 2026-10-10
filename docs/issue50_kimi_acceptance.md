@@ -64,10 +64,16 @@ partial 未被写成全部真实交通；名称未被自动认定为新闻实体
 
 ## 用户手测
 
-本机已向 `C:\Users\18242\.kimi-code\mcp.json` 添加 `hormuz` stdio 配置，
-保留原有 MCP 条目；指向本任务工作树虚拟环境和上述测试库。新建 Kimi 会话后检查
-Hormuz 工具是否出现；已有会话可能仍保留旧工具清单。若该 Desktop 版本未加载新条目，
-以其 MCP 列表/错误为准，CLI 验收不等于已核验 Desktop 界面。
+2026-10-10 用户反馈：Kimi 桌面插件列表未见 Hormuz。只读检查确认
+`C:\Users\18242\.kimi-code\mcp.json` 的 hormuz 条目及启动文件存在；安装的
+Kimi 桌面应用版本为 3.2.15。此前配置的是 **Kimi Code MCP**，没有制作或安装
+Hormuz 桌面插件，不能将 CLI 验收或配置文件存在视为该桌面应用接入成功。
+
+Kimi Code 的官方说明将 MCP 配置与插件清单区分；Kimi Work 的个人插件须经
+创建/转换、登记、安装流程，见[个人插件说明](https://www.kimi.com/help/plugins-and-skills/create)。
+若使用 Kimi Code，配置入口见[官方 MCP 文档](https://www.kimi.com/code/docs/kimi-code-cli/customization/mcp.html)。
+**用户当前桌面端接入仍待完成**，本轮仅诊断并修正文档，没有修改其桌面配置，
+没有使用 computer use。下列问题在当前桌面端尚不能直接据此宣称可用。
 
 以下问题可以逐条发送，要求 Kimi 实际调用 Hormuz MCP 并列出状态与 request_id：
 
