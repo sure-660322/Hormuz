@@ -86,5 +86,94 @@
     "message": "Local query concurrency exhausted"
   },
   "scope": "Dedicated diagnostic child with fixed SQL; not a normal business query or sustained load/TCP disconnect test",
-  "diagnostic_script_sha256": "db67c6b136f18b49a5c3c222e33dfd069385f8c45bc9647048b2d5d4eed79181"
+  "diagnostic_script_sha256": "db67c6b136f18b49a5c3c222e33dfd069385f8c45bc9647048b2d5d4eed79181",
+  "final_head_recheck": {
+    "date": "2026-10-11",
+    "transport": "stdio",
+    "diagnostic_only": true,
+    "source_commit": "61c9db54952f6638b080b95bc16a3f7c9b3e1b03",
+    "cancel": "PASS: SDK cancellation -> Adapter event -> psycopg 57014; no active probe query",
+    "concurrency": "PASS: four real read-only probes; fifth refused MCP_BUSY; slots released",
+    "events": [
+      {
+        "event": "started",
+        "request_id": "req_c1b69381f2f04a97b69477f8e39d2e41",
+        "probe": "__resource_probe__cancel"
+      },
+      {
+        "event": "finished",
+        "request_id": "req_c1b69381f2f04a97b69477f8e39d2e41",
+        "probe": "__resource_probe__cancel",
+        "cancel_event": true,
+        "sqlstate": "57014",
+        "active_probe_queries": 0,
+        "elapsed_seconds": 0.062
+      },
+      {
+        "event": "started",
+        "request_id": "req_5c4de4180d3743b3aec948f2bb2e1a5a",
+        "probe": "__resource_probe__concurrency0"
+      },
+      {
+        "event": "started",
+        "request_id": "req_baf30d6127054450bba2b28d3af6f293",
+        "probe": "__resource_probe__concurrency1"
+      },
+      {
+        "event": "started",
+        "request_id": "req_29cc4e0197d2456e96fddd7cc1f8f431",
+        "probe": "__resource_probe__concurrency2"
+      },
+      {
+        "event": "started",
+        "request_id": "req_782cb5b4ae6a4c8fb7b169df39f5a093",
+        "probe": "__resource_probe__concurrency3"
+      },
+      {
+        "event": "finished",
+        "request_id": "req_5c4de4180d3743b3aec948f2bb2e1a5a",
+        "probe": "__resource_probe__concurrency0",
+        "cancel_event": false,
+        "sqlstate": null,
+        "active_probe_queries": 0,
+        "elapsed_seconds": 3.013
+      },
+      {
+        "event": "finished",
+        "request_id": "req_baf30d6127054450bba2b28d3af6f293",
+        "probe": "__resource_probe__concurrency1",
+        "cancel_event": false,
+        "sqlstate": null,
+        "active_probe_queries": 0,
+        "elapsed_seconds": 3.022
+      },
+      {
+        "event": "finished",
+        "request_id": "req_782cb5b4ae6a4c8fb7b169df39f5a093",
+        "probe": "__resource_probe__concurrency3",
+        "cancel_event": false,
+        "sqlstate": null,
+        "active_probe_queries": 0,
+        "elapsed_seconds": 3.023
+      },
+      {
+        "event": "finished",
+        "request_id": "req_29cc4e0197d2456e96fddd7cc1f8f431",
+        "probe": "__resource_probe__concurrency2",
+        "cancel_event": false,
+        "sqlstate": null,
+        "active_probe_queries": 0,
+        "elapsed_seconds": 3.025
+      }
+    ],
+    "busy": {
+      "request_id": "req_32a0c4661e134e6d8b7b9dba5f40ba96",
+      "tool_name": "search_ships",
+      "adapter_version": "0.2.0",
+      "status": "refused",
+      "code": "MCP_BUSY",
+      "message": "Local query concurrency exhausted"
+    },
+    "scope": "Dedicated diagnostic child with fixed SQL; not a normal business query or sustained load/TCP disconnect test"
+  }
 }
