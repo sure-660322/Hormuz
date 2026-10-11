@@ -371,5 +371,19 @@
     "runtime_switched": false,
     "acceptance_record": "issue50_business_boundary_acceptance.md",
     "historical_sql_requirement": "withdrawn; historical evidence above preserved"
+  },
+  "local_closeout_2026_10_11": {
+    "status": "local acceptance satisfied; pending merge",
+    "dedicated_external_sql_account": "not required",
+    "business_minimum_privilege": "hardening; not a local acceptance blocker",
+    "stdio_cancel": "verified real diagnostic protocol and database cancel",
+    "bounded_concurrency": "verified 4 real probes; fifth MCP_BUSY",
+    "remaining_limitations": [
+      "HTTP TCP disconnect",
+      "sustained multi-process load",
+      "public auth/data permission"
+    ],
+    "runtime_switched": false,
+    "deployed": false
   }
 }
