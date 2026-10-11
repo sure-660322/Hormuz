@@ -63,3 +63,15 @@ def test_raw_stdio_environment_isolation_and_exit_code(tmp_path):
     assert result.returncode == 17
     assert result.stdout == payload  # Exact bytes: no banner, Task result, encoding or line changes.
     assert result.stderr == b"fake-server-stderr\n"
+
+
+def test_sql_runtime_configuration_is_rejected(tmp_path):
+    config = tmp_path / "runtime.json"
+    config.write_text(json.dumps({"python": sys.executable,
+        "workspace": str(PLUGIN.parents[3]),
+        "database": {"user": "test", "credential": "unused-fake-target", "host": "127.0.0.1",
+                     "port": "25432", "name": "test_metadata_only"},
+        "sql": {"enabled": True}}), encoding="utf8")
+    result = launch(config)
+    assert result.returncode == 1 and result.stdout == b""
+    assert result.stderr.strip() == b"Hormuz MCP launch failed; check the local runtime configuration."

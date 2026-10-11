@@ -37,12 +37,21 @@ def test_ambiguous_password_source_is_rejected_without_read(monkeypatch):
 
 
 def test_missing_named_credential_does_not_set_password(monkeypatch):
-    monkeypatch.setenv("AGENT_DB_PASSWORD_CREDENTIAL", "test-profile")
+    monkeypatch.setenv("MCP_DB_PASSWORD_CREDENTIAL", "test-profile")
     def unavailable(_):
         raise ValueError("Named Windows credential unavailable")
     monkeypatch.setattr(credentials, "read_windows_credential", unavailable)
     with pytest.raises(ValueError, match="unavailable"):
         credentials.resolve_passwords()
+    assert "MCP_DB_PASSWORD" not in credentials.os.environ
+
+
+def test_internal_sql_credential_is_never_read(monkeypatch):
+    monkeypatch.setenv("AGENT_DB_PASSWORD_CREDENTIAL", "must-not-read")
+    monkeypatch.setenv("MCP_SQL_ENABLED", "true")
+    monkeypatch.setattr(credentials, "read_windows_credential",
+                        lambda _: pytest.fail("External server must not read SQL credential"))
+    credentials.resolve_passwords()
     assert "AGENT_DB_PASSWORD" not in credentials.os.environ
 
 

@@ -6,33 +6,11 @@ import threading
 
 import pytest
 
-from backend.mcp_server.adapter import Adapter, ApprovalStore, Cancellation
-
-QUERY = {"sql": "SELECT ship_id FROM agent_data.v_ships WHERE ship_id = :n LIMIT 3",
-         "params": [{"name": "n", "type": "int", "value": 3}], "purpose": "development"}
-
-
-class Executor:
-    def __init__(self):
-        self.calls = []
-        self.disposed = False
-
-    def execute(self, **kwargs):
-        self.calls.append(kwargs)
-        class Result:
-            def to_dict(self):
-                return {"status": "ok", "query_id": "fake_query", "rows": [], "returned_row_count": 0}
-        return Result()
-
-    def dispose(self):
-        self.disposed = True
-
+from backend.mcp_server.adapter import Adapter, Cancellation
 
 @pytest.fixture
 def adapter():
-    executor = Executor()
-    instance = Adapter(sql_enabled=True, executor_factory=lambda: executor)
-    instance.test_executor = executor
+    instance = Adapter()
     yield instance
     instance.close()
 
@@ -41,73 +19,13 @@ def call(adapter, name, args=None, scope="client-a"):
     return asyncio.run(adapter.call(name, args or {}, scope))
 
 
-def approval(adapter):
-    result = call(adapter, "check_sql", QUERY)
-    assert result["status"] == "ok", result
-    return result["validation_token"]
-
-
-def test_exact_single_use_token_and_reader_revalidation(adapter):
-    token = approval(adapter)
-    result = call(adapter, "execute_sql", QUERY | {"validation_token": token})
-    assert result["status"] == "ok"
-    assert len(adapter.test_executor.calls) == 1
-    assert adapter.test_executor.calls[0]["sql"] == QUERY["sql"]
-    assert isinstance(adapter.test_executor.calls[0]["cancel_event"], threading.Event)
-    assert adapter.test_executor.disposed
-    assert call(adapter, "execute_sql", QUERY | {"validation_token": token})["code"] == "INVALID_SQL_TOKEN"
-
-
-def test_foreign_client_cannot_execute_or_revoke(adapter):
-    token = approval(adapter)
-    args = QUERY | {"validation_token": token}
-    assert call(adapter, "execute_sql", args, "client-b")["code"] == "INVALID_SQL_TOKEN"
-    assert call(adapter, "execute_sql", args)["status"] == "ok"
-
-
-@pytest.mark.parametrize("change", [{"purpose": "other"}, {"params": [{"name": "n", "type": "int", "value": 4}]},
-                                      {"sql": "SELECT ship_id FROM agent_data.v_ships LIMIT :other"}])
-def test_modified_args_consume_and_reject_token(adapter, change):
-    token = approval(adapter)
-    assert call(adapter, "execute_sql", QUERY | change | {"validation_token": token})["code"] == "INVALID_SQL_TOKEN"
-    assert not adapter.test_executor.calls
-
-
-def test_expiry_capacity_and_catalog_drift():
-    now = [0]
-    store = ApprovalStore(ttl=2, capacity=1, clock=lambda: now[0])
-    token = store.issue("a", QUERY, {"v": 1})
-    assert store.issue("a", QUERY, {}) is None
-    assert not store.consume(token, "a", QUERY, {"v": 2})
-    token = store.issue("a", QUERY, {})
-    now[0] = 3
-    assert not store.consume(token, "a", QUERY, {})
-
-
-def test_atomic_token_consumption():
-    from concurrent.futures import ThreadPoolExecutor
-    store = ApprovalStore()
-    token = store.issue("a", QUERY, {})
-    with ThreadPoolExecutor(4) as pool:
-        results = list(pool.map(lambda _: store.consume(token, "a", QUERY, {}), range(8)))
-    assert results.count(True) == 1
-
-
-@pytest.mark.parametrize("sql", ["DELETE FROM ships", "SELECT * FROM public.ship_positions", "SELECT pg_sleep(:n)"])
-def test_policy_denial_has_no_token_or_execution(adapter, sql):
-    result = call(adapter, "check_sql", QUERY | {"sql": sql})
-    assert result["status"] != "ok"
-    assert "validation_token" not in result
-    assert not adapter.test_executor.calls
-
-
-def test_disabled_sql_is_not_discoverable():
-    instance = Adapter()
-    try:
-        assert len(instance.names()) == 7
-        assert call(instance, "check_sql", QUERY)["code"] == "TOOL_UNAVAILABLE"
-    finally:
-        instance.close()
+@pytest.mark.parametrize("name", ["get_database_schema", "check_sql", "execute_sql"])
+def test_sql_denied_before_dispatch_and_session(adapter, name):
+    adapter.dispatch = lambda *a: pytest.fail("SQL dispatch forbidden")
+    assert call(adapter, name, {"sql": "DELETE FROM ships"})["code"] == "TOOL_UNAVAILABLE"
+    assert len(adapter.names()) == 7
+    cancel = Cancellation()
+    assert adapter.__class__.dispatch(adapter, name, {}, "a", "test", cancel)["code"] == "TOOL_UNAVAILABLE"
 
 
 @pytest.mark.parametrize("name,args", [
@@ -204,11 +122,32 @@ def test_custom_area_is_not_remembered(adapter, monkeypatch):
     adapter.session_factory = fake_session
     args = {"at": "2026-02-28T00:00:00Z", "bounds": {"west": 56.1, "south": 26.1, "east": 56.2, "north": 26.2}}
     first = call(adapter, "query_area_ship_snapshot", args)
-    second = call(adapter, "query_area_ship_snapshot", {"at": args["at"]})
+    second = call(adapter, "query_area_ship_snapshot", {"at": args["at"]}, scope="client-b")
     assert not seen[0]["is_default"] and seen[1]["is_default"]
     assert first["area_context"]["area_id"] == "custom"
     assert second["area_context"]["area_id"] == "hormuz_core_v1"
     assert second["quality"] == {"coverage": "unknown"}
+
+
+@pytest.mark.parametrize("flag", [None, "true", "invalid"])
+def test_startup_ignores_legacy_sql_settings(monkeypatch, flag):
+    from backend.mcp_server import __main__ as cli
+    if flag is None:
+        monkeypatch.delenv("MCP_SQL_ENABLED", raising=False)
+    else:
+        monkeypatch.setenv("MCP_SQL_ENABLED", flag)
+    monkeypatch.setenv("AGENT_DB_PASSWORD_CREDENTIAL", "unavailable-sentinel")
+    monkeypatch.setenv("AGENT_QUERY_ENABLED", "true")
+    # No DB connection or native credential access in this startup test.
+    monkeypatch.setattr(cli, "resolve_passwords", lambda: None)
+    monkeypatch.setattr(cli, "business_engine_from_env",
+                        lambda: type("Engine", (), {"dispose": lambda self: None})())
+    instance = cli.configured_adapter()
+    try:
+        assert len(instance.names()) == 7
+        assert not hasattr(instance, "executor_factory")
+    finally:
+        instance.close()
 
 
 def test_readonly_transaction_timeout_and_cancel_guard(adapter, monkeypatch):
@@ -255,28 +194,3 @@ def test_readonly_transaction_timeout_and_cancel_guard(adapter, monkeypatch):
 def test_time_bounds_rejected_before_database(adapter, args):
     adapter.dispatch = lambda *a: pytest.fail("Invalid time must not touch dispatch/database")
     assert call(adapter, "get_ship_track", args)["code"] == "INVALID_TOOL_ARGS"
-
-
-def test_sql_timeout_consumes_approval_and_keeps_public_state(adapter):
-    from backend.app.services.agent.query_analytics_executor import QueryExecutionError
-    token = approval(adapter)
-    def timeout(**kwargs):
-        raise QueryExecutionError(status="timeout", code="AGENT_QUERY_TIMEOUT", public_message="Query timed out",
-                                  http_status=200, query_id="fake_timeout", query_executed=True)
-    adapter.test_executor.execute = timeout
-    result = call(adapter, "execute_sql", QUERY | {"validation_token": token})
-    assert result["status"] == "timeout" and result["query_executed"]
-    assert result["query_id"] == "fake_timeout" and not result["retryable"]
-    assert call(adapter, "execute_sql", QUERY | {"validation_token": token})["code"] == "INVALID_SQL_TOKEN"
-
-
-def test_sql_startup_rejects_different_database_without_connecting(monkeypatch):
-    import backend.mcp_server.__main__ as cli
-    monkeypatch.setattr(cli, "business_engine_from_env", lambda: type("Engine", (), {"dispose": lambda self: None})())
-    values = {"MCP_SQL_ENABLED": "true", "AGENT_QUERY_ENABLED": "true", "AGENT_DB_USER": "agent_reader_login",
-              "AGENT_DB_PASSWORD": "placeholder", "AGENT_DB_HOST": "127.0.0.1", "AGENT_DB_PORT": "5432",
-              "AGENT_DB_NAME": "test_a", "MCP_DB_HOST": "127.0.0.1", "MCP_DB_PORT": "5432", "MCP_DB_NAME": "test_b"}
-    for key, value in values.items():
-        monkeypatch.setenv(key, value)
-    with pytest.raises(ValueError, match="same database"):
-        cli.configured_adapter()

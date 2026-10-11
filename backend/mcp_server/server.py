@@ -31,7 +31,7 @@ def create_server(adapter: Adapter, *, http=False):
         return types.ListToolsResult(tools=[types.Tool(
             name=name, description=TOOLS[name][1], inputSchema=TOOLS[name][0].model_json_schema(),
             annotations=types.ToolAnnotations(readOnlyHint=True, destructiveHint=False,
-                idempotentHint=name not in {"check_sql", "execute_sql"}, openWorldHint=False),
+                idempotentHint=True, openWorldHint=False),
             outputSchema=output_schema(name),
         ) for name in adapter.names()])
 
