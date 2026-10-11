@@ -1,0 +1,3 @@
+# Optional local product MCP adapter; does not replace backend requirements.
+-r requirements.txt
+mcp==2.3.0

@@ -14,6 +14,9 @@
 
 - [智能体接入契约](agent_integration.md)、[开发任务及验证状态](agent_development_plan.md)
 - [LangChain 方案](langchain_agent_v1_plan.md)、[SQL 安全契约](query_analytics_contract.md)
+- [Kimi Work 个人插件打包与安装](../plugins/kimi/personal/hormuz/README.md)
+- [Kimi 本机 MCP 验收与手测问题](issue50_kimi_acceptance.md)
+- [本机 MCP 双传输适配与验证边界](mcp_local_adapter.md)（#50 第一阶段，Kimi 双传输业务样本通过；SQL 客户端待验证）
 - [停留工具](agent_tool_dwell.md)、[相遇工具](agent_tool_encounters.md)、[事件关联工具](agent_tool_event_ship_links.md)
 - [地图动作](agent_map_actions_issue20.md)、[智能体能力题集](agent_capability_eval_issue15.md)
 - [MobilityDB 方案](mobility_capability_plan.md)、[地图性能报告](map_rendering_optimization.md)

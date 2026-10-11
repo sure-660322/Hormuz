@@ -1,0 +1,209 @@
+{
+  "date": "2026-10-10",
+  "source_commit": "5cfe435b7500755f7534e4e72c20361e8a361416",
+  "client": "DeepSeek Harness 0.2.0-rc.2 bundled dsh.cmd",
+  "profile": "isolated headless",
+  "model": {
+    "provider": "deepseek-account",
+    "model": "deepseek-flash",
+    "reasoningEffort": "high"
+  },
+  "transport": "stdio",
+  "sql_enabled": false,
+  "database_target": "hormuz_sql_test",
+  "exit_code": 0,
+  "queries": [
+    {
+      "tool": "mcp__hormuz__search_ships",
+      "input": {
+        "keyword": "ATHE NOVA",
+        "limit": 10
+      },
+      "event_status": "completed",
+      "request_id": "req_b88a4f251d6840fab2756153403006af",
+      "business_status": "ok",
+      "adapter_version": "0.1.0",
+      "event_result_truncated": false,
+      "matches": [
+        {
+          "ship_id": 628,
+          "name": "ATHE NOVA",
+          "mmsi": "334931000",
+          "imo": "9188116",
+          "callsign": "HQZT4",
+          "ship_type": "未知",
+          "flag": null,
+          "length_m": 96.0,
+          "width_m": 14.0
+        }
+      ],
+      "schema_version": "4"
+    },
+    {
+      "tool": "mcp__hormuz__query_strait_passage_statistics",
+      "input": {
+        "start_at": "2026-02-26T00:00:00Z",
+        "end_at": "2026-02-27T00:00:00Z",
+        "direction": "all"
+      },
+      "event_status": "completed",
+      "request_id": "req_b870e0a3a0d54d7ca74a466dbad869f5",
+      "business_status": "partial",
+      "adapter_version": "0.1.0",
+      "event_result_truncated": false,
+      "summary": {
+        "passage_count": 132,
+        "unique_ship_count": 131,
+        "inbound_count": 81,
+        "outbound_count": 51,
+        "uncertain_candidate_count": 8,
+        "position_count": 753130
+      }
+    },
+    {
+      "tool": "mcp__hormuz__query_area_ship_snapshot",
+      "input": {
+        "at": "2026-02-26T12:00:00Z"
+      },
+      "event_status": "completed",
+      "request_id": "req_5933299dd4d946d4896ff5410cedf296",
+      "business_status": "ok",
+      "adapter_version": "0.1.0",
+      "event_result_truncated": true,
+      "summary": {
+        "in_area_count": 199,
+        "out_of_area_fresh_count": 139,
+        "stale_fix_count": 622,
+        "evaluated_ship_count": 960,
+        "freshness_seconds": 3600
+      },
+      "versions": {
+        "area": "1.0.0",
+        "algorithm": "1.0.1"
+      }
+    },
+    {
+      "tool": "mcp__hormuz__query_area_ship_activity",
+      "input": {
+        "start_at": "2026-02-26T00:00:00Z",
+        "end_at": "2026-02-27T00:00:00Z"
+      },
+      "event_status": "completed",
+      "request_id": "req_555d17340eb742518896631cf6dc0991",
+      "business_status": "partial",
+      "adapter_version": "0.1.0",
+      "event_result_truncated": true,
+      "summary": {
+        "ships_observed": 477,
+        "observed_entry_count": 229,
+        "observed_exit_count": 224,
+        "observed_ship_seconds": 16988498.0,
+        "observed_ship_hours": 4719.027,
+        "visit_count": 510,
+        "complete_visit_count": 1,
+        "truncated_start_visit_count": 281,
+        "truncated_end_visit_count": 62,
+        "interrupted_visit_count": 15,
+        "uncertain_visit_count": 151,
+        "prior_state_unknown_visit_count": 224,
+        "near_boundary_event_count": 311,
+        "unobserved_gap_seconds": 3177526.0
+      },
+      "versions": {
+        "area": "1.0.0",
+        "algorithm": "1.0.1"
+      }
+    }
+  ],
+  "desktop": {
+    "profile_patch_added": true,
+    "existing_entries_preserved": true,
+    "mcp_child_observed": true,
+    "model_query_verified": false,
+    "restarted": false,
+    "runtime_metadata_path": "DSH desktop profile/hormuz-runtime.json",
+    "tools_list_verified": true
+  },
+  "limitations": [
+    "Area tool_result events are truncated; summary fields remained complete.",
+    "HTTP, SQL, remaining tools, multi-turn and sustained load are not verified in this batch.",
+    "Desktop model questions passed according to user confirmation on 2026-10-11; raw answers and per-case request IDs were not captured or independently reconciled."
+  ],
+  "persisted_profile_check": {
+    "command": "dsh.cmd --profile hormuz-mcp-check --json <ATHE NOVA question>",
+    "temporary_patch_used": false,
+    "exit_code": 0,
+    "tool": "mcp__hormuz__search_ships",
+    "request_id": "req_a724ad03a40b4fff8ee8b7d43a36f9a3",
+    "ship_id": 628,
+    "mmsi": "334931000",
+    "imo": "9188116"
+  },
+  "same_day_path_recheck": {
+    "runtime_config_exists": true,
+    "config_recreated": false,
+    "sdk_tool_count": 7,
+    "sdk_request_id": "req_6b3a848e4a974713b6e3635703f6a556",
+    "dsh_request_id_before_explicit_path": "req_9ee595f114804762be8cddf74b6639fc",
+    "explicit_config_env_added": true,
+    "dsh_request_id_after_explicit_path": "req_6c15ea16ff0244cdbc2b4362e1b3498d",
+    "dsh_exit_code": 0,
+    "business_status": "ok",
+    "ship_id": 628,
+    "mmsi": "334931000",
+    "imo": "9188116",
+    "desktop_mcp_child_observed": false,
+    "desktop_query_verified": false,
+    "reported_agent_environment_difference": "unverified"
+  },
+  "desktop_runtime_fix": {
+    "date": "2026-10-10",
+    "original_path_visible_to_cli": true,
+    "original_path_visible_to_actual_desktop_mcp_process": false,
+    "desktop_failure_stage": "runtime metadata read; ItemNotFoundException",
+    "mechanism": "underlying filesystem visibility or isolation mechanism not established",
+    "nonsecret_runtime_metadata_in_dsh_profile": true,
+    "same_database_and_named_credential_target_preserved": true,
+    "config_recreated_from_existing_metadata_only": true,
+    "desktop_tools_list_count": 7,
+    "desktop_tools_list_rpc_error": false,
+    "desktop_model_query_verified": false,
+    "host_restarted": false,
+    "other_sessions_stopped": false,
+    "temporary_diagnostic_entry_removed": true,
+    "desktop_owned_transport_readonly_probe": {
+      "tool": "search_ships",
+      "keyword": "ATHE NOVA",
+      "status": "ok",
+      "request_id": "req_d62c66dd64bf43c9bb8bde1b42d6f02d",
+      "ship_id": 628,
+      "mmsi": "334931000",
+      "imo": "9188116",
+      "method": "temporary relay probe on desktop-owned connection; not a desktop model turn"
+    }
+  },
+  "desktop_user_acceptance": {
+    "date": "2026-10-11",
+    "status": "passed_user_reported",
+    "evidence_source": "User confirmed initial desktop identity query succeeded, then all six proposed follow-up questions succeeded.",
+    "cases": [
+      "ATHE NOVA 身份检索",
+      "ATHE NOVA 2026-02-26 UTC 自然日轨迹",
+      "2026-02-26 UTC 自然日海峡通行统计",
+      "2026-02-26 12:00 UTC 默认区域在场",
+      "2026-02-26 UTC 自然日默认区域活动",
+      "2026-02-26 与 2026-02-27 UTC 自然日区域活动比较",
+      "不存在船名 HORMUZ_NONEXISTENT_TEST_20261011 的空结果处理"
+    ],
+    "raw_answers_captured": false,
+    "request_ids_for_user_cases_captured": false,
+    "independent_per_case_result_reconciliation": false,
+    "not_covered": [
+      "SQL tools",
+      "HTTP in DSH",
+      "remaining tools",
+      "sustained load",
+      "public deployment"
+    ]
+  }
+}

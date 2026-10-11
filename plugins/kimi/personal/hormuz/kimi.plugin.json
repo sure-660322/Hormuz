@@ -1,0 +1,64 @@
+{
+  "$schema": "https://catalog.msh.team/misc/kimi.plugin.schema.json",
+  "name": "hormuz",
+  "version": "0.1.2",
+  "description": "本机历史 AIS 船舶、通行和区域活动只读查询",
+  "keywords": [
+    "AIS",
+    "Hormuz",
+    "船舶",
+    "通行",
+    "区域活动"
+  ],
+  "author": "Hormuz 项目",
+  "license": "UNLICENSED",
+  "skillInstructions": "查询历史 AIS 时使用本插件 MCP，保留状态、版本和覆盖限制。",
+  "interface": {
+    "displayName": "Hormuz 船舶分析",
+    "shortDescription": "查询本机历史 AIS、海峡通行与区域活动",
+    "longDescription": "通过本机只读 MCP 查询历史 AIS，保留观测窗口、版本、质量和覆盖限制。",
+    "developerName": "Hormuz 项目",
+    "websiteURL": "https://github.com/sure-660322/Hormuz",
+    "iconUrl": "",
+    "category": "PRODUCTIVITY",
+    "defaultLocale": "zh-CN",
+    "locales": "./locales/",
+    "tryPrompts": [
+      "查找 ATHE NOVA 的 MMSI 和 IMO",
+      "统计 UTC 2026-02-26 的海峡通行",
+      "查询默认区域的观测在场船数"
+    ],
+    "skillOverrides": {
+      "hormuz": {
+        "displayName": "Hormuz 船舶分析",
+        "description": "查询本机历史 AIS、海峡通行与区域活动"
+      }
+    },
+    "hostKind": "local",
+    "platforms": [
+      "windows"
+    ],
+    "mcpOverrides": {
+      "hormuz": {
+        "displayName": "Hormuz 船舶分析",
+        "description": "查询本机历史 AIS、海峡通行与区域活动"
+      }
+    }
+  },
+  "skills": "./skills/",
+  "mcpServers": {
+    "hormuz": {
+      "command": "pwsh",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-File",
+        "./scripts/launch.ps1"
+      ],
+      "cwd": "./",
+      "startupTimeoutMs": 30000,
+      "toolTimeoutMs": 45000
+    }
+  }
+}

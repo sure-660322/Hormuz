@@ -1,0 +1,23 @@
+{
+  "displayName": "Hormuz vessel analysis",
+  "shortDescription": "Read local historical AIS, strait passages and area activity",
+  "longDescription": "Query historical observations through local read-only MCP tools and preserve versions, quality and coverage limits.",
+  "developerName": "Hormuz project",
+  "tryPrompts": [
+    "Find the MMSI and IMO of ATHE NOVA",
+    "Count observed strait passages on 2026-02-26 UTC",
+    "Count observed ships in the default area"
+  ],
+  "mcpOverrides": {
+    "hormuz": {
+      "displayName": "Hormuz vessel analysis",
+      "description": "Query historical AIS using local read-only tools"
+    }
+  },
+  "skillOverrides": {
+    "hormuz": {
+      "displayName": "Hormuz vessel analysis",
+      "description": "Query historical AIS using local read-only tools"
+    }
+  }
+}
