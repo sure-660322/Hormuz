@@ -1,6 +1,6 @@
 ## 当前契约与验证边界（2026-10-09 文档核对）
 
-> 2026-10-10 DSH 接入：独立 headless 真实模型四题已通过；桌面旧配置目录不可见已复现，改用 DSH profile 内非敏感元数据后，真实桌面 tools/list 返回 7 工具、同连接只读查询 ATHE NOVA 成功。桌面模型问答仍待验收；SQL 保持关闭，Kimi 桌面更新阻塞仍存在。见[配置与验收](dsh_mcp_acceptance.md)。
+> 2026-10-11 DSH 接入：独立 headless 真实模型四题已通过；桌面旧配置目录不可见已复现，改用 DSH profile 内非敏感元数据后，真实桌面 tools/list 返回 7 工具、同连接只读查询 ATHE NOVA 成功。用户已确认桌面身份查询及后续六题通过（未采集逐题原文/request_id，未独立对账）；SQL 保持关闭，Kimi 桌面更新阻塞仍存在。见[配置与验收](dsh_mcp_acceptance.md)。
 
 通行统计（PR #42）、区域活动（PR #45）已合入 main。当前为 LangChain 单智能体，13 个只读业务工具（8 个既有 + 2 个通行统计 + 3 个区域活动）、知识库及条件启用的 SQL 三工具；v4 同时支持 passage_analysis/area_activity 的 analysis_actions。模型工具与手动 API 复用业务服务，轨迹/证据动作支持有界时间跳转、选船和聚焦。
 

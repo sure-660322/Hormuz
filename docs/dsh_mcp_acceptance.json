@@ -127,7 +127,7 @@
   "limitations": [
     "Area tool_result events are truncated; summary fields remained complete.",
     "HTTP, SQL, remaining tools, multi-turn and sustained load are not verified in this batch.",
-    "Desktop tools/list and desktop-owned connection query verified; desktop model answer not yet verified."
+    "Desktop model questions passed according to user confirmation on 2026-10-11; raw answers and per-case request IDs were not captured or independently reconciled."
   ],
   "persisted_profile_check": {
     "command": "dsh.cmd --profile hormuz-mcp-check --json <ATHE NOVA question>",
@@ -181,5 +181,29 @@
       "imo": "9188116",
       "method": "temporary relay probe on desktop-owned connection; not a desktop model turn"
     }
+  },
+  "desktop_user_acceptance": {
+    "date": "2026-10-11",
+    "status": "passed_user_reported",
+    "evidence_source": "User confirmed initial desktop identity query succeeded, then all six proposed follow-up questions succeeded.",
+    "cases": [
+      "ATHE NOVA 身份检索",
+      "ATHE NOVA 2026-02-26 UTC 自然日轨迹",
+      "2026-02-26 UTC 自然日海峡通行统计",
+      "2026-02-26 12:00 UTC 默认区域在场",
+      "2026-02-26 UTC 自然日默认区域活动",
+      "2026-02-26 与 2026-02-27 UTC 自然日区域活动比较",
+      "不存在船名 HORMUZ_NONEXISTENT_TEST_20261011 的空结果处理"
+    ],
+    "raw_answers_captured": false,
+    "request_ids_for_user_cases_captured": false,
+    "independent_per_case_result_reconciliation": false,
+    "not_covered": [
+      "SQL tools",
+      "HTTP in DSH",
+      "remaining tools",
+      "sustained load",
+      "public deployment"
+    ]
   }
 }
