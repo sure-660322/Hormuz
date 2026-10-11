@@ -1,5 +1,7 @@
 # Issue #50：Kimi 本机业务 MCP 验收
 
+> 2026-10-11 当前交付：PR #62 本机业务子集已合入 main（b5d8a60），相关回归 55 passed，本地已同步。#50 的完整 SQL/Kimi 桌面等余项仍待验收，未部署；运行工作树保留。见[收尾记录](issue50_closeout.md)。下方 Draft/未合并描述属于历史批次。
+
 2026-10-09，Codex 在 `codex/mcp-local-transports` 工作树执行；基线 `74dcbdc`。
 用户追加授权 Kimi 测试和 PR 交付。本批次 stdio、Streamable HTTP 各完成同一组四题，
 **8 次真实 MCP 调用全部与同条件既有业务服务结果一致**。仅为本机业务子集验收，

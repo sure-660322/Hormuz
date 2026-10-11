@@ -1,3 +1,5 @@
+> 2026-10-11 收尾：PR #62 本机业务子集已合入 main（b5d8a60），合并前及合并后相关回归各 55 passed，本地 main 已同步。完整 SQL、Kimi 桌面等余项保留在 #50/#46，不关闭 Issue、不部署；任务工作树/分支仍被 DSH 运行配置引用，保留不清理。见[收尾记录](issue50_closeout.md)。下方 Draft/未合并为当时记录。
+
 > 2026-10-09 收尾：[PR #59](https://github.com/sure-660322/Hormuz/pull/59)（#48 受控 Text-to-SQL catalog v3 受控分析快照）已合入 main（45cfe83），[Issue #48](https://github.com/sure-660322/Hormuz/issues/48) 已关闭；kimi/issue-48 工作树与本地分支已清理。catalog v3 快照层仅在独立测试库 hormuz_sql_test 验证，应用库 aisdb 未执行 017/未建快照；应用库实施与部署待另行授权。
 
 > 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。用户随后确认触屏与纯键盘相关范围暂不做，已移出本 Issue 的待办；[Issue #41](https://github.com/sure-660322/Hormuz/issues/41) 已按已交付范围关闭。并发预算等未验证限制不因关闭而视为已验证。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
