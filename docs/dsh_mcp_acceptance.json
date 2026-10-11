@@ -227,7 +227,7 @@
     "historical_sql_requirement": "withdrawn; historical evidence above preserved"
   },
   "local_closeout_2026_10_11": {
-    "status": "local acceptance satisfied; pending merge",
+    "status": "merged; issue closed; main synchronized; task worktree archived",
     "dedicated_external_sql_account": "not required",
     "business_minimum_privilege": "hardening; not a local acceptance blocker",
     "stdio_cancel": "verified real diagnostic protocol and database cancel",
@@ -238,6 +238,10 @@
       "public auth/data permission"
     ],
     "runtime_switched": false,
-    "deployed": false
+    "deployed": false,
+    "pull_request": 63,
+    "merge_commit": "24fb25846eee5274d1cbe46b1db9d22aee3939e5",
+    "task_worktree_archived": true,
+    "old_dsh_runtime_retained": true
   }
 }

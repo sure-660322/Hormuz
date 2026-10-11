@@ -1,4 +1,4 @@
-> 2026-10-11：当前任务分支的 MCP 0.2.0 固定提供 7 业务工具。旧 DSH 运行 worktree 和 Kimi 受管版本均未切换；下方 0.1.2 安装状态为历史记录。详见 [当前边界验收](../../../../docs/issue50_business_boundary_acceptance.md)。
+> 2026-10-11：PR #63 已合并、#50 已关闭，当前 main 的 MCP 0.2.0 固定提供 7 业务工具。旧 DSH 运行 worktree 和 Kimi 受管版本均未切换；下方 0.1.2 安装状态为历史记录。详见 [当前边界验收](../../../../docs/issue50_business_boundary_acceptance.md)。
 
 # Hormuz 船舶分析：Kimi 本机个人插件
 

@@ -1,6 +1,6 @@
-> 2026-10-11 本机范围收尾复核：现有业务凭据已成功查询，无需新增 SQL 账号；最小权限审计属于后续加固。独立 SDK 真实 stdio 取消及 4 槽并发/第 5 项拒绝已验证。本机 7 工具交付满足调整后的验收，持续压测、HTTP TCP 断线和公网认证/许可为保留限制。PR #63 准备合并；运行工作树及桌面配置保留，未部署。下方 Draft 阻塞是上一轮判断，已由本次复核替代。
+> 2026-10-11 本机范围收尾复核：现有业务凭据已成功查询，无需新增 SQL 账号；最小权限审计属于后续加固。独立 SDK 真实 stdio 取消及 4 槽并发/第 5 项拒绝已验证。本机 7 工具交付满足调整后的验收，持续压测、HTTP TCP 断线和公网认证/许可为保留限制。PR #63 已合并（24fb258），#50 已关闭，本地 main 已同步；本轮新 worktree 已归档，旧 DSH 运行工作树及桌面配置保留，未部署。下方 Draft 阻塞是上一轮判断，已由本次复核替代。
 
-> 2026-10-11 当前范围调整：Issue #50 为外部只读业务 MCP（固定 7 工具）；Text-to-SQL 仅限项目内部智能体。任务分支已移除外部 SQL 的发现/调用/配置路径，旧启用变量无法恢复 SQL。内部 SQL 安全契约与实现保留。当前验收、Draft 阻塞和运行版本见[本轮记录](issue50_business_boundary_acceptance.md)。下方外部 SQL 待验收、默认关闭但可启用及 Kimi 必须完成等描述属于调整前历史范围，不能作为当前要求。旧 DSH worktree/桌面配置未切换，未部署。
+> 2026-10-11 当前范围调整：Issue #50 为外部只读业务 MCP（固定 7 工具）；Text-to-SQL 仅限项目内部智能体。任务分支已移除外部 SQL 的发现/调用/配置路径，旧启用变量无法恢复 SQL。内部 SQL 安全契约与实现保留。当前验收、收尾状态和运行版本见[本轮记录](issue50_business_boundary_acceptance.md)。下方外部 SQL 待验收、默认关闭但可启用及 Kimi 必须完成等描述属于调整前历史范围，不能作为当前要求。旧 DSH worktree/桌面配置未切换，未部署。
 
 # Issue #50 本机业务接入子集收尾
 
@@ -30,3 +30,15 @@ DSH desktop 和独立 hormuz-mcp-check profile 的 cwd、Python 虚拟环境及�
 尚未完成的 Issue 范围：真实外部 SQL schema→check→execute 与专用账号最小权限；Kimi 桌面官方更新及模型问答；DSH HTTP、其余工具/综合多轮、实际网络断开至数据库取消、持续负载，以及公开部署/数据授权。SQL 在当前插件/DSH 入口继续关闭。
 
 状态：远端已合并；本地 main 已同步并记录收尾；文档已同步；任务运行资源保留，清理延期，未部署。下一位负责人须重新核对 Issue、运行路径、会话与资源状态，不能直接删除工作树。
+
+## 2026-10-11 #50 调整后本机范围最终收尾
+
+用户在确认 SQL 仅限内部、现有业务接入已成功后授权收尾。负责人及本轮串行整合者 Codex，工作流 1.0.0「收尾」。当前目标 PR #63，head f01fd658b45af704542b5a01bfdbf85ebffd3615，base main；合并前 MERGEABLE，无未解决审查线程、无配置 CI 检查，没有绕过保护。新增真实诊断及回归见[业务边界验收](issue50_business_boundary_acceptance.md)和[资源记录](issue50_mcp_resource_acceptance.json)。本机验收满足；持续压测/HTTP TCP 断线/角色最小权限/公网认证与许可仍为后续加固限制，不冒充已验证。
+
+PR #63 已 merge，commit 24fb25846eee5274d1cbe46b1db9d22aee3939e5；#50 随关联关闭。本地主目录无未提交修改，经 fetch + ff-only 同步到同一 merge commit；合并后的 backend/scripts 与已核验 PR head 无差异，不重复无变化的业务测试。收尾记录是后续纯文档提交。GitHub/Git 一度连接失败，重试后核对远端真实合并状态，未盲目重复合并。
+
+本轮 task worktree codex/issue50-external-sql 无在途修改，仅有已审查本机 output 证据/PR 文本；无 Python/Node/DSH/Kimi 进程引用它。通过 Codex 官方 archive_worktree 归档，保留可恢复快照与非忽略证据；list_artifacts 确认 archived_worktree，Git worktree 登记已移除，物理目录不存在。已跟踪的验收/脚本进入 main，未丢弃唯一证据。任务本地/远端分支清理，仅限本轮分支。
+
+旧 codex/mcp-local-transports 工作树、分支、Python 环境及 DSH desktop/hormuz-mcp-check 配置均保留；只读复核 runtime/profile 仍指向旧工作树，未切换、升级或覆盖它。没有启动/停止共享服务、重启应用、读取或复制密码/密钥/.env、修改数据库/权限或部署。本机源码合并不等于桌面已加载新版；固定 7 工具的新版本运行切换须另行审查。
+
+最终状态：远端已合并，Issue 已关闭，本地 main 已同步，本轮任务资源已归档清理，旧运行资源保留，未部署。公网与后续加固不在本次已交付事实内。
