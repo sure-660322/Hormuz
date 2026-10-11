@@ -1,3 +1,5 @@
+> 2026-10-11 用户确认：旧 MobilityDB 派生停留识别、相遇分析、observed 时空邻近事件关联及 P5 simplified 回放切换已退出当前项目范围，不再作为待办、验收缺口或业务就绪条件。区域活动服务中的观测停留船时、真实 AIS 原始报位轨迹与实测航速、新闻 mentioned 文本证据继续保留。遗留代码/API 的存在不代表当前业务目标；本轮只清理文档，不删除代码、不操作数据库或服务。
+
 # 文档索引
 
 当前功能、实现与验收范围以代码和各批次证据为准。2026-10-06 整理文档入口；本轮未查询数据库或重验历史部署。
@@ -18,9 +20,8 @@
 - [Kimi 本机 MCP 验收与手测问题](issue50_kimi_acceptance.md)
 - [DSH 接入与桌面验收](dsh_mcp_acceptance.md)、[MCP 业务子集收尾](issue50_closeout.md)
 - [本机 MCP 双传输适配与验证边界](mcp_local_adapter.md)（#50 第一阶段，Kimi 双传输业务样本通过；SQL 客户端待验证）
-- [停留工具](agent_tool_dwell.md)、[相遇工具](agent_tool_encounters.md)、[事件关联工具](agent_tool_event_ship_links.md)
 - [地图动作](agent_map_actions_issue20.md)、[智能体能力题集](agent_capability_eval_issue15.md)
-- [MobilityDB 方案](mobility_capability_plan.md)、[地图性能报告](map_rendering_optimization.md)
+- [地图性能报告](map_rendering_optimization.md)
 - [多会话协作](collaboration.md)、[性能脚本](../scripts/perf/README.md)
 
 ## 本轮整理与历史

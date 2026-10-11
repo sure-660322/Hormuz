@@ -1,3 +1,5 @@
+> 2026-10-11 用户确认：旧 MobilityDB 派生停留识别、相遇分析、observed 时空邻近事件关联及 P5 simplified 回放切换已退出当前项目范围，不再作为待办、验收缺口或业务就绪条件。区域活动服务中的观测停留船时、真实 AIS 原始报位轨迹与实测航速、新闻 mentioned 文本证据继续保留。遗留代码/API 的存在不代表当前业务目标；本轮只清理文档，不删除代码、不操作数据库或服务。
+
 # 数据库与环境交接
 
 > 2026-09-30 Issue #26 增量：独立测试库验证后，本机应用库追加中海北冰洋案例 batch 8（11,642原始/11,640接受，2条同秒冲突隔离），复用 ship_id 7194，ships仍4,462，报位总数17,933,173；原七日17,921,533条未覆盖。文件与备份本地保留，不随PR共享；无需新结构迁移，需已有014批次字段与表。按原始/接受数量分别审计，不能复用七日导入脚本的零隔离数量规则。默认态势元数据排除 case/ 批次，真实轨迹和查询工具仍能按窗口读取。详见[案例导入说明](arctic_ocean_case.md)。以下历史数量保留原批次日期。
@@ -75,13 +77,9 @@ if ($LASTEXITCODE -ne 0) { throw '导入未完成，请检查空库、配置与�
 
 重复执行 import 失败是保护机制。已有导入结果只需 verify；需要另一份测试环境时使用新的 Compose 项目、空数据卷和端口，不清理已有数据库。本数据包是定时快照，以后数据库更新不会自动推送，需要重新导出、验证和提交。
 
-## 4. 重建 MobilityDB 派生轨迹
+## 4. 已取消的旧派生流程
 
-```powershell
-.\backend\.venv\Scripts\python.exe -m backend.handoff_run build-mobility
-```
-
-2026-09-14 历史演练预期为 114 段。当前缺少旧四表交接包，真实 AIS 派生层尚未重建；不对当前应用库执行本节旧交接命令。主回放仍读取 ship_positions；新源数据接入后需要另行核验并显式重建派生数据。
+旧 MobilityDB 派生重建已退出当前项目范围，不属于安装或部署步骤。
 
 ## 5. 验证并启动应用
 
@@ -124,7 +122,7 @@ docker compose --env-file deploy/handoff.env -f compose.handoff.yaml stop
 - 011_ship_dwell.sql 是 P3 停留识别派生表（at_anchor/drift/slow_transit），由 backend/build_ship_dwell.py 幂等执行与重建，阈值入 manifest；同样不进交接包。
 - 012_encounters.sql 是 P4 相遇分析派生表（一船对一行 + params 快照），由 backend/build_encounters.py 幂等执行与重建；POST /api/encounters/analyze 是受控同步重建入口；同样不进交接包。
 - 013_agent_analytics_readonly.sql 是旧模拟批次 SQL-02 的历史迁移，会撤销目标数据库 `PUBLIC` 的 TEMP 及 `public` schema 默认权限，并创建只筛 `simulation` 的 `agent_data.v_ships`；不得对当前真实 AIS 应用库重放。015_retire_simulation_agent_view.sql 只在旧视图实际存在时以 `DROP VIEW ... RESTRICT` 退役该视图；本机 `aisdb` 执行前后均无 `agent_data` schema，故为空操作。016_agent_views_nnu_ais.sql 是当前真实 AIS 的语义层迁移：重建 `agent_data` 的 `v_ships`（nnu_ais 一船一行）/ `v_events` / `v_news` 与 `agent_view_owner` / `agent_reader` / `agent_reader_login` 只读角色，收紧本库 PUBLIC 的 TEMP 与扩展 schema 授权（对库属主通过 `pg_database_owner` 显式补授，不影响应用），并为读者角色设 `timescaledb.disable_load=on`（含 TimescaleDB 的集群必需，否则聚合查询报 `_timescaledb_functions` 权限错误）。配对 catalog 为 `backend/app/query_analytics_catalog_v2.json`；本机 `aisdb` 已于 2026-09-25 执行并通过执行器全链路核验。v1 catalog 与 SQL 三工具的历史验收见 [SQL-02 说明](archive/query_analytics_sql02.md)。
-- 017_agent_analysis_snapshots.sql（issue #48，catalog v3）在 016 之上新建 6 张 `agent_data` 受控分析快照表：`v_passage_evidence` / `v_passage_daily`（通行证据与按日汇总，来自 `query_strait_passages` 逐日 24h 判定窗并集）、`v_area_visit` / `v_area_daily`（默认区域 `hormuz_core_v1` 访问证据与按日汇总，来自 area_activity 服务全窗输出）、`v_data_coverage`（判定走廊逐日覆盖/质量元数据）与 `v_snapshot_manifest`（构建清单，执行器每次执行前核验，行缺失即 fail closed）。表 owner 为 `agent_view_owner`，`agent_reader` 仅 SELECT（含清单表，供执行器核验；模型不可达由 catalog 不含该表 + 策略只放行 catalog 关系保证），DML 授予 `pg_database_owner` 供构建脚本整表重写（单事务，失败回滚保留旧快照）。快照不自动刷新：源船位变更后必须显式重跑 `scripts/build_agent_analysis_snapshots.py`（与 MobilityDB 派生层同一重建规则）。**截至 2026-10-08：独立测试库 `hormuz_sql_test` 已执行 016+017 并完成快照构建、对账与验收（见 [issue48 验收记录](issue48_sql_acceptance.md)）；本机应用库 `aisdb` 未执行 017、未建快照，应用库实施须按项目规则另行确认目标与授权。**
+- 017_agent_analysis_snapshots.sql（issue #48，catalog v3）在 016 之上新建 6 张 `agent_data` 受控分析快照表：`v_passage_evidence` / `v_passage_daily`（通行证据与按日汇总，来自 `query_strait_passages` 逐日 24h 判定窗并集）、`v_area_visit` / `v_area_daily`（默认区域 `hormuz_core_v1` 访问证据与按日汇总，来自 area_activity 服务全窗输出）、`v_data_coverage`（判定走廊逐日覆盖/质量元数据）与 `v_snapshot_manifest`（构建清单，执行器每次执行前核验，行缺失即 fail closed）。表 owner 为 `agent_view_owner`，`agent_reader` 仅 SELECT（含清单表，供执行器核验；模型不可达由 catalog 不含该表 + 策略只放行 catalog 关系保证），DML 授予 `pg_database_owner` 供构建脚本整表重写（单事务，失败回滚保留旧快照）。快照不自动刷新：源船位变更后必须显式重跑 `scripts/build_agent_analysis_snapshots.py`（此受控 SQL 快照属于保留业务，与已取消的旧 MobilityDB 派生任务无关）。**截至 2026-10-08：独立测试库 `hormuz_sql_test` 已执行 016+017 并完成快照构建、对账与验收（见 [issue48 验收记录](issue48_sql_acceptance.md)）；本机应用库 `aisdb` 未执行 017、未建快照，应用库实施须按项目规则另行确认目标与授权。**
 - create_tables.py 只补 ORM 表，不准备全部扩展、空间结构和索引。
 - migrate_real_news.py 仍是维护者历史迁移工具，依赖仓库外源路径；新成员使用本页的导入入口。
 - seed_data.py、generate_demo_data.py 使用旧事件语义，不作为当前初始化入口。

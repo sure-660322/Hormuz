@@ -1,3 +1,5 @@
+> 2026-10-11 用户确认：旧 MobilityDB 派生停留识别、相遇分析、observed 时空邻近事件关联及 P5 simplified 回放切换已退出当前项目范围，不再作为待办、验收缺口或业务就绪条件。区域活动服务中的观测停留船时、真实 AIS 原始报位轨迹与实测航速、新闻 mentioned 文本证据继续保留。遗留代码/API 的存在不代表当前业务目标；本轮只清理文档，不删除代码、不操作数据库或服务。
+
 > 2026-10-11 本机范围收尾复核：现有业务凭据已成功查询，无需新增 SQL 账号；最小权限审计属于后续加固。独立 SDK 真实 stdio 取消及 4 槽并发/第 5 项拒绝已验证。本机 7 工具交付满足调整后的验收，持续压测、HTTP TCP 断线和公网认证/许可为保留限制。PR #63 已合并（24fb258），#50 已关闭，本地 main 已同步；本轮新 worktree 已归档，旧 DSH 运行工作树及桌面配置保留，未部署。下方 Draft 阻塞是上一轮判断，已由本次复核替代。
 
 > 2026-10-11 当前范围调整：Issue #50 为外部只读业务 MCP（固定 7 工具）；Text-to-SQL 仅限项目内部智能体。任务分支已移除外部 SQL 的发现/调用/配置路径，旧启用变量无法恢复 SQL。内部 SQL 安全契约与实现保留。当前验收、收尾状态和运行版本见[本轮记录](docs/issue50_business_boundary_acceptance.md)。下方外部 SQL 待验收、默认关闭但可启用及 Kimi 必须完成等描述属于调整前历史范围，不能作为当前要求。旧 DSH worktree/桌面配置未切换，未部署。
@@ -30,7 +32,6 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 | 地图工作台 | **七日应用库跨日 API 与单船点击、轨迹、速度着色浏览器交互已验证；整周浏览器未验收**；原有态势总览与地图探索双视图、模拟回放路径仍在。2026-09-30 已移除态势总览的相遇分析和数据健康区块，取消总览重建按钮及页面初始化的数据健康请求；地图相遇图层与后端接口保留。地图探索的回放轴已移到顶部，桌面新闻区与地图按 2:3 排列，船舶入口仍在左侧；此布局已通过 [PR #7](https://github.com/sure-660322/Hormuz/pull/7) 合入 main。真实 AIS 模式逐窗加载船位快照，选船后按需查询有界轨迹，并可切换实测航速着色及采样点显示。新闻事件与船位独立；应用库状态见上。详见 [前端工作台](FRONTEND_WORKBENCH.md)。Issue #30（UI 与动效升级，#31–#36）已随 [PR #37](https://github.com/sure-660322/Hormuz/pull/37) 合入 main：回放轴紧凑/展开、侧栏与面板调宽、新闻层级与吸顶、总览首屏压缩、案例阶段导航、智能体上下文摘要与地图动作四态反馈均已落地；构建与工作台检查通过，四尺寸浏览器验收未单独补做。 |
 | 历史回放 | 原模拟数据分窗加载路径仍在；真实 AIS 以至多 4 帧的小窗口预取和有界缓存连续播放，未下载七日 1,792 万条报位。单船轨迹按时间桶抽稀并分段；1,985 个刻度为旧模拟批次历史结果 |
 | 新闻浏览 | Issue #6 已在左侧新增「时间线 / 列表」切换：纵向时间线按来源发生日期分组，宽屏两侧交错、窄屏单侧；日期级事件在当前显示时区进入该日时与地图同步出现，不声称具体小时。[PR #11](https://github.com/sure-660322/Hormuz/pull/11) 已合入 main。[Issue #17](https://github.com/sure-660322/Hormuz/issues/17) 在两种视图的事件分类文字前显示统一分类图标，前端构建、工作台检查和当时可见事件的浏览器核对通过，详见[前端工作台](FRONTEND_WORKBENCH.md)。列表保留封面缩略图，地图事件弹卡保留配图与回退；有发生日期但无代表坐标的事件仍可读详情。缺少 `event_datetime` 的事件放在可展开的「时间未明确」区，仅能阅读详情，不用报道日期补造发生日期或地图回放点。关联报道与来源仍在事件详情中。 |
-| MobilityDB / PostGIS | **P0–P4 已实现，P5 部分实现**：派生轨迹、速度着色、事件关联、停留和相遇分析、data-health 已有代码；主回放仍读原始船位，未切换 simplified 派生层。本机新数据的派生表仍为空；旧试验数量与验收见下表 |
 | 区域船舶活动分析 | **三个阶段已实现，2026-10-07 修复后复测通过（issue #41，算法 1.0.1，任务分支 codex/area-activity-ui）**：默认项目分析区域、鼠标矩形圈选、时刻在场/时段活动与每日汇总/双时段比较、船型多选、访问证据与地图轨迹，以及三个区域智能体工具与「查看区域分析」回填，共用同一服务。已在任务分支整合最新 main（含 #40/#43）；后端 390 passed / 14 skipped，前端 build/check:workbench/区域 30 项与类型检查通过；14 组 API 的 163 项断言与已有独立复算证据一致。真实 PostgreSQL 20 秒超时映射 503 已验；浏览器结果见[验收报告](docs/area_activity_acceptance.md) §七。**2026-10-08 已随 [PR #45](https://github.com/sure-660322/Hormuz/pull/45) 合入 main（3bcfea1）并同步，任务工作树/分支/验收服务已清理；未部署。用户确认暂不做触屏与纯键盘相关范围，Issue #41 已按已交付范围关闭；并发等验证限制保留** |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
 | 动态海峡通行统计 | **已实现并经样本验证，PR #42 已合入 main（f555ec7）**：历史窗口按日统计、船型/方向筛选、两期比较、分页证据与地图轨迹；手动面板与两个智能体工具共用服务。2026-10-07 真实模型、面板回填、浏览器查询/比较与轨迹加载已有记录；可见相机及综合多轮后续验收见[记录](docs/issue47_multi_turn_acceptance.md)，窄屏等其余限制见[模块说明](docs/agent_tool_strait_statistics.md)，未部署。 |
@@ -124,7 +125,7 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 | GET | `/api/ships/{ship_id}/events?from=&to=` | P2 反向查询某船的 observed 关联事件（时间窗可选、带时区、≤24 小时）；文本提及类不指向模拟船 |
 | GET | `/api/dwell?kind=&from=&to=` | P3 停留识别派生层（`ship_dwell`）：GeoJSON FeatureCollection（中心点 + kind/时长/位移半径/最大速度），`kind` 为 `at_anchor`/`drift`/`slow_transit`；返回 manifest 新鲜度与 `stale` |
 | GET | `/api/encounters?from=&to=&max_distance_nm=` | P4 相遇分析派生层（`encounters`）：一船对一行（最近距离 NM/米、时间重叠分钟、最近接近点、period），阈值快照入 params |
-| POST | `/api/encounters/analyze` | P4 受控同步重建相遇派生层：body `{distance_nm, overlap_min, sample_seconds}`，成功后写表并回 summary；模拟时空邻近，接近不等于实际交互 |
+| POST | `/api/encounters/analyze` | 【遗留，已退出当前业务范围】 P4 受控同步重建相遇派生层：body `{distance_nm, overlap_min, sample_seconds}`，成功后写表并回 summary；模拟时空邻近，接近不等于实际交互 |
 | GET | `/api/data-health` | P5 数据健康：按 `data_source` 的报位数/船数/覆盖区间/中位 gap、全局计数、四张派生表行数 + built_at + stale |
 | GET | `/api/area-activity/default-area` | 默认分析区域（`hormuz_core_v1`）的版本、半开边界、跨度与依据；供前端「开启功能/恢复默认区域」使用 |
 | GET | `/api/area-activity/ship-types` | 船型候选目录（来自 `ships` 当前取值分布，含保留值 `__missing__`/`__unknown__`），手动多选与智能体共用，不在前端硬编码 |
@@ -160,35 +161,16 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 
 历史验收记录：默认问题曾返回 1 艘 SIM V2 化学品船 019（证据 P1，观测完成于 2026-02-28T18:14:54Z）；v3 三场景联调记录见 [当前契约](docs/agent_integration.md)。本轮未重新调用模型，不能把历史数量当作当前查询结果；自由回答正文尚无逐项事实核验器。
 
-当前地图位置采用所选回放快照，轨迹/证据动作已支持有界时间跳转、选船与聚焦；案例另有分段回放。服务端会话持久化未实现（history 由客户端逐请求携带）。受限 SQL 的 catalog v2/016 已按真实 AIS 适配，目录仅含船舶、事件与新闻；报位级分析仍走业务工具。停留、相遇及 observed 事件关联未构建，不能以零结果推断无真实行为。通行与区域手动面板、智能体调用和 analysis_actions 均已合入，真实模型/浏览器单业务样本见模块验收；综合多轮已随 #47 / PR #57 合入（[验收](docs/issue47_multi_turn_acceptance.md)）；SQL 应用库实施另行授权，MCP 业务安全验收余项见本轮记录。已合并的本机双传输 MCP 业务子集见[说明](docs/mcp_local_adapter.md)。**2026-10-09 更新：catalog v3（5 张受控分析快照表 + 清单核验 + required_filters 必要过滤）已随 [PR #59](https://github.com/sure-660322/Hormuz/pull/59) 合入 main（#48 关闭），独立测试库完成全部验收（[issue48 验收记录](docs/issue48_sql_acceptance.md)）；应用库未执行 017/未建快照，授权后才能在应用库实施。**
+当前地图位置采用所选回放快照，轨迹/证据动作已支持有界时间跳转、选船与聚焦；案例另有分段回放。服务端会话持久化未实现（history 由客户端逐请求携带）。受限 SQL 的 catalog v2/016 已按真实 AIS 适配，目录仅含船舶、事件与新闻；报位级分析仍走业务工具。旧派生停留、相遇与 observed 关联已退出当前范围。通行与区域手动面板、智能体调用和 analysis_actions 均已合入，真实模型/浏览器单业务样本见模块验收；综合多轮已随 #47 / PR #57 合入（[验收](docs/issue47_multi_turn_acceptance.md)）；SQL 应用库实施另行授权，MCP 业务安全验收余项见本轮记录。已合并的本机双传输 MCP 业务子集见[说明](docs/mcp_local_adapter.md)。**2026-10-09 更新：catalog v3（5 张受控分析快照表 + 清单核验 + required_filters 必要过滤）已随 [PR #59](https://github.com/sure-660322/Hormuz/pull/59) 合入 main（#48 关闭），独立测试库完成全部验收（[issue48 验收记录](docs/issue48_sql_acceptance.md)）；应用库未执行 017/未建快照，授权后才能在应用库实施。**
 
 受限分析主链 SQL-01～06 已完成。SQL-02～06 文档作为现有安全执行底座的历史验收证据继续保留；它们不再定义下一版交互方式。LC-01～04 已按阶段引入 LangChain 单智能体、轻量知识库、原生业务 Skills 和受限 SQL Agent，并完成等价回归：固定短语分类器和手写模型工具循环已移除（LC-03/LC-04），旧 `runner.py` 已删除。任务状态见 [开发计划](docs/agent_development_plan.md)。
 
-## MobilityDB 时空能力底座：P0–P5 进度
-
-当前底座使用 MobilityDB/PostGIS 构建派生轨迹和分析结果，显式重建并留痕（manifest）。七日 AIS 原始报位已接入；派生层因同船同秒冲突尚未重建，跨来源隔离仍需独立适配和验证。旧的小规模停留试验（历史记录为 10 艘样本船 114 段）只作历史记录。
-
-下表保留 2026-09-19/20 的实施及验收记录；2026-09-21 的有限回归见协作记录，不代表以下历史验收全部重跑。
-
-| 阶段 | 内容 | 状态 |
-| --- | --- | --- |
-| P0 | 泛化派生表与重建管线（009：`ship_tracks` + `track_build_manifest` + 源表索引；参数化重建脚本；独立核对） | ✅ **已完成**（2026-09-19）：30 艘模拟船 289 段，插值采样误差 0 m、速度 0 不符，manifest 留痕 |
-| P1 | 轨迹/速度 API 与着色（`/api/tracks` full/simplified + 前端速度着色） | ✅ **已完成**（2026-09-19）：三分支验证通过，浏览器端到端通过。2026-09-20 增强：着色默认覆盖整条显示轨迹（超 24h 分片取回合并），可切换仅最近 24h |
-| P2 | 事件—船舶关联（010：`event_ship_links` mentioned/observed 分列 + 双向 API + 事件面板关联区） | ✅ **已完成**（2026-09-19）：27 条 mentioned + 29 条 observed，逐条独立重算核对通过 |
-| P3 | 锚地/等待识别（`ship_dwell` 派生表 + 等待区图层） | ✅ **代码已完成**（2026-09-20 历史验收）：`011_ship_dwell.sql` + 构建脚本（阈值入 manifest，默认锚泊 <3 kn/30 min、慢速 <8 kn/60 min），当时库 231 行（199 锚泊/21 漂航/11 慢速）；GET `/api/dwell` 三分支验证通过；前端图层「停留识别」按需加载打点；独立核对 231 行全一致。当前库 0 行，新数据待验证 |
-| P4 | 相遇分析（`encounters` 派生表 + analyze/query API） | ✅ **已完成**（2026-09-20）：`012_encounters.sql` + 构建脚本（候选对时间重叠粗筛 → 等时长重采样 → 逐时刻 geography 距离，默认 3 NM/30 min/60 s），当时模拟库 136 对；真实 AIS 派生层尚未重建；GET/POST 三分支验证通过；当时前端概览「相遇分析」列表 + 点击定位与重新分析按钮（2026-09-30 已移除总览入口，地图图层保留）；独立核对最近距离最大差 19 m |
-| P5 | 回放抽稀层 + data-health（回放主链路切换 simplified 层、覆盖率体检） | ✅ **部分完成**（2026-09-20）：`GET /api/data-health` 已实现（源覆盖统计 + 四张派生表新鲜度），当时前端概览「数据健康」区块（2026-09-30 已移除）；回放主链路切换 simplified 层与抽稀保留规则未实施，真实数据接入前补强 |
-
-历史派生层边界：旧模拟批次的 observed 事件关联只是时空邻近演示，不构成真实因果；当前应用库仅有 mentioned 船名文本提及，未核对真实 AIS ship_id。七日真实 AIS 的停留、相遇和 observed 派生层尚未重建。旧批次实施过程中发现的 MobilityDB 陷阱（`tstzspan` 文本参数静默错解析；`&&` 非保守空间粗筛；`nearestApproachDistance` 离散时刻高估；EPSG:32640 跨 UTM 带失真）见技术方案 §3，不代表当前新数据已验收。
-
-完整方案与各阶段验收细节见 [MobilityDB 时空能力底座技术方案](docs/mobility_capability_plan.md)（P0–P5 均已按实施更新）。
-
 ## 尚未实现与限制
 
-- 真实 AIS 派生层重建、四艘新闻船关联、整周浏览器与并发验收、来源授权及区域覆盖核实、实时推送、自动刷新、认证授权和正式部署。七日已在本机应用库导入，未推送或部署。
+- 四艘新闻船关联、整周浏览器与并发验收、来源授权及区域覆盖核实、实时推送、自动刷新、认证授权和正式部署。七日已在本机应用库导入，未推送或部署。
 - 智能体契约为 v4：工具集为 13 个只读业务工具（8 个既有 + issue #40 的通行统计 2 个 + issue #41 的区域活动 3 个）+ 知识库工具，受限 SQL 工具（`get_database_schema`/`check_sql`/`execute_sql`）在 catalog v2 口径与 `SHIP_DATA_SOURCE` 一致且功能开关完整时暴露（本机已启用，fail-closed）；多轮 history 仍由客户端逐请求携带。真实 DeepSeek 聚合问答已于 2026-09-25 在本机验收（油轮计数 793）；SQL 浏览器端到端未重验；通行/区域已有独立样本，综合多轮已在 2026-10-08 的 #47 批次验收，见[记录](docs/issue47_multi_turn_acceptance.md)，本轮未重做内部真实模型测试。共享业务库统计、认证限流、正式部署、长时间多 worker 压测和无密钥 503 仍未做本轮实测。
 - 新闻事件与模拟船舶的自动因果关联、事件多点完整展示。事件面板现提供演示级 observed 关联（模拟数据时空邻近，明确标注不构成真实因果）与 mentioned 原文船名，二者严格分列。
-- 通用双地图对比、AIS 密度分析；MobilityDB 底座 P0–P4 已实现、P5 部分实现，回放主链路切换 simplified 抽稀层及特征保留规则未实施，见 [技术方案](docs/mobility_capability_plan.md)。
+- 通用双地图对比、AIS 密度分析。
 - 派生层 stale 当前只比较 built_at 与源报位最大时间，不能识别所有历史更正/删除；事件关联仍有 EPSG:32640 距离误差限制，相遇分析已使用 geography 采样距离。上述限制不能在智能体中省略。
 - 完整浏览器端到端测试；已有独立 Docker 空库导入及后端接口验证、工作台语义检查和专项脚本。
 - 已预留船讯网相关 ORM 字段，但未接入真实供应方；新增字段也未全部暴露给前端。
@@ -208,7 +190,7 @@ npm run check:workbench
 <details>
 <summary>历史验证记录（2026-09-14 至 2026-09-20，不代表当前在途版本已通过）</summary>
 
-后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-20 MobilityDB P3–P5：011 建 ship_dwell（at_anchor/drift/slow_transit + 位移半径），backend/build_ship_dwell.py 构建 231 行（199 锚泊/21 漂航/11 慢速，阈值入 manifest），scripts/verify_ship_dwell.py 独立核对全一致；012 建 encounters（一船对一行 + params 快照），backend/build_encounters.py 默认参数（3 NM/30 min/60 s）构建 136 对，scripts/verify_encounters.py 独立核对最近距离最大差 19 m；GET /api/dwell、GET/POST /api/encounters、GET /api/data-health 三分支验证通过；前端新增图层「停留识别」（按需加载打点）与概览「相遇分析」（点击定位 + 默认参数重新分析）、「数据健康」区块；npm run build 与 npm run check:workbench 通过；本机无可用无头浏览器， dwell/相遇图层未做浏览器端到端验证（接口与构建已验证）。实测发现并规避三个 MobilityDB 陷阱（`&&` 非保守空间粗筛、`nearestApproachDistance` 离散时刻高估约 30–50%、EPSG:32640 跨 UTM 带失真 >20%，度量距离一律改 geography），详见技术方案 §3；010 event_ship_links 的距离仍在 32640 下计算、受同一失真影响，本次未改动，真实数据接入前迁移。2026-09-20 轨迹与速度着色范围：轨迹默认展示全部已回放报位点，图层尾迹滑杆改为船舶面板「只看最近 24h」开关；速度着色默认与显示轨迹同范围，超过后端 24h 单窗上限时按 ≤24h 分片并行取回、按 segment_no 去重合并（修复长轨迹拖长后早期着色消失的问题），另可切换为仅最近 24h 着色；npm run build 与 npm run check:workbench 通过。2026-09-19 MobilityDB P2：010 建 event_ship_links（mentioned/observed 分列，mentioned 恒不指向模拟船）；backend/build_event_ship_links.py 构建 27 mentioned + 29 observed（半径 50 km 演示级时空邻近）；scripts/verify_event_ship_links.py 独立核对通过（逐条重算距离 ≤2 m、源表指纹未变）；/api/events/{id}/ships 与 /api/ships/{id}/events 三分支验证通过；事件面板新增关联区；无头 Chrome 端到端验证通过（关联区渲染、定位选中船、控制台无错误）。过程中发现并修复 MobilityDB 陷阱：tstzspan 文本经参数传入会静默错解析（atTime 失效），统一改用 span(t, t) 构造器。2026-09-19 MobilityDB P1：/api/tracks（full/simplified）已注册（Repository 层参数化只读 SQL），三分支验证通过（成功/空窗 not_found 与 no_data/422 参数错误）；前端船舶面板新增速度着色（回放窗口量化 15 分钟取派生层，色带 <3/3–8/8–12/>12 kn）；npm run build 与 npm run check:workbench 通过；无头 Chrome 端到端验证通过（着色轨迹与图例渲染正常、控制台无错误，截图为本地临时产物不入库）。2026-09-19 MobilityDB P0：009 建 ship_tracks/track_build_manifest 及源表索引；backend/build_ship_tracks.py 全量重建 30 船 289 段并写 manifest；scripts/verify_ship_tracks.py 独立核对通过（分段一致、采样插值误差 0 m、速度 0 不符、源表指纹未变）；demo 表与 /health 未受影响。2026-09-19 README 同步智能体 v3 多工具版实现状态（docs/agent_integration.md 与 FRONTEND_WORKBENCH.md 已先行更新核对）；纯文档修改，未重新核验数据库数量与构建。智能体前端接入历史验收（原标注日期晚于本次文档核对日，实际验收日期待核对）：npm run build 与 npm run check:workbench 通过，浏览器实测智能体页签问答返回预期结果。2026-09-14 本次文档更新核对了代码、数据库数量和扩展；未重新执行数据生成或迁移。此前同日本地提交前构建、工作台检查及新闻和停留分析接口检查已通过。
+后端变更需检查 `/health`、`/docs` 和相关接口；数据库变更需回查字段、约束和索引。2026-09-19 README 同步智能体 v3 多工具版实现状态（docs/agent_integration.md 与 FRONTEND_WORKBENCH.md 已先行更新核对）；纯文档修改，未重新核验数据库数量与构建。智能体前端接入历史验收（原标注日期晚于本次文档核对日，实际验收日期待核对）：npm run build 与 npm run check:workbench 通过，浏览器实测智能体页签问答返回预期结果。2026-09-14 本次文档更新核对了代码、数据库数量和扩展；未重新执行数据生成或迁移。此前同日本地提交前构建、工作台检查及新闻和停留分析接口检查已通过。
 
 </details>
 
@@ -216,8 +198,6 @@ npm run check:workbench
 - [数据库与环境交接](docs/database_setup.md)
 - [智能体接入契约](docs/agent_integration.md)
 - [LangChain 业务智能体第一版技术方案](docs/langchain_agent_v1_plan.md)
-- [MobilityDB 停留试验](docs/archive/mobility_demo.md)
-- [MobilityDB 时空能力底座方案](docs/mobility_capability_plan.md)（P0–P4 已实现、P5 部分实现，含历史验收与限制）
 - [智能体下一阶段任务与验收](docs/agent_development_plan.md)
 - [多会话协作、工作区交接与文档审计](docs/collaboration.md)
 - [新闻适配阶段记录](docs/archive/event_adaptation_phase1.md)

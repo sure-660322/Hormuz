@@ -7,7 +7,8 @@
 - query_strait_passages：海峡虚拟双门线的有界观测通行（长间隔/跳点分列）。
 - get_event_context：新闻事件及关联真实报道。
 - get_data_health：来源覆盖与派生层构建状态。
-- query_ship_dwell / query_encounters / query_event_ship_links：派生层只读查询。
+- query_event_ship_links 的 mentioned：新闻原文船名证据，不自动关联真实 AIS 身份。
+- 遗留 query_ship_dwell、query_encounters 与 observed 查询代码仍在，但已退出当前业务范围；不主动推荐，不把 not_built 列为项目待办或就绪缺口，不建议重建。
 - search_project_knowledge：项目知识库检索（定位、语义、规则、能力边界）。
 - get_database_schema / check_sql / execute_sql：受限 SQL 工具（仅本地启用后
   暴露），catalog v2 提供 agent_data.v_ships（nnu_ais 一船一行）、v_events、

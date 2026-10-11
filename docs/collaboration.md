@@ -72,7 +72,7 @@ Git worktree 共享 Git 对象和部分仓库配置，且不隔离数据库、�
 
 | 对象 | 处理与原因 |
 | --- | --- |
-| README.md | 保留功能摘要、接口和入口；修正 P0–P4 / P5 部分完成状态，历史验收与本轮静态核对分开标注 |
+| README.md | 保留功能摘要、接口和入口；旧 P0–P5 描述属于当时范围；2026-10-11 已取消相关派生任务，不再列为当前待办 |
 | docs/agent_integration.md | 当时描述 v4 自定义工具循环的接口事实；当前已更新为 LangChain 编排下的 v4 响应契约 |
 | docs/langchain_agent_v1_plan.md | 当时为下一版技术方案入口；当前已同步第一版实际实现和验收边界 |
 | docs/agent_development_plan.md | 当时维护 LC-01～04 计划；当前已记录实施、修复与本地整合状态 |

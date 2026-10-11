@@ -5,7 +5,6 @@
 - [旧事件功能适配：可行性研究与验证](event_adaptation_feasibility.md)
 - [新闻事件基础适配（2026-09-09）](event_adaptation_phase1.md)
 - [代表点地图展示核验（2026-09-09）](event_marker_verification.md)
-- [MobilityDB 停留分析试验](mobility_demo.md)
 - [真实 AIS 单日试导记录](real_ais_import_pilot.md)
 - [SQL-02 语义视图与只读角色](query_analytics_sql02.md)
 - [SQL-03 AST 策略校验器](query_analytics_sql03.md)

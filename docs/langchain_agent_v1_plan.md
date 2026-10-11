@@ -1,3 +1,5 @@
+> 2026-10-11：旧派生停留/相遇/observed 关联与 P5 simplified 回放切换已取消。下方历史设计中的这些条目不属于当前建设或验收范围。
+
 # LangChain 业务智能体第一版技术方案
 
 状态：**本地 main 已整合，整版已实现待真实环境验证**（2026-09-23，来源 `kimi/agent-lc04` 的 `6bf739c` 与 `codex/lc-safety-fix` 的 `1afd34b`；远端未推送）。`f14eceb` 曾因 SQL 可二次成功执行、超时后后台触库和联调脚本引用删除入口而阻塞整合；修复分支已通过确定性离线回归 245 passed / 12 skipped、前端 build/check:workbench 及三个 HTTP 冒烟入口。真实 DeepSeek、独立 PostgreSQL SQL 链路和浏览器尚未按本版验收。编排使用 LangChain `create_agent`，响应保持 v4 契约；8 个原生业务工具、知识库和受限 SQL 三工具均接入，旧 `runner.py` 手写循环已删除。详细复核和修复记录见 [开发任务](agent_development_plan.md)。
@@ -60,7 +62,7 @@ Vue AgentPanel
 - `project_overview.md`：定位、技术栈、能力边界。
 - `data_semantics.md`：模拟船、新闻、事件和时间语义。
 - `passage_rules.md`：完整通行口径。
-- `mobility_rules.md`：停留、相遇和关联限制。
+- 旧 `mobility_rules` 知识条目已于 2026-10-11 删除；当前能力范围见 `project_overview.md` 与 `agent_capabilities.md`。
 - `agent_capabilities.md`：当前工具和不可用能力。
 
 ## 4. 业务 Skills

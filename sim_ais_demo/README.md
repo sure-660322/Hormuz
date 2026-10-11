@@ -301,7 +301,6 @@ sim_ais_demo/
    - 移除由 `tools/remove_old_batch.py` 执行，删除前用 `db_before_import.json` 的记录数 + md5 指纹校验旧数据未被改动，并断言 `events`/`news` 指纹不变。该脚本**不属于**本批次交付的生成工具链。
    - `/simulation/meta` 的 `frame_count` 已从"不同 `recorded_at` 计数"改为按实际时段推导（2,005 帧 × 300 秒 ≈ 7 天），原先的口径不一致已消除。
    - `frontend/src/composables/usePlayback.ts` 已按第 2、5 点做适配：回放请求按 24 小时分块，播放帧改为按 `frame_interval_seconds` 生成的展示时间格。
-   - 另有 MobilityDB 演示（`backend/sql/007_mobility_demo_segments.sql`、`backend/build_mobility_demo.py`、`backend/app/routers/mobility.py`、`docs/archive/mobility_demo.md`）。
    > 这些改动的验证结果见 `output/playback_verification.json`、`db_post_import_verification.json`、`mobility_*.json`，由那次改动自己写出；我这次只读取，未重新核验。
 
 ## 11. 已知限制
