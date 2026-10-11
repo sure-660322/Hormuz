@@ -15,23 +15,10 @@ from backend.mcp_server.credentials import resolve_passwords
 def configured_adapter():
     adapter = Adapter()
     try:
+        # External MCP never resolves internal SQL credentials.
         resolve_passwords()
         # Validate explicit target before starting; constructing an engine does not connect.
         adapter.engine = business_engine_from_env()
-        raw = os.environ.get("MCP_SQL_ENABLED", "false").lower()
-        if raw not in {"true", "false"}:
-            raise ValueError("MCP_SQL_ENABLED must be true or false")
-        if raw == "true":
-            from backend.app.services.agent.query_analytics_executor import ExecutorConfig, QueryAnalyticsExecutor
-            from backend.app.services.agent.query_analytics_policy import load_catalog
-            config = ExecutorConfig.from_env(dict(os.environ))
-            if not config.enabled or load_catalog().get("data_source_scope") != "nnu_ais":
-                raise ValueError("SQL reader configuration/data source is not enabled")
-            if any(os.environ.get(f"AGENT_DB_{key}") != os.environ.get(f"MCP_DB_{key}")
-                   for key in ("HOST", "PORT", "NAME")):
-                raise ValueError("Business and SQL must target the same database")
-            adapter.sql_enabled = True
-            adapter.executor_factory = lambda: QueryAnalyticsExecutor(config)
         return adapter
     except Exception:
         adapter.close()
@@ -66,7 +53,7 @@ def main():
             # No host override or proxy headers: this entry point is local-only.
             uvicorn.run(app, host="127.0.0.1", port=args.port, proxy_headers=False, access_log=False)
     except Exception:
-        print("MCP startup failed; check explicit database/SQL/HTTP token configuration and local port.", file=sys.stderr)
+        print("MCP startup failed; check explicit business database/HTTP token configuration and local port.", file=sys.stderr)
         return 1
     finally:
         if adapter is not None:

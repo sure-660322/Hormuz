@@ -9,10 +9,6 @@ class Args(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
 
-class Empty(Args):
-    pass
-
-
 def aware(raw):
     value = datetime.fromisoformat(raw)
     if value.tzinfo is None or value.utcoffset() is None:
@@ -107,22 +103,6 @@ class CompareActivity(Area, Compare):
     batch_ids: list[Annotated[int, Field(gt=0)]] | None = Field(default=None, max_length=50)
 
 
-class Parameter(Args):
-    name: str = Field(min_length=1, max_length=63)
-    type: Literal["timestamptz", "date", "text", "int", "numeric", "bool"]
-    value: str | int | float | bool | None
-
-
-class SQL(Args):
-    sql: str = Field(min_length=1, max_length=16384)
-    params: list[Parameter] = Field(default_factory=list, max_length=50)
-    purpose: str = Field(default="", max_length=500)
-
-
-class ExecuteSQL(SQL):
-    validation_token: str = Field(min_length=1, max_length=128)
-
-
 TOOLS = {
     "search_ships": (Search, "Search historical AIS ship identities; names alone do not establish news identity."),
     "get_ship_track": (Track, "Read complete bounded historical track, at most 24 hours; gaps are not interpolated."),
@@ -131,9 +111,6 @@ TOOLS = {
     "query_area_ship_snapshot": (Snapshot, "Observed ships in explicit rectangle or project default at a historical timestamp; bounded list."),
     "query_area_ship_activity": (Activity, "Observed area visits, entry/exit, ship-hours and quality; at most 7 days; visits are not gate passages."),
     "compare_area_ship_activity": (CompareActivity, "Compare two area activity periods in the same explicit area; at most 7 days each."),
-    "get_database_schema": (Empty, "Governed SQL catalog, filters, versions and limits; metadata does not prove database readiness."),
-    "check_sql": (SQL, "Offline read-only policy check; returns a short-lived, single-use token bound to client and exact arguments."),
-    "execute_sql": (ExecuteSQL, "Consume check_sql token and revalidate in independent restricted reader; no arbitrary tables or writes."),
 }
 
 
@@ -154,9 +131,6 @@ def output_schema(name):
         "query_area_ship_snapshot": {"area": "object", "area_context": "object", "ships": "array", "coverage": "object"},
         "query_area_ship_activity": {"area": "object", "area_context": "object", "visits": "array", "daily": "array", "coverage": "object"},
         "compare_area_ship_activity": {"area": "object", "area_context": "object", "a": "object", "b": "object", "metrics": "array"},
-        "get_database_schema": {"catalog": "object", "database_readiness": "string", "token_ttl_seconds": "integer"},
-        "check_sql": {"normalized_sql": "string", "catalog_version": "string", "validation_token": "string", "expires_in_seconds": "integer"},
-        "execute_sql": {"query_id": "string", "columns": "array", "rows": "array", "returned_row_count": "integer", "truncated": "boolean", "source": "object", "query_executed": "boolean", "retryable": "boolean"},
     }
     fields.update({key: {"type": kind} for key, kind in details[name].items()})
     return {"type": "object", "required": ["status"], "properties": fields, "additionalProperties": True}

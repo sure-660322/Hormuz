@@ -1,0 +1,706 @@
+{
+  "date": "2026-10-11",
+  "client": "Python MCP SDK 2.3.0",
+  "transport": "stdio",
+  "database": {
+    "host": "127.0.0.1",
+    "port": "25432",
+    "name": "hormuz_sql_test"
+  },
+  "source_commit": "04ee93a42efd21db70c76ed766a1bf1045997db1",
+  "source_sha256": {
+    "adapter.py": "30940b8ee4df22c848dd8ecb9d73d7cb3b89cf209eb60913256085ed4f074733",
+    "credentials.py": "5eff1f426607b3259bfe6cd1bc4ac02ef069e279916413d84a5eec383360f46a",
+    "schemas.py": "329e9f6e39266f69ff00a638850005c235c2a308a0eee9b59bed76ac13e7ad32",
+    "server.py": "05092afea72708d6b96f37e113cb6f5a72611f980bb69d0e5639b7881b5dc3be",
+    "__init__.py": "18825c1012b4ccdbc9b382221b0819fbe7ce2117b4428bcb7ff3b913c338a219",
+    "__main__.py": "04b40d54c9948b0e663b59f010e38cbe6f50f16399545cf70465f5fd3735f22a"
+  },
+  "runs": [
+    {
+      "legacy_sql_flag": "false",
+      "records": [
+        {
+          "tool": "get_database_schema",
+          "input": {
+            "sql": "DELETE FROM ships"
+          },
+          "result": {
+            "request_id": "req_da40092de1d640298c2ee9b9aef7195e",
+            "tool_name": "get_database_schema",
+            "adapter_version": "0.2.0",
+            "status": "refused",
+            "code": "TOOL_UNAVAILABLE",
+            "message": "Tool is not enabled"
+          }
+        },
+        {
+          "tool": "check_sql",
+          "input": {
+            "sql": "DELETE FROM ships"
+          },
+          "result": {
+            "request_id": "req_3e2507d9cff24b2dbec81a63575f00e2",
+            "tool_name": "check_sql",
+            "adapter_version": "0.2.0",
+            "status": "refused",
+            "code": "TOOL_UNAVAILABLE",
+            "message": "Tool is not enabled"
+          }
+        },
+        {
+          "tool": "execute_sql",
+          "input": {
+            "sql": "DELETE FROM ships"
+          },
+          "result": {
+            "request_id": "req_b1ab97b94d7a46da91f5544c8229de0b",
+            "tool_name": "execute_sql",
+            "adapter_version": "0.2.0",
+            "status": "refused",
+            "code": "TOOL_UNAVAILABLE",
+            "message": "Tool is not enabled"
+          }
+        }
+      ],
+      "server_version": "0.2.0",
+      "tools": [
+        "search_ships",
+        "get_ship_track",
+        "query_strait_passage_statistics",
+        "compare_strait_passage_statistics",
+        "query_area_ship_snapshot",
+        "query_area_ship_activity",
+        "compare_area_ship_activity"
+      ]
+    },
+    {
+      "legacy_sql_flag": "true",
+      "records": [
+        {
+          "tool": "get_database_schema",
+          "input": {
+            "sql": "DELETE FROM ships"
+          },
+          "result": {
+            "request_id": "req_080d4db985c74bb0bb6f813f07592154",
+            "tool_name": "get_database_schema",
+            "adapter_version": "0.2.0",
+            "status": "refused",
+            "code": "TOOL_UNAVAILABLE",
+            "message": "Tool is not enabled"
+          }
+        },
+        {
+          "tool": "check_sql",
+          "input": {
+            "sql": "DELETE FROM ships"
+          },
+          "result": {
+            "request_id": "req_f6818cf3eb70483e81a095dc0744d55b",
+            "tool_name": "check_sql",
+            "adapter_version": "0.2.0",
+            "status": "refused",
+            "code": "TOOL_UNAVAILABLE",
+            "message": "Tool is not enabled"
+          }
+        },
+        {
+          "tool": "execute_sql",
+          "input": {
+            "sql": "DELETE FROM ships"
+          },
+          "result": {
+            "request_id": "req_d2369029422042bab194566ee94dea7e",
+            "tool_name": "execute_sql",
+            "adapter_version": "0.2.0",
+            "status": "refused",
+            "code": "TOOL_UNAVAILABLE",
+            "message": "Tool is not enabled"
+          }
+        },
+        {
+          "tool": "search_ships",
+          "input": {
+            "keyword": "ATHE NOVA",
+            "limit": 10
+          },
+          "result": {
+            "request_id": "req_115a2cc201e94666bea41ce0170eae71",
+            "status": "ok",
+            "adapter_version": "0.2.0",
+            "limitations": [
+              "检索范围为已有 nnu_ais 历史 AIS 报位的船；来源授权与覆盖尚未核实。新闻中的船舶须另行核对 MMSI/IMO 等标识，名称相同不足以认定同一实体"
+            ],
+            "matches": [
+              {
+                "ship_id": 628,
+                "name": "ATHE NOVA",
+                "mmsi": "334931000",
+                "imo": "9188116",
+                "callsign": "HQZT4",
+                "ship_type": "未知",
+                "flag": null,
+                "length_m": 96.0,
+                "width_m": 14.0
+              }
+            ],
+            "matched_count": 1,
+            "returned_count": 1,
+            "truncated": false
+          }
+        },
+        {
+          "tool": "get_ship_track",
+          "input": {
+            "ship_id": 628,
+            "start_at": "2026-02-26T00:00:00Z",
+            "end_at": "2026-02-27T00:00:00Z"
+          },
+          "result": {
+            "request_id": "req_61f69b2456264314851facafeb79ecbd",
+            "status": "no_data",
+            "adapter_version": "0.2.0",
+            "limitations": [
+              "轨迹为 nnu_ais 来源的历史 AIS 实测报位；来源授权与覆盖尚未核实，不能据缺报推断船舶不存在",
+              "[2026-02-26T00:00:00+00:00, 2026-02-27T00:00:00+00:00) 内该船无报位，可能是数据覆盖不足，不能解释为该时段无此船"
+            ],
+            "fix_count": 0,
+            "truncated": false
+          }
+        },
+        {
+          "tool": "query_strait_passage_statistics",
+          "input": {
+            "start_at": "2026-02-26T00:00:00Z",
+            "end_at": "2026-02-27T00:00:00Z",
+            "direction": "all"
+          },
+          "result": {
+            "request_id": "req_bda76d72170543a5aa5fb0d0fabafa83",
+            "status": "partial",
+            "adapter_version": "0.2.0",
+            "limitations": [
+              "虚拟双门线为纬度 25.8–27.1°N 内的 56.2°E 西侧与 56.7°E 东侧；仅使用经度 55.8–57.1°E、来源 nnu_ais 的历史报位",
+              "按完成侧首次报位的观测完成时间（UTC）归日，不是精确越线时刻；前置侧别最多回看 24 小时，未观测到通行不证明船舶未通过",
+              "判定版本 strait-gates-v1+stats-2026-10-07；长间隔阈值 6:00:00、跳点阈值 30.0 kn 尚未用真实 AIS 独立校准",
+              "AIS 来源授权和覆盖尚未核实；统计只反映本口径下的观测，不能解释为实际全部交通变化或新闻因果",
+              "ships.ship_type 为当前快照属性，未知/缺失按原始字段保留，不按船名推断历史船型"
+            ],
+            "window": {
+              "passage_count": 132,
+              "unique_ship_count": 131,
+              "inbound_count": 81,
+              "outbound_count": 51,
+              "uncertain_candidate_count": 8,
+              "position_count": 753130
+            },
+            "determination_version": "strait-gates-v1+stats-2026-10-07"
+          }
+        },
+        {
+          "tool": "compare_strait_passage_statistics",
+          "input": {
+            "start_a": "2026-02-26T00:00:00Z",
+            "end_a": "2026-02-27T00:00:00Z",
+            "start_b": "2026-02-27T00:00:00Z",
+            "end_b": "2026-02-28T00:00:00Z",
+            "direction": "all"
+          },
+          "result": {
+            "request_id": "req_c2c9a4597343421b95105994e0deffec",
+            "status": "partial",
+            "adapter_version": "0.2.0",
+            "determination_version": "strait-gates-v1+stats-2026-10-07",
+            "metrics": [
+              {
+                "metric": "passage_count",
+                "a_value": 132,
+                "b_value": 116,
+                "delta": -16,
+                "change_rate": -0.12121212121212122
+              },
+              {
+                "metric": "unique_ship_count",
+                "a_value": 131,
+                "b_value": 116,
+                "delta": -15,
+                "change_rate": -0.11450381679389313
+              },
+              {
+                "metric": "inbound_count",
+                "a_value": 81,
+                "b_value": 64,
+                "delta": -17,
+                "change_rate": -0.20987654320987653
+              },
+              {
+                "metric": "outbound_count",
+                "a_value": 51,
+                "b_value": 52,
+                "delta": 1,
+                "change_rate": 0.0196078431372549
+              },
+              {
+                "metric": "uncertain_candidate_count",
+                "a_value": 8,
+                "b_value": 7,
+                "delta": -1,
+                "change_rate": -0.125
+              }
+            ],
+            "a": {
+              "status": "partial",
+              "start_at": "2026-02-26T00:00:00+00:00",
+              "end_at": "2026-02-27T00:00:00+00:00",
+              "requested_days": 1.0,
+              "ship_types": null,
+              "direction": null,
+              "window": {
+                "passage_count": 132,
+                "unique_ship_count": 131,
+                "inbound_count": 81,
+                "outbound_count": 51,
+                "uncertain_candidate_count": 8,
+                "position_count": 753130
+              },
+              "determination_version": "strait-gates-v1+stats-2026-10-07",
+              "schema_version": "4",
+              "data_source": "nnu_ais",
+              "limitations": [
+                "虚拟双门线为纬度 25.8–27.1°N 内的 56.2°E 西侧与 56.7°E 东侧；仅使用经度 55.8–57.1°E、来源 nnu_ais 的历史报位",
+                "按完成侧首次报位的观测完成时间（UTC）归日，不是精确越线时刻；前置侧别最多回看 24 小时，未观测到通行不证明船舶未通过",
+                "判定版本 strait-gates-v1+stats-2026-10-07；长间隔阈值 6:00:00、跳点阈值 30.0 kn 尚未用真实 AIS 独立校准",
+                "AIS 来源授权和覆盖尚未核实；统计只反映本口径下的观测，不能解释为实际全部交通变化或新闻因果",
+                "ships.ship_type 为当前快照属性，未知/缺失按原始字段保留，不按船名推断历史船型"
+              ]
+            },
+            "b": {
+              "status": "partial",
+              "start_at": "2026-02-27T00:00:00+00:00",
+              "end_at": "2026-02-28T00:00:00+00:00",
+              "requested_days": 1.0,
+              "ship_types": null,
+              "direction": null,
+              "window": {
+                "passage_count": 116,
+                "unique_ship_count": 116,
+                "inbound_count": 64,
+                "outbound_count": 52,
+                "uncertain_candidate_count": 7,
+                "position_count": 612535
+              },
+              "determination_version": "strait-gates-v1+stats-2026-10-07",
+              "schema_version": "4",
+              "data_source": "nnu_ais",
+              "limitations": [
+                "虚拟双门线为纬度 25.8–27.1°N 内的 56.2°E 西侧与 56.7°E 东侧；仅使用经度 55.8–57.1°E、来源 nnu_ais 的历史报位",
+                "按完成侧首次报位的观测完成时间（UTC）归日，不是精确越线时刻；前置侧别最多回看 24 小时，未观测到通行不证明船舶未通过",
+                "判定版本 strait-gates-v1+stats-2026-10-07；长间隔阈值 6:00:00、跳点阈值 30.0 kn 尚未用真实 AIS 独立校准",
+                "AIS 来源授权和覆盖尚未核实；统计只反映本口径下的观测，不能解释为实际全部交通变化或新闻因果",
+                "ships.ship_type 为当前快照属性，未知/缺失按原始字段保留，不按船名推断历史船型"
+              ]
+            }
+          }
+        },
+        {
+          "tool": "query_area_ship_snapshot",
+          "input": {
+            "at": "2026-02-26T12:00:00Z"
+          },
+          "result": {
+            "request_id": "req_c0a598703f2b46f7b5c8e86308a6cc7a",
+            "status": "ok",
+            "adapter_version": "0.2.0",
+            "summary": {
+              "in_area_count": 199,
+              "out_of_area_fresh_count": 139,
+              "stale_fix_count": 622,
+              "evaluated_ship_count": 960,
+              "freshness_seconds": 3600
+            },
+            "coverage": {
+              "source": "nnu_ais",
+              "batch_ids": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+              ],
+              "batch_days": [
+                "2026-02-25",
+                "2026-02-26",
+                "2026-02-27",
+                "2026-02-28",
+                "2026-03-01",
+                "2026-03-02",
+                "2026-03-03",
+                "2026-03-27"
+              ],
+              "note": "覆盖描述的是本次读取范围（来源与批次过滤后的报位），不代表 AIS 原始覆盖完整，也不代表区域内船舶都被观测到"
+            },
+            "limitations": [
+              "默认区域是项目分析区域，不是官方航道（TAS/TSS）边界；结果回显 area_id/version/basis",
+              "报位是历史观测：时刻在场所给位置不保证该时刻的真实位置，过期报位不计入在场",
+              "出现去重船数不等于进出次数，也不等于连续在场人数；报位频率差异不能换算成交通量",
+              "缺报区间不计入停留时长，不做任何插值；采样漏检可能漏掉短暂穿越",
+              "观测进入次数不要求等于离开次数：窗外进入、窗内离开与缺报都会造成差额",
+              "AIS 来源授权与区域覆盖尚未核实；批次 1–7 为逐日文件，批次 8 为北极案例单船",
+              "仅使用 2026-02-26T12:00:00+00:00 之前 3600 秒内的最新报位；过期报位不作为在场，也不会回退到更早的区域内报位"
+            ],
+            "versions": {
+              "area": "1.0.0",
+              "algorithm": "1.0.1"
+            }
+          }
+        },
+        {
+          "tool": "query_area_ship_activity",
+          "input": {
+            "start_at": "2026-02-26T00:00:00Z",
+            "end_at": "2026-02-27T00:00:00Z"
+          },
+          "result": {
+            "request_id": "req_cde57a69b62244b6a2781c347b9de01b",
+            "status": "partial",
+            "adapter_version": "0.2.0",
+            "summary": {
+              "ships_observed": 477,
+              "observed_entry_count": 229,
+              "observed_exit_count": 224,
+              "observed_ship_seconds": 16988498.0,
+              "observed_ship_hours": 4719.027,
+              "visit_count": 510,
+              "complete_visit_count": 1,
+              "truncated_start_visit_count": 281,
+              "truncated_end_visit_count": 62,
+              "interrupted_visit_count": 15,
+              "uncertain_visit_count": 151,
+              "prior_state_unknown_visit_count": 224,
+              "near_boundary_event_count": 311,
+              "unobserved_gap_seconds": 3177526.0
+            },
+            "coverage": {
+              "source": "nnu_ais",
+              "batch_ids": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+              ],
+              "batch_days": [
+                "2026-02-25",
+                "2026-02-26",
+                "2026-02-27",
+                "2026-02-28",
+                "2026-03-01",
+                "2026-03-02",
+                "2026-03-03",
+                "2026-03-27"
+              ],
+              "scope_start": "2026-02-25T18:00:00+00:00",
+              "scope_end": "2026-02-27T06:00:00+00:00",
+              "scoped_fix_count": 761565,
+              "region_fix_count": 689025,
+              "window_region_fix_count": 440102,
+              "first_fix_at": "2026-02-25T18:00:00+00:00",
+              "last_fix_at": "2026-02-27T05:59:59+00:00",
+              "note": "覆盖描述的是本次读取范围（来源与批次过滤后的报位），不代表 AIS 原始覆盖完整，也不代表区域内船舶都被观测到"
+            },
+            "limitations": [
+              "默认区域是项目分析区域，不是官方航道（TAS/TSS）边界；结果回显 area_id/version/basis",
+              "报位是历史观测：时刻在场所给位置不保证该时刻的真实位置，过期报位不计入在场",
+              "出现去重船数不等于进出次数，也不等于连续在场人数；报位频率差异不能换算成交通量",
+              "缺报区间不计入停留时长，不做任何插值；采样漏检可能漏掉短暂穿越",
+              "观测进入次数不要求等于离开次数：窗外进入、窗内离开与缺报都会造成差额",
+              "AIS 来源授权与区域覆盖尚未核实；批次 1–7 为逐日文件，批次 8 为北极案例单船",
+              "观测上下文为分析区外扩 0.05°，窗口前后各回看 21600/21600 秒；超出范围的区外报位不参与状态判定",
+              "缺报断开阈值 1800 秒、跳点阈值 30.0 节为 v1 默认值，尚未用全部七日样本独立校准",
+              "507 次访问带缺报/跳点/边界近邻/前置状态未知等质量标记"
+            ],
+            "versions": {
+              "area": "1.0.0",
+              "algorithm": "1.0.1"
+            }
+          }
+        },
+        {
+          "tool": "compare_area_ship_activity",
+          "input": {
+            "start_a": "2026-02-26T00:00:00Z",
+            "end_a": "2026-02-27T00:00:00Z",
+            "start_b": "2026-02-27T00:00:00Z",
+            "end_b": "2026-02-28T00:00:00Z"
+          },
+          "result": {
+            "request_id": "req_b38b52df40ef4772ace16913391fddf4",
+            "status": "partial",
+            "adapter_version": "0.2.0",
+            "limitations": [
+              "默认区域是项目分析区域，不是官方航道（TAS/TSS）边界；结果回显 area_id/version/basis",
+              "报位是历史观测：时刻在场所给位置不保证该时刻的真实位置，过期报位不计入在场",
+              "出现去重船数不等于进出次数，也不等于连续在场人数；报位频率差异不能换算成交通量",
+              "缺报区间不计入停留时长，不做任何插值；采样漏检可能漏掉短暂穿越",
+              "观测进入次数不要求等于离开次数：窗外进入、窗内离开与缺报都会造成差额",
+              "AIS 来源授权与区域覆盖尚未核实；批次 1–7 为逐日文件，批次 8 为北极案例单船",
+              "基期为 0 时变化率为 null 并单独说明；无观测不回填为 0",
+              "两期覆盖不一致时，不输出无条件的真实活动增减结论",
+              "两期分别在两个语句中读取；业务库当前不并发写入，若同时存在写入，两期可能不是同一快照，请先比较两期 coverage.batch_ids 是否一致",
+              "至少一期明细被截断（汇总仍完整），明细列表不可直接逐条比较"
+            ],
+            "versions": {
+              "area": "1.0.0",
+              "algorithm": "1.0.1"
+            },
+            "metrics": [
+              {
+                "key": "ships_observed",
+                "label": "出现去重船数",
+                "unit": "艘",
+                "a": 477.0,
+                "b": 429.0,
+                "delta": -48.0,
+                "change_rate": -0.1006
+              },
+              {
+                "key": "observed_entry_count",
+                "label": "观测进入次数",
+                "unit": "次",
+                "a": 229.0,
+                "b": 204.0,
+                "delta": -25.0,
+                "change_rate": -0.1092
+              },
+              {
+                "key": "observed_exit_count",
+                "label": "观测离开次数",
+                "unit": "次",
+                "a": 224.0,
+                "b": 215.0,
+                "delta": -9.0,
+                "change_rate": -0.0402
+              },
+              {
+                "key": "observed_ship_hours",
+                "label": "累计船时",
+                "unit": "小时",
+                "a": 4719.027,
+                "b": 4606.589,
+                "delta": -112.438,
+                "change_rate": -0.0238
+              },
+              {
+                "key": "ships_observed_per_day",
+                "label": "出现去重船数日均",
+                "unit": "艘/日",
+                "a": 477.0,
+                "b": 429.0,
+                "delta": -48.0,
+                "change_rate": -0.1006
+              },
+              {
+                "key": "observed_entry_count_per_day",
+                "label": "观测进入次数日均",
+                "unit": "次/日",
+                "a": 229.0,
+                "b": 204.0,
+                "delta": -25.0,
+                "change_rate": -0.1092
+              },
+              {
+                "key": "observed_ship_hours_per_day",
+                "label": "累计船时日均",
+                "unit": "小时/日",
+                "a": 4719.027,
+                "b": 4606.589,
+                "delta": -112.438,
+                "change_rate": -0.0238
+              }
+            ],
+            "a": {
+              "status": "partial",
+              "summary": {
+                "ships_observed": 477,
+                "observed_entry_count": 229,
+                "observed_exit_count": 224,
+                "observed_ship_seconds": 16988498.0,
+                "observed_ship_hours": 4719.027,
+                "visit_count": 510,
+                "complete_visit_count": 1,
+                "truncated_start_visit_count": 281,
+                "truncated_end_visit_count": 62,
+                "interrupted_visit_count": 15,
+                "uncertain_visit_count": 151,
+                "prior_state_unknown_visit_count": 224,
+                "near_boundary_event_count": 311,
+                "unobserved_gap_seconds": 3177526.0
+              },
+              "coverage": {
+                "source": "nnu_ais",
+                "batch_ids": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  8
+                ],
+                "batch_days": [
+                  "2026-02-25",
+                  "2026-02-26",
+                  "2026-02-27",
+                  "2026-02-28",
+                  "2026-03-01",
+                  "2026-03-02",
+                  "2026-03-03",
+                  "2026-03-27"
+                ],
+                "scope_start": "2026-02-25T18:00:00+00:00",
+                "scope_end": "2026-02-27T06:00:00+00:00",
+                "scoped_fix_count": 761565,
+                "region_fix_count": 689025,
+                "window_region_fix_count": 440102,
+                "first_fix_at": "2026-02-25T18:00:00+00:00",
+                "last_fix_at": "2026-02-27T05:59:59+00:00",
+                "note": "覆盖描述的是本次读取范围（来源与批次过滤后的报位），不代表 AIS 原始覆盖完整，也不代表区域内船舶都被观测到"
+              }
+            },
+            "b": {
+              "status": "partial",
+              "summary": {
+                "ships_observed": 429,
+                "observed_entry_count": 204,
+                "observed_exit_count": 215,
+                "observed_ship_seconds": 16583720.0,
+                "observed_ship_hours": 4606.589,
+                "visit_count": 461,
+                "complete_visit_count": 3,
+                "truncated_start_visit_count": 257,
+                "truncated_end_visit_count": 44,
+                "interrupted_visit_count": 21,
+                "uncertain_visit_count": 136,
+                "prior_state_unknown_visit_count": 209,
+                "near_boundary_event_count": 273,
+                "unobserved_gap_seconds": 3334153.0
+              },
+              "coverage": {
+                "source": "nnu_ais",
+                "batch_ids": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  8
+                ],
+                "batch_days": [
+                  "2026-02-25",
+                  "2026-02-26",
+                  "2026-02-27",
+                  "2026-02-28",
+                  "2026-03-01",
+                  "2026-03-02",
+                  "2026-03-03",
+                  "2026-03-27"
+                ],
+                "scope_start": "2026-02-26T18:00:00+00:00",
+                "scope_end": "2026-02-28T06:00:00+00:00",
+                "scoped_fix_count": 594219,
+                "region_fix_count": 541281,
+                "window_region_fix_count": 367550,
+                "first_fix_at": "2026-02-26T18:00:00+00:00",
+                "last_fix_at": "2026-02-28T05:59:59+00:00",
+                "note": "覆盖描述的是本次读取范围（来源与批次过滤后的报位），不代表 AIS 原始覆盖完整，也不代表区域内船舶都被观测到"
+              }
+            }
+          }
+        },
+        {
+          "tool": "search_ships",
+          "input": {
+            "keyword": "HORMUZ_NO_SUCH_SHIP_50_20261011"
+          },
+          "result": {
+            "request_id": "req_b8527ee92f1046dfb0eae70284acc9a8",
+            "status": "no_match",
+            "adapter_version": "0.2.0",
+            "limitations": [
+              "检索范围为已有 nnu_ais 历史 AIS 报位的船；来源授权与覆盖尚未核实。新闻中的船舶须另行核对 MMSI/IMO 等标识，名称相同不足以认定同一实体"
+            ],
+            "matches": [],
+            "matched_count": 0,
+            "returned_count": 0,
+            "truncated": false
+          }
+        },
+        {
+          "tool": "search_ships",
+          "input": {
+            "keyword": "ATHE NOVA",
+            "limit": true
+          },
+          "result": {
+            "request_id": "req_084beaf916cb4358a6db56346d502a12",
+            "status": "error",
+            "code": "INVALID_TOOL_ARGS",
+            "adapter_version": "0.2.0"
+          }
+        }
+      ],
+      "server_version": "0.2.0",
+      "tools": [
+        "search_ships",
+        "get_ship_track",
+        "query_strait_passage_statistics",
+        "compare_strait_passage_statistics",
+        "query_area_ship_snapshot",
+        "query_area_ship_activity",
+        "compare_area_ship_activity"
+      ]
+    }
+  ],
+  "baseline_comparison": {
+    "reference": "docs/dsh_mcp_acceptance.json (2026-10-10 historical business baseline)",
+    "result": "PASS: identity, passage counts, snapshot count and activity summary",
+    "scope": "Same test database and parameters; baseline not recomputed this batch. Comparisons and empty track are new protocol observations."
+  },
+  "regression": {
+    "passed": 228,
+    "skipped": 7,
+    "scope": "MCP adapter/transports/credentials/launcher plus internal SQL tools/policy/executor/v3 snapshots",
+    "skip_reason": "optional real PostgreSQL executor integration fixtures not enabled"
+  },
+  "unverified": [
+    "minimum privilege of the existing business login",
+    "actual network disconnect to database cancellation/no residual active query",
+    "sustained and multiple-process load",
+    "runtime switch for existing DSH desktop",
+    "new real internal SQL queries (no SQL credential used)"
+  ],
+  "local_closeout_2026_10_11": {
+    "status": "local acceptance satisfied; pending merge",
+    "dedicated_external_sql_account": "not required",
+    "business_minimum_privilege": "hardening; not a local acceptance blocker",
+    "stdio_cancel": "verified real diagnostic protocol and database cancel",
+    "bounded_concurrency": "verified 4 real probes; fifth MCP_BUSY",
+    "remaining_limitations": [
+      "HTTP TCP disconnect",
+      "sustained multi-process load",
+      "public auth/data permission"
+    ],
+    "runtime_switched": false,
+    "deployed": false
+  }
+}

@@ -1,6 +1,10 @@
+> 2026-10-11 本机范围收尾复核：现有业务凭据已成功查询，无需新增 SQL 账号；最小权限审计属于后续加固。独立 SDK 真实 stdio 取消及 4 槽并发/第 5 项拒绝已验证。本机 7 工具交付满足调整后的验收，持续压测、HTTP TCP 断线和公网认证/许可为保留限制。PR #63 准备合并；运行工作树及桌面配置保留，未部署。下方 Draft 阻塞是上一轮判断，已由本次复核替代。
+
+> 2026-10-11 当前范围调整：Issue #50 为外部只读业务 MCP（固定 7 工具）；Text-to-SQL 仅限项目内部智能体。任务分支已移除外部 SQL 的发现/调用/配置路径，旧启用变量无法恢复 SQL。内部 SQL 安全契约与实现保留。当前验收、Draft 阻塞和运行版本见[本轮记录](docs/issue50_business_boundary_acceptance.md)。下方外部 SQL 待验收、默认关闭但可启用及 Kimi 必须完成等描述属于调整前历史范围，不能作为当前要求。旧 DSH worktree/桌面配置未切换，未部署。
+
 # 霍尔木兹海峡船舶态势地图
 
-> 2026-10-11 DSH 接入：独立 headless 真实模型四题已通过；桌面旧配置目录不可见已复现，改用 DSH profile 内非敏感元数据后，真实桌面 tools/list 返回 7 工具、同连接只读查询 ATHE NOVA 成功。用户已确认桌面身份查询及后续六题通过（未采集逐题原文/request_id，未独立对账）；本机业务子集已随 PR #62 合入 main（b5d8a60），SQL 和 Kimi 桌面等余项留在 #50；运行工作树保留，见[收尾记录](docs/issue50_closeout.md)。见[配置与验收](docs/dsh_mcp_acceptance.md)。
+> 2026-10-11 DSH 接入：独立 headless 真实模型四题已通过；桌面旧配置目录不可见已复现，改用 DSH profile 内非敏感元数据后，真实桌面 tools/list 返回 7 工具、同连接只读查询 ATHE NOVA 成功。用户已确认桌面身份查询及后续六题通过（未采集逐题原文/request_id，未独立对账）；本机业务子集已随 PR #62 合入 main（b5d8a60），本轮业务安全验收余项留在 #50，外部 SQL 要求已撤回，Kimi 桌面状态单独保留；运行工作树保留，见[收尾记录](docs/issue50_closeout.md)。见[配置与验收](docs/dsh_mcp_acceptance.md)。
 
 Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件及有界智能体问答；后端使用 FastAPI、PostgreSQL、PostGIS/MobilityDB。新闻与 AIS 观测不自动构成身份或因果关联。
 
@@ -30,7 +34,7 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 | 区域船舶活动分析 | **三个阶段已实现，2026-10-07 修复后复测通过（issue #41，算法 1.0.1，任务分支 codex/area-activity-ui）**：默认项目分析区域、鼠标矩形圈选、时刻在场/时段活动与每日汇总/双时段比较、船型多选、访问证据与地图轨迹，以及三个区域智能体工具与「查看区域分析」回填，共用同一服务。已在任务分支整合最新 main（含 #40/#43）；后端 390 passed / 14 skipped，前端 build/check:workbench/区域 30 项与类型检查通过；14 组 API 的 163 项断言与已有独立复算证据一致。真实 PostgreSQL 20 秒超时映射 503 已验；浏览器结果见[验收报告](docs/area_activity_acceptance.md) §七。**2026-10-08 已随 [PR #45](https://github.com/sure-660322/Hormuz/pull/45) 合入 main（3bcfea1）并同步，任务工作树/分支/验收服务已清理；未部署。用户确认暂不做触屏与纯键盘相关范围，Issue #41 已按已交付范围关闭；并发等验证限制保留** |
 | TimescaleDB | 扩展已安装，尚未使用时序表能力 |
 | 动态海峡通行统计 | **已实现并经样本验证，PR #42 已合入 main（f555ec7）**：历史窗口按日统计、船型/方向筛选、两期比较、分页证据与地图轨迹；手动面板与两个智能体工具共用服务。2026-10-07 真实模型、面板回填、浏览器查询/比较与轨迹加载已有记录；可见相机及综合多轮后续验收见[记录](docs/issue47_multi_turn_acceptance.md)，窄屏等其余限制见[模块说明](docs/agent_tool_strait_statistics.md)，未部署。 |
-| 智能体 | **已实现，部分真实链路已验证**：LangChain create_agent，13 个只读业务工具（8 个既有 + 2 个通行统计 + 3 个区域活动）、知识库及受限 SQL 三工具，v4 响应包含地图与分析动作。通行/区域各有真实模型和浏览器样本；综合多轮已随 #47 / PR #57 合入，2026-10-08 验收见[记录](docs/issue47_multi_turn_acceptance.md)。SQL catalog v2 仅开放船舶、事件、新闻，2026-09-25 有只读执行及油轮聚合真实模型样本，SQL 浏览器链路未重新验收；**catalog v3（[PR #59](https://github.com/sure-660322/Hormuz/pull/59) 已合入 main）新增 5 张受控分析快照表与必要过滤，已在独立测试库完成构建/对账/真实模型三题/失败关闭与 EXPLAIN 验收（[记录](docs/issue48_sql_acceptance.md)），应用库未实施 017**；产品 MCP 的本机 stdio/Streamable HTTP 适配层已随 PR #62 合入 main（b5d8a60），本机业务子集已验证，Kimi 双传输业务四题/八次真实调用已验证（[记录](docs/issue50_kimi_acceptance.md)），Kimi Work 个人插件已安装启用，0.1.2 启动入口修复已通过源插件四题验证并登记；官方更新因运行中会话被延后，桌面仍为 0.1.1、查询待验收（[说明](plugins/kimi/personal/hormuz/README.md)），完整 SQL 客户端验收待完成，业务子集已合并、未部署，见[接入说明](docs/mcp_local_adapter.md)。当前契约见[接入说明](docs/agent_integration.md)，后续任务见[任务计划](docs/agent_development_plan.md)。 |
+| 智能体 | **已实现，部分真实链路已验证**：LangChain create_agent，13 个只读业务工具（8 个既有 + 2 个通行统计 + 3 个区域活动）、知识库及受限 SQL 三工具，v4 响应包含地图与分析动作。通行/区域各有真实模型和浏览器样本；综合多轮已随 #47 / PR #57 合入，2026-10-08 验收见[记录](docs/issue47_multi_turn_acceptance.md)。SQL catalog v2 仅开放船舶、事件、新闻，2026-09-25 有只读执行及油轮聚合真实模型样本，SQL 浏览器链路未重新验收；**catalog v3（[PR #59](https://github.com/sure-660322/Hormuz/pull/59) 已合入 main）新增 5 张受控分析快照表与必要过滤，已在独立测试库完成构建/对账/真实模型三题/失败关闭与 EXPLAIN 验收（[记录](docs/issue48_sql_acceptance.md)），应用库未实施 017**；产品 MCP 的本机 stdio/Streamable HTTP 适配层已随 PR #62 合入 main（b5d8a60），本机业务子集已验证，Kimi 双传输业务四题/八次真实调用已验证（[记录](docs/issue50_kimi_acceptance.md)），Kimi Work 个人插件已安装启用，0.1.2 启动入口修复已通过源插件四题验证并登记；官方更新因运行中会话被延后，桌面仍为 0.1.1、查询待验收（[说明](plugins/kimi/personal/hormuz/README.md)），外部 SQL 已移除，内部 SQL 保留；当前业务边界验收见本轮记录，业务子集已合并、未部署，见[接入说明](docs/mcp_local_adapter.md)。当前契约见[接入说明](docs/agent_integration.md)，后续任务见[任务计划](docs/agent_development_plan.md)。 |
 
 旧模拟批次依据同期新闻构造等待等行为，具体船数、响应时刻、航迹及比例属于模拟假设；其报告仅作历史记录，见[旧批次说明](sim_ais_demo/output_news_aligned/README.md)。用这些 AIS 作研究结论前仍须核验来源、授权、覆盖和完整性。
 
@@ -156,7 +160,7 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 
 历史验收记录：默认问题曾返回 1 艘 SIM V2 化学品船 019（证据 P1，观测完成于 2026-02-28T18:14:54Z）；v3 三场景联调记录见 [当前契约](docs/agent_integration.md)。本轮未重新调用模型，不能把历史数量当作当前查询结果；自由回答正文尚无逐项事实核验器。
 
-当前地图位置采用所选回放快照，轨迹/证据动作已支持有界时间跳转、选船与聚焦；案例另有分段回放。服务端会话持久化未实现（history 由客户端逐请求携带）。受限 SQL 的 catalog v2/016 已按真实 AIS 适配，目录仅含船舶、事件与新闻；报位级分析仍走业务工具。停留、相遇及 observed 事件关联未构建，不能以零结果推断无真实行为。通行与区域手动面板、智能体调用和 analysis_actions 均已合入，真实模型/浏览器单业务样本见模块验收；综合多轮已随 #47 / PR #57 合入（[验收](docs/issue47_multi_turn_acceptance.md)）；SQL 应用库实施与 MCP 完整客户端验收仍待完成。已合并的本机双传输 MCP 业务子集见[说明](docs/mcp_local_adapter.md)。**2026-10-09 更新：catalog v3（5 张受控分析快照表 + 清单核验 + required_filters 必要过滤）已随 [PR #59](https://github.com/sure-660322/Hormuz/pull/59) 合入 main（#48 关闭），独立测试库完成全部验收（[issue48 验收记录](docs/issue48_sql_acceptance.md)）；应用库未执行 017/未建快照，授权后才能在应用库实施。**
+当前地图位置采用所选回放快照，轨迹/证据动作已支持有界时间跳转、选船与聚焦；案例另有分段回放。服务端会话持久化未实现（history 由客户端逐请求携带）。受限 SQL 的 catalog v2/016 已按真实 AIS 适配，目录仅含船舶、事件与新闻；报位级分析仍走业务工具。停留、相遇及 observed 事件关联未构建，不能以零结果推断无真实行为。通行与区域手动面板、智能体调用和 analysis_actions 均已合入，真实模型/浏览器单业务样本见模块验收；综合多轮已随 #47 / PR #57 合入（[验收](docs/issue47_multi_turn_acceptance.md)）；SQL 应用库实施另行授权，MCP 业务安全验收余项见本轮记录。已合并的本机双传输 MCP 业务子集见[说明](docs/mcp_local_adapter.md)。**2026-10-09 更新：catalog v3（5 张受控分析快照表 + 清单核验 + required_filters 必要过滤）已随 [PR #59](https://github.com/sure-660322/Hormuz/pull/59) 合入 main（#48 关闭），独立测试库完成全部验收（[issue48 验收记录](docs/issue48_sql_acceptance.md)）；应用库未执行 017/未建快照，授权后才能在应用库实施。**
 
 受限分析主链 SQL-01～06 已完成。SQL-02～06 文档作为现有安全执行底座的历史验收证据继续保留；它们不再定义下一版交互方式。LC-01～04 已按阶段引入 LangChain 单智能体、轻量知识库、原生业务 Skills 和受限 SQL Agent，并完成等价回归：固定短语分类器和手写模型工具循环已移除（LC-03/LC-04），旧 `runner.py` 已删除。任务状态见 [开发计划](docs/agent_development_plan.md)。
 

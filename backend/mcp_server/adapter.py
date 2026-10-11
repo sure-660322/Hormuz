@@ -1,15 +1,12 @@
-"""No LangChain/model invocation: calls existing services and SQL safety layer."""
+"""No LangChain/model invocation: calls existing read-only business services."""
 from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-import hashlib
-import json
 import logging
 import os
-import secrets
 import threading
 import time
 import uuid
@@ -21,10 +18,9 @@ from sqlalchemy.orm import Session
 
 from backend.mcp_server.schemas import TOOLS
 from backend.app.services.agent.serialization import to_jsonable
-from backend.app.services.agent.query_analytics_policy import load_catalog, validate_query, QueryPolicyError
 
 LOGGER = logging.getLogger("hormuz.mcp.audit")
-ADAPTER_VERSION = "0.1.0"
+ADAPTER_VERSION = "0.2.0"
 
 
 def failure(code, message, status="error"):
@@ -47,40 +43,6 @@ class Cancellation:
                     pass  # Do not expose driver/connection details.
 
 
-class ApprovalStore:
-    """Atomic bounded one-shot approvals; no caller-selected context identifiers."""
-    def __init__(self, ttl=120, capacity=256, clock=time.monotonic):
-        self.ttl, self.capacity, self.clock = ttl, capacity, clock
-        self.lock = threading.Lock()
-        self.entries = {}
-
-    @staticmethod
-    def digest(args):
-        return hashlib.sha256(json.dumps(args, sort_keys=True, ensure_ascii=False,
-                                         separators=(",", ":")).encode()).hexdigest()
-
-    def issue(self, scope, args, catalog):
-        with self.lock:
-            now = self.clock()
-            self.entries = {k: v for k, v in self.entries.items() if v[0] > now}
-            if len(self.entries) >= self.capacity:
-                return None
-            token = secrets.token_urlsafe(32)
-            self.entries[token] = (now + self.ttl, scope, self.digest(args), self.digest(catalog))
-            return token
-
-    def consume(self, token, scope, args, catalog):
-        with self.lock:
-            entry = self.entries.get(token)
-            if not entry or entry[0] <= self.clock():
-                self.entries.pop(token, None)
-                return False
-            if entry[1] != scope:
-                return False  # A foreign client cannot revoke another client's token.
-            self.entries.pop(token, None)
-            return entry[2:] == (self.digest(args), self.digest(catalog))
-
-
 def business_engine_from_env():
     names = [f"MCP_DB_{key}" for key in ("USER", "PASSWORD", "HOST", "PORT", "NAME")]
     if any(not os.environ.get(key) for key in names):
@@ -101,15 +63,12 @@ def business_engine_from_env():
 
 
 class Adapter:
-    def __init__(self, *, session_factory=None, executor_factory=None, sql_enabled=False,
+    def __init__(self, *, session_factory=None,
                  max_workers=4, timeout=30, rate_limit=60):
         self.session_factory = session_factory
-        self.executor_factory = executor_factory
-        self.sql_enabled = sql_enabled
         self.timeout, self.rate_limit = timeout, rate_limit
         self.pool = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="mcp-query")
         self.slots = threading.BoundedSemaphore(max_workers)
-        self.approvals = ApprovalStore()
         self.rate_lock = threading.Lock()
         self.rates = {}
         self.engine = None
@@ -120,8 +79,7 @@ class Adapter:
             self.engine.dispose()
 
     def names(self):
-        return [name for name in TOOLS if self.sql_enabled or name not in
-                {"get_database_schema", "check_sql", "execute_sql"}]
+        return list(TOOLS)
 
     def _allow(self, scope):
         with self.rate_lock:
@@ -163,8 +121,6 @@ class Adapter:
                 if cancel.event.is_set():
                     return failure("CANCELLED", "Query cancelled", "cancelled")
                 return self.dispatch(name, args, scope, request_id, cancel)
-            except QueryPolicyError as exc:
-                return failure(exc.code, "SQL rejected by the governed policy", exc.code)
             except ValueError:
                 return failure("INVALID_TOOL_ARGS", "Invalid bounds, time window or configured limits")
             except SQLAlchemyError as exc:
@@ -227,43 +183,13 @@ class Adapter:
                 # No source writes; transaction ends before the Session is returned.
 
     def dispatch(self, name, args, scope, request_id, cancel):
-        if name in {"get_database_schema", "check_sql", "execute_sql"}:
-            return self.sql(name, args, scope, request_id, cancel)
+        if name not in TOOLS:
+            return failure("TOOL_UNAVAILABLE", "Tool is not enabled", "refused")
         if "bounds" in args:
             from backend.app.services.area_activity.context import resolve_area_context
             resolve_area_context(args["bounds"]).bounds.validate()
         with self.session(cancel) as db:
             return self.business(name, args, db)
-
-    def sql(self, name, args, scope, request_id, cancel):
-        catalog = load_catalog()
-        if name == "get_database_schema":
-            return {"status": "ok", "catalog": catalog, "database_readiness": "not_verified",
-                    "token_ttl_seconds": self.approvals.ttl}
-        if name == "check_sql":
-            validated = validate_query(args["sql"], args["params"], args["purpose"], catalog=catalog)
-            token = self.approvals.issue(scope, args, catalog)
-            if token is None:
-                return failure("APPROVAL_CAPACITY", "SQL approval capacity exhausted", "refused")
-            return {"status": "ok", "normalized_sql": validated.normalized_sql,
-                    "catalog_version": validated.catalog_version,
-                    "validation_token": token, "expires_in_seconds": self.approvals.ttl}
-        token = args.pop("validation_token")
-        if not self.approvals.consume(token, scope, args, catalog):
-            return failure("INVALID_SQL_TOKEN", "Token expired, used, foreign or mismatched", "refused")
-        from backend.app.services.agent.query_analytics_executor import QueryExecutionError
-        executor = None
-        try:
-            executor = self.executor_factory()
-            return executor.execute(**args, request_id=request_id, call_id="call_001",
-                                    cancel_event=cancel.event).to_dict()
-        except QueryExecutionError as exc:
-            return {"status": exc.status, "code": exc.code, "message": exc.public_message,
-                    "query_id": exc.query_id, "query_executed": exc.query_executed,
-                    "retryable": False}
-        finally:
-            if executor is not None:
-                executor.dispose()
 
     @staticmethod
     def business(name, args, db):

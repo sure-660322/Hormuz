@@ -34,7 +34,7 @@ def post(session, headers, body):
 
 @pytest.fixture
 def client():
-    instance = Adapter(sql_enabled=True, executor_factory=lambda: None)
+    instance = Adapter()
     app = create_http_app(instance, {"client-a": TOKEN_A, "client-b": TOKEN_B})
     with TestClient(app, base_url="http://127.0.0.1:8036", client=("127.0.0.1", 50100)) as session:
         yield session, instance
@@ -45,26 +45,9 @@ def test_http_modern_discovery_schema_and_check(client):
     response = post(session, HEADERS, rpc("tools/list"))
     assert response.status_code == 200, response.text
     tools = response.json()["result"]["tools"]
-    assert len(tools) == 10
+    assert len(tools) == 7
     assert all(t["annotations"]["readOnlyHint"] for t in tools)
     assert next(t for t in tools if t["name"] == "get_ship_track")["inputSchema"]["required"] == ["start_at", "end_at", "ship_id"]
-    result = post(session, HEADERS, rpc("tools/call", {
-        "name": "check_sql", "arguments": {"sql": "SELECT ship_id FROM agent_data.v_ships"}}))
-    assert result.status_code == 200, result.text
-    assert result.json()["result"]["structuredContent"]["validation_token"]
-
-
-def test_http_trusted_identity_is_present_and_foreign_token_rejected(client):
-    session, _ = client
-    args = {"sql": "SELECT ship_id FROM agent_data.v_ships"}
-    result = post(session, HEADERS, rpc("tools/call", {"name": "check_sql", "arguments": args})).json()
-    token = result["result"]["structuredContent"]["validation_token"]
-    foreign = HEADERS | {"Authorization": f"Bearer {TOKEN_B}"}
-    result = post(session, foreign, rpc("tools/call", {
-        "name": "execute_sql", "arguments": args | {"validation_token": token}})).json()
-    assert result["result"]["structuredContent"]["code"] == "INVALID_SQL_TOKEN"
-
-
 def test_http_legacy_initialize_and_list(client):
     session, _ = client
     headers = HEADERS | {"MCP-Protocol-Version": "2025-11-25"}
@@ -75,7 +58,7 @@ def test_http_legacy_initialize_and_list(client):
     assert response.json()["result"]["protocolVersion"] == "2025-11-25"
     response = session.post("/mcp", headers=headers, json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     assert response.status_code == 200, response.text
-    assert len(response.json()["result"]["tools"]) == 10
+    assert len(response.json()["result"]["tools"]) == 7
 
 
 @pytest.mark.parametrize("headers,status", [
@@ -133,9 +116,10 @@ def test_client_truncation_keeps_summary_and_uncertainty_visible(client):
     assert result["structuredContent"]["area"] == payload["area"]
 
 
-def test_stdio_subprocess_discovery_and_offline_sql():
+@pytest.mark.parametrize("legacy_flag", ["false", "true", "invalid"])
+def test_stdio_subprocess_discovery_and_sql_denial(legacy_flag):
     env = {k: v for k, v in os.environ.items() if not k.startswith(("DB_", "MCP_", "AGENT_DB_"))}
-    env.update({"MCP_SQL_ENABLED": "true", "AGENT_QUERY_ENABLED": "true",
+    env.update({"MCP_SQL_ENABLED": legacy_flag, "AGENT_QUERY_ENABLED": "true",
                 "AGENT_QUERY_BIND_HOST": "127.0.0.1"})
     for prefix in ("MCP_DB", "AGENT_DB"):
         env.update({f"{prefix}_USER": "agent_reader_login", f"{prefix}_PASSWORD": "placeholder-not-a-secret",
@@ -147,10 +131,19 @@ def test_stdio_subprocess_discovery_and_offline_sql():
             async with ClientSession(streams[0], streams[1]) as session:
                 await session.initialize()
                 result = await session.list_tools()
-                assert len(result.tools) == 10
-                check = await session.call_tool("check_sql", {"sql": "SELECT ship_id FROM agent_data.v_ships"})
-                assert not check.is_error
-                assert check.structured_content["validation_token"]
-                denied = await session.call_tool("check_sql", {"sql": "DELETE FROM ships"})
-                assert denied.is_error
+                assert len(result.tools) == 7
+                for name in ("get_database_schema", "check_sql", "execute_sql"):
+                    denied = await session.call_tool(name, {"sql": "DELETE FROM ships"})
+                    assert denied.is_error
+                    assert denied.structured_content["code"] == "TOOL_UNAVAILABLE"
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("name", ["get_database_schema", "check_sql", "execute_sql"])
+def test_http_sql_direct_call_cannot_reach_dispatch(client, name):
+    session, adapter = client
+    adapter.dispatch = lambda *a: pytest.fail("SQL must never reach dispatch")
+    result = post(session, HEADERS, rpc("tools/call", {
+        "name": name, "arguments": {"sql": "DELETE FROM ships"}})).json()["result"]
+    assert result["isError"]
+    assert result["structuredContent"]["code"] == "TOOL_UNAVAILABLE"

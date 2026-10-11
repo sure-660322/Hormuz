@@ -38,7 +38,7 @@ def read_windows_credential(target: str) -> str:
 
 
 def resolve_passwords():
-    for prefix in ("MCP_DB", "AGENT_DB"):
+    for prefix in ("MCP_DB",):
         name = f"{prefix}_PASSWORD"
         target = os.environ.get(f"{name}_CREDENTIAL")
         if target:
