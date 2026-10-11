@@ -1,3 +1,5 @@
+> 2026-10-11 当前范围调整：Issue #50 为外部只读业务 MCP（固定 7 工具）；Text-to-SQL 仅限项目内部智能体。任务分支已移除外部 SQL 的发现/调用/配置路径，旧启用变量无法恢复 SQL。内部 SQL 安全契约与实现保留。当前验收、Draft 阻塞和运行版本见[本轮记录](issue50_business_boundary_acceptance.md)。下方外部 SQL 待验收、默认关闭但可启用及 Kimi 必须完成等描述属于调整前历史范围，不能作为当前要求。旧 DSH worktree/桌面配置未切换，未部署。
+
 # query_analytics 受限 Text-to-SQL 契约（SQL-01）
 
 > 文档状态：**历史实现依据，继续约束现有 SQL 安全底座**。SQL-02～06 已按本契约完成实现与隔离验证；下一版 LangChain SQL Agent 仍复用策略校验和只读执行器，但交互与编排目标改由 [LangChain 第一版方案](langchain_agent_v1_plan.md) 定义。

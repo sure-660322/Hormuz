@@ -1,7 +1,9 @@
+> 2026-10-11：当前任务分支的 MCP 0.2.0 固定提供 7 业务工具。旧 DSH 运行 worktree 和 Kimi 受管版本均未切换；下方 0.1.2 安装状态为历史记录。详见 [当前边界验收](../../../../docs/issue50_business_boundary_acceptance.md)。
+
 # Hormuz 船舶分析：Kimi 本机个人插件
 
 面向 Windows Kimi Work 的本地 MCP + Skill 插件。只提供历史 AIS 船舶检索、
-有界轨迹、通行统计/比较、区域在场/活动/比较；受控 SQL 三工具保持关闭。
+有界轨迹、通行统计/比较、区域在场/活动/比较；外部 SQL 三工具已从当前 MCP 源实现移除；内部智能体 SQL 保留。
 需要本机已有 PowerShell 7、Hormuz MCP 虚拟环境及 Windows Credential Manager 的具名数据库凭据。
 本插件不安装依赖、不创建凭据、不运行模型，也不迁移或修改数据库。
 
@@ -20,7 +22,7 @@ cwd 在插件目录内，避免桌面将 node 改写为失效的 Kimi.exe __plug
 密码仅由后端在进程内读取具名凭据。源目录与 Kimi 的受管副本均使用同一份外部本机配置。
 通过原始字节异步转发 stdin/stdout/stderr，保留 Unicode、大结果、EOF 和子进程退出码；
 不使用 PowerShell 对象管道传输协议。配置缺失/无效时只向 stderr 写通用错误，
-不污染协议 stdout。不读取 .env；SQL 工具保持关闭。
+不污染协议 stdout。不读取 .env；外部 SQL 无启用入口，带额外 sql 字段的运行配置被拒绝。
 
 ## 登记和安装
 

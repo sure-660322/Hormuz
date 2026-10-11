@@ -1,3 +1,5 @@
+> 2026-10-11 当前范围调整：Issue #50 为外部只读业务 MCP（固定 7 工具）；Text-to-SQL 仅限项目内部智能体。任务分支已移除外部 SQL 的发现/调用/配置路径，旧启用变量无法恢复 SQL。内部 SQL 安全契约与实现保留。当前验收、Draft 阻塞和运行版本见[本轮记录](issue50_business_boundary_acceptance.md)。下方外部 SQL 待验收、默认关闭但可启用及 Kimi 必须完成等描述属于调整前历史范围，不能作为当前要求。旧 DSH worktree/桌面配置未切换，未部署。
+
 # Issue #50：Kimi 本机业务 MCP 验收
 
 > 2026-10-11 当前交付：PR #62 本机业务子集已合入 main（b5d8a60），相关回归 55 passed，本地已同步。#50 的完整 SQL/Kimi 桌面等余项仍待验收，未部署；运行工作树保留。见[收尾记录](issue50_closeout.md)。下方 Draft/未合并描述属于历史批次。
