@@ -1,0 +1,78 @@
+name: hormuz-demo
+services:
+  db:
+    image: mobilitydb/mobilitydb:17-3.5-1.3
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hormuz_owner
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run scripts/configure.sh first}
+      POSTGRES_DB: hormuz
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Run scripts/configure.sh first}
+    command: [postgres, -c, shared_buffers=256MB, -c, work_mem=8MB, -c, maintenance_work_mem=128MB, -c, max_connections=30, -c, max_parallel_workers_per_gather=0]
+    mem_limit: 2g
+    shm_size: 256m
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./deploy/server/10-extensions.sql:/docker-entrypoint-initdb.d/10-extensions.sql:ro
+      - ./deploy/server/20-app-user.sh:/docker-entrypoint-initdb.d/20-app-user.sh:ro
+      - ${HORMUZ_DATABASE_DIR:-./deployment-data/database}:/backup:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    logging: &logging
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  api:
+    build:
+      context: .
+      dockerfile: deploy/server/backend.Dockerfile
+    restart: unless-stopped
+    init: true
+    mem_limit: 1g
+    environment:
+      DB_USER: hormuz_app
+      DB_PASSWORD: ${APP_DB_PASSWORD:?Run scripts/configure.sh first}
+      DB_HOST: db
+      DB_PORT: '5432'
+      DB_NAME: hormuz
+      NEWS_IMAGE_ROOT: /resources/news
+      AGENT_QUERY_ENABLED: 'false'
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-}
+    volumes:
+      - ${HORMUZ_NEWS_DIR:-./deployment-data/news}:/resources/news:ro
+      - ${HORMUZ_DATABASE_DIR:-./deployment-data/database}/database-manifest.json:/release/database-manifest.json:ro
+    depends_on:
+      db: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, /app/deploy/healthcheck.py]
+      interval: 15s
+      timeout: 8s
+      retries: 5
+      start_period: 20s
+    logging: *logging
+  web:
+    build:
+      context: .
+      dockerfile: deploy/server/web.Dockerfile
+    restart: unless-stopped
+    mem_limit: 128m
+    ports:
+      - '${BIND_IP:-127.0.0.1}:${HTTP_PORT:-8088}:80'
+    volumes:
+      - ${HORMUZ_AUTH_FILE:-./deploy/server/config/htpasswd}:/etc/nginx/htpasswd:ro
+      - ${HORMUZ_TILES_DIR:-./deployment-data/tiles}:/srv/tiles:ro
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1/_container_health']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+volumes:
+  database:

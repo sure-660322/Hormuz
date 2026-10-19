@@ -6,6 +6,8 @@
 
 # 霍尔木兹海峡船舶态势地图
 
+2026-10-19：小组部署配置已通过本地 Docker 恢复、接口与浏览器检查，代码和静态资源按 GitHub 交付、含 AIS 的数据库包仅本地私发；发布整理进行中，未部署云端。入口与边界见[部署说明](docs/server_deployment.md)。
+
 > 2026-10-11 DSH 接入：独立 headless 真实模型四题已通过；桌面旧配置目录不可见已复现，改用 DSH profile 内非敏感元数据后，真实桌面 tools/list 返回 7 工具、同连接只读查询 ATHE NOVA 成功。用户已确认桌面身份查询及后续六题通过（未采集逐题原文/request_id，未独立对账）；本机业务子集已随 PR #62 合入 main（b5d8a60），本轮业务安全验收余项留在 #50，外部 SQL 要求已撤回，Kimi 桌面状态单独保留；运行工作树保留，见[收尾记录](docs/issue50_closeout.md)。见[配置与验收](docs/dsh_mcp_acceptance.md)。
 
 Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件及有界智能体问答；后端使用 FastAPI、PostgreSQL、PostGIS/MobilityDB。新闻与 AIS 观测不自动构成身份或因果关联。

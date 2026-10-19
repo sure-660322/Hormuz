@@ -1,0 +1,13 @@
+**
+!backend/
+!backend/requirements.txt
+!backend/app/
+!backend/app/**
+!deploy/
+!deploy/server/
+!deploy/server/healthcheck.py
+!deploy/server/verify_database.py
+**/__pycache__
+**/*.pyc
+**/.env
+**/.env.*
