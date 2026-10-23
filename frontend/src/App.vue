@@ -27,6 +27,7 @@ import OverviewPanel from './components/OverviewPanel.vue'
 import LayersPopover from './components/LayersPopover.vue'
 import ExplorerSidebar from './components/ExplorerSidebar.vue'
 import CasePanel from './components/CasePanel.vue'
+import OnboardingTour from './components/OnboardingTour.vue'
 import { fetchMaritimeCase, type MaritimeCaseId, type ApiMaritimeCase } from './api'
 import { caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } from './domain/casePlayback'
 
@@ -1198,7 +1199,54 @@ function toggleRealPoints() {
     layers.value.tracks = true
   }
 }
+const TOUR_STORAGE_KEY = 'hormuz:onboarding:v1'
+const guideOpen = ref(false)
+let guideReturnFocus: HTMLElement | null = null
+let guideSavedView: {
+  workspace: 'overview' | 'explore'; sidebar: boolean; collapsed: boolean; compact: boolean
+  panel: boolean; area: boolean; layers: boolean; legend: boolean; inCase: boolean
+} | null = null
+function startGuide() {
+  if (guideOpen.value || caseLoading.value || caseSwitching.value) return
+  guideReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  guideSavedView = {
+    workspace: workspaceMode.value, sidebar: sidebarOpen.value, collapsed: sidebarCollapsed.value,
+    compact: timelineCompact.value, panel: panelOpen.value, area: areaOpen.value,
+    layers: layersOpen.value, legend: legendOpen.value, inCase: caseOpen.value,
+  }
+  timelineControls.value?.stop()
+  cancelAreaDraw()
+  guideOpen.value = true
+  panelOpen.value = areaOpen.value = layersOpen.value = legendOpen.value = false
+  caseOpen.value = false
+  sidebarCollapsed.value = false
+  timelineCompact.value = false
+}
+function prepareGuideStep(step: number) {
+  workspaceMode.value = step === 1 ? 'overview' : 'explore'
+  sidebarOpen.value = step === 2
+}
+async function closeGuide(completed: boolean) {
+  try { localStorage.setItem(TOUR_STORAGE_KEY, completed ? 'completed' : 'dismissed') } catch { /* Storage may be disabled. The guide remains usable. */ }
+  if (guideSavedView) {
+    workspaceMode.value = guideSavedView.workspace
+    sidebarOpen.value = guideSavedView.sidebar
+    sidebarCollapsed.value = guideSavedView.collapsed
+    timelineCompact.value = guideSavedView.compact
+    panelOpen.value = guideSavedView.panel
+    areaOpen.value = guideSavedView.area
+    layersOpen.value = guideSavedView.layers
+    legendOpen.value = guideSavedView.legend
+    caseOpen.value = guideSavedView.inCase
+    guideSavedView = null
+  }
+  guideOpen.value = false
+  await nextTick()
+  if (guideReturnFocus?.isConnected && guideReturnFocus !== document.body) guideReturnFocus.focus({ preventScroll: true })
+  else workbenchEl.value?.querySelector<HTMLButtonElement>('[data-tour="help"]')?.focus({ preventScroll: true })
+}
 function onKey(event: KeyboardEvent) {
+  if (guideOpen.value) return
   if (event.key === 'Escape') {
     clearShip()
     selectedEvent.value = null
@@ -1212,12 +1260,15 @@ function onKey(event: KeyboardEvent) {
 onMounted(() => {
   void initialize()
   window.addEventListener('keydown', onKey)
+  let seen = false
+  try { seen = ['completed', 'dismissed'].includes(localStorage.getItem(TOUR_STORAGE_KEY) ?? '') } catch { /* Storage can be disabled. */ }
+  if (!seen) startGuide()
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <main ref="workbenchEl" class="workbench" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen, 'case-mode': caseOpen, 'case-docked': caseOpen && caseDetailsOpen, 'sidebar-collapsed': sidebarCollapsed, 'timeline-compact': timelineCompact, 'area-open': areaOpen }" :style="workbenchStyle">
+  <main ref="workbenchEl" class="workbench" :inert="guideOpen" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen, 'case-mode': caseOpen, 'case-docked': caseOpen && caseDetailsOpen, 'sidebar-collapsed': sidebarCollapsed, 'timeline-compact': timelineCompact, 'area-open': areaOpen }" :style="workbenchStyle">
     <header class="topbar">
       <div class="brand">
         <img class="brand-logo" :src="logoUrl" alt="" aria-hidden="true" />
@@ -1226,10 +1277,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
       </div>
       <nav class="workspace-nav" aria-label="工作视图">
-        <button :class="{ active: workspaceMode === 'overview' && !caseOpen }" :aria-current="workspaceMode === 'overview' && !caseOpen ? 'page' : undefined" @click="changeWorkspace('overview')">态势总览</button>
+        <button data-tour="overview" :class="{ active: workspaceMode === 'overview' && !caseOpen }" :aria-current="workspaceMode === 'overview' && !caseOpen ? 'page' : undefined" @click="changeWorkspace('overview')">态势总览</button>
         <button :class="{ active: workspaceMode === 'explore' && !caseOpen }" :aria-current="workspaceMode === 'explore' && !caseOpen ? 'page' : undefined" @click="changeWorkspace('explore')">地图探索</button>
-        <button :class="{ active: caseOpen }" :aria-current="caseOpen ? 'page' : undefined" @click="openCase">典型案例</button>
+        <button data-tour="cases" :class="{ active: caseOpen }" :aria-current="caseOpen ? 'page' : undefined" @click="openCase">典型案例</button>
       </nav>
+      <button type="button" class="guide-help" data-tour="help" aria-label="使用引导" title="使用引导" :disabled="caseLoading || caseSwitching" @click="startGuide"><b aria-hidden="true">?</b><span>使用引导</span></button>
       <div class="top-status">
         <span class="simulation-label">{{ isRealAis ? '历史 AIS 船位 · 新闻独立' : '船舶轨迹 · 新闻事件' }}</span>
         <button @click="displayZone = displayZone === 'UTC' ? 'Asia/Shanghai' : 'UTC'" aria-label="切换时区">{{ zoneLabel() }}</button>
@@ -1239,6 +1291,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <button class="sidebar-toggle" :aria-expanded="sidebarOpen" @click="sidebarOpen = !sidebarOpen; workspaceMode = 'explore'">{{ sidebarOpen ? '收起列表' : '查找' }}</button>
     </header>
     <ExplorerSidebar
+      data-tour="explorer"
       v-show="!caseOpen"
       v-model="exploreCategory"
       v-model:ship-filter="shipFilter"
@@ -1266,8 +1319,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       @resize-key="nudgeSidebar"
       @collapse="sidebarCollapsed = true"
     />
-    <section class="map-workspace" aria-label="霍尔木兹海峡态势地图">
+    <section class="map-workspace" data-tour="map" aria-label="霍尔木兹海峡态势地图">
       <ToolRail
+        data-tour="tools"
         :layers-active="layersOpen"
         :agent-active="panel === 'agent' && panelOpen"
         :area-active="areaOpen"
@@ -1439,7 +1493,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @open-events="openExplorer('events')" @open-ships="openExplorer('ships')"
       />
     </section>
-    <div class="timeline-dock" :class="{ compact: timelineCompact }">
+    <div class="timeline-dock" data-tour="timeline" :class="{ compact: timelineCompact }">
       <TimelineControls
         ref="timelineControls" :playback-end="caseActive ? caseAgentWindow?.end_at : undefined" @playing-change="casePlaying = $event"
         v-model="index" :frame-times="times" :snapshot-mode="isRealAis" :frame-ready="frameReady" :frame-error="snapshotError"
@@ -1530,4 +1584,5 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       />
     </aside>
   </main>
+  <OnboardingTour v-if="guideOpen" @step="prepareGuideStep" @close="closeGuide" />
 </template>

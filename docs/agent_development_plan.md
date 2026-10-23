@@ -16,6 +16,19 @@
 
 # 智能体下一阶段开发任务
 
+## 2026-10-23 首次访问使用引导与区域图标
+
+状态：**已验证，未部署**。负责人及本轮指定整合者 Codex；用户追加授权同步远端和本机，通过 PR 整合引导、图标及回放起点调整，集成状态见本节 PR 入口。开始时 fetch 后本机 main 与 origin/main 均为 `4c5c06373fd17dc4d58b9e4013c7c6ef86e83393`，双向差异为 0；主目录已有 ToolRail.vue 区域图标修改、未跟踪 area.png 与 screenshots/，不混入本任务提交。独立分支 `codex/first-visit-guide`，工作区 `first-visit-guide/Hormuz`，基线同上；允许修改 App.vue、引导组件、ToolRail.vue、style.css、新图标、usePlayback.ts、workbench.cjs 和本节/README/FRONTEND_WORKBENCH.md。共享文档本轮由 Codex 负责。
+
+- 实现：八步浅雾蓝引导，首次自动出现，功能区高亮，上下步/方向键/跳过/Esc、背景 inert 与焦点约束；完成或跳过使用同源浏览器存储记忆，顶栏可重开，窄屏保留入口。开始时暂停回放和取消圈选，结束时恢复进入前布局；不自动运行区域分析、案例加载或真实模型问答。
+- 用户本机测试初版通过后，按反馈将引导改为固定浅雾蓝 `#E8F2FA`，不随地图深色主题变暗；新增透明区域查询图标。内置 imagegen 提示词：蓝青色等距海事地图板、矩形圈选与四角控制点、简洁放大镜、透明背景、无文字；原始生成结果复制为 `frontend/public/icons/area-query.png`，未覆盖主目录已有 area.png。
+- 图标完整生成提示词：生成一个海事地图网站工具栏的「区域查询」图标。透明背景，正方形；蓝青色小型等距地图板，上面一个清晰的矩形圈选区域，四角选框控制点，搭配一枚简洁放大镜。精致轻微立体质感，轮廓粗而干净，20px时仍易识别，主体尽量占满画布。不要文字、字母、水印或背景。
+- 运行边界：本任务前端 5188，临时后端 8018（复用主目录现有后端环境与应用库，仅验证页面自动 GET）；不改数据库、凭据、API 默认地址、CORS、依赖或已有服务。浏览器验证不调用收费模型。
+- 验证（2026-10-23）：`frontend` 的 `npm run build`、`npm run check:workbench` 及根目录 `git diff --check` 通过；构建保留现有主包超过 500 kB 的提示。Playwright 桌面 1440×900 共 32 项检查通过，覆盖首次、完成/跳过持久化、重开、前后步、高亮、键盘焦点和布局恢复；390×844 全八步、1280×720 浅色地图/减少动态偏好和 320×568 卡片边界共 18 项检查通过。控制台本轮检查无 error/warning；后端元数据、快照与新闻 GET 返回 200。
+- 本地证据在该工作区忽略目录 `output/playwright/`：`desktop-results.txt`、`mobile-results.txt`、`guide-desktop-welcome.png`、`guide-desktop-explorer.png`、`guide-mobile-welcome.png`、`guide-mobile-area.png` 与 `guide-light-explorer.png`。这些是本轮界面验证，不替代原有业务算法、模型或整周回放验收。存储禁用分支、所有浏览器/触屏设备、案例加载中异步竞态及公网部署未做完整验收。
+- 同日追加回放调整：仅常规真实 AIS 地图删除首个显示帧，以原第二帧为新起点；帧间隔来自元数据，典型案例保留精确起点，旧模拟路径不变。数据库报位与元数据覆盖未删除。轻量回归覆盖初始请求、时间数组、快照预取排除旧首帧、seek 越界裁剪、案例起点及不足一个间隔窗口保留末帧；build/check:workbench/diff 检查通过。
+- 浏览器八项验证通过：初始时间为 2026-02-24 16:05 UTC，显示 1 / 2016 帧、上一帧不可用；下一帧到 16:10，上一帧及回到起点均回 16:05；实际快照请求不含旧 16:00 首帧。应用库只读 API 对照旧首帧 30 艘、新起点 1,585 艘，为 2026-10-23 本机批次结果。控制台无 error/warning。证据 `output/playwright/first-frame-results.txt` 与 `map-new-start.png`；未执行整周播放或数据库修改。
+
 ## 2026-10-09 Issue #50 本机前三阶段
 
 负责人 Codex，固定工作流 1.0.0；基线 `74dcbdc`，独立分支

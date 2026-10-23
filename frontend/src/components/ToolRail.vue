@@ -31,7 +31,7 @@ defineEmits<{
       data-testid="tool-area"
       @click="$emit('open-area')"
     >
-      <span class="tool-rail-glyph" aria-hidden="true">▭</span>
+      <img src="/icons/area-query.png" alt="" width="20" height="20" aria-hidden="true" />
       <span>区域</span>
     </button>
     <button
