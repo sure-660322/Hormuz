@@ -18,6 +18,8 @@
 
 ## 2026-10-23 首次访问使用引导与区域图标
 
+集成入口：[PR #65](https://github.com/sure-660322/Hormuz/pull/65)。实现、核验、推送与合并是不同阶段，PR 记录保留当前远端合并状态和实际提交。
+
 状态：**已验证，未部署**。负责人及本轮指定整合者 Codex；用户追加授权同步远端和本机，通过 PR 整合引导、图标及回放起点调整，集成状态见本节 PR 入口。开始时 fetch 后本机 main 与 origin/main 均为 `4c5c06373fd17dc4d58b9e4013c7c6ef86e83393`，双向差异为 0；主目录已有 ToolRail.vue 区域图标修改、未跟踪 area.png 与 screenshots/，不混入本任务提交。独立分支 `codex/first-visit-guide`，工作区 `first-visit-guide/Hormuz`，基线同上；允许修改 App.vue、引导组件、ToolRail.vue、style.css、新图标、usePlayback.ts、workbench.cjs 和本节/README/FRONTEND_WORKBENCH.md。共享文档本轮由 Codex 负责。
 
 - 实现：八步浅雾蓝引导，首次自动出现，功能区高亮，上下步/方向键/跳过/Esc、背景 inert 与焦点约束；完成或跳过使用同源浏览器存储记忆，顶栏可重开，窄屏保留入口。开始时暂停回放和取消圈选，结束时恢复进入前布局；不自动运行区域分析、案例加载或真实模型问答。
