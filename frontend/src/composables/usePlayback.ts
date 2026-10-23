@@ -177,6 +177,8 @@ export function usePlayback() {
       for (let at = start; at < end; at += step) displayTimes.push(at)
       displayTimes.push(end)
       if (isRealAis.value) {
+        // Start the general map at the second observation tick; case windows keep their full range.
+        if (!scope && displayTimes.length > 1) displayTimes.shift()
         ships.value = []
         tracks.value = {}
         snapshotShips.value = []

@@ -270,25 +270,32 @@ async function main() {
     frame_count: 3, frame_interval_seconds: 300,
     is_simulated: false, has_events: false, has_derived: false,
   })
-  api.fetchShipSnapshot = async () => [{ ...ship, speed: 8, recorded_at: first.recorded_at }]
+  const secondFrame = '2026-08-30T00:05:00.000Z'
+  api.fetchShipSnapshot = async (at) => {
+    assert.equal(at, secondFrame, 'Initial request uses the former second frame')
+    return [{ ...ship, speed: 10, recorded_at: secondFrame }]
+  }
   let resolveWindow
-  api.fetchShipSnapshotWindow = async () => new Promise((resolve) => { resolveWindow = resolve })
+  api.fetchShipSnapshotWindow = async (at) => {
+    assert.ok(at.every(t => Date.parse(t) > Date.parse(first.recorded_at)), 'Snapshot windows exclude the removed first tick')
+    return new Promise((resolve) => { resolveWindow = resolve })
+  }
   const realPlayback = usePlayback()
   await realPlayback.load()
   assert.equal(realPlayback.isRealAis.value, true)
   assert.equal(realPlayback.frameReady.value, true)
-  assert.equal(realPlayback.index.value, 0, 'Real AIS opens at the start of the playback range')
-  assert.equal(realPlayback.time.value, new Date(first.recorded_at).toISOString())
-  assert.equal(realPlayback.currentShips.value[0].speed, 8)
-  realPlayback.index.value = 2
+  assert.equal(realPlayback.index.value, 0, 'The former second frame becomes the new playback start')
+  assert.deepEqual(realPlayback.times.value, [secondFrame, new Date(last.recorded_at).toISOString()])
+  assert.equal(realPlayback.time.value, secondFrame)
+  assert.equal(realPlayback.currentShips.value[0].speed, 10)
+  realPlayback.index.value = 1
   await nextTick()
   assert.equal(realPlayback.frameReady.value, false)
-  assert.equal(realPlayback.time.value, new Date(first.recorded_at).toISOString(), 'Keep displayed time while the target frame loads')
-  assert.equal(realPlayback.currentShips.value[0].speed, 8, 'Keep the previous map snapshot during loading')
+  assert.equal(realPlayback.time.value, secondFrame, 'Keep displayed time while the target frame loads')
+  assert.equal(realPlayback.currentShips.value[0].speed, 10, 'Keep the previous map snapshot during loading')
   await new Promise((resolve) => setTimeout(resolve, 150))
   resolveWindow({
     frames: [
-      { at: first.recorded_at, ships: [{ ...ship, speed: 8, recorded_at: first.recorded_at }] },
       { at: '2026-08-30T00:05:00Z', ships: [{ ...ship, speed: 10, recorded_at: '2026-08-30T00:05:00Z' }] },
       { at: last.recorded_at, ships: [{ ...ship, speed: 12, recorded_at: last.recorded_at }] },
     ],
@@ -298,8 +305,9 @@ async function main() {
   assert.equal(realPlayback.frameReady.value, true)
   assert.equal(realPlayback.time.value, new Date(last.recorded_at).toISOString())
   assert.equal(realPlayback.currentShips.value[0].speed, 12)
-  realPlayback.index.value = 1
+  realPlayback.seek(first.recorded_at)
   await nextTick()
+  assert.equal(realPlayback.index.value, 0, 'Seeking before the new start clamps to the former second frame')
   assert.equal(realPlayback.frameReady.value, true, 'Adjacent cached frame is ready without a new request')
   assert.equal(realPlayback.currentShips.value[0].speed, 10)
   const { caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } = require(path.join(out, 'domain/casePlayback.js'))
@@ -328,6 +336,9 @@ async function main() {
   await realPlayback.load({start_at:'2026-03-30T00:00:00Z',end_at:'2026-03-30T00:10:00Z',ship_id:2})
   assert.deepEqual(realPlayback.currentShips.value.map(s => s.id),[2],'Case snapshot must contain only its vessel')
   assert.equal(realPlayback.times.value[0],'2026-03-30T00:00:00.000Z')
+  api.fetchSimulationMeta = async () => ({start_at:'2026-03-30T00:00:00Z',end_at:'2026-03-30T00:03:00Z',frame_count:2,frame_interval_seconds:300,is_simulated:false})
+  await realPlayback.load()
+  assert.deepEqual(realPlayback.times.value,['2026-03-30T00:03:00.000Z'],'Short windows keep the end frame instead of becoming empty')
   console.log(
     'PASS: spatial distance, temporal filtering, search, identity, replay ordering/seeking, bounded real AIS snapshots, empty/error/retry states',
   )
