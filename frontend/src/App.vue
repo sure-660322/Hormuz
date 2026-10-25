@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { MARITIME_CASE_LABELS, fetchCaseNewsEntries, type ApiCaseNewsEntry } from './api'
+import CaseNewsIndex from './components/CaseNewsIndex.vue'
 import { fetchEvents, fetchShipTracks, fetchShipTrackWindow, fetchDwell, fetchEncounters, describeApiError, type AgentAnalysisAction, type AgentMapAction, type ApiEvent, type ApiMapShip, type ApiTrackSegment, type ApiTrackWindow, type ApiDwellResponse, type ApiEncounter } from './api'
 import {
   fetchAreaDefault, resolveAreaBounds,
@@ -30,7 +32,7 @@ import ExplorerSidebar from './components/ExplorerSidebar.vue'
 import CasePanel from './components/CasePanel.vue'
 import OnboardingTour from './components/OnboardingTour.vue'
 import { fetchMaritimeCase, type MaritimeCaseId, type ApiMaritimeCase } from './api'
-import { CASE_PLAYBACK_DURATION_MS, caseStageAt, caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } from './domain/casePlayback'
+import { CASE_PLAYBACK_DURATION_MS, caseStageAt, caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt, caseGapConnectors } from './domain/casePlayback'
 
 const {
   tracks,
@@ -54,16 +56,43 @@ const {
 } = usePlayback()
 const caseOpen = ref(false)
 const caseDetailsOpen = ref(true)
+const caseNewsIndexOpen = ref(true)
+const caseNewsEntries = ref<ApiCaseNewsEntry[]>([])
+const caseNewsLoading = ref(false)
+const caseNewsError = ref('')
+const currentCaseNews = computed(() => caseNewsEntries.value.find(entry => entry.case_id === caseId.value))
+async function loadCaseNews() {
+  caseNewsLoading.value = true
+  caseNewsError.value = ''
+  try { caseNewsEntries.value = await fetchCaseNewsEntries() }
+  catch (e) { caseNewsError.value = describeApiError(e, '典型新闻加载失败') }
+  finally { caseNewsLoading.value = false }
+}
+function showCaseNews() {
+  pauseCase()
+  caseNewsIndexOpen.value = true
+  caseDetailsOpen.value = true
+}
+async function openNewsCase(id: MaritimeCaseId) {
+  if (caseLoading.value || caseSwitching.value) return
+  caseNewsIndexOpen.value = false
+  if (id !== caseId.value) await switchCase(id)
+  else {
+    if (!caseData.value) await loadCase()
+    if (caseData.value?.ready && !caseActive.value) await initializeCase()
+  }
+}
 const caseData = ref<ApiMaritimeCase | null>(null)
 const caseId = ref<MaritimeCaseId>('arctic-ocean')
 // issue #55：收起后的展开入口需要案例名称；与 CasePanel 的回退口径保持一致。
-const caseDisplayTitle = computed(() => caseData.value?.display_title ?? (caseId.value === 'arctic-ocean' ? '中海北冰洋' : 'ATHE NOVA'))
+const caseDisplayTitle = computed(() => caseData.value?.display_title ?? MARITIME_CASE_LABELS[caseId.value])
 let caseLoadVersion = 0
 const caseLoading = ref(false)
 const caseError = ref('')
 const caseActive = ref(false)
 const caseStageId = ref('overview')
 const caseFullTrack = ref<ApiTrackWindow | null>(null)
+const caseGaps = computed(() => caseActive.value ? caseGapConnectors(caseFullTrack.value?.segments ?? []) : [])
 const caseAgentWindow = computed(() => {
   const stage = caseData.value?.stages.find(s => s.id === caseStageId.value)
   return stage ? { start_at: stage.start_at, end_at: stage.end_at } : caseWindow.value
@@ -129,7 +158,7 @@ async function switchCase(id: MaritimeCaseId) {
 }
 async function openCase() {
   caseDetailsOpen.value = true
-  if (caseOpen.value) return
+  if (caseOpen.value) { showCaseNews(); return }
   if (!savedCaseView.value) savedCaseView.value = {
     time: time.value, view: mapView.value?.captureView() ?? null, ship: selectedShipId.value,
     event: selectedEvent.value, panel: panel.value, panelOpen: panelOpen.value,
@@ -144,8 +173,8 @@ async function openCase() {
   caseOpen.value = true
   workspaceMode.value = 'explore'
   panelOpen.value = false
-  if (!caseData.value) await loadCase()
-  if (caseOpen.value) await initializeCase()
+  caseNewsIndexOpen.value = true
+  await loadCaseNews()
 }
 async function initializeCase() {
   const data = caseData.value
@@ -1409,8 +1438,9 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); window.rem
         @open-passage="passageOpen ? passageOpen = false : openPassageTool()"
         @open-area="areaOpen ? closeAreaPanel() : openAreaPanel()"
       />
-      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :case-id="caseId" @switch-case="switchCase" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" :playback-stage-id="casePlaybackStageId" :playback-finished="casePlaybackFinished" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @locate="locateCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
-      <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开 {{ caseDisplayTitle }} 案例栏</button>
+      <CaseNewsIndex v-if="caseOpen && caseDetailsOpen && caseNewsIndexOpen" :entries="caseNewsEntries" :loading="caseNewsLoading" :error="caseNewsError" @select="openNewsCase" @retry="loadCaseNews" @close="caseDetailsOpen = false" @exit="exitCase" />
+      <CasePanel v-else-if="caseOpen && caseDetailsOpen" :data="caseData" :news-entry="currentCaseNews" :case-id="caseId" @back="showCaseNews" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" :playback-stage-id="casePlaybackStageId" :playback-finished="casePlaybackFinished" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @locate="locateCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
+      <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开 {{ caseNewsIndexOpen ? '典型新闻' : caseDisplayTitle }} 案例栏</button>
       <MapView
         ref="mapView"
         :ships="caseOpen && (!caseActive || caseSwitching) ? [] : currentShips"
@@ -1422,6 +1452,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); window.rem
         :speed-segments="speedColorOn ? speedSegments : null"
         :window-segments="agentTrack ? agentTrack.segments : (caseActive ? caseHighlight : isRealAis ? (realTrack?.segments ?? []) : null)"
         :background-segments="caseActive ? caseFullTrack?.segments ?? null : null"
+        :gap-connectors="caseGaps"
         :focus-segments="caseActive && !agentTrack && caseAgentWindow ? clipCaseTracks(caseFullTrack, caseAgentWindow.start_at, caseAgentWindow.end_at) : undefined"
         :window-speed-color="isRealAis && speedColorOn"
         :window-points-visible="isRealAis && realPointsVisible"

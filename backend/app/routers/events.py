@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from backend.app.database import PROJECT_ROOT, get_db
@@ -47,7 +47,9 @@ def get_event_cover(event_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{event_id}/news", response_model=list[EventNewsResponse])
 def get_event_news(event_id: str, db: Session = Depends(get_db)):
-    event_pk = db.scalar(select(Event.id).where(Event.event_id == event_id))
-    if event_pk is None:
+    event = db.scalar(select(Event).where(Event.event_id == event_id))
+    if event is None:
         raise HTTPException(status_code=404, detail="事件不存在")
-    return db.scalars(select(News).where(News.event_id == event_pk).order_by(News.publish_date, News.story_id)).all()
+    # A single original may be cited by several vessel-focused events without duplicating it.
+    return db.scalars(select(News).where(or_(News.event_id == event.id, News.story_id.in_(event.story_ids or [])))
+                      .order_by(News.publish_date, News.story_id)).all()

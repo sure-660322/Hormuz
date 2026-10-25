@@ -31,7 +31,30 @@ export interface ApiMaritimeCase {
   display_title?: string; vessel_label?: string; date_label?: string; overview_summary?: string
   unavailable_reason?: string; evidence?: ApiCaseEvidence[]
 }
-export type MaritimeCaseId = 'arctic-ocean' | 'athe-nova'
+export type MaritimeCaseId = 'arctic-ocean' | 'mraikh' | 'tong-lin-wan' | 'egret'
+export const MARITIME_CASE_LABELS: Record<MaritimeCaseId, string> = {
+  'arctic-ocean': '中海北冰洋',
+  'mraikh': 'MRAIKH',
+  'tong-lin-wan': 'TONG LIN WAN',
+  'egret': 'EGRET',
+}
+export interface ApiCaseNewsEntry {
+  case_id: MaritimeCaseId
+  event_id: string
+  title_zh: string
+  summary_zh: string
+  vessel_name: string
+  mmsi: string
+  imo: string
+  available: boolean
+  event_day: string
+  articles: { story_id: string; title: string; media: string; publish_date: string; url: string; summary: string }[]
+}
+export async function fetchCaseNewsEntries(): Promise<ApiCaseNewsEntry[]> {
+  const response = await fetch(`${API_BASE_URL}/cases/news-entries`, { signal: AbortSignal.timeout(20_000) })
+  if (!response.ok) throw new Error(`典型新闻加载失败：${response.status}`)
+  return response.json()
+}
 export async function fetchMaritimeCase(id: MaritimeCaseId): Promise<ApiMaritimeCase> {
   const response = await fetch(`${API_BASE_URL}/cases/${id}`, { signal: AbortSignal.timeout(20_000) })
   if (!response.ok) throw new Error(`案例加载失败：${response.status}`)

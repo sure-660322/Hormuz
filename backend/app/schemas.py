@@ -134,6 +134,28 @@ class CaseArticleResponse(BaseModel):
     summary: str = ""
 
 
+class CaseNewsArticleResponse(BaseModel):
+    story_id: str
+    title: str
+    media: str
+    publish_date: date
+    url: str
+    summary: str
+
+
+class CaseNewsEntryResponse(BaseModel):
+    case_id: str
+    event_id: str
+    title_zh: str
+    summary_zh: str
+    vessel_name: str
+    mmsi: str
+    imo: str
+    available: bool
+    event_day: date
+    articles: list[CaseNewsArticleResponse]
+
+
 class CaseStageResponse(BaseModel):
     id: str
     title: str

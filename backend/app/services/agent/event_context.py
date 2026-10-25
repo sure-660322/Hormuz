@@ -11,7 +11,7 @@
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from backend.app.models import Event, News
@@ -72,7 +72,7 @@ BASE_LIMITATIONS = [
 def _event_to_item(db: Session, event: Event) -> EventContextItem:
     news_rows = db.scalars(
         select(News)
-        .where(News.event_id == event.id)
+        .where(or_(News.event_id == event.id, News.story_id.in_(event.story_ids or [])))
         .order_by(News.publish_date, News.story_id)
         .limit(MAX_NEWS_PER_EVENT)
     ).all()

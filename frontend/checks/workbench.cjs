@@ -310,7 +310,7 @@ async function main() {
   assert.equal(realPlayback.index.value, 0, 'Seeking before the new start clamps to the former second frame')
   assert.equal(realPlayback.frameReady.value, true, 'Adjacent cached frame is ready without a new request')
   assert.equal(realPlayback.currentShips.value[0].speed, 10)
-  const { CASE_PLAYBACK_DURATION_MS, caseStageAt, fastCaseFrame, caseSnapshotSampler, caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } = require(path.join(out, 'domain/casePlayback.js'))
+  const { CASE_PLAYBACK_DURATION_MS, caseStageAt, fastCaseFrame, caseSnapshotSampler, caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt, caseGapConnectors } = require(path.join(out, 'domain/casePlayback.js'))
   const stages = [
     {id:'overview',start_at:'2026-03-28T00:00:00Z',end_at:'2026-03-30T00:00:00Z'},
     {id:'before',start_at:'2026-03-28T00:00:00Z',end_at:'2026-03-29T00:00:00Z'},
@@ -338,6 +338,16 @@ async function main() {
   assert.equal(merged.point_count,3,'Repeated chunk endpoint must be deduplicated')
   assert.equal(merged.segments.length,2,'Gap across chunk boundary must not be connected')
   assert.equal(merged.gaps.length,1)
+  const originalPoints = JSON.stringify(merged.segments)
+  const connectors = caseGapConnectors(merged.segments)
+  assert.equal(connectors.length,1,'One display connector per actual observation gap')
+  assert.equal(connectors[0].from,b,'Connector uses the real last endpoint')
+  assert.equal(connectors[0].to,c,'Connector uses the real next endpoint')
+  assert.equal(connectors[0].minutes,240)
+  assert.equal(JSON.stringify(merged.segments),originalPoints,'Display connectors never synthesize or mutate reports')
+  assert.equal(trackPointAt(merged,'2026-03-28T18:00:00Z'),null,'A dashed gap never becomes a valid ship position')
+  assert.equal(caseGapConnectors([]).length,0)
+  assert.equal(caseGapConnectors([{points:[a,b]}]).length,0,'No invented gaps within an observed segment')
   const clipped = clipCaseTracks(merged, a.recorded_at, b.recorded_at)
   assert.deepEqual(clipped.flatMap(s => s.points.map(p => p.id)), [1,2], 'No future point in playback highlight')
   assert.equal(clipCaseTracks(merged, a.recorded_at, c.recorded_at).length, 2, 'Clipping must preserve gaps')
