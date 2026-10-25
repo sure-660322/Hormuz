@@ -69,4 +69,4 @@ npm run check:workbench
 
 [必要文档索引](docs/README.md) · [工作台说明](FRONTEND_WORKBENCH.md) · [当前状态与待办](docs/agent_development_plan.md) · [智能体接口](docs/agent_integration.md) · [典型新闻与轨迹](docs/case_news_entries.md)
 
-2026-10-25 文档精简仅归档历史材料、收敛重复说明并检查引用；原始文档已在仓库外校验备份，没有改动业务代码、配置、数据库或服务。历史验证不能视为本轮复测。
+2026-10-25 文档精简已通过 [PR #68](https://github.com/sure-660322/Hormuz/pull/68) 合入 main，本地已同步，任务分支和工作区已清理。仅归档历史材料、收敛重复说明并检查引用；原始文档已在仓库外校验备份，没有改动业务代码、配置、数据库或服务。历史验证不能视为本轮复测。
