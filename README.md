@@ -22,11 +22,11 @@ Vue 地图工作台展示历史船位、轨迹回放、真实新闻聚合事件�
 
 ## 当前进度
 
-2026-10-23（独立分支已验证，未提交、未推送）：地图工具改为右侧停靠布局，打开图层/区域/智能体/通行时平滑收起新闻栏并保持地图地理中心；新闻栏边缘三角可悬停展开图标、点击恢复。通行分析移到地图工具栏并配新图标；案例快速播放增加阶段高亮与完成提示。桌面及手机验证见[前端说明](FRONTEND_WORKBENCH.md#地图工具停靠与案例阶段提示)和[任务记录](docs/agent_development_plan.md#2026-10-23-地图工具停靠与案例阶段提示)。
+2026-10-25：[PR #66](https://github.com/sure-660322/Hormuz/pull/66) 已合入 main（`5cf7353`），本地主线已同步。地图工具改为右侧停靠布局，打开图层/区域/智能体/通行时平滑收起新闻栏并保持地图地理中心；新闻栏边缘三角可悬停展开图标、点击恢复。通行分析移到地图工具栏并配新图标；案例快速播放增加阶段高亮与完成提示。2026-10-23 桌面/手机验收和本轮检查见[前端说明](FRONTEND_WORKBENCH.md#地图工具停靠与案例阶段提示)及[收尾记录](docs/agent_development_plan.md#2026-10-25-案例回放与地图布局收尾)。未部署。
 
-2026-10-23（独立分支待整合）：典型案例快速回放已实现并通过本机验证，数据载入后约 4.5 秒播放完整故事或所选阶段，播放中复用单船采样报位；地图探索仍使用原有 0.5×/1×/2×/4× 逐帧速度和快照等待。实现与验证边界见[前端说明](FRONTEND_WORKBENCH.md#典型案例快速回放)及[任务记录](docs/agent_development_plan.md#2026-10-23-典型案例五秒内快速回放)。
+2026-10-23 实现、2026-10-25 随 PR #66 合入：典型案例数据载入后约 4.5 秒播放完整故事或所选阶段，播放中复用单船采样报位；地图探索仍使用原有 0.5×/1×/2×/4× 逐帧速度和快照等待。实现与验证边界见[前端说明](FRONTEND_WORKBENCH.md#典型案例快速回放)及[任务记录](docs/agent_development_plan.md#2026-10-23-典型案例五秒内快速回放)。
 
-2026-10-23：首次访问使用引导已实现并完成本机浏览器核验，采用浅雾蓝卡片、功能区高亮与八步说明，可跳过并通过顶栏「使用引导」重开；区域工具栏已接入新生成的透明图标。常规真实 AIS 地图回放移除原首帧，以原第二帧为新起点。用户已授权将这些功能一并同步到远端与本机 main，验证和集成入口见[前端工作台](FRONTEND_WORKBENCH.md#首次访问使用引导)及[任务记录](docs/agent_development_plan.md#2026-10-23-首次访问使用引导与区域图标)。
+2026-10-23：首次访问使用引导已实现并完成本机浏览器核验，采用浅雾蓝卡片、功能区高亮与八步说明，可跳过并通过顶栏「使用引导」重开；区域工具栏已接入新生成的透明图标。常规真实 AIS 地图回放移除原首帧，以原第二帧为新起点。这些功能已随 PR #65 合入远端与本机 main，相关工作区已于 2026-10-25 归档，验证和集成入口见[前端工作台](FRONTEND_WORKBENCH.md#首次访问使用引导)及[任务记录](docs/agent_development_plan.md#2026-10-23-首次访问使用引导与区域图标)。
 
 下表数量与验收日期来自已记录的历史批次；2026-10-08文档核对不重新验证数据库或模型。下一阶段任务与依赖见[路线图 #46](https://github.com/sure-660322/Hormuz/issues/46)及[任务计划](docs/agent_development_plan.md#2026-10-08-当前摘要与下一阶段路线图)。
 
@@ -126,7 +126,7 @@ powershell -File deploy/tiles/start-tile-server.ps1     # nginx，端口 8080
 | GET | `/ships/playback?start_at=&end_at=` | 带时区时间参数，单次不超过 24 小时及 50,000 点 |
 | GET | `/ships/{ship_id}/positions` | 单船完整历史位置 |
 | GET | `/api/tracks/{ship_id}?from=&to=&level=full\|simplified` | P1 派生轨迹：MobilityDB 插值几何 + 对齐速度序列（full）或时间桶抽稀（simplified）；窗口可选、带时区、≤24 小时；返回 manifest 新鲜度与 `stale`、`is_simulated` 标识 |
-| GET | `/ships/{ship_id}/track-window?from=&to=&bucket_seconds=` | 原始 AIS 单船有界轨迹：带时区、≤24 小时，最多读取 10 万条并返回 5,000 采样点；相邻报位超过 90 分钟分段，不依赖 MobilityDB 派生表。案例快速回放分支在各采样点保留源报位的 course/heading，供本地船位显示使用 |
+| GET | `/ships/{ship_id}/track-window?from=&to=&bucket_seconds=` | 原始 AIS 单船有界轨迹：带时区、≤24 小时，最多读取 10 万条并返回 5,000 采样点；相邻报位超过 90 分钟分段，不依赖 MobilityDB 派生表。案例快速回放在各采样点保留源报位的 course/heading，供本地船位显示使用 |
 | GET | `/api/events/{event_id}/ships` | P2 事件×船舶关联：`observed`（模拟轨迹时空邻近，演示，不构成真实因果）与 `mentioned`（原文船名文本证据，`ship` 恒为空）严格分列 |
 | GET | `/api/ships/{ship_id}/events?from=&to=` | P2 反向查询某船的 observed 关联事件（时间窗可选、带时区、≤24 小时）；文本提及类不指向模拟船 |
 | GET | `/api/dwell?kind=&from=&to=` | P3 停留识别派生层（`ship_dwell`）：GeoJSON FeatureCollection（中心点 + kind/时长/位移半径/最大速度），`kind` 为 `at_anchor`/`drift`/`slow_transit`；返回 manifest 新鲜度与 `stale` |

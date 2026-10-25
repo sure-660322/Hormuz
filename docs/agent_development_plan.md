@@ -18,13 +18,16 @@
 
 ## 2026-10-25 案例回放与地图布局收尾
 
-状态：**进行中，用户已授权提交、合并 main、同步远端与清理本聊天工作区**。采用项目 github-issue-workflow v1.0.0 收尾流程，负责人和本次串行整合者为 Codex；目标为本聊天尚未提交的 `codex/case-fast-playback` 全部已验收改动，无关联 Issue，不新建或关闭 Issue。基线 `b44c7a2` 与 fetch 后 origin/main 一致；主目录未跟踪的 `frontend/public/icons/area.png`、`screenshots/` 保留。
+状态：**已验证、已合并、已同步，本聊天工作区及任务分支清理完成；未部署**。用户授权提交、合并 main、同步远端与清理；采用项目 github-issue-workflow v1.0.0 收尾流程，负责人和本次串行整合者为 Codex。代码交付 `b0e2f1135f866d163cc0c400e5e32041703d972c`，由 [PR #66](https://github.com/sure-660322/Hormuz/pull/66) 合入 main（`5cf73536cea3e98ab8eb208a40d4f8152c1b7459`），主目录快进同步完成。无关联 Issue，不新建或关闭 Issue；基线为 `b44c7a2`。主目录未跟踪的 `frontend/public/icons/area.png`、`screenshots/` 保留。
 
 - 2026-10-25 重新运行：`npm run build`、`npm run check:workbench`、`node checks/area-activity.cjs`（32/32）、`git diff --check` 通过；后端 `python -m pytest backend/tests/test_case_fast_playback.py backend/tests/test_arctic_case.py backend/tests/test_athe_nova_case.py -q` 为 **12 passed / 2 skipped**。跳过项仍需独立测试库/私有 CSV；构建仍有原大包提示。
 - 2026-10-23 浏览器交互记录保留原日期，本轮未重新启动服务或重做浏览器/真实模型验收；当前 5188/5189/8018/8019 无监听进程，不需要停止服务。未改数据库或运行配置。
-- 清理范围：当前案例布局工作区，以及本聊天先前已合入 PR #65 的首次引导工作区与对应分支；其他任务工作区/分支不动。清理前将忽略目录的验收产物复制到主目录 `local-archive/case-layout-closeout-20261025/` 并逐文件核对 SHA-256；托管工作区使用应用归档，分支仅在确认合入后删除。最终 PR、同步和清理结果待下列收尾记录更新。
+- 清理结果：当前案例布局工作区及本聊天先前已合入 PR #65 的首次引导工作区均已由应用归档，可恢复快照保留；两个目录与 Git worktree 登记已移除，`codex/case-fast-playback`、`codex/first-visit-guide` 本地和远端分支均已删除。其他五个任务工作区/分支保留。清理前忽略目录的验收产物已复制到主目录 `local-archive/case-layout-closeout-20261025/`，清单 `manifest.json` 对 39 + 24 个文件逐一核对 SHA-256；另保留 PR 描述副本。没有执行强制 Git 操作或额外递归清理。
+- 集成核对：PR head 与本轮检查覆盖的代码一致，base 为 main；合并前状态 CLEAN / MERGEABLE，无 CI 检查、审查意见或评论阻塞，未绕过保护。远端实际返回 MERGED，本地 main 包含实际合并提交，与 origin/main 一致；本节及相关模块摘要的文档收尾由本次指定整合者单独提交并同步，不重写下方历史验收日期。
 
 ## 2026-10-23 地图工具停靠与案例阶段提示
+
+> 以下为 2026-10-23 的实施与验收记录；其中未提交/待整合状态已由上方 2026-10-25 PR #66 收尾替代。
 
 状态：**已验证，独立分支待整合；未提交、未推送、未合入 main、未部署**。负责人 Codex；继续当前未交付的 `codex/case-fast-playback` 与独立工作区，基线 `b44c7a2`。用户明确选择优化建议第二项（案例播放阶段提示），并授权新闻栏联动、右侧工具停靠及通行入口/图标。允许修改 App/MapView/工具与案例面板、样式、必要检查和相关文档；共享文档本轮由 Codex 负责。main 和其他工作区不改动，既有未提交工作保留。
 
@@ -38,6 +41,8 @@
 - 运行与限制：沿用前端 5189/后端 8019，应用库仅只读；未改数据库、真实凭据、底图源、API 地址或他人服务。预览工作区新闻配图缓存缺失仍有 cover 404，不能称网络零错误。未重新验收真实模型、触屏手势全矩阵、全设备性能、后台节流、并发与公网部署。README、前端工作台、通行模块、智能体契约和两案例说明已同步；文档中的历史验收保留原日期。
 
 ## 2026-10-23 典型案例五秒内快速回放
+
+> 以下为 2026-10-23 的实施与验收记录；其中未提交/待整合状态已由上方 2026-10-25 PR #66 收尾替代。
 
 状态：**已验证，独立分支待整合；未提交、未推送、未合入 main、未部署**。负责人 Codex。基线 `b44c7a2ff6e81a7940f91e41c2a4547c4db00634`，分支 `codex/case-fast-playback`，独立工作区 `case-fast-playback/Hormuz`；开始核对 main 与 origin/main 一致。允许修改案例时钟与采样函数、usePlayback、TimelineControls、App、轨迹点类型/返回字段、必要检查以及 README/前端说明/两案例说明/本节；共享文档本轮由 Codex 负责。主目录已有 area.png 和 screenshots/ 保留。
 
