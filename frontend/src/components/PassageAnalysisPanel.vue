@@ -58,6 +58,10 @@ const METRIC_LABEL: Record<string, string> = {
 const mode = ref<'single' | 'compare'>('single')
 const startDate = ref('2026-02-26')
 const endDate = ref('2026-02-27')
+const datesTouched = ref(false)
+function markDateEdit(event: Event) {
+  if (event.target instanceof HTMLInputElement && event.target.type === 'date') datesTouched.value = true
+}
 const aStartDate = ref('2026-02-25')
 const aEndDate = ref('2026-02-27')
 const bStartDate = ref('2026-02-28')
@@ -235,7 +239,7 @@ const mapMessage = ref('')
 const mapBusyKey = ref('')
 
 // ------------------------------------------------------------- 恢复（智能体交接）
-// immediate：面板随 analysisOpen 首次挂载时 restore 已就位，变化监听 alone 会漏掉首帧回填。
+// 首次挂载时 restore 可能已就位，立即监听以完成首帧回填。
 watch(() => props.restore, (action) => {
   if (!action) return
   const query = action.query
@@ -446,7 +450,7 @@ onMounted(() => {
       if (sevenDay.length) {
         const starts = sevenDay.map((batch) => batch.coverage_start).filter((value): value is string => !!value).sort()
         const ends = sevenDay.map((batch) => batch.coverage_end).filter((value): value is string => !!value).sort()
-        if (starts.length && ends.length) {
+        if (starts.length && ends.length && !datesTouched.value) {
           // coverage 为含首尾时刻；首日常为部分日窗（如 02-24T16:00 起），
           // 默认窗口取首日起 7 个含首尾 UTC 日，避免超后端 7 天上限。
           const firstMs = Date.parse(starts[0]!)
@@ -512,7 +516,7 @@ function formatFix(fix: { recorded_at: string; longitude: number; latitude: numb
 
 <template>
   <section class="passage-analysis" aria-label="通行分析">
-    <div class="analysis-controls">
+    <div class="analysis-controls" @input="markDateEdit">
       <div class="mode-switch" role="group" aria-label="分析模式">
         <button :class="{ active: mode === 'single' }" :aria-pressed="mode === 'single'" @click="mode = 'single'">单时段</button>
         <button :class="{ active: mode === 'compare' }" :aria-pressed="mode === 'compare'" @click="mode = 'compare'">A/B 比较</button>

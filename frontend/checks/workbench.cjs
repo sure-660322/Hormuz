@@ -310,7 +310,24 @@ async function main() {
   assert.equal(realPlayback.index.value, 0, 'Seeking before the new start clamps to the former second frame')
   assert.equal(realPlayback.frameReady.value, true, 'Adjacent cached frame is ready without a new request')
   assert.equal(realPlayback.currentShips.value[0].speed, 10)
-  const { caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } = require(path.join(out, 'domain/casePlayback.js'))
+  const { CASE_PLAYBACK_DURATION_MS, caseStageAt, fastCaseFrame, caseSnapshotSampler, caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } = require(path.join(out, 'domain/casePlayback.js'))
+  const stages = [
+    {id:'overview',start_at:'2026-03-28T00:00:00Z',end_at:'2026-03-30T00:00:00Z'},
+    {id:'before',start_at:'2026-03-28T00:00:00Z',end_at:'2026-03-29T00:00:00Z'},
+    {id:'after',start_at:'2026-03-29T00:00:00Z',end_at:'2026-03-30T00:00:00Z'},
+    {id:'confirmation',start_at:'2026-03-29T00:00:00Z',end_at:'2026-03-30T00:00:00Z'},
+  ]
+  assert.equal(caseStageAt(stages,'2026-03-28T12:00:00Z'),'before','Playback highlights the time-matching stage without changing its scope')
+  assert.equal(caseStageAt(stages,'2026-03-29T00:00:00Z'),'after','A shared boundary belongs to the next stage')
+  assert.equal(caseStageAt(stages,'2026-03-30T00:00:00Z'),'after','News confirmation does not replace the observed playback stage')
+  assert.equal(caseStageAt(stages,null),null)
+  assert.equal(caseStageAt(stages,'2026-03-31T00:00:00Z'),null)
+  const longCase = Array.from({length:2017}, (_,i) => i * 300000)
+  assert.equal(fastCaseFrame(longCase,0,2016,0,CASE_PLAYBACK_DURATION_MS),0)
+  assert.equal(fastCaseFrame(longCase,0,2016,2250,CASE_PLAYBACK_DURATION_MS),1008,'Case clock skips intermediate ticks according to elapsed time')
+  assert.equal(fastCaseFrame(longCase,0,2016,4500,CASE_PLAYBACK_DURATION_MS),2016,'A multi-day case finishes within five seconds')
+  assert.equal(fastCaseFrame(longCase,100,500,9000,CASE_PLAYBACK_DURATION_MS),500,'Delayed rendering lands at the selected phase endpoint')
+  assert.equal(fastCaseFrame([0,100,900,1000],0,3,2250,CASE_PLAYBACK_DURATION_MS),1,'Irregular ticks follow time, not frame counts')
   const chunks = caseTrackChunks('2026-03-27T16:00:00Z','2026-03-29T15:59:59Z')
   assert.equal(chunks.length,2)
   assert.ok(chunks.every(([a,b]) => Date.parse(b)-Date.parse(a) <= 86400000))
@@ -336,6 +353,29 @@ async function main() {
   await realPlayback.load({start_at:'2026-03-30T00:00:00Z',end_at:'2026-03-30T00:10:00Z',ship_id:2})
   assert.deepEqual(realPlayback.currentShips.value.map(s => s.id),[2],'Case snapshot must contain only its vessel')
   assert.equal(realPlayback.times.value[0],'2026-03-30T00:00:00.000Z')
+  const localCase = {
+    ship_id:2,from:'2026-03-30T00:00:00Z',to:'2026-03-30T00:10:00Z',bucket_seconds:120,gap_minutes:90,source_count:2,point_count:2,gaps:[],
+    segments:[{segment_no:0,points:[
+      {id:900,recorded_at:'2026-03-30T00:00:00Z',latitude:26,longitude:56,speed:8,course:90,heading:95},
+      {id:901,recorded_at:'2026-03-30T00:10:00Z',latitude:27,longitude:57,speed:12,course:100,heading:null},
+    ]}],
+  }
+  const sampleCase = caseSnapshotSampler(localCase,{...ship,id:2})
+  assert.deepEqual(sampleCase('2026-03-29T23:59:59Z'),[],'Case replay never exposes a future observation')
+  assert.equal(sampleCase('2026-03-30T00:05:00Z')[0].recorded_at,'2026-03-30T00:00:00Z','Cached positions retain their observed timestamps')
+  assert.equal(sampleCase('2026-03-30T00:05:00Z')[0].latitude,26,'Case snapshots do not interpolate')
+  assert.equal(sampleCase('2026-03-30T00:10:00Z')[0].course,100,'Case navigation comes from the selected sampled report')
+  assert.equal(sampleCase('2026-03-30T01:10:00Z').length,1)
+  assert.deepEqual(sampleCase('2026-03-30T01:10:01Z'),[],'Missing reports older than one hour stay missing')
+  await realPlayback.useCaseTrack(localCase)
+  api.fetchShipSnapshotWindow = async () => { throw new Error('Cached case playback must not request remote snapshots') }
+  realPlayback.index.value=1
+  await nextTick()
+  assert.equal(realPlayback.frameReady.value,true,'Cached case frame commits without snapshot waiting')
+  assert.equal(realPlayback.currentShips.value[0].id,2,'Cached report IDs cannot replace the vessel ID')
+  realPlayback.index.value=2
+  await nextTick()
+  assert.equal(realPlayback.currentShips.value[0].speed,12,'Case playback reaches the final observation locally')
   api.fetchSimulationMeta = async () => ({start_at:'2026-03-30T00:00:00Z',end_at:'2026-03-30T00:03:00Z',frame_count:2,frame_interval_seconds:300,is_simulated:false})
   await realPlayback.load()
   assert.deepEqual(realPlayback.times.value,['2026-03-30T00:03:00.000Z'],'Short windows keep the end frame instead of becoming empty')

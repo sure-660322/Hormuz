@@ -3,11 +3,13 @@ defineProps<{
   layersActive: boolean
   agentActive: boolean
   areaActive: boolean
+  passageActive: boolean
 }>()
 defineEmits<{
   'open-layers': []
   'open-agent': []
   'open-area': []
+  'open-passage': []
 }>()
 </script>
 
@@ -33,6 +35,10 @@ defineEmits<{
     >
       <img src="/icons/area-query.png" alt="" width="20" height="20" aria-hidden="true" />
       <span>区域</span>
+    </button>
+    <button type="button" :class="{ active: passageActive }" title="通行分析" aria-label="通行分析" data-testid="tool-passage" @click="$emit('open-passage')">
+      <img src="/icons/passage-analysis.png" alt="" width="20" height="20" aria-hidden="true" />
+      <span>通行</span>
     </button>
     <button
       type="button"

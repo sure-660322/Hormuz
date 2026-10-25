@@ -8,7 +8,9 @@ import {
   describeApiError,
   type ApiShipPosition,
   type ApiMapShip,
+  type ApiTrackWindow,
 } from '../api'
+import { caseSnapshotSampler } from '../domain/casePlayback'
 
 export function usePlayback() {
   const scopeShipId = ref<number | null>(null)
@@ -51,6 +53,7 @@ export function usePlayback() {
   let snapshotTimer: ReturnType<typeof setTimeout> | undefined
   let requestVersion = 0
   let loadVersion = 0
+  let localCaseSnapshot: ((at: string) => ApiMapShip[]) | null = null
   const snapshotCache = new Map<string, ApiMapShip[]>()
   let windowRequest: { times: string[]; controller: AbortController; promise: Promise<void> } | null = null
   function remember(at: string, shipsAt: ApiMapShip[]) {
@@ -132,6 +135,7 @@ export function usePlayback() {
   watch(requestedTime, (at) => {
     clearTimeout(snapshotTimer)
     if (!isRealAis.value || !at) return
+    if (localCaseSnapshot) { commit(at, localCaseSnapshot(at)); return }
     snapshotRequest?.abort()
     ++requestVersion
     snapshotLoading.value = true
@@ -152,6 +156,7 @@ export function usePlayback() {
   })
   async function load(scope?: { start_at: string; end_at: string; ship_id: number }) {
     const version = ++loadVersion
+    localCaseSnapshot = null
     scopeShipId.value = scope?.ship_id ?? null
     loading.value = true
     error.value = ''
@@ -235,8 +240,28 @@ export function usePlayback() {
   }
   function retrySnapshot() {
     if (isRealAis.value && requestedTime.value) {
+      if (localCaseSnapshot) { commit(requestedTime.value, localCaseSnapshot(requestedTime.value)); return }
       void loadSelectedFrame(requestedTime.value, index.value)
     }
+  }
+  async function useCaseTrack(track: ApiTrackWindow) {
+    const version = loadVersion
+    if (scopeShipId.value !== track.ship_id) throw new Error('案例轨迹与当前船舶不一致')
+    let identity = snapshotShips.value.find(ship => ship.id === track.ship_id)
+    if (!identity) {
+      const first = track.segments[0]?.points[0]
+      if (!first) throw new Error('案例没有可回放的观测报位')
+      identity = (await fetchShipSnapshot(first.recorded_at)).find(ship => ship.id === track.ship_id)
+    }
+    if (version !== loadVersion) return
+    if (!identity) throw new Error('案例船舶身份加载失败')
+    clearTimeout(snapshotTimer)
+    snapshotRequest?.abort()
+    windowRequest?.controller.abort()
+    windowRequest = null
+    ++requestVersion
+    localCaseSnapshot = caseSnapshotSampler(track, identity)
+    if (requestedTime.value) commit(requestedTime.value, localCaseSnapshot(requestedTime.value))
   }
   return {
     ships,
@@ -258,6 +283,7 @@ export function usePlayback() {
     load,
     seek,
     retrySnapshot,
+    useCaseTrack,
     scopeShipId,
   }
 }

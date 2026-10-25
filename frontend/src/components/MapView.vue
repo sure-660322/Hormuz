@@ -67,6 +67,9 @@ const tileError = ref(false)
 let map: L.Map | undefined
 let countryLayer: ReturnType<typeof createCountryLayer> | undefined
 let observer: ResizeObserver | undefined
+let resizeCenter: L.LatLng | null = null
+let resizeCenterTimer: ReturnType<typeof setTimeout> | undefined
+function clearResizeCenter() { resizeCenter = null; clearTimeout(resizeCenterTimer) }
 let shipLayer: L.LayerGroup,
   eventLayer: L.LayerGroup,
   trackLayer: L.LayerGroup,
@@ -735,15 +738,22 @@ onMounted(() => {
   window.addEventListener('mouseup', onAreaDrawEnd)
   window.addEventListener('keydown', onAreaKeyDown)
   observer = new ResizeObserver(() => {
-    map?.invalidateSize({ pan: false })
+    if (!map) return
+    resizeCenter ??= map.getCenter()
+    map.invalidateSize({ pan: false, debounceMoveend: true })
+    map.panTo(resizeCenter, { animate: false, noMoveStart: true })
+    clearTimeout(resizeCenterTimer)
+    resizeCenterTimer = setTimeout(clearResizeCenter, 180)
     emitBounds()
   })
+  map.on('movestart', clearResizeCenter)
   observer.observe(container.value)
   syncLayers()
   scheduleArea()
   emitBounds()
 })
 onBeforeUnmount(() => {
+  clearResizeCenter()
   scheduler.cancel()
   shipManager?.clear()
   eventManager?.clear()
