@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import type { ApiMaritimeCase, ApiTrackWindow, MaritimeCaseId } from '../api'
+import type { ApiMaritimeCase, ApiTrackWindow, MaritimeCaseId, ApiCaseNewsEntry } from '../api'
+import { MARITIME_CASE_LABELS } from '../api'
 import { safeNewsUrl } from '../domain/maritime'
 import CaseSpeedPlot from './CaseSpeedPlot.vue'
-const props = defineProps<{ caseId: MaritimeCaseId; data: ApiMaritimeCase | null; activeStage: string; loading: boolean; error: string; active: boolean; pointsVisible: boolean; stageStatus?: string; track: ApiTrackWindow | null; at: string | null; playing: boolean; playbackStageId?: string | null; playbackFinished?: boolean }>()
-const emit = defineEmits<{ switchCase: [id: MaritimeCaseId]; select: [id: string]; close: []; retry: []; exit: []; togglePoints: []; play: [id: string]; pause: []; seek: [at: string]; locate: [at: string] }>()
+const props = defineProps<{ caseId: MaritimeCaseId; data: ApiMaritimeCase | null; newsEntry?: ApiCaseNewsEntry; activeStage: string; loading: boolean; error: string; active: boolean; pointsVisible: boolean; stageStatus?: string; track: ApiTrackWindow | null; at: string | null; playing: boolean; playbackStageId?: string | null; playbackFinished?: boolean }>()
+const emit = defineEmits<{ back: []; select: [id: string]; close: []; retry: []; exit: []; togglePoints: []; play: [id: string]; pause: []; seek: [at: string]; locate: [at: string] }>()
 const failedImages = ref(new Set<string>())
 const navigation = computed(() => props.data?.stages.filter(s => s.id !== 'confirmation') ?? [])
 const stage = computed(() => props.data?.stages.find(s => s.id === props.activeStage))
 const followup = computed(() => props.data?.stages.find(s => s.id === 'confirmation'))
 function imageFailed(url: string) { failedImages.value = new Set([...failedImages.value, url]) }
 const isArctic = computed(() => props.caseId === 'arctic-ocean')
-const displayTitle = computed(() => props.data?.display_title ?? (isArctic.value ? '中海北冰洋' : 'ATHE NOVA'))
+const displayTitle = computed(() => props.data?.display_title ?? MARITIME_CASE_LABELS[props.caseId])
 const stageIndex = computed(() => navigation.value.findIndex(s => s.id === props.activeStage))
 const playbackStage = computed(() => navigation.value.find(s => s.id === props.playbackStageId))
 const period = computed(() => ({ from: stage.value?.start_at ?? props.data?.start_at, to: stage.value?.end_at ?? props.data?.end_at }))
@@ -94,11 +95,21 @@ const evidenceRows = computed<EvidenceRow[]>(() => {
     at: item.at, url: safeNewsUrl(item.url ?? ''), stageIds: [...item.stage_ids], article: null,
   }))
   const byUrl = new Map<string, EvidenceRow>()
+  for (const article of props.newsEntry?.articles ?? []) {
+    const row: EvidenceRow = {
+      key: `story:${article.story_id}`, kind: 'report', title: article.title, summary: article.summary,
+      observation: article.summary, boundary: '报道描述与AIS观测分别提供证据；发布日期不是精确事件时刻。',
+      at: null, url: safeNewsUrl(article.url), stageIds: [],
+      article: { ...article, image_url: null, image_source_url: null, image_kind: null },
+    }
+    byUrl.set(article.url, row)
+    rows.push(row)
+  }
   for (const item of props.data.stages) {
     for (const article of item.articles) {
       const existing = byUrl.get(article.url)
       if (existing) {
-        if (!existing.stageIds.includes(item.id)) existing.stageIds.push(item.id)
+        if (existing.stageIds.length && !existing.stageIds.includes(item.id)) existing.stageIds.push(item.id)
         continue
       }
       const row: EvidenceRow = {
@@ -177,22 +188,20 @@ function showStageEvidence() {
   <aside class="case-panel" :aria-label="`${displayTitle}案例`">
     <header class="case-head">
       <div class="case-head-row">
-        <select class="case-switch" :value="caseId" :disabled="loading" aria-label="切换案例" @change="$emit('switchCase', ($event.target as HTMLSelectElement).value as MaritimeCaseId)">
-          <option value="arctic-ocean">中海北冰洋</option>
-          <option value="athe-nova">ATHE NOVA</option>
-        </select>
+        <button class="case-switch" @click="$emit('back')">‹ 返回典型新闻</button>
         <div class="case-head-actions">
           <button type="button" class="case-dock-toggle" @click="$emit('close')">收起</button>
           <button type="button" class="case-exit" @click="$emit('exit')">退出案例</button>
         </div>
       </div>
+      <h2 v-if="newsEntry" class="case-news-title">{{ newsEntry.title_zh }}</h2>
       <div class="case-sub-row">
-        <small class="case-dates">{{ data?.date_label ?? (isArctic ? '2026.03.27 — 03.31' : '2026.02.25 — 03.03') }} / 北京时间</small>
+        <small class="case-dates">{{ data?.date_label ?? '观测窗口载入中' }} / 北京时间</small>
         <details v-if="data" class="case-vessel">
           <summary>船舶资料</summary>
-          <p>{{ data.vessel_label ?? (isArctic ? '集装箱船 · CSCL ARCTIC OCEAN' : '沥青船（平台分类） · ATHE NOVA') }}</p>
+          <p>{{ data.vessel_label ?? displayTitle }}</p>
           <p>MMSI {{ data.mmsi }} · IMO {{ data.imo }}</p>
-          <p>船型来源：{{ data.data_source }}；{{ data.supplier }}</p>
+          <p>报位来源：{{ data.data_source }}；{{ data.supplier }}</p>
           <p>{{ data.position_count.toLocaleString() }} 条源报位<template v-if="data.start_at && data.end_at"> · {{ data.start_at.slice(0, 10) }} 至 {{ data.end_at.slice(0, 10) }}</template></p>
         </details>
       </div>
@@ -245,13 +254,13 @@ function showStageEvidence() {
           <p v-if="playbackFinished" class="case-playback-complete" role="status"><strong>播放完成</strong><span>点击上方阶段可细看对应过程与证据。</span></p>
           <p v-else-if="playbackStage" class="case-playback-caption" role="status">{{ playing ? '正在经过' : '已暂停于' }}：{{ playbackStage.title }}</p>
           <section class="case-detail" aria-live="polite">
-            <div class="detail-heading"><span>{{ stage && stageIndex >= 0 ? `第 ${stageIndex + 1} 段 / 共 ${navigation.length} 段` : '案例概况' }}</span><span>{{ stage ? stageDate(stage.id, stage.date) : (isArctic ? '03.27–31' : '02.25–03.03') }}</span></div>
-            <h3>{{ stage?.title ?? (isArctic ? '首次折返与再次通过' : '报道、缺报与后续观测') }}</h3>
+            <div class="detail-heading"><span>{{ stage && stageIndex >= 0 ? `第 ${stageIndex + 1} 段 / 共 ${navigation.length} 段` : '案例概况' }}</span><span>{{ stage ? stageDate(stage.id, stage.date) : data.date_label }}</span></div>
+            <h3>{{ stage?.title ?? (isArctic ? '首次折返与再次通过' : '历史轨迹与观测') }}</h3>
             <p class="case-summary">{{ summaryShown }}<button v-if="summaryLong" type="button" class="summary-toggle" @click="summaryExpanded = !summaryExpanded">{{ summaryExpanded ? '收起摘要' : '展开摘要' }}</button></p>
-            <p class="case-note">断线表示缺报，不代表停船或消失；阶段日期是浏览窗口。</p>
+            <p class="case-note">虚线连接缺报区间两端，仅为过程示意，不是实测航线；阶段日期是浏览窗口。</p>
             <div class="case-play-actions"><button class="primary" :disabled="!ready" @click="playing ? $emit('pause') : $emit('play', activeStage)">{{ playing ? '暂停回放' : stage ? '从本段开始播放' : '从故事起点播放' }}</button><button :disabled="!ready" @click="$emit('select', activeStage)">查看{{ stage ? '本段' : '完整' }}轨迹</button><button @click="showStageEvidence">查看相关证据</button></div>
             <p v-if="stageStatus" class="case-stage-status" role="status">{{ stageStatus }}</p>
-            <div class="case-legend"><span><i class="legend-full" />完整观测轨迹</span><span><i />{{ stage ? '本段' : '故事' }}已回放 · 航速着色</span><label><input type="checkbox" :checked="pointsVisible" @change="$emit('togglePoints')">报位点</label></div>
+            <div class="case-legend"><span><i class="legend-full" />完整观测轨迹</span><span><i />{{ stage ? '本段' : '故事' }}已回放 · 航速着色</span><span><i class="legend-gap" />缺报示意（非实测）</span><label><input type="checkbox" :checked="pointsVisible" @change="$emit('togglePoints')">报位点</label></div>
           </section>
           <details v-if="period.from && period.to" class="case-speed">
             <summary>航速与观测<span>曲线与采样说明按需展开</span></summary>
@@ -312,6 +321,8 @@ function showStageEvidence() {
 </template>
 
 <style scoped>
+.case-news-title { font-size: 15px; line-height: 1.65; margin: 12px 0 6px; font-weight: 550 }
+.case-legend i.legend-gap { height: 0; background: none; border-top: 2px dashed #9daebb }
 .case-panel { display: flex; flex-direction: column; height: 100%; width: 340px; flex: none; background: var(--panel); color: var(--ink); border-right: 1px solid var(--line); z-index: 1050; scrollbar-width: thin; scrollbar-color: var(--subtle) transparent }
 .case-head { flex: none; padding: 14px 16px 10px; border-bottom: 1px solid var(--line) }
 .case-head-row { display: flex; align-items: center; gap: 8px }

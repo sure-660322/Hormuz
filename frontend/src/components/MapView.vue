@@ -15,6 +15,7 @@ import { RenderScheduler } from '../services/map/renderScheduler'
 import { ShipLayerManager } from '../services/map/shipLayer'
 import { EventLayerManager } from '../services/map/eventLayer'
 import { TrackLayerManager } from '../services/map/trackLayer'
+import type { CaseGapConnector } from '../domain/casePlayback'
 const props = defineProps<{
   ships: ApiMapShip[]
   events: LocatedEvent[]
@@ -25,6 +26,7 @@ const props = defineProps<{
   speedSegments: ApiTrackSegment[] | null
   windowSegments: ApiTrackWindow['segments'] | null
   backgroundSegments?: ApiTrackWindow['segments'] | null
+  gapConnectors?: CaseGapConnector[]
   focusSegments?: ApiTrackWindow['segments']
   windowSpeedColor: boolean
   windowPointsVisible: boolean
@@ -140,6 +142,7 @@ function scheduleTrack() {
       speedSegments: props.speedSegments,
       windowSegments: props.windowSegments,
       backgroundSegments: props.backgroundSegments,
+      gapConnectors: props.gapConnectors,
       windowSpeedColor: props.windowSpeedColor,
       windowPointsVisible: props.windowPointsVisible,
     })
@@ -561,7 +564,7 @@ watch(
   scheduleShips,
 )
 watch(() => [props.events, props.selectedEvent, props.time, displayZone.value], scheduleEvents)
-watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, props.windowSegments, props.backgroundSegments, props.windowSpeedColor, props.windowPointsVisible, displayZone.value], scheduleTrack)
+watch(() => [props.track, props.trackVisible, props.trackRecent24h, props.time, props.speedSegments, props.windowSegments, props.backgroundSegments, props.gapConnectors, props.windowSpeedColor, props.windowPointsVisible, displayZone.value], scheduleTrack)
 watch(() => [props.dwell, props.encounters, props.selectedEncounter, props.isolated], scheduleDerived)
 // 从概览面板选中相遇时，地图飞到最近接近点并保证相遇图层可见。
 watch(() => props.selectedEncounter, (enc) => {

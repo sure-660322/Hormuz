@@ -3,10 +3,32 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
-from backend.app.schemas import MaritimeCaseResponse
+from backend.app.schemas import MaritimeCaseResponse, CaseNewsEntryResponse
 from backend.app.services import athe_nova_case
+from backend.app.services.trajectory_cases import build_case
 
 router = APIRouter(prefix="/cases", tags=["cases"])
+
+
+@router.get("/news-entries", response_model=list[CaseNewsEntryResponse])
+def news_entries(db: Session = Depends(get_db)):
+    from backend.app.services.case_news import case_news_entries
+    return case_news_entries(db)
+
+
+@router.get("/mraikh", response_model=MaritimeCaseResponse)
+def mraikh(db: Session = Depends(get_db)):
+    return build_case("mraikh", db)
+
+
+@router.get("/tong-lin-wan", response_model=MaritimeCaseResponse)
+def tong_lin_wan(db: Session = Depends(get_db)):
+    return build_case("tong-lin-wan", db)
+
+
+@router.get("/egret", response_model=MaritimeCaseResponse)
+def egret(db: Session = Depends(get_db)):
+    return build_case("egret", db)
 
 
 @router.get("/athe-nova", response_model=MaritimeCaseResponse)

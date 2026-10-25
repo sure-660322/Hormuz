@@ -95,7 +95,7 @@ const canSubmit = computed(() => question.value.trim().length > 0 && !loading.va
 const exampleQuestions = computed<string[]>(() => props.caseContext
   ? [
       '当前阶段内这艘船有哪些报位？',
-      '中海北冰洋在等待阶段的航行状态如何？',
+      '这艘船在当前阶段的实测航速如何变化？',
       '这个阶段有哪些报道提及？',
     ]
   : [

@@ -2,6 +2,28 @@ import type { ApiCaseStage, ApiMapShip, ApiTrackWindow, ApiTrackWindowPoint } fr
 
 export const CASE_PLAYBACK_DURATION_MS = 4500
 
+export interface CaseGapConnector {
+  from: ApiTrackWindowPoint
+  to: ApiTrackWindowPoint
+  minutes: number
+}
+
+// Display-only links between existing segment endpoints. Never append synthetic reports.
+export function caseGapConnectors(segments: ApiTrackWindow['segments']): CaseGapConnector[] {
+  const links: CaseGapConnector[] = []
+  let previous: ApiTrackWindowPoint | undefined
+  for (const segment of segments) {
+    const first = segment.points[0]
+    if (!first) continue
+    if (previous) {
+      const minutes = (Date.parse(first.recorded_at) - Date.parse(previous.recorded_at)) / 60000
+      if (Number.isFinite(minutes) && minutes > 90) links.push({ from: previous, to: first, minutes })
+    }
+    previous = segment.points.at(-1)
+  }
+  return links
+}
+
 // Reading progress is independent from the user-selected playback window.
 export function caseStageAt(stages: ApiCaseStage[], at: string | null): string | null {
   const time = Date.parse(at ?? '')

@@ -2,6 +2,7 @@ import * as L from 'leaflet'
 import { sparseTrackArrows } from '../../domain/trackArrows'
 import type { ApiShipPosition, ApiTrackSegment, ApiTrackWindow } from '../../api'
 import { formatTime, riskColors } from '../../domain/maritime'
+import type { CaseGapConnector } from '../../domain/casePlayback'
 
 // 轨迹渲染上下文：track 为按回放时刻过滤后的可见报位点（随回放推进单调追加）。
 export interface TrackRenderContext {
@@ -11,6 +12,7 @@ export interface TrackRenderContext {
   speedSegments: ApiTrackSegment[] | null
   windowSegments: ApiTrackWindow['segments'] | null
   backgroundSegments?: ApiTrackWindow['segments'] | null
+  gapConnectors?: CaseGapConnector[]
   windowSpeedColor: boolean
   windowPointsVisible: boolean
 }
@@ -66,11 +68,16 @@ export class TrackLayerManager {
   private renderedWindowSpeedColor = false
   private renderedWindowPointsVisible = false
   private arrows: L.LayerGroup
+  private gapLayer: L.LayerGroup
+  private gapRenderer: L.SVG
+  private renderedGapConnectors: CaseGapConnector[] | undefined
   private options: TrackLayerManagerOptions
 
   constructor(options: TrackLayerManagerOptions) {
     this.options = options
     this.arrows = L.layerGroup().addTo(options.map)
+    this.gapLayer = L.layerGroup().addTo(options.map)
+    this.gapRenderer = L.svg()
   }
 
   update(ctx: TrackRenderContext) {
@@ -79,6 +86,7 @@ export class TrackLayerManager {
       return
     }
     this.updateArrows(ctx)
+    this.updateGapConnectors(ctx.gapConnectors)
     if (ctx.windowSegments !== null) {
       if (ctx.backgroundSegments === this.renderedBackground && ctx.windowSegments === this.renderedWindowSegments &&
           ctx.windowSpeedColor === this.renderedWindowSpeedColor &&
@@ -266,8 +274,26 @@ export class TrackLayerManager {
     }
   }
 
+  private updateGapConnectors(links: CaseGapConnector[] | undefined) {
+    if (links === this.renderedGapConnectors) return
+    this.gapLayer.clearLayers()
+    for (const gap of links ?? []) {
+      L.polyline([[gap.from.latitude, gap.from.longitude], [gap.to.latitude, gap.to.longitude]], {
+        color: '#9daebb', weight: 2, opacity: 0.8, dashArray: '7 7',
+        renderer: this.gapRenderer, className: 'case-gap-connector', interactive: true,
+      }).bindTooltip(safeText(
+        `缺报约 ${(gap.minutes / 60).toFixed(1)} 小时 · ${formatTime(gap.from.recorded_at, true)} 至 ${formatTime(gap.to.recorded_at, true)}；虚线仅为端点连线，并非实测航迹`,
+      )).addTo(this.gapLayer)
+    }
+    this.renderedGapConnectors = links
+  }
+
   clear(clearArrows = true) {
-    if (clearArrows) this.arrows.clearLayers()
+    if (clearArrows) {
+      this.arrows.clearLayers()
+      this.gapLayer.clearLayers()
+      this.renderedGapConnectors = undefined
+    }
     if (this.renderedWindowSegments !== null) {
       this.options.trackLayer.clearLayers()
       this.renderedWindowSegments = null
