@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { displayZone, formatTime, zoneLabel } from '../domain/maritime'
+import { fastCaseFrame } from '../domain/casePlayback'
 const props = defineProps<{
   frameTimes: string[]
   modelValue: number
@@ -12,6 +13,8 @@ const props = defineProps<{
   frameError?: string
   compact?: boolean
   playbackEnd?: string
+  playbackStart?: string
+  fastDurationMs?: number
 }>()
 const emit = defineEmits<{
   'update:modelValue': [index: number]
@@ -19,6 +22,7 @@ const emit = defineEmits<{
   speedChange: [speed: number]
   toggleCompact: []
   playingChange: [playing: boolean]
+  finished: []
 }>()
 const playing = ref(false)
 const speed = ref(1)
@@ -33,6 +37,15 @@ const body = ref<HTMLElement | null>(null)
 const laneWidth = ref(700)
 let observer: ResizeObserver | undefined
 const last = computed(() => Math.max(0, props.frameTimes.length - 1))
+const frameMillis = computed(() => props.frameTimes.map(at => Date.parse(at)))
+const fastFirst = computed(() => Math.max(0, props.playbackStart ? props.frameTimes.findIndex(at => Date.parse(at) >= Date.parse(props.playbackStart!)) : 0))
+const fastLast = computed(() => {
+  if (!props.playbackEnd) return last.value
+  const end = Date.parse(props.playbackEnd)
+  let index = last.value
+  while (index > fastFirst.value && frameMillis.value[index]! > end) index--
+  return index
+})
 const current = computed(() => props.frameTimes[props.modelValue])
 const fullCurrentTime = computed(() => current.value
   ? new Intl.DateTimeFormat('zh-CN', { timeZone: displayZone.value, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(current.value))
@@ -104,12 +117,25 @@ function play() {
     return
   }
   if (!hasFrames.value) return
-  if (props.modelValue >= last.value || props.modelValue < 0) emit('update:modelValue', 0)
+  if (props.fastDurationMs) {
+    if (props.modelValue >= fastLast.value || props.modelValue < fastFirst.value) emit('update:modelValue', fastFirst.value)
+  } else if (props.modelValue >= last.value || props.modelValue < 0) emit('update:modelValue', 0)
   playing.value = true
 }
 watch([playing, speed], () => {
   clearInterval(timer)
   if (!playing.value) return
+  if (props.fastDurationMs) {
+    const started = performance.now()
+    const from = Math.max(fastFirst.value, Math.min(props.modelValue, fastLast.value))
+    const until = fastLast.value
+    timer = setInterval(() => {
+      const next = fastCaseFrame(frameMillis.value, from, until, performance.now() - started, props.fastDurationMs!)
+      if (next !== props.modelValue) emit('update:modelValue', next)
+      if (next === until) { stop(); emit('finished') }
+    }, 1000 / 30)
+    return
+  }
   timer = setInterval(() => {
     if (props.snapshotMode && !props.frameReady) return
     const next = Math.min(last.value, props.modelValue + 1)
@@ -133,6 +159,7 @@ watch(
   },
 )
 watch(() => props.frameTimes, () => { stop() })
+watch(() => props.fastDurationMs, () => { stop() })
 onMounted(() => {
   window.addEventListener('keydown', keyboard)
   observer = new ResizeObserver(() => {
@@ -189,7 +216,7 @@ onBeforeUnmount(() => {
           ><button
             class="primary play-button"
             :disabled="!hasFrames || (snapshotMode && !!frameError)"
-            :title="snapshotMode ? '按 5 分钟推进；目标快照未就绪时暂停等待' : undefined"
+            :title="fastDurationMs ? '案例快速回放：5 秒内播放到所选范围终点' : snapshotMode ? '按 5 分钟推进；目标快照未就绪时暂停等待' : undefined"
             @click="play"
           >
             {{ playing ? 'Ⅱ 暂停' : '▶ 播放' }}</button
@@ -200,7 +227,7 @@ onBeforeUnmount(() => {
             @click="move(modelValue + 1)"
           >
             ›</button
-          ><select v-model.number="speed" aria-label="播放速度">
+          ><span v-if="fastDurationMs" class="case-playback-speed">案例 ≤5秒</span><select v-else v-model.number="speed" aria-label="播放速度">
             <option :value="0.5">0.5×</option>
             <option :value="1">1×</option>
             <option :value="2">2×</option>

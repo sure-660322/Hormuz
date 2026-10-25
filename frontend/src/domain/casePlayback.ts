@@ -1,4 +1,50 @@
-import type { ApiTrackWindow, ApiTrackWindowPoint } from '../api'
+import type { ApiCaseStage, ApiMapShip, ApiTrackWindow, ApiTrackWindowPoint } from '../api'
+
+export const CASE_PLAYBACK_DURATION_MS = 4500
+
+// Reading progress is independent from the user-selected playback window.
+export function caseStageAt(stages: ApiCaseStage[], at: string | null): string | null {
+  const time = Date.parse(at ?? '')
+  if (!Number.isFinite(time)) return null
+  let current: string | null = null
+  for (const stage of stages) {
+    if (stage.id !== 'confirmation' && time >= Date.parse(stage.start_at) && time <= Date.parse(stage.end_at)) current = stage.id
+  }
+  return current
+}
+
+// Jump along elapsed time rather than visiting every five-minute frame.
+export function fastCaseFrame(times: number[], from: number, last: number, elapsed: number, duration: number): number {
+  if (elapsed >= duration) return last
+  const target = times[from]! + (times[last]! - times[from]!) * Math.max(0, elapsed) / duration
+  let low = from, high = last + 1
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2)
+    if (times[middle]! <= target) low = middle + 1
+    else high = middle
+  }
+  return Math.max(from, low - 1)
+}
+
+// Cached sampled reports keep their original timestamps and navigation values.
+// Never interpolate a snapshot or carry a report across more than one hour.
+export function caseSnapshotSampler(track: ApiTrackWindow, identity: ApiMapShip) {
+  const points = track.segments.flatMap(segment => segment.points)
+  const times = points.map(point => Date.parse(point.recorded_at))
+  return (at: string): ApiMapShip[] => {
+    const target = Date.parse(at)
+    if (!Number.isFinite(target)) return []
+    let low = 0, high = times.length
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2)
+      if (times[middle]! <= target) low = middle + 1
+      else high = middle
+    }
+    const point = points[low - 1]
+    if (!point || target - times[low - 1]! > 3600000) return []
+    return [{ ...identity, ...point, id: identity.id }]
+  }
+}
 
 export function caseTrackChunks(from: string, to: string): [string, string][] {
   const start = Date.parse(from), end = Date.parse(to)

@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import type { ApiMaritimeCase, ApiTrackWindow, MaritimeCaseId } from '../api'
 import { safeNewsUrl } from '../domain/maritime'
 import CaseSpeedPlot from './CaseSpeedPlot.vue'
-const props = defineProps<{ caseId: MaritimeCaseId; data: ApiMaritimeCase | null; activeStage: string; loading: boolean; error: string; active: boolean; pointsVisible: boolean; stageStatus?: string; track: ApiTrackWindow | null; at: string | null; playing: boolean }>()
+const props = defineProps<{ caseId: MaritimeCaseId; data: ApiMaritimeCase | null; activeStage: string; loading: boolean; error: string; active: boolean; pointsVisible: boolean; stageStatus?: string; track: ApiTrackWindow | null; at: string | null; playing: boolean; playbackStageId?: string | null; playbackFinished?: boolean }>()
 const emit = defineEmits<{ switchCase: [id: MaritimeCaseId]; select: [id: string]; close: []; retry: []; exit: []; togglePoints: []; play: [id: string]; pause: []; seek: [at: string]; locate: [at: string] }>()
 const failedImages = ref(new Set<string>())
 const navigation = computed(() => props.data?.stages.filter(s => s.id !== 'confirmation') ?? [])
@@ -13,6 +13,7 @@ function imageFailed(url: string) { failedImages.value = new Set([...failedImage
 const isArctic = computed(() => props.caseId === 'arctic-ocean')
 const displayTitle = computed(() => props.data?.display_title ?? (isArctic.value ? '中海北冰洋' : 'ATHE NOVA'))
 const stageIndex = computed(() => navigation.value.findIndex(s => s.id === props.activeStage))
+const playbackStage = computed(() => navigation.value.find(s => s.id === props.playbackStageId))
 const period = computed(() => ({ from: stage.value?.start_at ?? props.data?.start_at, to: stage.value?.end_at ?? props.data?.end_at }))
 const ready = computed(() => props.active && !!props.track && !props.loading && !props.error)
 function stageDate(id: string, date: string) {
@@ -233,14 +234,16 @@ function showStageEvidence() {
             <button
               v-for="item in navigation"
               :key="item.id"
-              :class="{ active: activeStage === item.id }"
-              :aria-current="activeStage === item.id ? 'step' : undefined"
+              :class="{ active: activeStage === item.id, 'playback-current': playbackStageId === item.id }"
+              :aria-current="playbackStageId === item.id || activeStage === item.id ? 'step' : undefined"
               :disabled="loading"
               @click="$emit('select', item.id)"
             >
-              <span class="case-step-copy"><span class="case-step-date">{{ stageDate(item.id, item.date) }}</span><strong>{{ item.title }}</strong></span><span class="step-arrow" aria-hidden="true">›</span>
+              <span class="case-step-copy"><span class="case-step-date">{{ stageDate(item.id, item.date) }}<span v-if="playbackStageId === item.id" class="case-step-progress">{{ playing ? '正在经过' : '播放至此' }}</span></span><strong>{{ item.title }}</strong></span><span class="step-arrow" aria-hidden="true">›</span>
             </button>
           </nav>
+          <p v-if="playbackFinished" class="case-playback-complete" role="status"><strong>播放完成</strong><span>点击上方阶段可细看对应过程与证据。</span></p>
+          <p v-else-if="playbackStage" class="case-playback-caption" role="status">{{ playing ? '正在经过' : '已暂停于' }}：{{ playbackStage.title }}</p>
           <section class="case-detail" aria-live="polite">
             <div class="detail-heading"><span>{{ stage && stageIndex >= 0 ? `第 ${stageIndex + 1} 段 / 共 ${navigation.length} 段` : '案例概况' }}</span><span>{{ stage ? stageDate(stage.id, stage.date) : (isArctic ? '03.27–31' : '02.25–03.03') }}</span></div>
             <h3>{{ stage?.title ?? (isArctic ? '首次折返与再次通过' : '报道、缺报与后续观测') }}</h3>

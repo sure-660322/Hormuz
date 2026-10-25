@@ -20,6 +20,7 @@ import MapView from './components/MapView.vue'
 import EventPanel from './components/EventPanel.vue'
 import AgentPanel from './components/AgentPanel.vue'
 import AreaActivityPanel from './components/AreaActivityPanel.vue'
+import PassageAnalysisPanel from './components/PassageAnalysisPanel.vue'
 import ShipInspector from './components/ShipInspector.vue'
 import TimelineControls from './components/TimelineControls.vue'
 import ToolRail from './components/ToolRail.vue'
@@ -29,7 +30,7 @@ import ExplorerSidebar from './components/ExplorerSidebar.vue'
 import CasePanel from './components/CasePanel.vue'
 import OnboardingTour from './components/OnboardingTour.vue'
 import { fetchMaritimeCase, type MaritimeCaseId, type ApiMaritimeCase } from './api'
-import { caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } from './domain/casePlayback'
+import { CASE_PLAYBACK_DURATION_MS, caseStageAt, caseTrackChunks, mergeCaseTracks, clipCaseTracks, trackPointAt } from './domain/casePlayback'
 
 const {
   tracks,
@@ -49,6 +50,7 @@ const {
   load,
   seek,
   retrySnapshot,
+  useCaseTrack,
 } = usePlayback()
 const caseOpen = ref(false)
 const caseDetailsOpen = ref(true)
@@ -74,13 +76,21 @@ const caseHighlight = computed(() => {
 const caseWindow = ref<{ start_at: string; end_at: string } | null>(null)
 const caseSwitching = ref(false)
 const casePlaying = ref(false)
+const casePlaybackStarted = ref(false)
+const casePlaybackFinished = ref(false)
+const casePlaybackStageId = computed(() => casePlaybackStarted.value ? caseStageAt(caseData.value?.stages ?? [], time.value) : null)
+function onCasePlayingChange(playing: boolean) {
+  casePlaying.value = playing
+  if (playing && caseActive.value) { casePlaybackStarted.value = true; casePlaybackFinished.value = false }
+}
+watch([caseId, caseStageId, caseActive], () => { casePlaybackStarted.value = false; casePlaybackFinished.value = false })
 const timelineControls = ref<InstanceType<typeof TimelineControls> | null>(null)
 const savedCaseView = ref<{
   time: string | null; view: ReturnType<InstanceType<typeof MapView>['captureView']>
   ship: number | null; event: ApiEvent | null; panel: Panel; panelOpen: boolean
   workspace: 'overview' | 'explore'; layers: LayerState; isolated: boolean; trackVisible: boolean
-  sidebarOpen: boolean; category: 'events' | 'ships'
-  areaOpen: boolean; areaBoundaryVisible: boolean
+  sidebarOpen: boolean; sidebarCollapsed: boolean; category: 'events' | 'ships'
+  areaOpen: boolean; areaBoundaryVisible: boolean; layersOpen: boolean; passageOpen: boolean
 } | null>(null)
 let caseVersion = 0
 async function loadCase() {
@@ -124,11 +134,13 @@ async function openCase() {
     time: time.value, view: mapView.value?.captureView() ?? null, ship: selectedShipId.value,
     event: selectedEvent.value, panel: panel.value, panelOpen: panelOpen.value,
     workspace: workspaceMode.value, layers: { ...layers.value }, isolated: isolated.value,
-    trackVisible: trackVisible.value, sidebarOpen: sidebarOpen.value, category: exploreCategory.value,
-    areaOpen: areaOpen.value, areaBoundaryVisible: areaBoundaryVisible.value,
+    trackVisible: trackVisible.value, sidebarOpen: sidebarOpen.value, sidebarCollapsed: sidebarCollapsed.value, category: exploreCategory.value,
+    areaOpen: areaOpen.value, areaBoundaryVisible: areaBoundaryVisible.value, layersOpen: layersOpen.value, passageOpen: passageOpen.value,
   }
   cancelAreaDraw()
   areaOpen.value = false
+  layersOpen.value = false
+  passageOpen.value = false
   caseOpen.value = true
   workspaceMode.value = 'explore'
   panelOpen.value = false
@@ -158,6 +170,9 @@ async function initializeCase() {
     if (version !== caseVersion || !caseOpen.value) return
     if (error.value) throw new Error(error.value)
     caseFullTrack.value = mergeCaseTracks(results)
+    if (!caseFullTrack.value) throw new Error('案例没有可回放的轨迹')
+    await useCaseTrack(caseFullTrack.value)
+    if (version !== caseVersion || !caseOpen.value) return
     seek(data.end_at)
     seekRequest.value++
     selectedShipId.value = data.ship_id
@@ -262,9 +277,12 @@ async function exitCase() {
     isolated.value = previous.isolated
     trackVisible.value = previous.trackVisible
     sidebarOpen.value = previous.sidebarOpen
+    sidebarCollapsed.value = previous.sidebarCollapsed
     exploreCategory.value = previous.category
     areaOpen.value = previous.areaOpen
     areaBoundaryVisible.value = previous.areaBoundaryVisible
+    layersOpen.value = previous.layersOpen
+    passageOpen.value = previous.passageOpen
     await nextTick()
     mapView.value?.restoreView(previous.view)
   }
@@ -276,11 +294,21 @@ async function changeWorkspace(mode: 'overview' | 'explore') {
   workspaceMode.value = mode
   if (mode === 'overview') panelOpen.value = false
 }
-// issue #40：智能体「查看通行分析」→ 打开总览通行分析面板并恢复该次调用条件/结果。
+// 智能体「查看通行分析」打开地图右侧面板并恢复该次调用条件/结果。
 const analysisRestore = ref<AgentAnalysisAction | null>(null)
+const passageOpen = ref(false)
+const passageInitialized = ref(false)
+async function openPassageTool() {
+  if (caseOpen.value) await exitCase()
+  closeRightTools()
+  workspaceMode.value = 'explore'
+  passageInitialized.value = true
+  passageOpen.value = true
+  collapseNewsForTool()
+}
 async function openPassageAnalysis(action: AgentAnalysisAction) {
-  analysisRestore.value = action
-  await changeWorkspace('overview')
+  analysisRestore.value = { ...action }
+  await openPassageTool()
 }
 async function retryCase() {
   await loadCase()
@@ -313,6 +341,8 @@ const pendingKeyEvent = ref<ApiEvent | null>(null)
 let pendingKeyEventFrame: string | null = null
 const exploreCategory = ref<'events' | 'ships'>('events')
 const sidebarOpen = ref(false)
+const compactViewport = ref(window.innerWidth <= 760)
+function onViewportResize() { compactViewport.value = window.innerWidth <= 760 }
 // issue #32：紧凑回放轴与可调整/可收起侧栏。宽度仅保存在会话内，不写入存储。
 const timelineCompact = ref(false)
 const sidebarCollapsed = ref(false)
@@ -321,6 +351,7 @@ const inspectorWidth = ref(390)
 const workbenchEl = ref<HTMLElement | null>(null)
 const workbenchStyle = computed(() => ({
   ...(sidebarWidth.value ? { '--sidebar-w': `${sidebarWidth.value}px` } : {}),
+  '--tool-panel-w': `min(${rightTool.value === 'area' ? 460 : rightTool.value === 'passage' ? 480 : rightTool.value === 'layers' ? 360 : inspectorWidth.value}px, 40vw)`,
 }))
 const SIDEBAR_MIN = 280
 const SIDEBAR_MAX_RATIO = 0.6
@@ -373,6 +404,34 @@ function nudgeInspector(delta: number) {
   inspectorWidth.value = Math.round(Math.min(Math.max(inspectorWidth.value + delta, 300), window.innerWidth * 0.6))
 }
 const layersOpen = ref(false)
+const rightTool = computed(() => workspaceMode.value !== 'explore' ? null : layersOpen.value ? 'layers' : areaOpen.value ? 'area' : passageOpen.value ? 'passage' : panelOpen.value ? 'context' : null)
+function collapseNewsForTool() {
+  sidebarCollapsed.value = true
+  sidebarOpen.value = false
+  if (caseOpen.value) caseDetailsOpen.value = false
+}
+function closeRightTools() {
+  layersOpen.value = false
+  closeAreaPanel()
+  passageOpen.value = false
+  panelOpen.value = false
+}
+function toggleLayers() {
+  if (layersOpen.value) { layersOpen.value = false; return }
+  closeRightTools()
+  workspaceMode.value = 'explore'
+  layersOpen.value = true
+  collapseNewsForTool()
+}
+function toggleNews() {
+  const open = sidebarCollapsed.value || (window.innerWidth <= 760 && !sidebarOpen.value)
+  if (open && window.innerWidth <= 760) closeRightTools()
+  sidebarCollapsed.value = !open
+  sidebarOpen.value = open
+}
+watch([panelOpen, panel], ([open]) => {
+  if (open) { layersOpen.value = false; passageOpen.value = false; closeAreaPanel() }
+})
 const legendOpen = ref(false)
 const selectedShipId = ref<number | null>(null)
 const selectedEvent = ref<ApiEvent | null>(null)
@@ -781,10 +840,12 @@ function restore() {
   globalViewRequest.value++
 }
 function togglePanel(value: Panel) {
-  closeAreaPanel()
+  if (value === 'agent' && panel.value === 'agent' && panelOpen.value) { panelOpen.value = false; return }
+  closeRightTools()
   panel.value = value
   workspaceMode.value = 'explore'
   panelOpen.value = true
+  collapseNewsForTool()
 }
 const panelTitles: Record<Panel, string> = {
   overview: '态势概览',
@@ -874,8 +935,12 @@ function openAreaPanel() {
     areaPanelInitialized.value = true
     areaBoundaryVisible.value = true
   }
+  layersOpen.value = false
+  passageOpen.value = false
+  panelOpen.value = false
   areaOpen.value = true
   workspaceMode.value = 'explore'
+  collapseNewsForTool()
   void loadAreaDefault()
 }
 
@@ -1101,6 +1166,9 @@ function openExplorer(category: 'events' | 'ships') {
   workspaceMode.value = 'explore'
   exploreCategory.value = category
   backToOverview()
+  closeRightTools()
+  sidebarCollapsed.value = false
+  sidebarOpen.value = true
 }
 function changeEventType(value: string) {
   eventType.value = value
@@ -1204,7 +1272,7 @@ const guideOpen = ref(false)
 let guideReturnFocus: HTMLElement | null = null
 let guideSavedView: {
   workspace: 'overview' | 'explore'; sidebar: boolean; collapsed: boolean; compact: boolean
-  panel: boolean; area: boolean; layers: boolean; legend: boolean; inCase: boolean
+  panel: boolean; area: boolean; layers: boolean; passage: boolean; legend: boolean; inCase: boolean
 } | null = null
 function startGuide() {
   if (guideOpen.value || caseLoading.value || caseSwitching.value) return
@@ -1212,12 +1280,13 @@ function startGuide() {
   guideSavedView = {
     workspace: workspaceMode.value, sidebar: sidebarOpen.value, collapsed: sidebarCollapsed.value,
     compact: timelineCompact.value, panel: panelOpen.value, area: areaOpen.value,
-    layers: layersOpen.value, legend: legendOpen.value, inCase: caseOpen.value,
+    layers: layersOpen.value, passage: passageOpen.value, legend: legendOpen.value, inCase: caseOpen.value,
   }
   timelineControls.value?.stop()
   cancelAreaDraw()
   guideOpen.value = true
   panelOpen.value = areaOpen.value = layersOpen.value = legendOpen.value = false
+  passageOpen.value = false
   caseOpen.value = false
   sidebarCollapsed.value = false
   timelineCompact.value = false
@@ -1236,6 +1305,7 @@ async function closeGuide(completed: boolean) {
     panelOpen.value = guideSavedView.panel
     areaOpen.value = guideSavedView.area
     layersOpen.value = guideSavedView.layers
+    passageOpen.value = guideSavedView.passage
     legendOpen.value = guideSavedView.legend
     caseOpen.value = guideSavedView.inCase
     guideSavedView = null
@@ -1246,11 +1316,12 @@ async function closeGuide(completed: boolean) {
   else workbenchEl.value?.querySelector<HTMLButtonElement>('[data-tour="help"]')?.focus({ preventScroll: true })
 }
 function onKey(event: KeyboardEvent) {
-  if (guideOpen.value) return
+  if (guideOpen.value || event.defaultPrevented) return
   if (event.key === 'Escape') {
     clearShip()
     selectedEvent.value = null
     layersOpen.value = false
+    closeRightTools()
     legendOpen.value = false
     panel.value = 'overview'
     panelOpen.value = false
@@ -1260,15 +1331,16 @@ function onKey(event: KeyboardEvent) {
 onMounted(() => {
   void initialize()
   window.addEventListener('keydown', onKey)
+  window.addEventListener('resize', onViewportResize)
   let seen = false
   try { seen = ['completed', 'dismissed'].includes(localStorage.getItem(TOUR_STORAGE_KEY) ?? '') } catch { /* Storage can be disabled. */ }
   if (!seen) startGuide()
 })
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', onViewportResize) })
 </script>
 
 <template>
-  <main ref="workbenchEl" class="workbench" :inert="guideOpen" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen, 'case-mode': caseOpen, 'case-docked': caseOpen && caseDetailsOpen, 'sidebar-collapsed': sidebarCollapsed, 'timeline-compact': timelineCompact, 'area-open': areaOpen }" :style="workbenchStyle">
+  <main ref="workbenchEl" class="workbench" :inert="guideOpen" :class="{ 'show-overview': workspaceMode === 'overview', 'detail-open': panelOpen, 'case-mode': caseOpen, 'case-docked': caseOpen && caseDetailsOpen, 'sidebar-collapsed': sidebarCollapsed, 'timeline-compact': timelineCompact, 'area-open': areaOpen, 'tool-open': !!rightTool, 'news-open-mobile': sidebarOpen && !sidebarCollapsed }" :style="workbenchStyle">
     <header class="topbar">
       <div class="brand">
         <img class="brand-logo" :src="logoUrl" alt="" aria-hidden="true" />
@@ -1287,9 +1359,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <button @click="displayZone = displayZone === 'UTC' ? 'Asia/Shanghai' : 'UTC'" aria-label="切换时区">{{ zoneLabel() }}</button>
         <button @click="theme = theme === 'dark' ? 'light' : 'dark'" aria-label="切换地图主题">{{ theme === 'dark' ? '浅色' : '深色' }}</button>
       </div>
-      <button v-if="!caseOpen && sidebarCollapsed" class="sidebar-reopen" @click="sidebarCollapsed = false">新闻与船舶列表 ›</button>
-      <button class="sidebar-toggle" :aria-expanded="sidebarOpen" @click="sidebarOpen = !sidebarOpen; workspaceMode = 'explore'">{{ sidebarOpen ? '收起列表' : '查找' }}</button>
+      <button class="sidebar-toggle" :aria-expanded="sidebarOpen" @click="toggleNews(); workspaceMode = 'explore'">{{ sidebarOpen ? '收起列表' : '查找' }}</button>
     </header>
+    <div v-show="!caseOpen" class="news-dock" :inert="sidebarCollapsed || (compactViewport && !sidebarOpen)">
     <ExplorerSidebar
       data-tour="explorer"
       v-show="!caseOpen"
@@ -1319,29 +1391,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       @resize-key="nudgeSidebar"
       @collapse="sidebarCollapsed = true"
     />
+    </div>
     <section class="map-workspace" data-tour="map" aria-label="霍尔木兹海峡态势地图">
+      <button v-if="!caseOpen" type="button" class="news-edge-toggle" :class="{ collapsed: sidebarCollapsed || (compactViewport && !sidebarOpen) }" :aria-expanded="!sidebarCollapsed && (!compactViewport || sidebarOpen)" :aria-label="sidebarCollapsed || (compactViewport && !sidebarOpen) ? '展开新闻栏' : '收起新闻栏'" @click="toggleNews">
+        <svg class="edge-triangle" viewBox="0 0 12 24" aria-hidden="true"><path d="M3 5 10 12 3 19Z" /></svg>
+        <svg class="edge-expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM9 4v16M12 9l3 3-3 3" /></svg>
+        <span class="edge-label">{{ sidebarCollapsed || (compactViewport && !sidebarOpen) ? '展开新闻栏' : '收起新闻栏' }}</span>
+      </button>
       <ToolRail
         data-tour="tools"
         :layers-active="layersOpen"
         :agent-active="panel === 'agent' && panelOpen"
         :area-active="areaOpen"
-        @open-layers="layersOpen = !layersOpen"
+        :passage-active="passageOpen"
+        @open-layers="toggleLayers"
         @open-agent="togglePanel('agent')"
+        @open-passage="passageOpen ? passageOpen = false : openPassageTool()"
         @open-area="areaOpen ? closeAreaPanel() : openAreaPanel()"
       />
-      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :case-id="caseId" @switch-case="switchCase" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @locate="locateCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
+      <CasePanel v-if="caseOpen && caseDetailsOpen" :data="caseData" :case-id="caseId" @switch-case="switchCase" :active-stage="caseStageId" :loading="caseLoading || caseSwitching" :error="caseError || realTrackError" :active="caseActive" :points-visible="realPointsVisible" :stage-status="caseStageStatus" :track="caseFullTrack" :at="time" :playing="casePlaying" :playback-stage-id="casePlaybackStageId" :playback-finished="casePlaybackFinished" @select="selectCaseStage" @play="playCaseStage" @pause="pauseCase" @seek="seekCaseTime" @locate="locateCaseTime" @toggle-points="realPointsVisible = !realPointsVisible" @close="caseDetailsOpen = false" @retry="retryCase" @exit="exitCase" />
       <button v-if="caseOpen && !caseDetailsOpen" class="case-reopen" @click="caseDetailsOpen = true">展开 {{ caseDisplayTitle }} 案例栏</button>
-      <LayersPopover
-        v-if="layersOpen"
-        v-model:layers="layers"
-        v-model:vector-minutes="vectorMinutes"
-        v-model:vector-linked="vectorLinked"
-        :harbour-status="harbourStatus"
-        :country-status="countryStatus"
-        :effective-vector="effectiveVector"
-        :real-ais="isRealAis"
-        @close="layersOpen = false"
-      />
       <MapView
         ref="mapView"
         :ships="caseOpen && (!caseActive || caseSwitching) ? [] : currentShips"
@@ -1386,35 +1455,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @area-drawn="onAreaDrawn"
         @area-draw-cancel="cancelAreaDraw"
       />
-      <div v-if="areaPanelInitialized" v-show="areaOpen && !caseOpen" class="area-panel-placement" :class="{ 'is-drawing': areaDrawing }">
-        <AreaActivityPanel
-          :open="areaOpen && !caseOpen"
-          data-testid="area-state"
-          :data-area-id="areaIsDefault ? 'hormuz_core_v1' : 'custom'"
-          :data-bounds-version="areaBoundsVersion"
-          :data-result-version="areaResultVersion"
-          :boundary-visible="areaBoundaryVisible"
-          :drawing="areaDrawing"
-          :resolving="areaResolving"
-          :area-notice="areaNotice"
-          :bounds="areaBounds"
-          :default-bounds="areaDefaultBounds"
-          :area-label="areaLabel"
-          :area-is-default="areaIsDefault"
-          :agent-context="areaPanelContext"
-          :data-window="areaDataWindow"
-          :pending-action="areaPendingAction"
-          @close="closeAreaPanel"
-          @update:boundary-visible="setAreaBoundaryVisible"
-          @restore-default="restoreDefaultArea"
-          @cancel-draw="cancelAreaDraw"
-          @update:bounds="requestAreaDrawFromPanel"
-          @locate-ship="showVisitTrack"
-          @focus-visit="showVisitTrack"
-          @use-area-in-dialog="useAreaInDialog"
-          @results-updated="areaResultVersion = areaBoundsVersion"
-        />
-      </div>
       <div class="map-top-tools">
         <button
           class="map-tool"
@@ -1428,7 +1468,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <strong v-if="caseActive">案例窗口：仅{{ caseData?.display_title ?? caseData?.title }}，非海峡全量船舶</strong>
         <strong>历史 AIS · {{ formatTime(time, true) }} {{ zoneLabel() }}</strong>
         <span>快照 {{ currentShips.length }} 艘，视野内 {{ viewShips.length }} 艘</span>
-        <span>仅采用此前 1 小时内的最新报位</span>
+        <span>{{ caseActive ? '使用已载入的案例采样报位；超过 1 小时缺报不显示船位' : '仅采用此前 1 小时内的最新报位' }}</span>
         <span v-if="caseActive && !currentShips.length">该时刻缺少有效报位，不表示船舶不存在</span>
         <span v-if="snapshotLoading && requestedTime !== time">正在获取 {{ formatTime(requestedTime, true) }} 的快照</span>
       </div>
@@ -1487,22 +1527,66 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :time="time" :view-ships="currentShips" :view-events="mapEvents" :events="filteredEvents" :all-events="events" :range-start="times[0]" :range-end="times.at(-1)"
         :total-ships="currentShips.length" :total-events="events.length" :average-speed="snapshotAverageSpeed"
         :events-loading="eventsLoading"
-        :execute-map-action="executeMapAction"
-        :analysis-restore="analysisRestore"
         @select-event="chooseEvent" @select-key-event="chooseKeyEvent" @open-ship-group="openShipGroup"
         @open-events="openExplorer('events')" @open-ships="openExplorer('ships')"
       />
     </section>
     <div class="timeline-dock" data-tour="timeline" :class="{ compact: timelineCompact }">
       <TimelineControls
-        ref="timelineControls" :playback-end="caseActive ? caseAgentWindow?.end_at : undefined" @playing-change="casePlaying = $event"
+        ref="timelineControls" :playback-end="caseActive ? caseAgentWindow?.end_at : undefined" :playback-start="caseActive ? caseAgentWindow?.start_at : undefined" :fast-duration-ms="caseActive ? CASE_PLAYBACK_DURATION_MS : undefined" @playing-change="onCasePlayingChange" @finished="casePlaybackFinished = caseActive"
         v-model="index" :frame-times="times" :snapshot-mode="isRealAis" :frame-ready="frameReady" :frame-error="snapshotError"
         :seek-request="seekRequest"
         :loading="loading" :error-message="error" :compact="timelineCompact"
         @speed-change="playbackSpeed = $event" @retry="retryPlayback" @toggle-compact="timelineCompact = !timelineCompact"
       />
     </div>
-    <aside v-show="panelOpen && !areaOpen" class="inspector" aria-label="上下文工作面板" :style="{ width: `min(${inspectorWidth}px, calc(100vw - 48px))` }">
+    <aside class="tool-dock" :class="{ open: !!rightTool }" :inert="!rightTool" aria-label="地图功能栏">
+      <div class="tool-dock-body">
+      <LayersPopover
+        v-if="layersOpen"
+        v-model:layers="layers"
+        v-model:vector-minutes="vectorMinutes"
+        v-model:vector-linked="vectorLinked"
+        :harbour-status="harbourStatus"
+        :country-status="countryStatus"
+        :effective-vector="effectiveVector"
+        :real-ais="isRealAis"
+        @close="layersOpen = false"
+      />
+      <div v-if="areaPanelInitialized" v-show="areaOpen && !caseOpen" class="area-panel-placement" :class="{ 'is-drawing': areaDrawing }">
+        <AreaActivityPanel
+          :open="areaOpen && !caseOpen"
+          data-testid="area-state"
+          :data-area-id="areaIsDefault ? 'hormuz_core_v1' : 'custom'"
+          :data-bounds-version="areaBoundsVersion"
+          :data-result-version="areaResultVersion"
+          :boundary-visible="areaBoundaryVisible"
+          :drawing="areaDrawing"
+          :resolving="areaResolving"
+          :area-notice="areaNotice"
+          :bounds="areaBounds"
+          :default-bounds="areaDefaultBounds"
+          :area-label="areaLabel"
+          :area-is-default="areaIsDefault"
+          :agent-context="areaPanelContext"
+          :data-window="areaDataWindow"
+          :pending-action="areaPendingAction"
+          @close="closeAreaPanel"
+          @update:boundary-visible="setAreaBoundaryVisible"
+          @restore-default="restoreDefaultArea"
+          @cancel-draw="cancelAreaDraw"
+          @update:bounds="requestAreaDrawFromPanel"
+          @locate-ship="showVisitTrack"
+          @focus-visit="showVisitTrack"
+          @use-area-in-dialog="useAreaInDialog"
+          @results-updated="areaResultVersion = areaBoundsVersion"
+        />
+      </div>
+        <section v-show="rightTool === 'passage'" class="dock-passage">
+          <header class="tool-dock-head"><h2>通行分析</h2><button type="button" aria-label="关闭通行分析" @click="passageOpen = false">×</button></header>
+          <PassageAnalysisPanel v-if="passageInitialized" :execute-map-action="executeMapAction" :restore="analysisRestore" />
+        </section>
+    <aside v-show="rightTool === 'context'" class="inspector dock-context" aria-label="上下文工作面板">
       <button
         class="inspector-resize-handle"
         role="separator"
@@ -1582,6 +1666,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         @open-analysis="openPassageAnalysis"
         @area-analysis-suggested="onAreaAnalysisSuggested"
       />
+    </aside>
+      </div>
     </aside>
   </main>
   <OnboardingTour v-if="guideOpen" @step="prepareGuideStep" @close="closeGuide" />

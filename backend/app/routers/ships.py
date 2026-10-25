@@ -184,7 +184,7 @@ def get_ship_track_window(
 
     rows = db.execute(
         text("""
-            SELECT id, latitude, longitude, speed, recorded_at
+            SELECT id, latitude, longitude, speed, course, heading, recorded_at
             FROM ship_positions
             WHERE ship_id = :ship_id AND recorded_at >= :from_at AND recorded_at <= :to_at
             ORDER BY recorded_at, id
@@ -213,7 +213,7 @@ def get_ship_track_window(
         if previous is not None and (at - previous["recorded_at"]).total_seconds() > TRACK_GAP_SECONDS:
             # Include the actual endpoint on each side of the gap.
             endpoint = {"id": previous["id"], "latitude": previous["latitude"], "longitude": previous["longitude"],
-                        "speed": previous["speed"], "recorded_at": previous["recorded_at"]}
+                        "speed": previous["speed"], "course": previous["course"], "heading": previous["heading"], "recorded_at": previous["recorded_at"]}
             if sampled and sampled[-1]["id"] != endpoint["id"]:
                 sampled.append(endpoint)
             finish_segment()
@@ -223,12 +223,12 @@ def get_ship_track_window(
         bucket = int(at.timestamp()) // bucket_seconds
         if bucket != last_bucket:
             sampled.append({"id": row["id"], "latitude": row["latitude"], "longitude": row["longitude"],
-                            "speed": row["speed"], "recorded_at": at})
+                            "speed": row["speed"], "course": row["course"], "heading": row["heading"], "recorded_at": at})
             last_bucket = bucket
         previous = row
     if previous is not None:
         endpoint = {"id": previous["id"], "latitude": previous["latitude"], "longitude": previous["longitude"],
-                    "speed": previous["speed"], "recorded_at": previous["recorded_at"]}
+                    "speed": previous["speed"], "course": previous["course"], "heading": previous["heading"], "recorded_at": previous["recorded_at"]}
         if sampled and sampled[-1]["id"] != endpoint["id"]:
             sampled.append(endpoint)
     finish_segment()

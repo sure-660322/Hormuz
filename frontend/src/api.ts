@@ -203,6 +203,8 @@ export interface ApiTrackWindowPoint {
   latitude: number
   longitude: number
   speed: number
+  course: number
+  heading: number | null
   recorded_at: string
 }
 
