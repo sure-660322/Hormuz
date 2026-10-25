@@ -1,6 +1,6 @@
 # 典型新闻入口与案例轨迹
 
-2026-10-25 第二阶段：**已验证；[PR #67](https://github.com/sure-660322/Hormuz/pull/67)已合入main，本地已同步，本任务工作树与预览已清理，未部署**。延续 `codex/three-vessel-cases`，基线 `98ff673`，负责人 Codex；原独立工作区 `three-vessel-cases/Hormuz`已归档；验收前端5187、后端8007已关闭，原8000服务未切换。收尾与证据归档见[记录](case_news_closeout_20261025.md)。
+当前功能已随 PR #67 合入 main，本机数据导入与专项样本已验证，未部署。船位来源与接受/隔离规则见[轨迹导入](trajectory_cases.md)和[北冰洋来源](arctic_ocean_case.md)。
 
 ## 业务入口
 
@@ -46,17 +46,8 @@
 
 MRAIKH、桐林湾、EGRET原CSV审计分别有1、5、3段长缺报，北冰洋原批次有4段；不是将前端加载错误冒充数据缺口。虚线仅在案例模式出现，关闭轨迹/退出案例时清除，普通地图探索保持原断线展示。完整历史轨迹与缺口示意可能包含回放当前时刻之后的观测，与原有完整背景轨迹规则一致；不表示船舶已经沿虚线航行。
 
-## 验证
+## 验证与限制
 
-- 后端针对性检查最终28 passed / 1 skipped（含封面路径回归，早先27/1）（旧北冰洋隔离库专用集成测试未跑；真实CSV解析已复验）。新catalog检查正确身份、缺失来源、错误事件key的失败关闭与共享原文去重。
-- 独立库实际验证：空新闻库入口不可用，5报道/4事件追加、重复0增量、造关联冲突后新闻/事件全部回滚、跨事件共享Baird的两个/events接口、未知事件404、没有伪造时刻/坐标。
-- 前端build与check:workbench通过；新增缺口端点/90分钟阈值/不改原报位/不提供缺口位置检查，保留既有大包提示。
-- 本机证据：`local-archive/news-fetch-audit.json`（直接HTTP结果，AA超时与网页索引读取分开）、`news-isolated-verification.json`、`news-application-import.json`（备份哈希、原记录指纹及新ID）、`live-case-news-entries.json`；均为忽略文件。
+2026-10-25 原批次后端收尾回归 77 passed / 1 skipped，build/workbench 通过；独立库导入、幂等、冲突回滚、共享来源、四案例与窄屏浏览器、缺口数量 4/1/5/3、原文链接和退出恢复有验证。skip 为旧北冰洋隔离库测试，真实 CSV 解析另有复验。普通新闻存在既有封面缓存缺失 404。
 
-- 浏览器1440×900逐项验证四条中文入口→正确标题/MMSI/IMO/源报位数→完整播放→来源外链（target=_blank、noopener）；新三船和北冰洋的新闻/轨迹截图已目视检查。
-- 虚线SVG数量与真实分段一致：北冰洋4、MRAIKH 1、桐林湾5、EGRET 3，dashArray为7 7；回放不产生新船位/轨迹请求，完成时间分别4,622 / 4,602 / 4,573 / 4,565 ms。SVG单独绘制缺口便于可靠悬停提示，观测航线仍使用原绘制方式。
-- 390×844新闻目录和EGRET证据视图无横向溢出；退出恢复2026/02/24 16:05UTC与普通倍速选择器，普通探索中的case-gap-connector为0。
-- 采样pageerror=[]；退出后普通新闻列表出现35个既有封面404（任务预览缺主目录图片缓存）。不写为全程零网络错误，没有更换图片配置。新闻与轨迹相关接口没有失败。
-- 证据在output/playwright/news-browser-results.json、news-index-desktop/mobile.png、四船*-news-track.png / *-news-evidence.png、egret-news-mobile.png。
-
-未做任意新闻自动匹配、真实模型问答、全设备/触屏矩阵、持续负载、公网部署或来源再分发授权核验。
+证据保留在主目录 local-archive/case-news-closeout-20261025/，原始文档另见[历史归档](README.md#历史材料)。本轮仅整理文档，不重跑接口、模型或浏览器。未验证任意新闻自动匹配、全设备、持续负载、公网部署或来源再分发授权。

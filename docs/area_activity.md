@@ -1,14 +1,8 @@
-> 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。用户随后确认触屏与纯键盘相关范围暂不做，已移出本 Issue 的待办；[Issue #41](https://github.com/sure-660322/Hormuz/issues/41) 已按已交付范围关闭。并发预算等未验证限制不因关闭而视为已验证。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
+# 区域船舶活动与进出分析
 
-# 区域船舶活动与进出分析：矩形圈选、手动与智能体共用（issue #41）
+当前规则版本 area_activity/1.0.1；手动接口和智能体共用服务。PR #45 已合入；历史复算、API、模型与浏览器样本已归档，本轮不重验。触屏与纯键盘绘制不在当前建设范围；并发、覆盖和下方业务限制仍保留。
 
-状态（2026-10-07）：三个阶段已实现；任务分支已整合最新 main，修复后端到端复测见[验收报告](area_activity_acceptance.md) §七。后端 390 passed / 14 skipped；前端 build、check:workbench、区域检查 30/30 与类型检查通过；API 14 组/163 项断言与已有独立复算证据一致。未合入 main、未部署；并发预算、触屏与纯键盘绘制等限制保留，已推送并交付[草稿 PR #45](https://github.com/sure-660322/Hormuz/pull/45)，详细交接见验收报告。
-
-工作树 `D:\my_project\Hormuz-worktrees\codex-area-activity-ui`，分支 `codex/area-activity-ui`，基线 `aca8d3c`（含第一阶段两个提交）。两种入口共用同一后端服务：手动界面调用 `GET/POST /api/area-activity/*`，智能体调用三个只读工具（`query_area_ship_snapshot`/`query_area_ship_activity`/`compare_area_ship_activity`），同一参数返回一致结果。智能体侧细节见[区域活动智能体工具](area_agent_tools.md)与[智能体接入契约](agent_integration.md)；前端组件与展示规则见[区域活动前端](area_activity_frontend.md)。
-
-数据现状（2026-10-07 本机只读核验）：`ships=4,462`、`ship_positions=17,933,173`、`data_source='nnu_ais'` 单一来源；批次 1–7 为 2026-02-24T16:00Z–2026-03-03T15:59:59Z 的逐日文件，批次 8 为北极案例单船（1 艘，2026-03-26–03-31）。本机最近一次核验值，不是跨环境常量。
-
----
+前端见[展示契约](area_activity_frontend.md)，智能体见[区域工具](area_agent_tools.md)。
 
 ## 一、边界规则
 
@@ -309,4 +303,3 @@
 - 圈选只支持轴对齐矩形（不支持任意多边形、不支持跨 180°）；矩形单边跨度上限 10°，超限由后端拒绝而不是截断。第一版不做缓冲/滞回，边界抖动只标记近边界不改计数。
 - 智能体明细有界（快照 ≤50 艘、访问 ≤30 条），被裁剪时必须在回答与面板里说明「还有 N 条未列出」；汇总不受裁剪影响。
 - 未实现：结果缓存（每次请求实时读取；如需缓存，键必须包含区域版本、时间窗、筛选、来源批次与算法版本）、并发配额、任意多边形、实时 AIS、按小时统计、等待/锚泊语义、精确越界时刻、MobilityDB 派生层重建。两期比较在两条语句中读取，业务库当前不并发写入。
-

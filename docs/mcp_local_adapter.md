@@ -1,8 +1,6 @@
-> 2026-10-11 本机范围收尾复核：现有业务凭据已成功查询，无需新增 SQL 账号；最小权限审计属于后续加固。独立 SDK 真实 stdio 取消及 4 槽并发/第 5 项拒绝已验证。本机 7 工具交付满足调整后的验收，持续压测、HTTP TCP 断线和公网认证/许可为保留限制。PR #63 已合并（24fb258），#50 已关闭，本地 main 已同步；本轮新 worktree 已归档，旧 DSH 运行工作树及桌面配置保留，未部署。下方 Draft 阻塞是上一轮判断，已由本次复核替代。
+# 本机只读业务 MCP
 
-# 本机只读业务 MCP（Issue #50）
-
-2026-10-11 范围调整：外部 MCP 固定提供下列 7 个业务工具；Text-to-SQL 仅供项目内部智能体使用。PR #62（b5d8a60）曾实现默认关闭的 SQL MCP 适配，此任务分支已移除该分支，不因环境变量、配置或 tools/call 重新开放。当前验证与未完成项见[本轮记录](issue50_business_boundary_acceptance.md)。未合并、未部署，现有 DSH 桌面仍运行保留的旧 worktree。
+当前 main 的 MCP 0.2.0 固定七个只读业务工具，PR #62/#63 已合入、Issue #50 已关闭，未部署公网。外部 Text-to-SQL 已移除，旧开关不能重新启用。客户端所用运行目录可能仍为旧工作树，须现场核对，不能由主线状态推定运行版本。
 
 ## 工具与契约
 
@@ -39,7 +37,7 @@ python -m backend.mcp_server --transport stdio
 python -m backend.mcp_server --transport streamable-http --port 8036
 ```
 
-Windows 插件 launch.ps1 只接受 python/workspace/database 五项数据库元数据，清除继承 DB/MCP/AGENT_DB/AGENT_QUERY 设置并原始字节转发 stdio。含额外 sql 配置的文件拒绝启动；configure.ps1 仍只生成业务配置。DSH profile 格式见[说明](dsh_mcp_acceptance.md)。本轮不改其桌面 profile、本机已通过验收的 runtime 路径或旧运行 worktree。
+Windows 插件 launch.ps1 只接受 python/workspace/database 五项数据库元数据，清除继承 DB/MCP/AGENT_DB/AGENT_QUERY 设置并原始字节转发 stdio。含额外 sql 配置的文件拒绝启动；configure.ps1 仍只生成业务配置。DSH profile 格式见下方配置。不要擅自更改已使用的客户端配置或旧运行工作树。
 
 ## 传输、身份和资源
 
@@ -49,8 +47,39 @@ HTTP 必须提供 MCP_HTTP_TOKENS：JSON 对象 {"client-a":"<32–256 字符随
 
 每进程最多 4 线程，无等待队列；每身份每分钟最多 60 次工具调用；外层预算 30 秒，HTTP 请求体 ≤128KiB。业务独立 Session/READ ONLY 事务，statement_timeout 5s、lock_timeout 1s。取消/超时设置事件并取消 psycopg 查询，后续 SQL 前检查取消，线程结束才释放并发槽。日志只写 ID/已知工具名/状态/code；错误不回显数据库异常、配置值或连接串。
 
-这些是本机边界，不是全局多进程业务限流。尚缺真实网络断开→数据库无残留查询验收、专用业务账号最小权限核验和持续负载；因此本轮 Draft PR，不关闭 #50。公网身份认证授权、数据展示许可、预算与部署均另行授权。
+这些是本机边界，不是全局多进程限流。既有 SDK stdio 取消及四槽/第五项拒绝已验证；HTTP TCP 断线后查询清理、账号最小权限和持续负载未全面验收。公网身份认证、数据许可与正式部署仍待处理。
 
-## 历史证据
 
-PR #62 的本机业务子集已合并；Kimi CLI 双传输四题/八次与业务基线一致，[历史记录](issue50_kimi_acceptance.md)。DSH headless 真实模型四题与基线一致，桌面后续样本由用户确认，[记录](dsh_mcp_acceptance.md)。历史 SQL MCP 令牌测试不属于当前公开能力；内部 catalog v3 独立测试库验收见[Issue #48](issue48_sql_acceptance.md)，不能把它称为外部 SQL 验收。
+## DSH 客户端
+
+### 配置格式
+
+DSH 使用 Cordis profile patch，不能将 Kimi 的 `mcp.json` 原样放入。把以下条目合并到已有 YAML 数组；**不要覆盖其他条目，空数组 `[]` 需替换为条目数组**。将示例中的路径替换为本机实际路径；`cwd` 必须指向带 `scripts/launch.ps1` 的插件源码目录。
+
+```yaml
+- insert:
+    - id: mcp-hormuz
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: hormuz
+        transport: stdio
+        command: 'C:/Program Files/PowerShell/7/pwsh.exe'
+        args: ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', './scripts/launch.ps1']
+        cwd: 'C:/path/to/Hormuz/plugins/kimi/personal/hormuz'
+        env:
+          HORMUZ_KIMI_CONFIG: 'C:/Users/your-user/.dsh/profiles/desktop/hormuz-runtime.json'
+        toolCallTimeoutMs: 45000
+        failOnStartupError: false
+        reconnect:
+          enabled: true
+          initialDelayMs: 500
+          maxDelayMs: 30000
+          maxAttempts: 3
+```
+
+启动器默认读取 `%LOCALAPPDATA%/Hormuz/kimi-mcp.json`；本轮 DSH 改用 `HORMUZ_KIMI_CONFIG` 指定 profile 内元数据文件，保留相同 Python、工作区、数据库目标和具名凭据名称，不要求 Kimi 运行。配置方法和失败关闭边界见[插件说明](../plugins/kimi/personal/hormuz/README.md)。本轮没有改启动器代码。
+
+
+## 验证边界
+
+历史 Kimi CLI 双传输四题/八次与测试库基线对账；DSH headless 四题与基线一致，桌面发现七工具与同连接只读查询独立验证，后续桌面业务样本由用户确认。Kimi 源插件启动入口已验证，旧受管桌面版本的更新状态不能视为当前已完成，见[插件说明](../plugins/kimi/personal/hormuz/README.md)。历史原文见[归档入口](README.md#历史材料)。本轮不访问客户端、凭据或数据库。
