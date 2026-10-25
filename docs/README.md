@@ -1,33 +1,33 @@
-> 2026-10-11 用户确认：旧 MobilityDB 派生停留识别、相遇分析、observed 时空邻近事件关联及 P5 simplified 回放切换已退出当前项目范围，不再作为待办、验收缺口或业务就绪条件。区域活动服务中的观测停留船时、真实 AIS 原始报位轨迹与实测航速、新闻 mentioned 文本证据继续保留。遗留代码/API 的存在不代表当前业务目标；本轮只清理文档，不删除代码、不操作数据库或服务。
+# 必要文档索引
 
-# 文档索引
+当前文档用于运行、维护和解释业务口径；不再保存每轮 PR/Issue 验收流水。当前事实以代码、数据库结构和对应批次记录为准。
 
-当前功能、实现与验收范围以代码和各批次证据为准。2026-10-06 整理文档入口；本轮未查询数据库或重验历史部署。
+| 用途 | 文档 |
+| --- | --- |
+| 项目、运行与协作 | [README](../README.md)、[AGENTS](../AGENTS.md)、[工作台](../FRONTEND_WORKBENCH.md)、[协作](collaboration.md)、[当前任务](agent_development_plan.md) |
+| 数据库与来源 | [数据库](database_setup.md)、[七日 AIS](real_ais_seven_day_import.md)、[中新网批次](chinanews_news_import.md) |
+| 案例与证据 | [新闻入口](case_news_entries.md)、[三船来源](trajectory_cases.md)、[北冰洋来源](arctic_ocean_case.md) |
+| 智能体与 SQL | [v4 接口](agent_integration.md)、[LangChain 架构](langchain_agent_v1_plan.md)、[SQL 安全契约](query_analytics_contract.md)、[分析快照](agent_analysis_semantic_layer.md)、[地图动作](agent_map_actions_issue20.md) |
+| 业务算法 | [动态通行](agent_tool_strait_statistics.md)、[历史固定油轮序列](daily_tanker_passages_2026-09-30.md)、[区域口径](area_activity.md)、[区域前端](area_activity_frontend.md)、[区域工具](area_agent_tools.md) |
+| 本机接入与资源 | [MCP/DSH 配置](mcp_local_adapter.md)、[Kimi 插件](../plugins/kimi/personal/hormuz/README.md)、[本地瓦片](../deploy/tiles/README.md)、[国界图层](country_overlay.md)、[性能脚本](../scripts/perf/README.md) |
 
-## 使用与数据
+运行时知识库 `backend/app/services/agent/knowledge/` 和插件 SKILL.md 是功能输入，不作为历史文档删除。SQL 006 迁移说明与旧数据包 README 保留各自的安全边界，不是推荐安装入口。
 
-- [项目说明](../README.md)、[前端工作台](../FRONTEND_WORKBENCH.md)
-- [数据库初始化与交接](database_setup.md)
-- [典型新闻入口与轨迹](case_news_entries.md)、[三船轨迹导入历史](trajectory_cases.md)、[真实 AIS 七日导入](real_ais_seven_day_import.md)、[中海北冰洋案例](arctic_ocean_case.md)、[ATHE NOVA证据案例](athe_nova_case.md)
-- [新闻批次导入](chinanews_news_import.md)、[每日油轮观测口径](daily_tanker_passages_2026-09-30.md)
-- [国家边界与中文标注](country_overlay.md)
+## 本地部署材料
 
-## 架构、接口与协作
+部署资料仅本地保留：`D:/my_project/Hormuz-deployment/local-only-20261025/README.md`。原两个数据包在 `D:/my_project/Hormuz-deployment/2026-10-19/`。PR #64 已关闭且未合并，远端分支/Release/部署标签已移除。旧包不含 10 月 25 日案例增量，后续部署须更新并验证恢复。
 
-- [智能体接入契约](agent_integration.md)、[开发任务及验证状态](agent_development_plan.md)
-- [LangChain 方案](langchain_agent_v1_plan.md)、[SQL 安全契约](query_analytics_contract.md)
-- [Kimi Work 个人插件打包与安装](../plugins/kimi/personal/hormuz/README.md)
-- [Kimi 本机 MCP 验收与手测问题](issue50_kimi_acceptance.md)
-- [DSH 接入与桌面验收](dsh_mcp_acceptance.md)、[MCP 业务子集收尾](issue50_closeout.md)
-- [本机 MCP 双传输适配与验证边界](mcp_local_adapter.md)（#50 第一阶段，Kimi 双传输业务样本通过；SQL 客户端待验证）
-- [地图动作](agent_map_actions_issue20.md)、[智能体能力题集](agent_capability_eval_issue15.md)
-- [地图性能报告](map_rendering_optimization.md)
-- [多会话协作](collaboration.md)、[性能脚本](../scripts/perf/README.md)
+## 历史材料
 
-## 本轮整理与历史
+2026-10-25 原始文档在仓库外 `D:/my_project/Hormuz-document-archive/2026-10-25/` 保存：
 
-- [2026-10-06 清理记录](repository_cleanup_2026-10-06.md)
-- [2026-10-09 本地工作区清理](workspace_cleanup_2026-10-09.md)
-- [历史阶段与交付索引](archive/README.md)
+- `documents-before-trim.zip`：本轮开始时全部 66 份 Git 跟踪 Markdown 的原文，保留原相对路径。
+- `manifest.json`：基线 ab9e659、文件大小与 SHA-256；ZIP 内容逐项核对通过。
+- `historical/`：本轮移出的 30 份旧验收、交接、清理记录与过时案例资料，可直接阅读。
+- `review.json`、`remove.json`、`verification.json`：归档判定、清单及静态检查结果，仅本地保存。
 
-backend/app/services/agent/knowledge 下的 Markdown 是运行时知识库输入，不能按历史文档清除。历史批次报告不代表当前数据库数量；付费 AIS 源数据和数据库备份不通过文档归档自动公开。
+已完成的原案例验收附件仍保留在主目录 `local-archive/`；这里归档原文不搬动数据库、CSV、配置或其他任务工作区。旧 SQL 安全验收全文仍可恢复，当前约束继续由安全契约、代码与测试保留。归档不赋予数据再分发许可，也不改写 Git 历史。
+
+## 本轮验证
+
+仅整理 Markdown，核对本地链接、锚点、原文备份、引用和 Git 差异；不重新运行模型、接口、数据库或浏览器。文档精简已应用主目录。2026-10-25 用户追加授权收尾，本任务进入提交、PR 合并与同步流程；原图标、截图与其他工作树保留。AGENTS.md 仅更新一处归档路径，规则未改变。实际检查结果见仓库外 verification.json。

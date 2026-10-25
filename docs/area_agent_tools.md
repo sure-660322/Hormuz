@@ -3,7 +3,7 @@
 # 区域活动智能体工具（issue #41 阶段三）
 
 > 状态：**已实现，浏览器与真实模型端到端已验收**（2026-10-07，分支 `codex/area-activity-ui`，
-> HEAD 见[验收报告](area_activity_acceptance.md)）。工具清单与 `area_context`/`analysis_actions`
+> HEAD 见[历史材料](README.md#历史材料)）。工具清单与 `area_context`/`analysis_actions`
 > 契约已整合进[智能体接入契约](agent_integration.md)（当前共 13 个业务工具）；本文件保留阶段三的
 > 详细口径与字段清单，**契约冲突时以 `docs/agent_integration.md` 与代码为准**。
 > 区域算法、边界与 REST 口径见[区域活动模块](area_activity.md)；前端展示见[区域活动前端](area_activity_frontend.md)。
@@ -127,23 +127,7 @@
 面板自带 `area_id`/`label` 仍保留在 `results[call_id].area`；
 `summary` 只放有界数字，不放 `ships`/`visits` 数组。
 
-## 5. 修改文件
 
-- `backend/app/services/agent/area_tools.py`（新建，三个工具与 envelope 组装）
-- `backend/app/services/agent/business_tools.py`（仅追加注册与 `area_context` 形参）
-- `backend/app/services/agent/results.py`（`AREA_TOOL_MODES`、动作组装、`analysis_actions`）
-- `backend/app/schemas_agent.py`（`AgentAreaContext`、`AgentAnalysisAction`、请求/响应字段）
-- `backend/app/services/agent/langchain_runner.py`（`area_prompt_section`、`area_context` 透传）
-- `backend/app/routers/agent.py`（透传 `area_context`）
-- `backend/tests/test_agent_area_tools.py`（新建，32 项）
-- `backend/tests/test_langchain_agent.py`（工具名集合断言同步为 13 个（8 个既有 + 2 个通行 + 3 个区域））
-- `docs/agent_integration.md`（工具数量与清单两处，经 Lead 授权）
+## 验证边界
 
-未修改：`backend/app/services/area_activity/**`（含 `context.py`，只读调用）、`frontend/**`、
-`docs/area_activity.md`、`README.md`、`docs/agent_development_plan.md`。
-
-## 6. 验证与未验证
-
-2026-10-07：整合最新 main 后后端全量 390 passed / 14 skipped；知识库已补充三个区域工具、默认区域、UTC 半开口径与不确定性。真实模型三问与真实库独立复算保留为历史证据，本轮浏览器真实模型调用及「查看区域分析」回填见[验收报告](area_activity_acceptance.md) §七。
-
-`analysis_actions` 使用通行/区域联合类型，结果分别追加，13 个业务工具均位于注册表 return 之前，相关后端回归与前端构建通过。尚未验证真实模型在同一回答同时调用通行与区域工具、多轮追问和并发响应预算。
+现有三工具与 REST 共享服务，有历史真实模型与独立复算样本，见[归档](README.md#历史材料)。本轮不重测；完整浏览器、持续并发及覆盖完整性不能由单样本替代。

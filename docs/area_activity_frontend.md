@@ -1,11 +1,6 @@
-> 2026-10-08 收尾：用户授权整合已交付范围，[PR #45](https://github.com/sure-660322/Hormuz/pull/45) 已合入 main（3bcfea1），本地 main 已快进同步；codex/area-activity-ui 的工作树、本地/远端分支及验收服务已清理。未部署。用户随后确认触屏与纯键盘相关范围暂不做，已移出本 Issue 的待办；[Issue #41](https://github.com/sure-660322/Hormuz/issues/41) 已按已交付范围关闭。并发预算等未验证限制不因关闭而视为已验证。下方 2026-10-07 的状态与数字为当时记录，不表示本轮重做浏览器或模型验收。
+# 区域活动前端契约
 
-# 区域船舶活动面板：前端展示层（issue #41 阶段二-A）
-
-状态：**已实现；2026-10-07 整合后的构建、工作台检查与区域检查通过，浏览器与真实后端复测见[验收报告](area_activity_acceptance.md) §七**。
-范围：本文维护组件契约；App.vue、MapView.vue、api.ts 已完成接入，统一状态以验收报告为准。下方初始隔离构建日志保留为当时记录。
-基线：分支 `codex/area-activity-ui`，commit `aca8d3c`，工作树 `D:\my_project\Hormuz-worktrees\codex-area-activity-ui`。
-字段事实来源：`backend/app/schemas_area_activity.py`、`backend/app/services/area_activity/service.py`、`docs/area_activity.md` §4.5/§4.6。前端不重算业务判定，汇总数字直接取后端字段。
+当前已接入 App/MapView，手动面板与智能体共用后端口径；本页仅保留组件职责、状态和展示契约。历史独立构建与验收日志见[历史材料](README.md#历史材料)，本轮未重跑。
 
 ## 一、交付文件与职责
 
@@ -111,85 +106,6 @@ close: []
 
 label/`for` 关联（含船型复选）、`role="status"` + `aria-live="polite"` 状态区、`role="alert"` 错误、结果区 `aria-busy`、展开按钮 `aria-expanded`/`aria-controls`、表格 `<caption>` 与 `scope="col"`/`scope="row"`、每个表格容器 `role="region"` + `tabindex="0"` + `aria-label`、图表 `role="img"` + `aria-label`。窄屏：所有表格包在 `overflow-x:auto` 容器内（不撑破面板），`@media (max-width: 640px)` 收紧间距、单列事实网格、图表降高，ECharts 横轴刻度自动减少。不新增依赖（仅使用已有 vue / echarts）。
 
-## 八、验证证据
-
-工作目录 `frontend/`，2026-10-07 本机执行。
-
-1）语义检查 + 纯函数行为检查（退出码 0 才算通过）：
-
-```powershell
-cd frontend
-node checks/area-activity.cjs
-```
-
-输出（本轮实测，30 项完整列出）：
-
-```text
-ok   01 - 三模式齐全（时刻在场/时段活动/两时段比较）
-ok   02 - emit 名称齐全且参数形状正确
-ok   03 - results-updated 只在成功写入新结果时 emit（失败/取消不发）
-ok   04 - 请求版本守卫 + AbortController
-ok   05 - 船型筛选来自接口、默认全选、不在前端硬编码
-ok   06 - 清空船型时不提交（后端空船型=全部）
-ok   07 - no_data 与有效零结果分开渲染
-ok   08 - change_rate 为 null 时显示说明而不是 0
-ok   09 - 截断提示读后端 limits 标志
-ok   10 - 结果区展示区域名称/版本/默认标记、算法版本、coverage、limitations 全文
-ok   11 - compare 展示可比性 warnings，且不渲染访问明细
-ok   12 - 证据联动：地图定位/显示区间 + segment 起止与报位 id
-ok   13 - 不自己拼 URL、不新增依赖、只调用 api.ts 函数
-ok   14 - 无障碍与窄屏：label/aria-live/表格 caption+scope/横向滚动
-ok   15 - ECharts 按需引入并尊重 prefers-reduced-motion、窄屏减少刻度
-ok   16 - UTC 时间输入/输出互转（不随本机时区漂移）
-ok   17 - 默认时段为 UTC 自然日半开区间，跨月边界正确
-ok   18 - 半开区间表单校验：只拦必填与顺序
-ok   19 - 区域归一化：兼容后端嵌套 bounds（含 version=null / custom）
-ok   20 - 区域归一化：兼容扁平 west/south/east/north，缺失字段记 null 不回填 0
-ok   21 - no_data 与有效零结果的语义分开
-ok   22 - change_rate 空值显示说明，数值带符号百分比
-ok   23 - 截断提示由后端标志驱动，未截断时不提示
-ok   24 - 船型多选：全部=null、部分=数组、列表为空=null
-ok   25 - 保留船型值来自后端 reserved，合并去重且不硬编码
-ok   26 - 每日序列与 compare windows/metrics 归一化
-ok   27 - 访问 emit 参数：locate 用 first/last inside，focus 带 visitKey
-ok   28 - 格式化：时长/数量/坐标/龄期/单位
-ok   29 - 区域比较与边界文本
-ok   30 - 对话联动：读取 agentContext/pendingAction 与生成提示词
-
-30/30 checks passed
-area-activity 前端语义检查通过（退出码 0）
-```
-
-2）隔离类型检查（只查本组件 + domain + api.ts，不受 App.vue 在途改动影响；退出码 0）：
-
-```powershell
-cd frontend
-node checks/area-activity.cjs --types
-```
-
-```text
-运行隔离 vue-tsc（AreaActivityPanel.vue + areaActivity.ts + api.ts）…
-隔离类型检查通过：0 errors
-```
-
-3）完整构建：
-
-```powershell
-cd frontend
-npm run build
-```
-
-本轮结果（2026-10-07）：`vue-tsc -b && vite build` 通过，退出码 0，`✓ built in 8.01s`（`dist/assets/index-*.js` 1,126.00 kB / gzip 384.91 kB，CSS 90.95 kB）。构建期间 App.vue / AgentPanel.vue 的在途改动曾报错，Lead 接线完成后已消除；`AreaActivityPanel.vue` / `areaActivity.ts` 全程无错误。已核对 App.vue 接入与本契约一致：`:open/:bounds/:default-bounds/:area-label/:area-is-default/:agent-context/:pending-action` + `@close/@update:bounds/@locate-ship/@focus-visit/@use-area-in-dialog/@results-updated`，面板被包在 `<div class="area-panel-placement">` 内；dist 产物中可检索到面板样式类与「区域活动分析」文案，说明组件确实被打进构建。
-仅剩 Vite 的 chunk > 500 kB 通用提示（项目既有，与本组件无关；本组件未新增依赖、未改 `package.json`）。
-
-## 九、验证范围与限制
-
-2026-10-07：三模式、真实接口、默认区域身份、取消与旧响应守卫、圈选/回滚、证据轨迹和智能体回填已纳入浏览器复测。手动数字与已有独立复算证据一致，详见[验收报告](area_activity_acceptance.md) §七。
-
-- 矩形绘制目前只实现鼠标拖拽与 ESC 取消；触屏手势及纯键盘绘制尚未支持，表单全流程键盘可达性未验收。
-- 窄屏溢出与减少动态检查覆盖 390×844；不代表移动设备触屏验收。
-- 真实超时已通过只读慢查询注入验证；并发响应预算、真实模型多轮追问仍未验证。
-
 ## 十、组件接入约定（已接入）
 
 1. `area` 采用后端真实结构（嵌套 `bounds`、`version` 可为 null、`containment` 字符串）；`domain/areaActivity.ts` 的 `readBounds` 同时兼容嵌套与扁平写法，因此 api.ts 保持现在的 `ApiAreaInfo.bounds` 即可，无需改动。
@@ -206,6 +122,6 @@ App.vue 分别维护面板打开、边界偏好和临时绘制；有效可见性
 
 「当前区域：默认区域 / 自定义区域」常显；坐标、半开规则与范围依据放进「区域详情（非官方航道边界）」。隐藏时面板提示分析范围不变；绘制/取消与失败反馈收进面板，地图不再常驻长坐标条。区域编辑限地图探索；案例入口给出解释与切换按钮，案例退出恢复原面板/显示状态，不恢复拖拽。
 
-本轮状态、复跑命令及截图见[Issue #54 记录](issue54_area_boundary.md)。开关的 Space 键与 aria-checked 纳入本轮验证；触屏和纯键盘创建矩形仍未支持。
+本轮状态、复跑命令及截图见[历史材料](README.md#历史材料)。开关的 Space 键与 aria-checked 纳入本轮验证；触屏和纯键盘创建矩形仍未支持。
 
-2026-10-08 用户注释返工（实现 `5ff7735`）：案例提示改为右侧独立高层级浮层；左侧筛选头部紧凑化、事件标题完整换行；船型分组与AIS默认时段已验证。区域纯函数/语义检查32/32、S11回归28项、S12专项15项通过，证据见[返工记录](issue54_area_boundary.md#2026-10-08-用户注释返工)。
+2026-10-08 用户注释返工（实现 `5ff7735`）：案例提示改为右侧独立高层级浮层；左侧筛选头部紧凑化、事件标题完整换行；船型分组与AIS默认时段已验证。区域纯函数/语义检查32/32、S11回归28项、S12专项15项通过，证据见[历史材料](README.md#历史材料)。
