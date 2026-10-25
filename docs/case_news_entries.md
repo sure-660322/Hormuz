@@ -1,6 +1,6 @@
 # 典型新闻入口与案例轨迹
 
-2026-10-25 第二阶段：**已验证；进入PR收尾，未部署**。延续 `codex/three-vessel-cases`，基线 `98ff673`，负责人 Codex；独立工作区 `three-vessel-cases/Hormuz`，预览前端5187、后端8007。原8000服务未切换；进入PR收尾，未部署。
+2026-10-25 第二阶段：**已验证；[PR #67](https://github.com/sure-660322/Hormuz/pull/67)已合入main，本地已同步，本任务工作树与预览已清理，未部署**。延续 `codex/three-vessel-cases`，基线 `98ff673`，负责人 Codex；原独立工作区 `three-vessel-cases/Hormuz`已归档；验收前端5187、后端8007已关闭，原8000服务未切换。收尾与证据归档见[记录](case_news_closeout_20261025.md)。
 
 ## 业务入口
 

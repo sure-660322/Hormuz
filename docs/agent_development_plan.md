@@ -1,23 +1,24 @@
 ## 2026-10-25 四条中文新闻入口与缺报虚线
 
-状态：**已验证；进入PR收尾，未部署**。延续负责人Codex、`codex/three-vessel-cases`独立工作区，基线98ff673；预览5187/8007，应用库aisdb、独立库hormuz_three_cases_test_20261025。
+状态：**已验证；[PR #67](https://github.com/sure-660322/Hormuz/pull/67)已合入main，本地已同步，本任务工作树与预览已清理，未部署**。延续负责人Codex、`codex/three-vessel-cases`独立工作区，基线98ff673；预览5187/8007，应用库aisdb、独立库hormuz_three_cases_test_20261025。
 
 - 来源：读取用户新闻证据文件，核对新华网、Baird路透社转载、海峡时报、AA公开正文及既有Kpler文章；路透社/FMT访问受限，不伪称获取原站全文。
 - 数据：独立库验证+完整备份后追加5篇去重报道/4个中文事件；原357新闻/78事件指纹不变，无结构迁移。共享原文通过story_ids引用。
 - 实现：中文新闻目录点击进入目标船完整轨迹，证据页引用数据库来源并外链原文；单船案例/轨迹API契约保持。原始缺报段增加灰色虚线端点示意，报位/航速/箭头/定位与快照有效期不变，普通探索不显示连接线。
-- 验证：后端最终28 passed/1 skipped；独立库幂等/冲突回滚/共享来源/接口；build与workbench通过。四个中文入口/船舶身份/原文链接/完整回放、4/1/5/3条虚线、手机布局与退出恢复均通过；约4.6秒播放，新增报位请求0；普通新闻既有封面404单独记录。共享报道在get_event_context中的实际查询也已核对，未运行真实模型。
-- 修改所有权延续第一阶段，并新增case_news_data/import_case_news、case_news服务、catalog schema/路由、events与agent/event_context来源查询、CaseNewsIndex、MapView/trackLayer、casePlayback与对应测试/文档。进入PR收尾，未部署。
+- 验证：实施阶段后端28 passed/1 skipped；收尾扩展回归77 passed/1 skipped；独立库幂等/冲突回滚/共享来源/接口；build与workbench通过。四个中文入口/船舶身份/原文链接/完整回放、4/1/5/3条虚线、手机布局与退出恢复均通过；约4.6秒播放，新增报位请求0；普通新闻既有封面404单独记录。共享报道在get_event_context中的实际查询也已核对，未运行真实模型。
+- 修改所有权延续第一阶段，并新增case_news_data/import_case_news、case_news服务、catalog schema/路由、events与agent/event_context来源查询、CaseNewsIndex、MapView/trackLayer、casePlayback与对应测试/文档。[PR #67](https://github.com/sure-660322/Hormuz/pull/67)已合入main，本地已同步，本任务工作树与预览已清理，未部署。
+- 交付：PR #67已合入main（64bb1a8），本地同步并完成任务工作树/分支/预览清理；证据已另行保留，独立验收库保留。详细收尾见[记录](case_news_closeout_20261025.md)。
 - 详细范围与证据：[新闻入口说明](case_news_entries.md)。下方第一阶段“新闻待补充”仅为当时状态，本轮已替代。
 
 ## 2026-10-25 三船轨迹案例
 
-状态：**已验证；进入PR收尾，未部署**。负责人 Codex；基线 `98ff673`、独立分支 `codex/three-vessel-cases`、工作树 `three-vessel-cases/Hormuz`；预览5187/8007，应用库aisdb、独立库hormuz_three_cases_test_20261025。
+状态：**已验证；[PR #67](https://github.com/sure-660322/Hormuz/pull/67)已合入main，本地已同步，本任务工作树与预览已清理，未部署**。负责人 Codex；基线 `98ff673`、独立分支 `codex/three-vessel-cases`、工作树 `three-vessel-cases/Hormuz`；预览5187/8007，应用库aisdb、独立库hormuz_three_cases_test_20261025。
 
 - 范围：新增 MRAIKH/TONG LIN WAN/EGRET，沿用北冰洋展示与回放，选择器移除ATHE NOVA。无新依赖、无数据库/页面结构调整、无新闻入口；新闻由用户提供。
 - 修改所有权：README、FRONTEND_WORKBENCH、案例API/服务、case_ais/import_case_ais、前端api/App/CasePanel/AgentPanel/OnboardingTour、相关案例/数据库说明与本计划，仅本任务整合，不修改主目录现有未跟踪文件。
 - 已验证：最终23 passed / 1 skipped（旧北冰洋隔离库集成未跑，真实CSV解析已复验）；build/check:workbench；三份真实CSV独立库导入、幂等、故障回滚、源字段逐条对账与接口成功/空窗/非法范围。
 - 数据：完整备份并检查归档目录后，一次事务追加27,255条接受报位；未覆盖旧批次，三船源文件保持原样。
-- 浏览器：四船切换/完整回放、EGRET窄屏与退出恢复通过；新三船实际播放分别4557/4579/4536ms，期间新增报位请求0。采样pageerror/HTTP失败为空，首次普通新闻列表存在既有图片目录缺失404，详见说明。后续：新闻证据待补充、新闻入口按用户要求后续处理。进入PR收尾，未部署。详细证据与边界见[三船说明](trajectory_cases.md)。
+- 浏览器：四船切换/完整回放、EGRET窄屏与退出恢复通过；新三船实际播放分别4557/4579/4536ms，期间新增报位请求0。采样pageerror/HTTP失败为空，首次普通新闻列表存在既有图片目录缺失404，详见说明。后续：新闻证据待补充、新闻入口按用户要求后续处理。[PR #67](https://github.com/sure-660322/Hormuz/pull/67)已合入main，本地已同步，本任务工作树与预览已清理，未部署。详细证据与边界见[三船说明](trajectory_cases.md)。
 
 > 2026-10-11 用户确认：旧 MobilityDB 派生停留识别、相遇分析、observed 时空邻近事件关联及 P5 simplified 回放切换已退出当前项目范围，不再作为待办、验收缺口或业务就绪条件。区域活动服务中的观测停留船时、真实 AIS 原始报位轨迹与实测航速、新闻 mentioned 文本证据继续保留。遗留代码/API 的存在不代表当前业务目标；本轮只清理文档，不删除代码、不操作数据库或服务。
 
