@@ -65,6 +65,14 @@ npm run check:workbench
 
 2026-10-25 已按要求关闭部署 PR #64，撤下对应远端分支、Release 和标签；部署资料仅保留本地，入口见[文档索引](docs/README.md#本地部署材料)。Git 更新不会自动同步数据库、图片或瓦片。
 
+## 许可证
+
+本项目自主开发的代码采用 [MIT License](LICENSE)。使用、修改或分发时须保留许可证要求的版权声明及许可声明；完整条款以 LICENSE 为准。
+
+第三方依赖、模型服务、新闻内容、AIS 数据及地图资源分别遵循其原有许可证或授权条件，不因本项目采用 MIT 而自动获得额外使用或再分发授权。AIS 来源、授权与覆盖完整性仍待核实。
+
+报告可表述为：“本项目自主开发的代码采用 MIT 开源许可证，完整许可文本见项目根目录 LICENSE 文件；第三方软件及数据资源遵循各自许可证与授权条件。”
+
 ## 文档入口
 
 [必要文档索引](docs/README.md) · [工作台说明](FRONTEND_WORKBENCH.md) · [当前状态与待办](docs/agent_development_plan.md) · [智能体接口](docs/agent_integration.md) · [典型新闻与轨迹](docs/case_news_entries.md)
