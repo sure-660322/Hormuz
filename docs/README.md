@@ -1,10 +1,11 @@
 # 必要文档索引
 
-当前文档用于运行、维护和解释业务口径；不再保存每轮 PR/Issue 验收流水。当前事实以代码、数据库结构和对应批次记录为准。
+根 [README](../README.md) 面向项目展示，介绍项目价值、核心功能、技术架构与典型案例。本目录用于运行、维护和解释业务口径；当前事实以代码、数据库结构和对应批次记录为准。
 
 | 用途 | 文档 |
 | --- | --- |
-| 项目、运行与协作 | [README](../README.md)、[AGENTS](../AGENTS.md)、[工作台](../FRONTEND_WORKBENCH.md)、[协作](collaboration.md)、[当前任务](agent_development_plan.md) |
+| 项目展示与使用 | [项目介绍](../README.md)、[本地运行](../README.md#本地运行)、[工作台](../FRONTEND_WORKBENCH.md) |
+| 开发与维护 | [AGENTS](../AGENTS.md)、[协作](collaboration.md)、[当前状态与任务](agent_development_plan.md) |
 | 数据库与来源 | [数据库](database_setup.md)、[七日 AIS](real_ais_seven_day_import.md)、[中新网批次](chinanews_news_import.md) |
 | 案例与证据 | [新闻入口](case_news_entries.md)、[三船来源](trajectory_cases.md)、[北冰洋来源](arctic_ocean_case.md) |
 | 智能体与 SQL | [v4 接口](agent_integration.md)、[LangChain 架构](langchain_agent_v1_plan.md)、[SQL 安全契约](query_analytics_contract.md)、[分析快照](agent_analysis_semantic_layer.md)、[地图动作](agent_map_actions_issue20.md) |
