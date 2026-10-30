@@ -1374,7 +1374,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); window.rem
       <div class="brand">
         <img class="brand-logo" :src="logoUrl" alt="" aria-hidden="true" />
         <div>
-          <h1>霍尔木兹<span>海事态势分析</span></h1>
+          <h1>海枢智航<span>船舶轨迹与海事事件智能分析平台</span></h1>
         </div>
       </div>
       <nav class="workspace-nav" aria-label="工作视图">

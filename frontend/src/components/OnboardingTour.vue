@@ -5,7 +5,7 @@ const emit = defineEmits<{ step: [index: number]; close: [completed: boolean] }>
 const steps = [
   {
     title: '从这里开始了解海峡态势',
-    text: '用几步认识霍尔木兹海事态势分析系统：查看历史船位、浏览新闻，再按时间和区域展开调查。',
+    text: '用几步认识海枢智航：查看霍尔木兹海峡历史船位、浏览新闻，再按时间和区域展开调查。',
     hint: '引导中只介绍功能，不会发起分析。随时可以跳过，稍后从顶栏「使用引导」重新打开。',
   },
   {
